@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// vite.config.js
 export default defineConfig({
-  base: '/AI-Story-Teller/'
-})
+  plugins: [react()],
+  base: "/AI-Story-Teller/",
+});
