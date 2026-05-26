@@ -1,0 +1,128 @@
+/**
+ * @vitest-environment jsdom
+ */
+import "@testing-library/jest-dom/vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { adventureReducer } from "../state/adventureReducer";
+import { createDefaultAdventure } from "../state/defaults";
+import type { Adventure, AdventureAction, InputMode } from "../types/adventure";
+import { PlayPage } from "./PlayPage";
+
+const timestamp = "2026-01-01T00:00:00.000Z";
+type SubmitTurnHandler = (text: string, mode: InputMode) => Promise<void>;
+type AsyncHandler = () => Promise<void>;
+
+const noopSubmitTurn: SubmitTurnHandler = async () => undefined;
+const noopAsync: AsyncHandler = async () => undefined;
+
+function playAdventure(): Adventure {
+  return {
+    ...createDefaultAdventure("UI Adventure"),
+    messages: [
+      { id: "msg-user", role: "user", content: "I open the door.", createdAt: timestamp },
+      { id: "msg-ai", role: "assistant", content: "Rain waits outside.", createdAt: timestamp },
+    ],
+  };
+}
+
+function StatefulPlayPage({
+  initialAdventure = playAdventure(),
+  onSubmitTurn = noopSubmitTurn,
+  onContinue = noopAsync,
+  onRegenerate = noopAsync,
+}: {
+  initialAdventure?: Adventure;
+  onSubmitTurn?: SubmitTurnHandler;
+  onContinue?: AsyncHandler;
+  onRegenerate?: AsyncHandler;
+}) {
+  const [adventure, setAdventure] = useState(initialAdventure);
+  const dispatch = (action: AdventureAction) => setAdventure((current) => adventureReducer(current, action));
+  return (
+    <PlayPage
+      adventure={adventure}
+      dispatch={dispatch}
+      loading={false}
+      saveStatus="saved"
+      onSubmitTurn={onSubmitTurn}
+      onContinue={onContinue}
+      onRegenerate={onRegenerate}
+      onBuildContext={() => undefined}
+      onOpenContext={() => undefined}
+      onRememberThis={async () => undefined}
+    />
+  );
+}
+
+describe("PlayPage AID-style controls", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("submits a turn, continues, and retries through the visible controls", async () => {
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
+    const onContinue = vi.fn<AsyncHandler>(async () => undefined);
+    const onRegenerate = vi.fn<AsyncHandler>(async () => undefined);
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} onContinue={onContinue} onRegenerate={onRegenerate} />);
+
+    await user.type(screen.getByPlaceholderText("Guide the next story beat..."), "The hallway tilts.");
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    expect(onSubmitTurn).toHaveBeenCalledWith("The hallway tilts.", "story");
+
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onContinue).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRegenerate).toHaveBeenCalledTimes(1);
+  });
+
+  it("transforms Do mode input like AID action input", async () => {
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Do" }));
+    await user.type(screen.getByPlaceholderText("What do you do? (prefixed with 'You ')"), "draw your sword");
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+
+    expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+  });
+
+  it("edits story text inline and supports erase, undo, and redo", async () => {
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    const assistantMessage = screen.getByText("Rain waits outside.").closest("article");
+    expect(assistantMessage).toBeTruthy();
+    await user.click(within(assistantMessage as HTMLElement).getByRole("button", { name: "Edit" }));
+    const editor = screen.getByDisplayValue("Rain waits outside.");
+    await user.clear(editor);
+    await user.type(editor, "Rain lashes the threshold.");
+    expect(screen.getByDisplayValue("Rain lashes the threshold.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Erase" }));
+    expect(screen.queryByDisplayValue("Rain lashes the threshold.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(screen.getByText("Rain lashes the threshold.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Redo" }));
+    expect(screen.queryByText("Rain lashes the threshold.")).not.toBeInTheDocument();
+  });
+
+  it("deletes a specific transcript entry from the story text", async () => {
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    const userMessage = screen.getByText("I open the door.").closest("article");
+    expect(userMessage).toBeTruthy();
+    await user.click(within(userMessage as HTMLElement).getByRole("button", { name: "Delete" }));
+
+    expect(screen.queryByText("I open the door.")).not.toBeInTheDocument();
+    expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
+  });
+});

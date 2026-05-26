@@ -1,0 +1,279 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runManualAutoCardGeneration } from "./semanticEngine";
+import { createDefaultAdventure, makeBrain, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
+import type { Adventure } from "../types/adventure";
+
+vi.mock("../providers/openAICompatible", () => ({
+  sendOpenAICompatibleChatCompletion: vi.fn(),
+}));
+
+import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+const mockProvider = vi.mocked(sendOpenAICompatibleChatCompletion);
+
+const providerConfig = {
+  name: "test",
+  baseUrl: "https://api.example.com",
+  apiKey: "sk-test",
+  model: "test-model",
+  temperature: 0.8,
+  maxOutputTokens: 256,
+};
+
+function baseAdventure(): Adventure {
+  return {
+    ...createDefaultAdventure("Semantic Test"),
+    activeState: {
+      ...createDefaultAdventure("Semantic Test").activeState,
+      turn: 5,
+    },
+    semanticEvaluationSettings: {
+      evaluationModel: "",
+      messagesIncluded: 4,
+      enabled: true,
+      showLog: true,
+      maxParallelUpdateCalls: 2,
+    },
+    messages: [
+      { id: "m1", role: "user", content: "I enter the tavern.", createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: "m2", role: "assistant", content: "The barkeep nods.", createdAt: "2026-01-01T00:01:00.000Z" },
+    ],
+  };
+}
+
+beforeEach(() => {
+  mockProvider.mockReset();
+});
+
+describe("runSemanticPostTurnEvaluation", () => {
+  it("returns empty actions and a log entry when semantic evaluation is disabled", async () => {
+    const adventure = { ...baseAdventure(), semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, enabled: false } };
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    expect(mockProvider).not.toHaveBeenCalled();
+    expect(result.actions.some((a) => a.type === "LOG_EVALUATION_RESULT")).toBe(true);
+    expect(result.logEntry.conditionsEvaluated).toHaveLength(0);
+  });
+
+  it("sends one condition-evaluation call and returns a log entry when no conditions fire", async () => {
+    const adventure = {
+      ...baseAdventure(),
+      triggerRules: [
+        makeTriggerRule({
+          id: "rule-door",
+          name: "Door trigger",
+          enabled: true,
+          evaluationMode: "semantic",
+          condition: "when the player opens a door",
+          actions: [{ type: "activateComponent" as const, componentId: "comp-1" }],
+        }),
+      ],
+    };
+    mockProvider.mockResolvedValueOnce({ content: "[]", raw: {} });
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    expect(result.actions.some((a) => a.type === "LOG_EVALUATION_RESULT")).toBe(true);
+    expect(result.logEntry.conditionsFired).toHaveLength(0);
+    expect(result.logEntry.errors).toHaveLength(0);
+  });
+
+  it("fires a matching semantic trigger rule and maps it to a reducer action", async () => {
+    const adventure = {
+      ...baseAdventure(),
+      triggerRules: [
+        makeTriggerRule({
+          id: "rule-door",
+          name: "Door trigger",
+          enabled: true,
+          evaluationMode: "semantic",
+          condition: "when the player opens a door",
+          actions: [{ type: "activateComponent" as const, componentId: "comp-1" }],
+        }),
+      ],
+    };
+    mockProvider.mockResolvedValueOnce({ content: '["trigger:rule-door"]', raw: {} });
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.logEntry.conditionsFired).toContain("trigger:rule-door");
+    expect(result.actions.some((a) => a.type === "ACTIVATE_COMPONENT")).toBe(true);
+    expect(result.actions.some((a) => a.type === "MARK_TRIGGER_FIRED")).toBe(true);
+  });
+
+  it("evaluates a brain condition and calls a targeted brain-update prompt when fired", async () => {
+    const brain = makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], active: true });
+    const adventure = { ...baseAdventure(), brains: [brain] };
+
+    // First call: condition evaluation (returns brain condition fired)
+    // Second call: brain update prompt
+    mockProvider
+      .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
+      .mockResolvedValueOnce({ content: '{"currentState": "Margo looks relieved."}', raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(mockProvider).toHaveBeenCalledTimes(2);
+    expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(true);
+    expect(result.logEntry.conditionsFired).toContain("brain:brain-margo");
+  });
+
+  it("evaluates a quest step completion condition and advances the quest when fired", async () => {
+    const quest = makeQuest({
+      id: "quest-ward",
+      title: "Seal the Ward",
+      status: "active",
+      currentStepId: "step-1",
+      steps: [
+        {
+          id: "step-1",
+          title: "Reach Threshold",
+          objective: "Reach the threshold",
+          status: "active",
+          completionCondition: "when the player reaches the threshold",
+          triggerConditions: [],
+          onStartActions: [],
+          onCompleteActions: [],
+          contextText: "",
+        },
+      ],
+    });
+    const adventure = { ...baseAdventure(), quests: [quest] };
+    mockProvider.mockResolvedValueOnce({ content: '["questStep:quest-ward:step-1"]', raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((a) => a.type === "COMPLETE_QUEST_STEP")).toBe(true);
+    expect(result.logEntry.conditionsFired).toContain("questStep:quest-ward:step-1");
+  });
+
+  it("fires an auto-card condition, calls the generation prompt, and queues a CREATE_AUTO_CARD action", async () => {
+    const adventure = {
+      ...baseAdventure(),
+      autoCardSettings: {
+        enabled: true,
+        detectionCondition: "when a new named entity appears",
+        generationPrompt: "Generate a story card for the new entity as JSON.",
+        cooldownTurns: 0,
+        lastGeneratedTurn: undefined,
+      },
+    };
+    mockProvider
+      .mockResolvedValueOnce({ content: '["autoCards:global"]', raw: {} })
+      .mockResolvedValueOnce({ content: '{"title":"The Barkeep","content":"A gruff man.","keys":"barkeep, tavern"}', raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(true);
+    const createAction = result.actions.find((a) => a.type === "CREATE_AUTO_CARD") as Extract<typeof result.actions[number], { type: "CREATE_AUTO_CARD" }>;
+    expect(createAction.title).toBe("The Barkeep");
+    expect(createAction.content).toBe("A gruff man.");
+  });
+
+  it("records a parse error in the log when the LLM returns invalid JSON for conditions", async () => {
+    const adventure = {
+      ...baseAdventure(),
+      triggerRules: [makeTriggerRule({ name: "Rule", enabled: true, evaluationMode: "semantic", condition: "test" })],
+    };
+    mockProvider.mockResolvedValueOnce({ content: "not json at all", raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.logEntry.errors.length).toBeGreaterThan(0);
+    expect(result.logEntry.conditionsFired).toHaveLength(0);
+  });
+
+  it("skips disabled and cooling-down semantic trigger rules", async () => {
+    const disabledRule = makeTriggerRule({ id: "rule-disabled", name: "Disabled", enabled: false, evaluationMode: "semantic", condition: "test" });
+    const coolingRule = makeTriggerRule({ id: "rule-cooling", name: "Cooling", enabled: true, evaluationMode: "semantic", condition: "test", cooldownTurns: 5, lastFiredTurn: 3 });
+    const adventure = { ...baseAdventure(), triggerRules: [disabledRule, coolingRule] };
+
+    mockProvider.mockResolvedValueOnce({ content: "[]", raw: {} });
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    const evaluatedIds = result.logEntry.conditionsEvaluated.map((c) => c.id);
+    expect(evaluatedIds).not.toContain("trigger:rule-disabled");
+    expect(evaluatedIds).not.toContain("trigger:rule-cooling");
+  });
+
+  it("skips keyword and regex mode trigger rules — only semantic mode rules go to the LLM", async () => {
+    const keywordRule = makeTriggerRule({ id: "rule-kw", name: "Keyword", enabled: true, evaluationMode: "keyword", condition: "door" });
+    const regexRule = makeTriggerRule({ id: "rule-rx", name: "Regex", enabled: true, evaluationMode: "regex", condition: "door.*open" });
+    const adventure = { ...baseAdventure(), triggerRules: [keywordRule, regexRule] };
+
+    mockProvider.mockResolvedValueOnce({ content: "[]", raw: {} });
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    const evaluatedIds = result.logEntry.conditionsEvaluated.map((c) => c.id);
+    expect(evaluatedIds).not.toContain("trigger:rule-kw");
+    expect(evaluatedIds).not.toContain("trigger:rule-rx");
+  });
+});
+
+describe("runManualBrainUpdate", () => {
+  it("calls the brain update prompt and applies the patch", async () => {
+    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const adventure = { ...baseAdventure(), brains: [brain] };
+    mockProvider.mockResolvedValueOnce({ content: '{"currentState": "Seth is on edge."}', raw: {} });
+
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(true);
+    expect(result.logEntry.conditionsFired).toContain("manualBrain:brain-seth");
+  });
+
+  it("logs an error when the brain ID does not exist", async () => {
+    const result = await runManualBrainUpdate(baseAdventure(), providerConfig, "missing-brain");
+    expect(mockProvider).not.toHaveBeenCalled();
+    expect(result.logEntry.errors[0]).toMatch(/not found/i);
+  });
+
+  it("logs an error when the LLM returns no recognized brain fields", async () => {
+    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const adventure = { ...baseAdventure(), brains: [brain] };
+    mockProvider.mockResolvedValueOnce({ content: '{"unknownField": "something"}', raw: {} });
+
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+    expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(false);
+    expect(result.logEntry.errors[0]).toMatch(/no recognized keys/i);
+  });
+});
+
+describe("runManualAutoCardGeneration", () => {
+  it("calls the generation prompt and returns a CREATE_AUTO_CARD action", async () => {
+    const adventure = {
+      ...baseAdventure(),
+      autoCardSettings: {
+        enabled: true,
+        detectionCondition: "when a new entity appears",
+        generationPrompt: "Generate a card.",
+        cooldownTurns: 0,
+      },
+    };
+    mockProvider.mockResolvedValueOnce({ content: '{"title":"Iron Compass","content":"A compass pointing to fear.","keys":"compass, Iron Compass"}', raw: {} });
+
+    const result = await runManualAutoCardGeneration(adventure, providerConfig);
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    const createAction = result.actions.find((a) => a.type === "CREATE_AUTO_CARD") as Extract<typeof result.actions[number], { type: "CREATE_AUTO_CARD" }>;
+    expect(createAction).toBeDefined();
+    expect(createAction.title).toBe("Iron Compass");
+    expect(createAction.keys).toContain("compass");
+  });
+
+  it("logs an error when the LLM returns invalid JSON", async () => {
+    const adventure = { ...baseAdventure(), autoCardSettings: { enabled: true, detectionCondition: "test", generationPrompt: "test", cooldownTurns: 0 } };
+    mockProvider.mockResolvedValueOnce({ content: "not json", raw: {} });
+
+    const result = await runManualAutoCardGeneration(adventure, providerConfig);
+    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(false);
+    expect(result.logEntry.errors.length).toBeGreaterThan(0);
+  });
+
+  it("logs an error when the LLM returns JSON missing title or content", async () => {
+    const adventure = { ...baseAdventure(), autoCardSettings: { enabled: true, detectionCondition: "test", generationPrompt: "test", cooldownTurns: 0 } };
+    mockProvider.mockResolvedValueOnce({ content: '{"keys":"something"}', raw: {} });
+
+    const result = await runManualAutoCardGeneration(adventure, providerConfig);
+    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(false);
+    expect(result.logEntry.errors[0]).toMatch(/invalid JSON/i);
+  });
+});

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm.cmd test *)",
+      "Bash(npm.cmd run *)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\sethp\\\\Documents\\\\GitHub\\\\AI Story Teller\\\\src\\\\importers\\\\lewdLeahParser.ts\" -Force)",
+      "Bash(Remove-Item \"C:\\\\Users\\\\sethp\\\\Documents\\\\GitHub\\\\AI Story Teller\\\\src\\\\importers\\\\lewdLeahParser.test.ts\" -Force)",
+      "Bash(Write-Host \"Deleted\")",
+      "WebSearch",
+      "Bash(npx.cmd tsc *)"
+    ]
+  }
+}
