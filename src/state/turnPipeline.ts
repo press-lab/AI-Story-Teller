@@ -114,6 +114,7 @@ export async function runTurnPipeline({
     id: assistantMessageId,
     createdAt,
   });
+  next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
   if (mode !== "comms") {
     const proposalAction = createMemoryProposalAction(next, response.content);

@@ -245,6 +245,16 @@ pre {
   font-weight: 600;
 }
 
+.nav-item.primary {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  font-weight: 650;
+}
+
+.nav-item.primary.active {
+  border-color: var(--active-bg);
+}
+
 /* ── Main content area ──────────────────────────────── */
 
 .main-content {
@@ -385,6 +395,31 @@ pre {
   color: var(--error-text);
 }
 
+.new-adventure-setup {
+  display: grid;
+  gap: 12px;
+}
+
+.setup-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.setup-panel[open] {
+  display: grid;
+  gap: 10px;
+}
+
+.setup-column {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.setup-preview-list {
+  margin: 10px 0;
+}
+
 /* ── Play page ──────────────────────────────────────── */
 
 /* Dashboard */
@@ -482,8 +517,9 @@ pre {
 }
 
 .play-layout {
-  grid-template-columns: 1fr;
-  max-width: 900px;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 1040px;
+  margin: 0 auto;
 }
 
 .play-header {
@@ -517,24 +553,45 @@ pre {
   font-size: 12px;
 }
 
+.play-tool-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.play-tool-strip button {
+  flex: 0 0 auto;
+  min-height: 30px;
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.play-tool-strip button:hover:not(:disabled) {
+  color: var(--button-text);
+}
+
 .opening-scene-details {
   font-size: 14px;
 }
 
 .transcript {
   display: grid;
-  gap: 8px;
-  max-height: 55vh;
+  gap: 12px;
+  max-height: 58vh;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  padding: 12px;
+  padding: 16px;
 }
 
 .message {
   border-left: 4px solid var(--border-strong);
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--surface-soft);
   border-radius: 0 4px 4px 0;
 }
@@ -590,6 +647,7 @@ pre {
   margin: 5px 0 0;
   white-space: pre-wrap;
   font-style: normal;
+  line-height: 1.65;
 }
 
 .message-editor {
@@ -602,6 +660,10 @@ pre {
 .composer {
   display: grid;
   gap: 8px;
+  position: sticky;
+  bottom: 12px;
+  z-index: 4;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.08);
 }
 
 .mode-selector {
@@ -633,6 +695,13 @@ pre {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.composer-actions button:first-child {
+  border-color: var(--active-bg);
+  background: var(--active-bg);
+  color: var(--active-text);
+  font-weight: 700;
 }
 
 .hint {

@@ -340,7 +340,36 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : [];
   summaryItems.forEach((entry) => pushIncluded(entry, "Rolling summary included after priority memory and before recent messages."));
 
-  // J. Recent Messages
+  // J. Next Output Bias
+  const nextTurnNote = adventure.activeState.nextTurnNote;
+  if (nextTurnNote?.content.trim() && !nextTurnNote.active) {
+    pushExcluded("nextTurnNote", "next-turn-note", "Next Output Bias", "inactive", "Next Output Bias has content but is not active.");
+  }
+  const nextTurnNoteItems =
+    nextTurnNote?.active && nextTurnNote.content.trim()
+      ? [
+          item(
+            "next-turn-note",
+            "nextTurnNote",
+            "Next Output Bias",
+            nextTurnNote.content.trim(),
+            nextTurnNote.priority,
+            nextTurnNote.protected,
+            nextTurnNote.pinned,
+            nextTurnNote.active,
+            "always",
+            "user",
+          ),
+        ]
+      : [];
+  nextTurnNoteItems.forEach((entry) =>
+    pushIncluded(
+      entry,
+      `Next Output Bias included for immediate next generation; priority=${entry.priority}; pinned=${entry.pinned}; protected=${entry.protected}; expiresAfterUse=${nextTurnNote.expiresAfterUse}.`,
+    ),
+  );
+
+  // K. Recent Messages
   const recentMessages = selectedRecentMessages(adventure);
   const recentMessageItems = recentMessages.map((message, index) =>
     item(
@@ -376,7 +405,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     section("brains", "G. Brains", 6, brainItems),
     section("questState", "H. Quest State", 7, questItems),
     section("rollingSummary", "I. Rolling Summary", 8, summaryItems),
-    section("recentMessages", "J. Recent Messages", 9, recentMessageItems),
+    section("nextTurnNote", "J. Next Output Bias", 9, nextTurnNoteItems),
+    section("recentMessages", "K. Recent Messages", 10, recentMessageItems),
   ]);
 
   const budget = budgetSettings.maxContextTokens;

@@ -88,9 +88,9 @@ function expectPreviewMatchesPayload(adventure: Adventure, mode: MemoryPriorityM
 }
 
 describe("buildContext", () => {
-  it("assembles sections in the required deterministic order (A–J)", () => {
+  it("assembles sections in the required deterministic order (A–K)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 10 sections must exist in the correct order
+    // All 11 sections must exist in the correct order
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
@@ -101,6 +101,7 @@ describe("buildContext", () => {
       "brains",
       "questState",
       "rollingSummary",
+      "nextTurnNote",
       "recentMessages",
     ]);
     expect(result.messages[0].role).toBe("system");
@@ -113,6 +114,7 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
     expect(itemTitles(adventureForContext(), "questState")).toEqual(["Quest"]);
     expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
+    expect(itemTitles(adventureForContext(), "nextTurnNote")).toEqual([]);
     expect(itemTitles(adventureForContext(), "recentMessages")).toEqual(["assistant message 1", "user message 2"]);
   });
 
@@ -420,6 +422,104 @@ describe("buildContext", () => {
     expect(msgItem?.generatedBy).toBe("user");
   });
 
+  it("includes Next Output Bias as an inspectable, token-counted section before recent messages", () => {
+    const adventure = {
+      ...adventureForContext(),
+      activeState: {
+        ...adventureForContext().activeState,
+        nextTurnNote: {
+          content: "Keep the next output focused on the oath's consequences.",
+          active: true,
+          pinned: true,
+          protected: false,
+          priority: 85,
+          expiresAfterUse: true,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      },
+    } satisfies Adventure;
+
+    const result = buildContext(adventure, { currentInput: "lantern" });
+    const noteSection = result.sections.find((section) => section.id === "nextTurnNote");
+
+    expect(result.sections.map((section) => section.id).slice(-2)).toEqual(["nextTurnNote", "recentMessages"]);
+    expect(noteSection?.label).toBe("J. Next Output Bias");
+    expect(noteSection?.items).toHaveLength(1);
+    expect(noteSection?.items[0]).toMatchObject({
+      id: "next-turn-note",
+      sourceType: "nextTurnNote",
+      title: "Next Output Bias",
+      pinned: true,
+      protected: false,
+      priority: 85,
+      generatedBy: "user",
+    });
+    expect(noteSection?.tokenEstimate).toBe(approximateTokenCount(noteSection?.content ?? ""));
+    expect(result.messages[0].content).toContain("# J. Next Output Bias");
+    expect(result.messages[0].content).toContain("Keep the next output focused on the oath's consequences.");
+  });
+
+  it("can budget-drop unprotected Next Output Bias but preserves it when protected", () => {
+    const makeAdventure = (protectedNote: boolean) =>
+      ({
+        ...adventureForContext(),
+        components: [],
+        storyCards: [],
+        autoCards: [],
+        brains: [],
+        quests: [],
+        rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
+        messages: [],
+        activeState: {
+          ...adventureForContext().activeState,
+          nextTurnNote: {
+            content: "bias ".repeat(120),
+            active: true,
+            pinned: false,
+            protected: protectedNote,
+            priority: -100,
+            expiresAfterUse: true,
+          },
+        },
+        tokenBudgetSettings: budget({ maxContextTokens: 10, maxRecentMessages: 0, recentMessageWindow: 0 }),
+      }) satisfies Adventure;
+
+    const droppable = buildContext(makeAdventure(false));
+    expect(droppable.sections.find((section) => section.id === "nextTurnNote")?.items).toHaveLength(0);
+    expect(droppable.excludedItems).toContainEqual(
+      expect.objectContaining({ id: "next-turn-note", sourceType: "nextTurnNote", reason: "budget_exceeded" }),
+    );
+
+    const protectedResult = buildContext(makeAdventure(true));
+    expect(protectedResult.sections.find((section) => section.id === "nextTurnNote")?.items).toHaveLength(1);
+    expect(protectedResult.totalEstimatedTokens).toBeGreaterThan(10);
+  });
+
+  it("logs inactive Next Output Bias as an explicit exclusion", () => {
+    const adventure = {
+      ...adventureForContext(),
+      activeState: {
+        ...adventureForContext().activeState,
+        nextTurnNote: {
+          content: "Hold the reveal.",
+          active: false,
+          pinned: true,
+          protected: false,
+          priority: 85,
+          expiresAfterUse: true,
+        },
+      },
+    } satisfies Adventure;
+
+    const result = buildContext(adventure, { currentInput: "lantern" });
+
+    expect(result.sections.find((section) => section.id === "nextTurnNote")?.items).toHaveLength(0);
+    expect(result.excludedItems).toContainEqual(
+      expect.objectContaining({ id: "next-turn-note", sourceType: "nextTurnNote", reason: "inactive" }),
+    );
+  });
+
   it("exposes pending Memory Proposals in pendingProposals without including them in model context", () => {
     const proposal = makeMemoryProposal({ id: "proposal-test", status: "pending" });
     const approved = makeMemoryProposal({ id: "proposal-approved", status: "approved" });
@@ -523,8 +623,8 @@ describe("buildContext", () => {
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
     // adventureForContext has no aiInstructions/plotEssentials/authorNote components
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 10 section IDs always present in result.sections
-    expect(result.sections.map((s) => s.id)).toHaveLength(10);
+    // All 11 section IDs always present in result.sections
+    expect(result.sections.map((s) => s.id)).toHaveLength(11);
     // Empty typed sections do not appear in the system payload
     const payload = result.messages[0].content;
     expect(payload).not.toContain("# B. AI Instructions");
@@ -551,6 +651,7 @@ describe("buildContext", () => {
       "brains",
       "questState",
       "rollingSummary",
+      "nextTurnNote",
       "recentMessages",
     ]);
     expect(result.sections.find((section) => section.id === "aiInstructions")?.items.map((item) => item.id)).toEqual(["component-ai"]);
@@ -560,6 +661,7 @@ describe("buildContext", () => {
     expect(result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toEqual(["card-joke", "card-beast"]);
     expect(result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id)).toEqual(["brain-margo", "brain-seth"]);
     expect(result.sections.find((section) => section.id === "questState")?.items.map((item) => item.id)).toEqual(["quest-ward"]);
+    expect(result.sections.find((section) => section.id === "nextTurnNote")?.items).toEqual([]);
     expect(result.sections.find((section) => section.id === "recentMessages")?.items.map((item) => item.id)).toEqual([
       "msg-6",
       "msg-5",

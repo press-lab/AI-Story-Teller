@@ -1,6 +1,7 @@
 export interface NavItem<T extends string> {
   id: T;
   label: string;
+  emphasis?: "primary";
 }
 
 export interface NavGroup<T extends string> {
@@ -24,7 +25,7 @@ export function Sidebar<T extends string>({ groups, activeItem, onChange }: Side
             <button
               key={item.id}
               type="button"
-              className={`nav-item${item.id === activeItem ? " active" : ""}`}
+              className={`nav-item${item.emphasis === "primary" ? " primary" : ""}${item.id === activeItem ? " active" : ""}`}
               onClick={() => onChange(item.id)}
             >
               {item.label}

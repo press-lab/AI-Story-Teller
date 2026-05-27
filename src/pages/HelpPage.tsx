@@ -47,6 +47,14 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           adventure, duplicate an existing adventure, or delete one from local storage.
         </p>
         <p>
+          New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
+          Story Cards, and Story Cards parsed from uploaded or pasted JSON.
+        </p>
+        <p>
+          Library also contains Personal Cloud Sync. For a private single-user setup, it can push and pull
+          all adventures through a private GitHub repo so a phone and computer can continue the same story.
+        </p>
+        <p>
           API keys are not stored in adventure records, so exporting, duplicating, or deleting an adventure
           does not move provider secrets around.
         </p>
@@ -313,6 +321,11 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           Auto-Card behavior.
         </p>
         <p>
+          The Provider section includes an API throttle. Enable it to enforce a minimum delay between
+          provider calls and an optional maximum number of calls per minute across turns, summaries,
+          Remember This, semantic evaluation, and generated memory updates.
+        </p>
+        <p>
           Provider keys must never be written into adventure JSON or IndexedDB records.
         </p>
       </>
@@ -382,6 +395,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>Brains</li>
           <li>Quest State</li>
           <li>Rolling Summary</li>
+          <li>Next Output Bias</li>
           <li>Recent Messages</li>
         </ol>
         <p>
@@ -426,8 +440,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     id: "memory-surfaces",
     title: "Memory Surfaces",
     category: "Memory",
-    summary: "Chronicle, Rolling Summary, Story Cards, Brains, Plot Essentials, and Memory Inbox roles.",
-    tags: ["memory", "chronicle", "summary", "story cards", "brains"],
+    summary: "Chronicle, Rolling Summary, Next Output Bias, Story Cards, Brains, Plot Essentials, and Memory Inbox roles.",
+    tags: ["memory", "chronicle", "summary", "next output bias", "story cards", "brains"],
     body: (
       <>
         <dl>
@@ -435,6 +449,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <dd>The complete transcript. Stored locally, not compressed, not automatically dumped into context.</dd>
           <dt>Rolling Summary</dt>
           <dd>Compressed model-facing continuity, editable by the user.</dd>
+          <dt>Next Output Bias</dt>
+          <dd>Short-term user-written steering for the next generation. It is visible, token-counted, and expires by default.</dd>
           <dt>Story Cards</dt>
           <dd>Approved durable facts triggered by keywords, phrases, or regex configuration.</dd>
           <dt>Brains</dt>

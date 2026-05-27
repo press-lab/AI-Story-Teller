@@ -386,4 +386,32 @@ describe("full turn smoke path", () => {
       source: "output",
     });
   });
+
+  it("sends Next Output Bias in the provider payload and consumes it after one successful output", async () => {
+    const adventure = dispatch(makeSmokeAdventure(), {
+      type: "SET_NEXT_TURN_NOTE",
+      note: {
+        content: "Do not resolve the argument yet.",
+        expiresAfterUse: true,
+        pinned: true,
+        protected: false,
+      },
+    });
+    const provider = vi.fn(async () => ({ content: "The argument tightens without resolving." }));
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "Margo waits for Seth to answer.",
+      userMessageId: "note-user",
+      assistantMessageId: "note-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: provider,
+    });
+
+    expect(result.providerPayload[0].content).toContain("# J. Next Output Bias");
+    expect(result.providerPayload[0].content).toContain("Do not resolve the argument yet.");
+    expect(result.preProviderContext.sections.find((section) => section.id === "nextTurnNote")?.items).toHaveLength(1);
+    expect(result.adventure.activeState.nextTurnNote.content).toBe("");
+    expect(result.postTurnContext.messages[0].content).not.toContain("Do not resolve the argument yet.");
+  });
 });

@@ -8,6 +8,11 @@ import {
   saveAdventure,
   type AdventureSummary,
 } from "./db/adventureDb";
+import {
+  defaultCloudSyncSettings,
+  pullGitHubCloudSync,
+  pushGitHubCloudSync,
+} from "./sync/githubSync";
 import { sendOpenAICompatibleChatCompletion } from "./providers/openAICompatible";
 import { createDefaultAdventure, defaultModelConfig } from "./state/defaults";
 import { adventureReducer } from "./state/adventureReducer";
@@ -23,10 +28,19 @@ import {
   runRememberThis,
   runSemanticPostTurnEvaluation,
 } from "./triggers/semanticEngine";
-import type { Adventure, AdventureAction, ContextBuildResult, InputMode, PendingAdventureUpdate } from "./types/adventure";
+import type {
+  Adventure,
+  AdventureAction,
+  ContextBuildResult,
+  InputMode,
+  NewAdventureSetup,
+  PendingAdventureUpdate,
+  CloudSyncSettings,
+} from "./types/adventure";
 import { importAdventureJson } from "./utils/json";
 import { createId, nowIso } from "./utils/id";
 import { useLocalStorage } from "./hooks/useLocalStorage";
+import { createDevelopmentAdventure } from "./dev/developmentAdventure";
 import type { RuntimeProviderSettings } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -69,7 +83,7 @@ const navGroups: NavGroup<TabId>[] = [
     items: [
       { id: "adventures", label: "Library" },
       { id: "dashboard", label: "Dashboard" },
-      { id: "play", label: "Play" },
+      { id: "play", label: "Play", emphasis: "primary" },
       { id: "chronicle", label: "Chronicle" },
     ],
   },
@@ -159,6 +173,11 @@ export default function App() {
   const [uiPreferences, setUiPreferences] = useLocalStorage("ai-story-teller-ui-preferences", {
     darkMode: false,
   });
+  const [cloudSyncSettings, setCloudSyncSettings] = useLocalStorage<CloudSyncSettings>(
+    "ai-story-teller-cloud-sync-settings",
+    defaultCloudSyncSettings,
+  );
+  const [cloudSyncStatus, setCloudSyncStatus] = useState("");
   const adventureRef = useRef<Adventure | undefined>(adventure);
   const providerSettingsRef = useRef(providerSettings);
   const isSubmittingRef = useRef(false);
@@ -282,13 +301,76 @@ export default function App() {
     setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
   }, [adventure]);
 
-  async function createAdventure(title: string) {
-    const next = createDefaultAdventure(title);
+  async function createAdventure(setup: NewAdventureSetup) {
+    const baseline = createDefaultAdventure(setup.title);
+    const next = {
+      ...baseline,
+      openingScene: setup.openingScene,
+      components: [...baseline.components, ...setup.components],
+      storyCards: setup.storyCards,
+    };
     await saveAdventure(next);
     setAdventure(next);
     setModalTab(undefined);
-    setActiveTab("dashboard");
+    setActiveTab("play");
     await refreshAdventures();
+  }
+
+  async function loadDevelopmentAdventure() {
+    const next = createDevelopmentAdventure();
+    await saveAdventure(next);
+    setAdventure(next);
+    setContextResult(buildContext(next, { latestModelOutput: latestAssistantOutput(next) }));
+    setModalTab(undefined);
+    setActiveTab("play");
+    await refreshAdventures();
+  }
+
+  async function allSavedAdventures(): Promise<Adventure[]> {
+    const summaries = await listAdventures();
+    const loaded = await Promise.all(summaries.map((summary) => getAdventure(summary.id)));
+    return loaded.filter((entry): entry is Adventure => Boolean(entry));
+  }
+
+  async function saveSyncedAdventures(syncedAdventures: Adventure[]) {
+    for (const syncedAdventure of syncedAdventures) {
+      await saveAdventure(syncedAdventure);
+    }
+    if (adventure) {
+      const syncedCurrent = syncedAdventures.find((entry) => entry.id === adventure.id);
+      if (syncedCurrent && syncedCurrent.updatedAt.localeCompare(adventure.updatedAt) >= 0) {
+        setAdventure(syncedCurrent);
+      }
+    }
+    await refreshAdventures();
+  }
+
+  async function pushCloudSync() {
+    setCloudSyncStatus("Pushing to GitHub...");
+    try {
+      const localAdventures = await allSavedAdventures();
+      const result = await pushGitHubCloudSync(cloudSyncSettings, localAdventures);
+      await saveSyncedAdventures(result.adventures);
+      setCloudSyncStatus(
+        `Pushed ${result.adventures.length} adventure(s) to ${result.owner}/${result.repo}:${result.path}.`,
+      );
+    } catch (syncError) {
+      setCloudSyncStatus(syncError instanceof Error ? syncError.message : "Cloud push failed.");
+    }
+  }
+
+  async function pullCloudSync() {
+    setCloudSyncStatus("Pulling from GitHub...");
+    try {
+      const localAdventures = await allSavedAdventures();
+      const result = await pullGitHubCloudSync(cloudSyncSettings, localAdventures);
+      await saveSyncedAdventures(result.adventures);
+      setCloudSyncStatus(
+        `Pulled ${result.remoteAdventureCount} remote adventure(s); local library now has ${result.adventures.length}.`,
+      );
+    } catch (syncError) {
+      setCloudSyncStatus(syncError instanceof Error ? syncError.message : "Cloud pull failed.");
+    }
   }
 
   async function openAdventure(id: string) {
@@ -300,7 +382,7 @@ export default function App() {
     setAdventure(next);
     setContextResult(undefined);
     setModalTab(undefined);
-    setActiveTab("dashboard");
+    setActiveTab("play");
   }
 
   async function duplicateAdventure(id: string) {
@@ -310,7 +392,7 @@ export default function App() {
     await saveAdventure(copy);
     setAdventure(copy);
     setModalTab(undefined);
-    setActiveTab("dashboard");
+    setActiveTab("play");
     await refreshAdventures();
   }
 
@@ -330,7 +412,7 @@ export default function App() {
       await saveAdventure(next);
       setAdventure(next);
       setModalTab(undefined);
-      setActiveTab("dashboard");
+      setActiveTab("play");
       await refreshAdventures();
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : "Import failed.");
@@ -365,6 +447,7 @@ export default function App() {
       });
       const assistantMode = mode === "comms" ? "comms" : undefined;
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, inputMode: assistantMode });
+      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       if (mode !== "comms") next = applyMemoryProposalFromOutput(next, response.content);
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
@@ -408,6 +491,7 @@ export default function App() {
         config: providerConfig(next, providerSettings),
       });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content });
+      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       next = applyMemoryProposalFromOutput(next, response.content);
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
@@ -536,7 +620,7 @@ export default function App() {
             onCreateAdventureFromImport={createAdventureFromImport}
             onOpenImportedAdventure={() => {
               setModalTab(undefined);
-              setActiveTab("dashboard");
+              setActiveTab("play");
             }}
           />
         );
@@ -555,6 +639,12 @@ export default function App() {
           onOpen={openAdventure}
           onDuplicate={duplicateAdventure}
           onDelete={removeAdventure}
+          cloudSyncSettings={cloudSyncSettings}
+          cloudSyncStatus={cloudSyncStatus}
+          onCloudSyncSettingsChange={setCloudSyncSettings}
+          onPushCloudSync={pushCloudSync}
+          onPullCloudSync={pullCloudSync}
+          onLoadDevelopmentAdventure={loadDevelopmentAdventure}
         />
       );
     }

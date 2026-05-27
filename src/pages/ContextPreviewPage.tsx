@@ -20,7 +20,7 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
 
       <div className="grid two">
         <article className="panel">
-          <h3>Ordered Sections (A–J)</h3>
+          <h3>Ordered Sections (A-K)</h3>
           {result.sections.map((section) => (
             <details key={section.id} open={section.items.length > 0}>
               <summary>
@@ -101,3 +101,4 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
     </section>
   );
 }
+

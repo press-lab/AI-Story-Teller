@@ -64,4 +64,14 @@ describe("HelpPage documentation UI", () => {
     expect(document.querySelector(".docs-toc")).toBeInTheDocument();
     expect(document.querySelector(".docs-content")).toBeInTheDocument();
   });
+
+  it("documents Next Output Bias as an inspectable context lane", async () => {
+    const user = userEvent.setup();
+    render(<HelpPage />);
+
+    await user.type(screen.getByLabelText(/search docs/i), "next output bias");
+
+    expect(screen.getByText("Next Output Bias")).toBeInTheDocument();
+    expect(screen.getByText(/visible, token-counted, and expires by default/i)).toBeInTheDocument();
+  });
 });

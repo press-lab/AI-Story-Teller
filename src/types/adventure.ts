@@ -217,6 +217,13 @@ export interface ProviderConfig {
   model: string;
   temperature: number;
   maxOutputTokens: number;
+  requestThrottle?: ProviderRequestThrottle;
+}
+
+export interface ProviderRequestThrottle {
+  enabled: boolean;
+  minSecondsBetweenRequests: number;
+  maxRequestsPerMinute: number;
 }
 
 export interface SemanticEvaluationSettings {
@@ -337,6 +344,17 @@ export interface PendingAdventureUpdate {
   actions: AdventureAction[];
 }
 
+export interface NextTurnNote {
+  content: string;
+  active: boolean;
+  pinned: boolean;
+  protected: boolean;
+  priority: number;
+  expiresAfterUse: boolean;
+  createdAt?: ISODateString;
+  updatedAt?: ISODateString;
+}
+
 export type StoryEditPatch =
   | { type: "insertMessage"; message: Message; index?: number }
   | { type: "deleteMessage"; messageId: string }
@@ -361,6 +379,7 @@ export interface ActiveState {
   pendingUpdates: PendingAdventureUpdate[];
   storyUndoStack: StoryEditHistoryEntry[];
   storyRedoStack: StoryEditHistoryEntry[];
+  nextTurnNote: NextTurnNote;
   rawImports: RawImportEntry[];
   stateFlags: Record<string, string | number | boolean>;
 }
@@ -388,6 +407,22 @@ export interface Adventure {
   autoCardSettings: AutoCardSettings;
 }
 
+export interface NewAdventureSetup {
+  title: string;
+  openingScene: string;
+  components: ComponentEntry[];
+  storyCards: StoryCard[];
+}
+
+export interface CloudSyncSettings {
+  token: string;
+  owner: string;
+  repo: string;
+  branch: string;
+  path: string;
+  createPrivateRepoIfMissing: boolean;
+}
+
 export type ContextSectionKind =
   | "system"          // A. System Shell
   | "aiInstructions"  // B. AI Instructions components
@@ -398,7 +433,8 @@ export type ContextSectionKind =
   | "brains"          // G. Brain entries
   | "questState"      // H. Active quest state
   | "rollingSummary"  // I. Rolling Summary
-  | "recentMessages"; // J. Recent Messages
+  | "nextTurnNote"    // J. Next Output Bias
+  | "recentMessages"; // K. Recent Messages
 
 export type ExcludedReason = "budget_exceeded" | "inactive" | "cooldown" | "not_triggered";
 
@@ -412,6 +448,7 @@ export interface ContextItem {
     | "autoCard"
     | "quest"
     | "summary"
+    | "nextTurnNote"
     | "message";
   title: string;
   content: string;
@@ -551,6 +588,9 @@ export type AdventureAction =
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
+  | { type: "SET_NEXT_TURN_NOTE"; note: Partial<NextTurnNote> }
+  | { type: "CLEAR_NEXT_TURN_NOTE" }
+  | { type: "CONSUME_NEXT_TURN_NOTE" }
   | { type: "QUEUE_PENDING_UPDATE"; update: PendingAdventureUpdate }
   | { type: "FLUSH_PENDING_UPDATES" }
   | { type: "RESET_RUNTIME_STATE" };

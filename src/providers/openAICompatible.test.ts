@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sendOpenAICompatibleChatCompletion } from "./openAICompatible";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { resetProviderThrottleForTests, sendOpenAICompatibleChatCompletion } from "./openAICompatible";
 import type { ProviderConfig } from "../types/adventure";
 
 const config: ProviderConfig = {
@@ -20,6 +20,8 @@ function mockFetch(status: number, body: unknown) {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
+  resetProviderThrottleForTests();
   vi.restoreAllMocks();
 });
 
@@ -106,5 +108,53 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     await expect(
       sendOpenAICompatibleChatCompletion({ messages: [], config }),
     ).rejects.toThrow("no message content");
+  });
+
+  it("throttles provider calls by minimum seconds between requests", async () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ choices: [{ message: { content: "ok" } }] }),
+    } as Response);
+    const throttledConfig: ProviderConfig = {
+      ...config,
+      requestThrottle: { enabled: true, minSecondsBetweenRequests: 5, maxRequestsPerMinute: 0 },
+    };
+
+    await sendOpenAICompatibleChatCompletion({ messages: [], config: throttledConfig });
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    const second = sendOpenAICompatibleChatCompletion({ messages: [], config: throttledConfig });
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await second;
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it("throttles provider calls by requests per minute", async () => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ choices: [{ message: { content: "ok" } }] }),
+    } as Response);
+    const throttledConfig: ProviderConfig = {
+      ...config,
+      requestThrottle: { enabled: true, minSecondsBetweenRequests: 0, maxRequestsPerMinute: 1 },
+    };
+
+    await sendOpenAICompatibleChatCompletion({ messages: [], config: throttledConfig });
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    const second = sendOpenAICompatibleChatCompletion({ messages: [], config: throttledConfig });
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await second;
+    expect(spy).toHaveBeenCalledTimes(2);
   });
 });

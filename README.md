@@ -54,7 +54,8 @@ Context sections, in fixed order:
 | `brains` | G. Brains | Active Brain entries for triggered characters |
 | `questState` | H. Quest State | Active quests and current step objectives |
 | `rollingSummary` | I. Rolling Summary | Compressed story summary, user-editable |
-| `recentMessages` | J. Recent Messages | Short-term transcript window |
+| `nextTurnNote` | J. Next Output Bias | User-written short-term steering note for the next generation |
+| `recentMessages` | K. Recent Messages | Short-term transcript window |
 
 Memory Proposals (`activeState.memoryProposals`) are shown in Context Preview under "Memory Proposals / Pending Updates" but are never included in the model payload until approved. `ContextBuildResult.pendingProposals` carries the pending set.
 
@@ -86,6 +87,7 @@ The Context Preview page shows:
 
 - **Adventure Chronicle**: `adventure.messages`, the full persisted transcript. Inspectable in the Chronicle tab. Never automatically compressed or flooded into model context.
 - **Rolling Summary**: `adventure.rollingSummary`, user-editable compression of the Chronicle. Appears in section I after durable memory and before recent messages. Separate from the Chronicle.
+- **Next Output Bias**: `activeState.nextTurnNote`, a visible short-term steering note. It appears in section J, is token-counted, and expires after one successful generation by default.
 - **Story Cards**: durable recurring facts, promises, secrets, nicknames, named objects, relationship facts, locations, and rules. Trigger-matched or pinned into section F.
 - **Brains**: opt-in character-internal state for major characters only. AI may update a Brain only when a `BrainEntry` already exists. Do not create Brains for random NPCs.
 - **Plot Essentials**: tiny always-on current-state constraints, e.g. "The Beast is hunting Seth tonight." Section C.
@@ -96,6 +98,12 @@ The Context Preview page shows:
 - **Pinned**: prioritized for inclusion and ordering, but droppable if budget is exhausted and the item is not also protected.
 
 Use `src/memory/classificationPolicy.ts` for deterministic memory routing. Use `src/memory/applyAIMemoryUpdate.ts` for AI-generated memory updates.
+
+### Deferred Memory Bank Idea
+
+An optional Inspectable Memory Bank may be useful later, but it is intentionally not part of the MVP. Rolling Summary, Story Cards, Brains, Memory Inbox, Plot Essentials, Next Output Bias, and Recent Messages already cover the current memory roles without an additional retrieval layer.
+
+If added later, Memory Bank entries must be their own visible context section with item-level source turns, token cost, relevance reason, usage count, last-used timestamp, and approve/edit/archive/delete controls. They must never enter the model as an opaque retrieved-memory bucket.
 
 ## AI Mutation Boundaries
 

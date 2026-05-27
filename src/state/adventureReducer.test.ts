@@ -83,6 +83,9 @@ const testedActionTypes = [
   "SET_SEMANTIC_EVALUATION_SETTINGS",
   "SET_AUTO_CARD_SETTINGS",
   "SET_STATE_FLAG",
+  "SET_NEXT_TURN_NOTE",
+  "CLEAR_NEXT_TURN_NOTE",
+  "CONSUME_NEXT_TURN_NOTE",
   "QUEUE_PENDING_UPDATE",
   "FLUSH_PENDING_UPDATES",
   "RESET_RUNTIME_STATE",
@@ -152,6 +155,14 @@ function baseAdventure(): Adventure {
       pendingUpdates: [],
       storyUndoStack: [],
       storyRedoStack: [],
+      nextTurnNote: {
+        content: "",
+        active: true,
+        pinned: true,
+        protected: false,
+        priority: 85,
+        expiresAfterUse: true,
+      },
       rawImports: [],
       stateFlags: {},
     },
@@ -247,6 +258,42 @@ describe("adventureReducer", () => {
     expect(state.autoCardSettings.cooldownTurns).toBe(5);
 
     state = reduce(state, {
+      type: "SET_NEXT_TURN_NOTE",
+      note: {
+        content: "Keep the next output focused on the oath.",
+        pinned: false,
+        protected: true,
+        priority: 99,
+        expiresAfterUse: true,
+      },
+    });
+    expect(state.activeState.nextTurnNote).toMatchObject({
+      content: "Keep the next output focused on the oath.",
+      pinned: false,
+      protected: true,
+      priority: 99,
+      expiresAfterUse: true,
+    });
+
+    state = reduce(state, { type: "CONSUME_NEXT_TURN_NOTE" });
+    expect(state.activeState.nextTurnNote.content).toBe("");
+    expect(state.activeState.nextTurnNote.protected).toBe(true);
+
+    state = reduce(state, { type: "SET_NEXT_TURN_NOTE", note: { content: "Persistent note", expiresAfterUse: false } });
+    state = reduce(state, { type: "CONSUME_NEXT_TURN_NOTE" });
+    expect(state.activeState.nextTurnNote.content).toBe("Persistent note");
+
+    state = reduce(state, { type: "CLEAR_NEXT_TURN_NOTE" });
+    expect(state.activeState.nextTurnNote).toMatchObject({
+      content: "",
+      active: true,
+      pinned: true,
+      protected: false,
+      priority: 85,
+      expiresAfterUse: true,
+    });
+
+    state = reduce(state, {
       type: "QUEUE_PENDING_UPDATE",
       update: {
         id: "pending-1",
@@ -264,6 +311,7 @@ describe("adventureReducer", () => {
     expect(state.messages).toEqual([]);
     expect(state.rollingSummary.content).toBe("");
     expect(state.activeState.turn).toBe(0);
+    expect(state.activeState.nextTurnNote.content).toBe("");
     expect(state.triggerRules[0].lastFiredTurn).toBeUndefined();
     expect(state.autoCards[0].lastUpdatedTurn).toBeUndefined();
     expect(state.quests[0].status).toBe("inactive");

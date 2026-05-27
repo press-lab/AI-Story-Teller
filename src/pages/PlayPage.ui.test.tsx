@@ -125,4 +125,53 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.queryByText("I open the door.")).not.toBeInTheDocument();
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
   });
+
+  it("opens adventure tools from the play surface without changing their labels", async () => {
+    const user = userEvent.setup();
+    const onOpenTab = vi.fn();
+    const onBuildContext = vi.fn();
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={onBuildContext}
+        onOpenContext={() => onOpenTab("context")}
+        onRememberThis={async () => undefined}
+        onOpenTab={onOpenTab}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Open Story Cards" })).toHaveTextContent("Story Cards");
+    await user.click(screen.getByRole("button", { name: "Open Story Cards" }));
+    expect(onOpenTab).toHaveBeenCalledWith("storyCards");
+
+    await user.click(screen.getByRole("button", { name: "Open Context Preview" }));
+    expect(onBuildContext).toHaveBeenCalledTimes(1);
+    expect(onOpenTab).toHaveBeenCalledWith("context");
+  });
+
+  it("edits the visible Next Output Bias controls through reducer actions", async () => {
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    await user.click(screen.getByText("Next Output Bias (empty)"));
+    await user.type(
+      screen.getByLabelText("Visible next-output steering note"),
+      "Do not resolve the argument yet.",
+    );
+    expect(screen.getByDisplayValue("Do not resolve the argument yet.")).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("Protected"));
+    await user.click(screen.getByLabelText("Expires after output"));
+    expect(screen.getByLabelText("Protected")).toBeChecked();
+    expect(screen.getByLabelText("Expires after output")).not.toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Clear" }));
+    expect(screen.queryByDisplayValue("Do not resolve the argument yet.")).not.toBeInTheDocument();
+  });
 });

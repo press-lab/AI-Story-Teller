@@ -1,6 +1,20 @@
-import type { Adventure, AdventureAction, AutoCardSettings, MemoryPriorityMode, SemanticEvaluationSettings, TokenBudgetSettings } from "../types/adventure";
+import type {
+  Adventure,
+  AdventureAction,
+  AutoCardSettings,
+  MemoryPriorityMode,
+  ProviderRequestThrottle,
+  SemanticEvaluationSettings,
+  TokenBudgetSettings,
+} from "../types/adventure";
 import type { RuntimeProviderSettings } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
+
+const fallbackThrottle: ProviderRequestThrottle = {
+  enabled: false,
+  minSecondsBetweenRequests: 2,
+  maxRequestsPerMinute: 20,
+};
 
 interface SettingsPageProps {
   adventure?: Adventure;
@@ -23,6 +37,11 @@ export function SettingsPage({
     const next = { ...providerSettings, ...patch };
     onProviderSettingsChange(next);
     if (adventure) dispatch({ type: "SET_MODEL_CONFIG", config: next });
+  }
+
+  function updateThrottle(patch: Partial<ProviderRequestThrottle>) {
+    const current = providerSettings.requestThrottle ?? fallbackThrottle;
+    updateProvider({ requestThrottle: { ...current, ...patch } });
   }
 
   function updateBudget(patch: Partial<TokenBudgetSettings>) {
@@ -78,6 +97,32 @@ export function SettingsPage({
               <NumberInput min={1} value={providerSettings.maxOutputTokens} onChange={(value) => updateProvider({ maxOutputTokens: value })} />
             </Field>
           </div>
+          <h4>API Throttle</h4>
+          <CheckboxField
+            label="Enable API request throttle"
+            checked={providerSettings.requestThrottle?.enabled ?? fallbackThrottle.enabled}
+            onChange={(enabled) => updateThrottle({ enabled })}
+          />
+          <div className="grid two">
+            <Field label="Minimum seconds between API calls">
+              <NumberInput
+                min={0}
+                value={providerSettings.requestThrottle?.minSecondsBetweenRequests ?? fallbackThrottle.minSecondsBetweenRequests}
+                onChange={(minSecondsBetweenRequests) => updateThrottle({ minSecondsBetweenRequests })}
+              />
+            </Field>
+            <Field label="Max API calls per minute">
+              <NumberInput
+                min={0}
+                value={providerSettings.requestThrottle?.maxRequestsPerMinute ?? fallbackThrottle.maxRequestsPerMinute}
+                onChange={(maxRequestsPerMinute) => updateThrottle({ maxRequestsPerMinute })}
+              />
+            </Field>
+          </div>
+          <p className="muted">
+            The throttle is enforced before every provider call, including turns, summaries, Remember This,
+            semantic evaluation, and generated memory updates. Use 0 for no per-minute cap.
+          </p>
           <p className="muted">API keys are not written to adventure JSON or IndexedDB saves.</p>
         </article>
 

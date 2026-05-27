@@ -80,17 +80,17 @@ describe("App adventure tool windows", () => {
     await user.type(titleInput, "Modal Test");
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
-    await screen.findByText("Adventure Cockpit");
+    await screen.findByRole("heading", { name: "Modal Test" });
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Story Cards" });
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByText("Adventure Cockpit")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modal Test" })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
 
     await user.click(within(dialog).getByRole("button", { name: "Close" }));
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByText("Adventure Cockpit")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Modal Test" })).toBeInTheDocument();
   });
 });

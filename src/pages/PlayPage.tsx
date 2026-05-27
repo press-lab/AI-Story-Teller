@@ -2,7 +2,7 @@ import { useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
-import { Field } from "./shared";
+import { CheckboxField, Field, NumberInput } from "./shared";
 
 const MODE_LABELS: Record<InputMode, string> = {
   do: "Do",
@@ -48,6 +48,7 @@ export function PlayPage({
   onBuildContext,
   onOpenContext,
   onRememberThis,
+  onOpenTab,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("story");
@@ -55,6 +56,7 @@ export function PlayPage({
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
+  const nextTurnNote = adventure.activeState.nextTurnNote;
 
   async function submit() {
     const text = input.trim();
@@ -92,6 +94,34 @@ export function PlayPage({
         </div>
       </header>
 
+      <nav className="play-tool-strip" aria-label="Adventure tools">
+        <button type="button" aria-label="Open Story Cards" onClick={() => onOpenTab?.("storyCards")}>
+          Story Cards
+        </button>
+        <button type="button" aria-label="Open Characters" onClick={() => onOpenTab?.("brains")}>
+          Characters
+        </button>
+        <button type="button" aria-label="Open World Blocks" onClick={() => onOpenTab?.("components")}>
+          World Blocks
+        </button>
+        <button type="button" aria-label="Open Inbox" onClick={() => onOpenTab?.("memoryInbox")}>
+          Inbox
+        </button>
+        <button type="button" aria-label="Open Summary" onClick={() => onOpenTab?.("summary")}>
+          Summary
+        </button>
+        <button
+          type="button"
+          aria-label="Open Context Preview"
+          onClick={() => {
+            onBuildContext();
+            onOpenContext();
+          }}
+        >
+          Context Preview
+        </button>
+      </nav>
+
       {error && <div className="error-box">{error}</div>}
 
       <details className="panel opening-scene-details">
@@ -104,6 +134,51 @@ export function PlayPage({
             placeholder="Describe the opening scene. Appears as the first assistant message in every context window."
           />
         </Field>
+      </details>
+
+      <details className="panel next-turn-note" open={Boolean(nextTurnNote.content.trim())}>
+        <summary>Next Output Bias {nextTurnNote.content.trim() ? "" : "(empty)"}</summary>
+        <Field label="Visible next-output steering note">
+          <textarea
+            rows={3}
+            value={nextTurnNote.content}
+            onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
+            placeholder="e.g. Keep the next output focused on the oath's consequences."
+          />
+        </Field>
+        <div className="grid four">
+          <CheckboxField
+            label="Active"
+            checked={nextTurnNote.active}
+            onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
+          />
+          <CheckboxField
+            label="Pinned"
+            checked={nextTurnNote.pinned}
+            onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
+          />
+          <CheckboxField
+            label="Protected"
+            checked={nextTurnNote.protected}
+            onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
+          />
+          <CheckboxField
+            label="Expires after output"
+            checked={nextTurnNote.expiresAfterUse}
+            onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
+          />
+        </div>
+        <div className="toolbar">
+          <Field label="Priority">
+            <NumberInput
+              value={nextTurnNote.priority}
+              onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
+            />
+          </Field>
+          <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
+            Clear
+          </button>
+        </div>
       </details>
 
       <div className="transcript">

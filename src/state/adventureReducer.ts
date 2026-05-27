@@ -17,7 +17,7 @@ import type {
   TriggerRule,
 } from "../types/adventure";
 import { completeQuest, failQuest, progressQuest, startQuest } from "../quests/questEngine";
-import { makeComponent, makeStoryCard } from "./defaults";
+import { defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
@@ -688,6 +688,41 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           stateFlags: { ...state.activeState.stateFlags, [action.key]: action.value },
         },
       });
+    case "SET_NEXT_TURN_NOTE": {
+      const timestamp = nowIso();
+      return touchAdventure(state, {
+        activeState: {
+          ...state.activeState,
+          nextTurnNote: {
+            ...defaultNextTurnNote(),
+            ...(state.activeState.nextTurnNote ?? {}),
+            ...action.note,
+            createdAt: state.activeState.nextTurnNote?.createdAt ?? timestamp,
+            updatedAt: timestamp,
+          },
+        },
+      });
+    }
+    case "CLEAR_NEXT_TURN_NOTE":
+      return touchAdventure(state, {
+        activeState: {
+          ...state.activeState,
+          nextTurnNote: defaultNextTurnNote(),
+        },
+      });
+    case "CONSUME_NEXT_TURN_NOTE":
+      if (!state.activeState.nextTurnNote?.expiresAfterUse) return state;
+      return touchAdventure(state, {
+        activeState: {
+          ...state.activeState,
+          nextTurnNote: {
+            ...state.activeState.nextTurnNote,
+            content: "",
+            active: true,
+            updatedAt: nowIso(),
+          },
+        },
+      });
     case "QUEUE_PENDING_UPDATE":
       return touchAdventure(state, {
         activeState: {
@@ -727,6 +762,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           pendingUpdates: [],
           storyUndoStack: [],
           storyRedoStack: [],
+          nextTurnNote: defaultNextTurnNote(),
           stateFlags: {},
         },
         autoCards: state.autoCards.map((card) => touch({ ...card, lastUpdatedTurn: undefined })),

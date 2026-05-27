@@ -3,6 +3,7 @@ import type {
   AutoCard,
   BrainEntry,
   ComponentEntry,
+  NextTurnNote,
   ProviderConfig,
   Quest,
   SemanticEvaluationSettings,
@@ -10,6 +11,7 @@ import type {
   TokenBudgetSettings,
   TriggerRule,
   AutoCardSettings,
+  ProviderRequestThrottle,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 
@@ -27,12 +29,19 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   },
 };
 
+export const defaultProviderRequestThrottle: ProviderRequestThrottle = {
+  enabled: false,
+  minSecondsBetweenRequests: 2,
+  maxRequestsPerMinute: 20,
+};
+
 export const defaultModelConfig: ProviderConfig = {
   name: "deepseek",
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
   temperature: 0.8,
   maxOutputTokens: 1200,
+  requestThrottle: defaultProviderRequestThrottle,
 };
 
 export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
@@ -51,6 +60,17 @@ export const defaultAutoCardSettings: AutoCardSettings = {
     'Based on the story, a new entity or fact worth remembering has appeared. Write a concise story card for it. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
   cooldownTurns: 3,
 };
+
+export function defaultNextTurnNote(): NextTurnNote {
+  return {
+    content: "",
+    active: true,
+    pinned: true,
+    protected: false,
+    priority: 85,
+    expiresAfterUse: true,
+  };
+}
 
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();
@@ -90,6 +110,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       pendingUpdates: [],
       storyUndoStack: [],
       storyRedoStack: [],
+      nextTurnNote: defaultNextTurnNote(),
       rawImports: [],
       stateFlags: {},
     },
@@ -260,6 +281,10 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       pendingUpdates: adventure.activeState?.pendingUpdates ?? [],
       storyUndoStack: adventure.activeState?.storyUndoStack ?? [],
       storyRedoStack: adventure.activeState?.storyRedoStack ?? [],
+      nextTurnNote: {
+        ...defaultNextTurnNote(),
+        ...(adventure.activeState?.nextTurnNote ?? {}),
+      },
       rawImports: adventure.activeState?.rawImports ?? [],
       stateFlags: adventure.activeState?.stateFlags ?? {},
       triggerLog: adventure.activeState?.triggerLog ?? [],
@@ -325,6 +350,14 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     tokenBudgetSettings: {
       ...defaultTokenBudgetSettings,
       ...(adventure.tokenBudgetSettings ?? {}),
+    },
+    modelConfig: {
+      ...defaultModelConfig,
+      ...(adventure.modelConfig ?? {}),
+      requestThrottle: {
+        ...defaultProviderRequestThrottle,
+        ...(adventure.modelConfig?.requestThrottle ?? {}),
+      },
     },
   };
 }
