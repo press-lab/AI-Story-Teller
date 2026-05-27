@@ -126,7 +126,7 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
   });
 
-  it("opens adventure tools from the play surface without changing their labels", async () => {
+  it("opens context preview from the composer's Context Preview button", async () => {
     const user = userEvent.setup();
     const onOpenTab = vi.fn();
     const onBuildContext = vi.fn();
@@ -146,13 +146,41 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Open Story Cards" })).toHaveTextContent("Story Cards");
-    await user.click(screen.getByRole("button", { name: "Open Story Cards" }));
-    expect(onOpenTab).toHaveBeenCalledWith("storyCards");
-
-    await user.click(screen.getByRole("button", { name: "Open Context Preview" }));
+    // The tool strip was removed — Context Preview is now in the composer actions row
+    const contextBtn = screen.getByRole("button", { name: "Context Preview" });
+    await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");
+  });
+
+  it("toggles the inline Remember input from the composer", async () => {
+    const user = userEvent.setup();
+    const onRememberThis = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={() => undefined}
+        onOpenContext={() => undefined}
+        onRememberThis={onRememberThis}
+        onOpenTab={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByPlaceholderText(/Mira and Kael/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remember" }));
+    expect(screen.getByPlaceholderText(/Mira and Kael/)).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText(/Mira and Kael/), "Kael lost his sword");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(onRememberThis).toHaveBeenCalledWith("Kael lost his sword");
+    // input dismisses after save
+    expect(screen.queryByPlaceholderText(/Mira and Kael/)).not.toBeInTheDocument();
   });
 
   it("edits the visible Next Output Bias controls through reducer actions", async () => {

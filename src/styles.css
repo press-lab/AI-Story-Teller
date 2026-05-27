@@ -553,25 +553,10 @@ pre {
   font-size: 12px;
 }
 
-.play-tool-strip {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 0 4px;
-  -webkit-overflow-scrolling: touch;
-}
-
-.play-tool-strip button {
-  flex: 0 0 auto;
-  min-height: 30px;
-  border-color: var(--border);
-  background: transparent;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.play-tool-strip button:hover:not(:disabled) {
-  color: var(--button-text);
+.story-setup-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .opening-scene-details {
@@ -581,7 +566,8 @@ pre {
 .transcript {
   display: grid;
   gap: 12px;
-  max-height: 58vh;
+  min-height: 260px;
+  max-height: calc(100vh - 380px);
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -711,6 +697,17 @@ pre {
 
 /* ── Remember This ──────────────────────────────────── */
 
+.remember-inline-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.remember-inline-row input {
+  flex: 1;
+}
+
+/* keep legacy classes for dashboard inline remember if used */
 .remember-bar {
   display: grid;
   gap: 6px;
@@ -727,6 +724,12 @@ pre {
 
 .remember-row input {
   flex: 1;
+}
+
+button.active-tool {
+  background: var(--surface-soft);
+  border-color: var(--border-strong);
+  font-weight: 600;
 }
 
 /* Modal tools */
@@ -1313,9 +1316,13 @@ summary {
 
   .transcript {
     min-height: 34vh;
-    max-height: none;
+    max-height: calc(100dvh - 380px);
     padding: 8px;
     gap: 8px;
+  }
+
+  .story-setup-row {
+    grid-template-columns: 1fr;
   }
 
   .message {
@@ -1396,14 +1403,9 @@ summary {
     font-weight: 700;
   }
 
-  .remember-bar,
-  .remember-inline {
-    order: 15;
-  }
-
-  .remember-row {
+  .remember-inline-row {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto auto;
   }
 
   .modal-backdrop {

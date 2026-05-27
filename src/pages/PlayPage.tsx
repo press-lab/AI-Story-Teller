@@ -53,6 +53,7 @@ export function PlayPage({
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("story");
   const [rememberInput, setRememberInput] = useState("");
+  const [showRemember, setShowRemember] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
@@ -69,6 +70,7 @@ export function PlayPage({
     const text = rememberInput.trim();
     if (!text || loading) return;
     setRememberInput("");
+    setShowRemember(false);
     await onRememberThis(text);
   }
 
@@ -78,6 +80,13 @@ export function PlayPage({
       void submit();
     }
   }
+
+  function handleRememberKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") void remember();
+    if (event.key === "Escape") setShowRemember(false);
+  }
+
+  const hasSetupContent = Boolean(adventure.openingScene.trim() || nextTurnNote.content.trim());
 
   return (
     <section className="page play-layout">
@@ -94,92 +103,66 @@ export function PlayPage({
         </div>
       </header>
 
-      <nav className="play-tool-strip" aria-label="Adventure tools">
-        <button type="button" aria-label="Open Story Cards" onClick={() => onOpenTab?.("storyCards")}>
-          Story Cards
-        </button>
-        <button type="button" aria-label="Open Characters" onClick={() => onOpenTab?.("brains")}>
-          Characters
-        </button>
-        <button type="button" aria-label="Open World Blocks" onClick={() => onOpenTab?.("components")}>
-          World Blocks
-        </button>
-        <button type="button" aria-label="Open Inbox" onClick={() => onOpenTab?.("memoryInbox")}>
-          Inbox
-        </button>
-        <button type="button" aria-label="Open Summary" onClick={() => onOpenTab?.("summary")}>
-          Summary
-        </button>
-        <button
-          type="button"
-          aria-label="Open Context Preview"
-          onClick={() => {
-            onBuildContext();
-            onOpenContext();
-          }}
-        >
-          Context Preview
-        </button>
-      </nav>
-
       {error && <div className="error-box">{error}</div>}
 
-      <details className="panel opening-scene-details">
-        <summary>Opening Scene {adventure.openingScene ? "" : "(not set)"}</summary>
-        <Field label="The AI's first message before any player input — always protected in context">
-          <textarea
-            rows={5}
-            value={adventure.openingScene}
-            onChange={(event) => dispatch({ type: "SET_OPENING_SCENE", content: event.target.value })}
-            placeholder="Describe the opening scene. Appears as the first assistant message in every context window."
-          />
-        </Field>
-      </details>
-
-      <details className="panel next-turn-note" open={Boolean(nextTurnNote.content.trim())}>
-        <summary>Next Output Bias {nextTurnNote.content.trim() ? "" : "(empty)"}</summary>
-        <Field label="Visible next-output steering note">
-          <textarea
-            rows={3}
-            value={nextTurnNote.content}
-            onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
-            placeholder="e.g. Keep the next output focused on the oath's consequences."
-          />
-        </Field>
-        <div className="grid four">
-          <CheckboxField
-            label="Active"
-            checked={nextTurnNote.active}
-            onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
-          />
-          <CheckboxField
-            label="Pinned"
-            checked={nextTurnNote.pinned}
-            onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
-          />
-          <CheckboxField
-            label="Protected"
-            checked={nextTurnNote.protected}
-            onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
-          />
-          <CheckboxField
-            label="Expires after output"
-            checked={nextTurnNote.expiresAfterUse}
-            onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
-          />
-        </div>
-        <div className="toolbar">
-          <Field label="Priority">
-            <NumberInput
-              value={nextTurnNote.priority}
-              onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
+      <div className="story-setup-row">
+        <details className="panel opening-scene-details">
+          <summary>Opening Scene {adventure.openingScene ? "" : "(not set)"}</summary>
+          <Field label="The AI's first message before any player input — always protected in context">
+            <textarea
+              rows={5}
+              value={adventure.openingScene}
+              onChange={(event) => dispatch({ type: "SET_OPENING_SCENE", content: event.target.value })}
+              placeholder="Describe the opening scene. Appears as the first assistant message in every context window."
             />
           </Field>
-          <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
-            Clear
-          </button>
-        </div>
-      </details>
+        </details>
+
+        <details className="panel next-turn-note" open={Boolean(nextTurnNote.content.trim())}>
+          <summary>Next Output Bias {nextTurnNote.content.trim() ? "" : "(empty)"}</summary>
+          <Field label="Visible next-output steering note">
+            <textarea
+              rows={3}
+              value={nextTurnNote.content}
+              onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
+              placeholder="e.g. Keep the next output focused on the oath's consequences."
+            />
+          </Field>
+          <div className="grid four">
+            <CheckboxField
+              label="Active"
+              checked={nextTurnNote.active}
+              onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
+            />
+            <CheckboxField
+              label="Pinned"
+              checked={nextTurnNote.pinned}
+              onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
+            />
+            <CheckboxField
+              label="Protected"
+              checked={nextTurnNote.protected}
+              onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
+            />
+            <CheckboxField
+              label="Expires after output"
+              checked={nextTurnNote.expiresAfterUse}
+              onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
+            />
+          </div>
+          <div className="toolbar">
+            <Field label="Priority">
+              <NumberInput
+                value={nextTurnNote.priority}
+                onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
+              />
+            </Field>
+            <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
+              Clear
+            </button>
+          </div>
+        </details>
+      </div>
 
       <div className="transcript">
         {adventure.messages.length === 0 && (
@@ -249,6 +232,21 @@ export function PlayPage({
           onKeyDown={handleKeyDown}
           placeholder={MODE_PLACEHOLDERS[inputMode]}
         />
+        {showRemember && (
+          <div className="remember-inline-row">
+            <input
+              autoFocus
+              value={rememberInput}
+              onChange={(event) => setRememberInput(event.target.value)}
+              onKeyDown={handleRememberKeyDown}
+              placeholder="e.g. Mira and Kael are now married"
+            />
+            <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>
+              Save
+            </button>
+            <button type="button" onClick={() => setShowRemember(false)}>✕</button>
+          </div>
+        )}
         <div className="composer-actions">
           <button type="button" disabled={loading || !input.trim()} onClick={submit}>
             {loading ? "Generating..." : "Take a Turn"}
@@ -282,6 +280,13 @@ export function PlayPage({
           </button>
           <button
             type="button"
+            className={showRemember ? "active-tool" : ""}
+            onClick={() => setShowRemember((v) => !v)}
+          >
+            Remember
+          </button>
+          <button
+            type="button"
             onClick={() => { onBuildContext(); onOpenContext(); }}
           >
             Context Preview
@@ -289,24 +294,6 @@ export function PlayPage({
           <span className="muted hint">Ctrl+Enter to submit</span>
         </div>
       </div>
-
-      <div className="remember-bar panel">
-        <strong className="remember-label">Remember This</strong>
-        <p className="muted">Important fact to save — the AI will update existing cards or create new ones. Results appear in Memory Inbox.</p>
-        <div className="remember-row">
-          <input
-            value={rememberInput}
-            onChange={(event) => setRememberInput(event.target.value)}
-            onKeyDown={(event) => { if (event.key === "Enter") void remember(); }}
-            placeholder="e.g. Mira and Kael are now married"
-          />
-          <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>
-            Remember
-          </button>
-        </div>
-      </div>
-
-      <p className="muted hint">Story text is editable inline. Double-click a transcript entry or use Edit.</p>
     </section>
   );
 }
