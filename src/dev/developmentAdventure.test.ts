@@ -65,6 +65,29 @@ describe("development adventure seed", () => {
     expect(result.messages[0].content).toContain("# C. Plot Essentials");
     expect(result.messages[0].content).toContain("# F. Story Cards");
     expect(result.messages[0].content).toContain("Opening Arc: Ashes Under the Crown");
+    expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual([
+      "dev-component-court-pressure",
+      "dev-component-combat-doctrine",
+    ]);
+  });
+
+  it("can load every development component and every development story card when card keys are present", () => {
+    const adventure = createDevelopmentAdventure();
+    const allCardKeys = adventure.storyCards.flatMap((card) => card.keys).join(" ");
+    const result = buildContext(adventure, {
+      currentInput: allCardKeys,
+      latestModelOutput: adventure.messages[0].content,
+    });
+
+    const includedComponentIds = result.sections
+      .flatMap((section) => section.items)
+      .filter((item) => item.sourceType === "component")
+      .map((item) => item.id);
+    expect(includedComponentIds).toEqual(expect.arrayContaining(adventure.components.map((component) => component.id)));
+
+    const includedStoryCardIds = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id) ?? [];
+    expect(includedStoryCardIds).toEqual(expect.arrayContaining(adventure.storyCards.map((card) => card.id)));
+    expect(result.excludedItems.filter((item) => item.sourceType === "storyCard")).toEqual([]);
   });
 
   it("exports re-importable full adventure JSON and Story Card JSON", () => {

@@ -116,11 +116,11 @@ export function createDevelopmentAdventure(): Adventure {
       content:
         "The Fire Nation court is watching Setu's proximity to Azula and Nyx. Noble families want leverage over the Renzan inheritance, and Ozai benefits when his elite youths compete for approval.",
       priority: 35,
-      alwaysOn: false,
+      alwaysOn: true,
       active: true,
-      pinned: false,
+      pinned: true,
       protected: false,
-      inclusionPolicy: "manual",
+      inclusionPolicy: "always",
     }),
     makeComponent({
       id: ids.components.combat,
@@ -129,11 +129,11 @@ export function createDevelopmentAdventure(): Adventure {
       content:
         "High-level firebending is breath, stance, intent, and timing. Blue fire signals Azula's precision; Setu's flame is white-gold under extreme focus. Lightning generation is rare, dangerous, and politically symbolic.",
       priority: 30,
-      alwaysOn: false,
+      alwaysOn: true,
       active: true,
-      pinned: false,
+      pinned: true,
       protected: false,
-      inclusionPolicy: "manual",
+      inclusionPolicy: "always",
     }),
   ];
 
@@ -389,7 +389,7 @@ export function createDevelopmentAdventure(): Adventure {
       priority: 65,
       cooldownTurns: 1,
       updatePrompt:
-        "You are modeling Nyx's internal state. Return ONLY valid JSON with keys that changed: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments.",
+        "You are modeling Nyx's internal state. Return ONLY valid JSON with keys that changed: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Every value must be a plain string; do not return nested objects or arrays.",
     }),
     makeTriggerRule({
       id: ids.triggers.avatar,
@@ -492,4 +492,3 @@ export function createDevelopmentStoryCardsJson(): string {
 export function createDevelopmentAdventureJson(): string {
   return JSON.stringify(createDevelopmentAdventure(), null, 2);
 }
-

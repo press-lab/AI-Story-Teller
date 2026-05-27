@@ -59,7 +59,7 @@ function preview(text: string): string {
 }
 
 function defaultBrainPrompt(brain: BrainEntry): string {
-  return `You are modeling the internal state of ${brain.characterName}. Based on what just happened, update their mental state. Return ONLY valid JSON with any of these keys: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Only include keys that should change.`;
+  return `You are modeling the internal state of ${brain.characterName}. Based on what just happened, update their mental state. Return ONLY valid JSON with any of these keys: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Only include keys that should change. Every value must be a plain string; do not return nested objects or arrays.`;
 }
 
 function storyCardPrompt(card: StoryCard): string {
@@ -257,10 +257,35 @@ function sanitizeBrainPatch(value: unknown): Partial<Record<BrainStateField, str
     "emotionalInterpretation",
     "recentDevelopments",
   ];
+
+  function stringifyValue(item: unknown): string | undefined {
+    if (typeof item === "string") return item.trim() || undefined;
+    if (typeof item === "number" || typeof item === "boolean") return String(item);
+    if (Array.isArray(item)) {
+      const text = item
+        .map((entry) => stringifyValue(entry))
+        .filter(Boolean)
+        .join("; ");
+      return text || undefined;
+    }
+    if (item && typeof item === "object") {
+      const text = Object.entries(item as Record<string, unknown>)
+        .map(([key, entry]) => {
+          const valueText = stringifyValue(entry);
+          return valueText ? `${key}: ${valueText}` : undefined;
+        })
+        .filter(Boolean)
+        .join("; ");
+      return text || undefined;
+    }
+    return undefined;
+  }
+
   return Object.fromEntries(
     allowed.flatMap((key) => {
       const item = (value as Record<string, unknown>)[key];
-      return typeof item === "string" && item.trim() ? [[key, item.trim()]] : [];
+      const text = stringifyValue(item);
+      return text ? [[key, text]] : [];
     }),
   ) as Partial<Record<BrainStateField, string>>;
 }

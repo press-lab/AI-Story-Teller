@@ -385,6 +385,26 @@ describe("runManualBrainUpdate", () => {
     expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(false);
     expect(result.logEntry.errors[0]).toMatch(/no recognized keys/i);
   });
+
+  it("flattens nested brain update values into readable strings instead of dropping them", async () => {
+    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const adventure = { ...baseAdventure(), brains: [brain] };
+    mockProvider.mockResolvedValueOnce({
+      content:
+        '{"relationshipPressure":{"Azula":"bound by public command","Nyx":"jealous"},"thoughts":["watch the court","do not flinch"]}',
+      raw: {},
+    });
+
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+    const action = result.actions.find((entry) => entry.type === "APPLY_BRAIN_UPDATE") as Extract<
+      typeof result.actions[number],
+      { type: "APPLY_BRAIN_UPDATE" }
+    >;
+
+    expect(action.patch.relationshipPressure).toBe("Azula: bound by public command; Nyx: jealous");
+    expect(action.patch.thoughts).toBe("watch the court; do not flinch");
+    expect(result.logEntry.errors).toEqual([]);
+  });
 });
 
 describe("runManualAutoCardGeneration", () => {

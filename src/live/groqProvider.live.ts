@@ -231,5 +231,87 @@ describe("live Groq provider integration", () => {
       createdAt: "2026-01-01T00:03:00.000Z",
     });
     expect(adventure.messages.at(-1)?.content).toBe(response.content);
+    console.info(`\nDEV_SCENARIO_RESPONSE:\n${response.content.trim()}\n`);
+    expect(response.content).not.toMatch(/as an ai|i can'?t|context sections|system shell/i);
+  });
+
+  it("plays the Fire Nation development scenario through live PE, card, and brain updates", async () => {
+    let adventure = {
+      ...createDevelopmentAdventure(),
+      semanticEvaluationSettings: {
+        ...createDevelopmentAdventure().semanticEvaluationSettings,
+        maxParallelUpdateCalls: 1,
+        requireApprovalForAutoUpdates: false,
+      },
+    };
+    const plotId = "dev-component-plot-essentials";
+    const cardId = "dev-card-betrothal-pressure";
+    const brainId = "dev-brain-nyx";
+    const originalPlot = adventure.components.find((component) => component.id === plotId)?.content;
+    const originalCard = adventure.storyCards.find((card) => card.id === cardId)?.content;
+    const originalBrainDevelopments = adventure.brains.find((brain) => brain.id === brainId)?.recentDevelopments;
+
+    adventure = {
+      ...adventure,
+      triggerRules: [
+        ...adventure.triggerRules,
+        makeTriggerRule({
+          id: "live-dev-pe-update",
+          name: "Live dev PE update",
+          evaluationMode: "semantic",
+          condition: "when the story excerpt contains the exact phrase LIVE_DEV_PE_UPDATE",
+          actions: [{ type: "updateComponent", componentId: plotId }],
+          updatePrompt:
+            "Return ONLY this exact string: The mission briefing now includes an explicit royal order: Setu must publicly bind his authority to Azula's command before the court.",
+        }),
+        makeTriggerRule({
+          id: "live-dev-card-update",
+          name: "Live dev card update",
+          evaluationMode: "semantic",
+          condition: "when the story excerpt contains the exact phrase LIVE_DEV_CARD_UPDATE",
+          actions: [{ type: "updateStoryCard", storyCardId: cardId }],
+          updatePrompt:
+            "Return ONLY this exact string: Court factions now treat Setu's public loyalty to Azula as potential betrothal leverage, while Nyx's reaction makes the rumor more dangerous.",
+        }),
+        makeTriggerRule({
+          id: "live-dev-brain-update",
+          name: "Live dev brain update",
+          evaluationMode: "semantic",
+          condition: "when the story excerpt contains the exact phrase LIVE_DEV_BRAIN_UPDATE",
+          actions: [{ type: "appendBrain", brainId }],
+          updatePrompt:
+            'Return ONLY valid JSON exactly like this: {"recentDevelopments":"Nyx resents that Setu publicly answered Azula first, and her jealousy now has political stakes."}',
+        }),
+      ],
+      messages: [
+        ...adventure.messages,
+        {
+          id: "live-dev-forced-user",
+          role: "user" as const,
+          content:
+            "Azula orders Setu to bind his authority to her command in front of the war room. LIVE_DEV_PE_UPDATE LIVE_DEV_CARD_UPDATE LIVE_DEV_BRAIN_UPDATE",
+          createdAt: "2026-01-01T00:04:00.000Z",
+        },
+        {
+          id: "live-dev-forced-assistant",
+          role: "assistant" as const,
+          content:
+            "Setu accepts the order publicly. The court turns it into betrothal leverage before the ink is dry, and Nyx's smile hardens because he answered Azula first.",
+          createdAt: "2026-01-01T00:05:00.000Z",
+        },
+      ],
+    };
+
+    const result = await runSemanticPostTurnEvaluation(adventure, liveGroqConfig());
+    console.info(`\nDEV_SEMANTIC_FIRED:\n${JSON.stringify(result.logEntry.conditionsFired, null, 2)}\n`);
+    console.info(`\nDEV_SEMANTIC_ACTIONS:\n${JSON.stringify(result.logEntry.actionsExecuted, null, 2)}\n`);
+    console.info(`\nDEV_SEMANTIC_GENERATED:\n${JSON.stringify(result.logEntry.generatedContent, null, 2)}\n`);
+
+    adventure = reduceAll(adventure, result.actions);
+
+    expect(adventure.components.find((component) => component.id === plotId)?.content).not.toBe(originalPlot);
+    expect(adventure.storyCards.find((card) => card.id === cardId)?.content).not.toBe(originalCard);
+    expect(adventure.brains.find((brain) => brain.id === brainId)?.recentDevelopments).not.toBe(originalBrainDevelopments);
+    expect(result.logEntry.errors).toEqual([]);
   });
 });
