@@ -32,7 +32,7 @@ describe("mobile layout contract", () => {
     expect(mobileBlock).toMatch(/input,\s*\n\s*select,\s*\n\s*textarea\s*{[^}]*font-size:\s*16px/s);
     expect(mobileBlock).toMatch(/\.composer\s*{[^}]*position:\s*sticky/s);
     expect(mobileBlock).toMatch(/\.composer\s*{[^}]*bottom:\s*0/s);
-    expect(mobileBlock).toMatch(/\.composer-actions\s*{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/s);
+    expect(mobileBlock).toMatch(/\.secondary-actions\s*{[^}]*overflow-x:\s*auto/s);
     expect(mobileBlock).toMatch(/\.tool-modal\s*{[^}]*height:\s*100dvh/s);
   });
 });

@@ -4,6 +4,8 @@ import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
+const MODES: InputMode[] = ["do", "story", "comms"];
+
 const MODE_LABELS: Record<InputMode, string> = {
   do: "Do",
   story: "Story",
@@ -53,6 +55,7 @@ export function PlayPage({
   const [inputMode, setInputMode] = useState<InputMode>("story");
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
+  const [showOverflow, setShowOverflow] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
@@ -61,6 +64,11 @@ export function PlayPage({
   useEffect(() => {
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }, [adventure.messages.length]);
+
+  function cycleMode(dir: 1 | -1) {
+    const idx = MODES.indexOf(inputMode);
+    setInputMode(MODES[(idx + dir + MODES.length) % MODES.length]);
+  }
 
   async function submit() {
     const text = input.trim();
@@ -136,17 +144,24 @@ export function PlayPage({
 
         <div className="composer panel">
           <div className="mode-selector">
+            {/* Desktop: individual pill buttons */}
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
               <button
                 key={mode}
                 type="button"
                 title={MODE_TOOLTIPS[mode]}
-                className={`mode-btn${inputMode === mode ? " active" : ""}`}
+                className={`mode-btn mode-btn-full${inputMode === mode ? " active" : ""}`}
                 onClick={() => setInputMode(mode)}
               >
                 {MODE_LABELS[mode]}
               </button>
             ))}
+            {/* Mobile: cycling mode pill */}
+            <div className="mode-cycle">
+              <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)} title="Previous mode">‹</button>
+              <span className="mode-cycle-label" title={MODE_TOOLTIPS[inputMode]}>{MODE_LABELS[inputMode]}</span>
+              <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(1)} title="Next mode">›</button>
+            </div>
             <span className="mode-sep" aria-hidden="true">|</span>
             <label className="length-slider-label">
               <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
@@ -167,13 +182,24 @@ export function PlayPage({
               {inputMode === "comms" && "Talk to the AI out of character"}
             </span>
           </div>
-          <textarea
-            rows={4}
-            value={input}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={MODE_PLACEHOLDERS[inputMode]}
-          />
+          <div className="composer-input-row">
+            <textarea
+              rows={4}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={MODE_PLACEHOLDERS[inputMode]}
+            />
+            <button
+              type="button"
+              className="composer-send-btn"
+              disabled={loading || !input.trim()}
+              onClick={submit}
+              title={loading ? "Generating…" : "Take a Turn"}
+            >
+              {loading ? "…" : "↑"}
+            </button>
+          </div>
           {showRemember && (
             <div className="remember-inline-row">
               <input
@@ -190,49 +216,62 @@ export function PlayPage({
             </div>
           )}
           <div className="composer-actions">
-            <button type="button" disabled={loading || !input.trim()} onClick={submit}>
+            <button type="button" className="take-a-turn-full" disabled={loading || !input.trim()} onClick={submit}>
               {loading ? "Generating..." : "Take a Turn"}
             </button>
-            <button type="button" disabled={loading} onClick={onContinue}>
-              Continue
-            </button>
-            <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>
-              Retry
-            </button>
-            <button
-              type="button"
-              disabled={loading || adventure.messages.length === 0}
-              onClick={() => dispatch({ type: "DELETE_LAST_MESSAGE" })}
-            >
-              Erase
-            </button>
-            <button
-              type="button"
-              disabled={loading || adventure.activeState.storyUndoStack.length === 0}
-              onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
-            >
-              Undo
-            </button>
-            <button
-              type="button"
-              disabled={loading || adventure.activeState.storyRedoStack.length === 0}
-              onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
-            >
-              Redo
-            </button>
-            <button
-              type="button"
-              className={showRemember ? "active-tool" : ""}
-              onClick={() => setShowRemember((v) => !v)}
-            >
-              Remember
-            </button>
-            <button
-              type="button"
-              onClick={() => { onBuildContext(); onOpenContext(); }}
-            >
-              Context Preview
-            </button>
+            <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
+              <button type="button" disabled={loading} onClick={onContinue}>
+                Continue
+              </button>
+              <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>
+                Retry
+              </button>
+              <button
+                type="button"
+                disabled={loading || adventure.messages.length === 0}
+                onClick={() => dispatch({ type: "DELETE_LAST_MESSAGE" })}
+              >
+                Erase
+              </button>
+              <button
+                type="button"
+                className="action-extra"
+                disabled={loading || adventure.activeState.storyUndoStack.length === 0}
+                onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
+              >
+                Undo
+              </button>
+              <button
+                type="button"
+                className="action-extra"
+                disabled={loading || adventure.activeState.storyRedoStack.length === 0}
+                onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
+              >
+                Redo
+              </button>
+              <button
+                type="button"
+                className={`action-extra${showRemember ? " active-tool" : ""}`}
+                onClick={() => setShowRemember((v) => !v)}
+              >
+                Remember
+              </button>
+              <button
+                type="button"
+                className="action-extra"
+                onClick={() => { onBuildContext(); onOpenContext(); }}
+              >
+                Context Preview
+              </button>
+              <button
+                type="button"
+                className="action-overflow-toggle"
+                onClick={() => setShowOverflow((v) => !v)}
+                title="More actions"
+              >
+                {showOverflow ? "✕" : "···"}
+              </button>
+            </div>
             <span className="muted hint">Enter to submit · Shift+Enter for newline</span>
           </div>
         </div>

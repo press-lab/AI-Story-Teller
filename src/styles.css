@@ -747,6 +747,31 @@ pre {
   flex-wrap: wrap;
 }
 
+/* On desktop, secondary-actions is transparent — its buttons flow into the parent flex */
+.secondary-actions {
+  display: contents;
+}
+
+/* Mobile cycling mode pill — hidden on desktop */
+.mode-cycle {
+  display: none;
+}
+
+/* Composer input row — on desktop just a grid wrapper */
+.composer-input-row {
+  display: grid;
+}
+
+/* Send button — hidden on desktop, replaced by Take a Turn */
+.composer-send-btn {
+  display: none;
+}
+
+/* Overflow toggle — hidden on desktop */
+.action-overflow-toggle {
+  display: none;
+}
+
 .composer-actions button:first-child {
   border-color: var(--active-bg);
   background: var(--active-bg);
@@ -1516,10 +1541,37 @@ summary {
     box-shadow: 0 -12px 28px rgb(0 0 0 / 0.12);
   }
 
-  /* Smaller textarea — expands as user types */
-  .composer textarea {
-    min-height: 56px;
+  /* Composer input row: textarea + send button side by side */
+  .composer-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+  }
+
+  .composer-input-row textarea {
+    flex: 1;
+    min-height: 44px;
     max-height: 28vh;
+    rows: unset;
+  }
+
+  /* Circular send button */
+  .composer-send-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: 700;
+    background: var(--active-bg);
+    color: var(--active-text);
+    border-color: var(--active-bg);
+    padding: 0;
   }
 
   /* Hide length slider and separator — not useful on mobile */
@@ -1528,16 +1580,47 @@ summary {
     display: none;
   }
 
+  /* Mode selector: hide individual pills, show cycling pill */
+  .mode-btn-full {
+    display: none;
+  }
+
+  .mode-cycle {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-shrink: 0;
+  }
+
+  .mode-cycle-arrow {
+    min-height: 36px;
+    padding: 4px 10px;
+    font-size: 16px;
+    border-radius: 6px;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .mode-cycle-arrow:hover:not(:disabled) {
+    background: var(--control-hover);
+    border-color: var(--border);
+  }
+
+  .mode-cycle-label {
+    font-size: 13px;
+    font-weight: 600;
+    min-width: 44px;
+    text-align: center;
+    color: var(--text);
+    user-select: none;
+  }
+
   .mode-selector {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 2px;
     -webkit-overflow-scrolling: touch;
-  }
-
-  .mode-btn {
-    flex: 0 0 auto;
-    min-height: 36px;
+    gap: 4px;
   }
 
   .mode-hint,
@@ -1545,30 +1628,61 @@ summary {
     display: none;
   }
 
-  /* Only show Take a Turn / Continue / Retry — hide the rest */
+  /* Composer actions: hide Take a Turn (replaced by send btn), show 3-button row */
+  .take-a-turn-full {
+    display: none;
+  }
+
   .composer-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
+    display: flex;
+    flex-direction: column;
     gap: 6px;
   }
 
-  .composer-actions button {
+  .secondary-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
     width: 100%;
-    min-width: 0;
-    padding: 8px 6px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    padding-bottom: 2px;
+  }
+
+  .secondary-actions button {
+    flex: 0 0 auto;
+    padding: 8px 14px;
     font-size: 13px;
+    min-height: 40px;
+    white-space: nowrap;
   }
 
-  .composer-actions button:first-child {
-    grid-column: 1 / -1;
-    font-size: 15px;
-    font-weight: 700;
-  }
-
-  /* Hide Erase, Undo, Redo, Remember, Context Preview on mobile */
-  .composer-actions button:nth-child(n+4) {
+  /* Extra actions hidden until overflow toggled */
+  .action-extra {
     display: none;
+  }
+
+  .secondary-actions.show-overflow {
+    flex-wrap: wrap;
+  }
+
+  .secondary-actions.show-overflow .action-extra {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Overflow toggle button */
+  .action-overflow-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: 0.05em;
+    padding: 8px 12px;
+    font-size: 14px;
+    min-height: 40px;
   }
 
   .remember-inline-row {
