@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
@@ -56,7 +56,9 @@ export function PlayPage({
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
@@ -64,6 +66,10 @@ export function PlayPage({
   useEffect(() => {
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }, [adventure.messages.length]);
+
+  useEffect(() => {
+    if (composerOpen) textareaRef.current?.focus();
+  }, [composerOpen]);
 
   function cycleMode(dir: 1 | -1) {
     const idx = MODES.indexOf(inputMode);
@@ -74,6 +80,7 @@ export function PlayPage({
     const text = input.trim();
     if (!text || loading) return;
     setInput("");
+    setComposerOpen(false);
     await onSubmitTurn(transformInput(text, inputMode), inputMode);
   }
 
@@ -102,7 +109,7 @@ export function PlayPage({
       {error && <div className="error-box">{error}</div>}
 
       <div className="play-main">
-        <div className="transcript">
+        <div className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
@@ -142,7 +149,7 @@ export function PlayPage({
           ))}
         </div>
 
-        <div className="composer panel">
+        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`}>
           <div className="mode-selector">
             {/* Desktop: individual pill buttons */}
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
@@ -184,6 +191,7 @@ export function PlayPage({
           </div>
           <div className="composer-input-row">
             <textarea
+              ref={textareaRef}
               rows={4}
               value={input}
               onChange={(event) => setInput(event.target.value)}
@@ -220,6 +228,13 @@ export function PlayPage({
               {loading ? "Generating..." : "Take a Turn"}
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
+              <button
+                type="button"
+                className="take-a-turn-mobile"
+                onClick={() => setComposerOpen(true)}
+              >
+                Take a Turn
+              </button>
               <button type="button" disabled={loading} onClick={onContinue}>
                 Continue
               </button>

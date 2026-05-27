@@ -772,6 +772,11 @@ pre {
   display: none;
 }
 
+/* Mobile Take a Turn button (opens composer) — hidden on desktop */
+.take-a-turn-mobile {
+  display: none;
+}
+
 .composer-actions button:first-child {
   border-color: var(--active-bg);
   background: var(--active-bg);
@@ -1683,6 +1688,28 @@ summary {
     padding: 8px 12px;
     font-size: 14px;
     min-height: 40px;
+  }
+
+  /* Composer closed: hide input row, mode selector, remember row */
+  .composer-input-closed .mode-selector,
+  .composer-input-closed .composer-input-row,
+  .composer-input-closed .remember-inline-row {
+    display: none;
+  }
+
+  /* Show Take a Turn button only when composer is closed */
+  .composer-input-closed .take-a-turn-mobile {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: 13px;
+    min-height: 40px;
+    white-space: nowrap;
+    border-color: var(--active-bg);
+    background: var(--active-bg);
+    color: var(--active-text);
+    font-weight: 700;
   }
 
   .remember-inline-row {
