@@ -49,7 +49,7 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
 
     renderWithAdventure((adventure, dispatch) => <ComponentsPage adventure={adventure} dispatch={dispatch} />);
-    await user.click(screen.getByRole("button", { name: "Create Component" }));
+    await user.click(screen.getByRole("button", { name: "Create World Block" }));
     expect(screen.getByDisplayValue("New Component")).toBeInTheDocument();
     cleanup();
 

@@ -18,6 +18,12 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
         <strong>Total estimate: {result.totalEstimatedTokens} tokens</strong>
       </div>
 
+      <p className="muted" style={{ margin: 0 }}>
+        Everything the model sees — assembled from Story Cards, World Blocks, Brains, summary, and recent messages.
+        Sections with no items are collapsed and excluded from the provider payload.
+        Use this to verify what's actually being sent, diagnose missing context, and check token budgets.
+      </p>
+
       <div className="grid two">
         <article className="panel">
           <h3>Ordered Sections (A-K)</h3>
@@ -84,18 +90,30 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
         </article>
 
         <article className="panel">
-          <h3>Provider Payload Preview</h3>
-          <p style={{ fontSize: "0.85em" }}>
-            This is the exact JSON sent to the model. The system message must contain every non-empty section from
-            Ordered Sections above. Recent messages follow as individual role messages.
-          </p>
-          <pre>{JSON.stringify(result.messages, null, 2)}</pre>
+          <details>
+            <summary>Provider Payload Preview</summary>
+            <p style={{ fontSize: "0.85em", marginTop: "0.5rem" }}>
+              The exact JSON sent to the model. The system message contains every non-empty section above.
+              Recent messages follow as individual role/content pairs.
+            </p>
+            <pre>{JSON.stringify(result.messages, null, 2)}</pre>
+          </details>
 
-          <h3>Excluded Items</h3>
-          <pre>{JSON.stringify(result.excludedItems, null, 2)}</pre>
+          <details style={{ marginTop: "10px" }}>
+            <summary>Excluded Items ({result.excludedItems.length})</summary>
+            {result.excludedItems.length === 0
+              ? <em style={{ padding: "0.25rem 0.5rem", display: "block" }}>(none excluded)</em>
+              : <pre>{JSON.stringify(result.excludedItems, null, 2)}</pre>
+            }
+          </details>
 
-          <h3>Context Decisions</h3>
-          <pre>{JSON.stringify(result.decisions, null, 2)}</pre>
+          <details style={{ marginTop: "10px" }}>
+            <summary>Context Decisions ({result.decisions.length})</summary>
+            {result.decisions.length === 0
+              ? <em style={{ padding: "0.25rem 0.5rem", display: "block" }}>(no decisions logged)</em>
+              : <pre>{JSON.stringify(result.decisions, null, 2)}</pre>
+            }
+          </details>
         </article>
       </div>
     </section>

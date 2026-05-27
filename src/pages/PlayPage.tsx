@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
-import { makeComponent } from "../state/defaults";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -9,6 +8,12 @@ const MODE_LABELS: Record<InputMode, string> = {
   do: "Do",
   story: "Story",
   comms: "Author",
+};
+
+const MODE_TOOLTIPS: Record<InputMode, string> = {
+  do: "Do — describe your character's action. Gets prefixed with 'You ' automatically.",
+  story: "Story — directly add or guide the next story beat, as the narrator.",
+  comms: "Author — out-of-character message to the AI. Use for questions or instructions about the story.",
 };
 
 const MODE_PLACEHOLDERS: Record<InputMode, string> = {
@@ -23,13 +28,6 @@ function transformInput(text: string, mode: InputMode): string {
   }
   if (mode === "comms") return `[Out of Character: ${text}]`;
   return text;
-}
-
-function messageLabel(role: string, mode?: InputMode): string {
-  if (mode === "comms") return role === "user" ? "Author" : "AI (Author)";
-  if (mode === "do") return "You";
-  if (role === "assistant") return "AI";
-  return "You";
 }
 
 function messageRows(message: Message): number {
@@ -56,12 +54,15 @@ export function PlayPage({
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
+  const transcriptRef = useRef<HTMLDivElement>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
-  const authorNote = [...adventure.components]
-    .filter((component) => component.type === "authorNote")
-    .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))[0];
+
+  useEffect(() => {
+    const el = transcriptRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [adventure.messages.length]);
 
   async function submit() {
     const text = input.trim();
@@ -79,7 +80,7 @@ export function PlayPage({
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+    if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       void submit();
     }
@@ -89,8 +90,6 @@ export function PlayPage({
     if (event.key === "Enter") void remember();
     if (event.key === "Escape") setShowRemember(false);
   }
-
-  const hasSetupContent = Boolean(adventure.openingScene.trim() || nextTurnNote.content.trim());
 
   return (
     <section className="page play-layout">
@@ -109,136 +108,74 @@ export function PlayPage({
 
       {error && <div className="error-box">{error}</div>}
 
-      <div className="story-setup-row">
-        <details className="panel opening-scene-details">
-          <summary>Opening Scene {adventure.openingScene ? "" : "(not set)"}</summary>
-          <Field label="The AI's first message before any player input — always protected in context">
-            <textarea
-              rows={5}
-              value={adventure.openingScene}
-              onChange={(event) => dispatch({ type: "SET_OPENING_SCENE", content: event.target.value })}
-              placeholder="Describe the opening scene. Appears as the first assistant message in every context window."
+      <details className="panel next-turn-note">
+        <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
+        <Field label="Visible next-output steering note">
+          <textarea
+            rows={2}
+            value={nextTurnNote.content}
+            onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
+            placeholder="One-turn instruction for the next AI response. Expires after use."
+          />
+        </Field>
+        <div className="grid four">
+          <CheckboxField
+            label="Active"
+            checked={nextTurnNote.active}
+            onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
+          />
+          <CheckboxField
+            label="Pinned"
+            checked={nextTurnNote.pinned}
+            onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
+          />
+          <CheckboxField
+            label="Protected"
+            checked={nextTurnNote.protected}
+            onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
+          />
+          <CheckboxField
+            label="Expires after output"
+            checked={nextTurnNote.expiresAfterUse}
+            onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
+          />
+        </div>
+        <div className="toolbar">
+          <Field label="Priority">
+            <NumberInput
+              value={nextTurnNote.priority}
+              onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
             />
           </Field>
-        </details>
+          <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
+            Clear
+          </button>
+        </div>
+      </details>
 
-        <details className="panel author-note-details" open={Boolean(authorNote?.content.trim())}>
-          <summary>Author's Note {authorNote?.content.trim() ? "" : "(not set)"}</summary>
-          {authorNote ? (
-            <>
-              <Field label="Immediate narrative direction">
-                <textarea
-                  rows={4}
-                  value={authorNote.content}
-                  onChange={(event) =>
-                    dispatch({
-                      type: "UPDATE_COMPONENT",
-                      componentId: authorNote.id,
-                      patch: { content: event.target.value },
-                    })
-                  }
-                  placeholder="Tone, pacing, or near-term direction for the narrator."
-                />
-              </Field>
-              <p className="muted">
-                Author's Note is protected from AI mutation and appears near the recent context for stronger influence.
-              </p>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() =>
-                dispatch({
-                  type: "UPSERT_COMPONENT",
-                  component: makeComponent({
-                    title: "Author's Note",
-                    type: "authorNote",
-                    content: "",
-                    priority: 80,
-                    alwaysOn: true,
-                    pinned: true,
-                    protected: true,
-                  }),
-                })
-              }
-            >
-              Create Author's Note
-            </button>
-          )}
-        </details>
-
-        <details className="panel next-turn-note" open={Boolean(nextTurnNote.content.trim())}>
-          <summary>Next Output Bias {nextTurnNote.content.trim() ? "" : "(empty)"}</summary>
-          <Field label="Visible next-output steering note">
-            <textarea
-              rows={3}
-              value={nextTurnNote.content}
-              onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
-              placeholder="e.g. Keep the next output focused on the oath's consequences."
-            />
-          </Field>
-          <div className="grid four">
-            <CheckboxField
-              label="Active"
-              checked={nextTurnNote.active}
-              onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
-            />
-            <CheckboxField
-              label="Pinned"
-              checked={nextTurnNote.pinned}
-              onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
-            />
-            <CheckboxField
-              label="Protected"
-              checked={nextTurnNote.protected}
-              onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
-            />
-            <CheckboxField
-              label="Expires after output"
-              checked={nextTurnNote.expiresAfterUse}
-              onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
-            />
-          </div>
-          <div className="toolbar">
-            <Field label="Priority">
-              <NumberInput
-                value={nextTurnNote.priority}
-                onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
-              />
-            </Field>
-            <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
-              Clear
-            </button>
-          </div>
-        </details>
-      </div>
-
-      <div className="transcript">
+      <div className="transcript" ref={transcriptRef}>
         {adventure.messages.length === 0 && (
           <p className="muted">No turns yet. Set up your world, then start playing below.</p>
         )}
         {adventure.messages.map((message) => (
           <article
             key={message.id}
-            className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}`}
+            className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
           >
-            <div className="message-toolbar">
-              <strong className="message-label">{messageLabel(message.role, message.inputMode)}</strong>
-              <div className="message-actions">
-                <button
-                  type="button"
-                  onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
-                >
-                  {editingMessageId === message.id ? "Done" : "Edit"}
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}
-                >
-                  Delete
-                </button>
-              </div>
+            <div className="message-actions">
+              <button
+                type="button"
+                onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
+              >
+                {editingMessageId === message.id ? "Done" : "Edit"}
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}
+              >
+                Delete
+              </button>
             </div>
             {editingMessageId === message.id ? (
               <textarea
@@ -262,6 +199,7 @@ export function PlayPage({
             <button
               key={mode}
               type="button"
+              title={MODE_TOOLTIPS[mode]}
               className={`mode-btn${inputMode === mode ? " active" : ""}`}
               onClick={() => setInputMode(mode)}
             >
@@ -354,7 +292,7 @@ export function PlayPage({
           >
             Context Preview
           </button>
-          <span className="muted hint">Ctrl+Enter to submit</span>
+          <span className="muted hint">Enter to submit · Shift+Enter for newline</span>
         </div>
       </div>
     </section>

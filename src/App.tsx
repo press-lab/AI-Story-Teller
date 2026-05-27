@@ -85,7 +85,6 @@ const navGroups: NavGroup<TabId>[] = [
       { id: "adventures", label: "Library" },
       { id: "dashboard", label: "Dashboard" },
       { id: "play", label: "Play", emphasis: "primary" },
-      { id: "chronicle", label: "Chronicle" },
     ],
   },
   {
@@ -95,6 +94,7 @@ const navGroups: NavGroup<TabId>[] = [
       { id: "storyCards", label: "Story Cards" },
       { id: "brains", label: "Characters" },
       { id: "summary", label: "Summary" },
+      { id: "chronicle", label: "Chronicle" },
     ],
   },
   {
@@ -118,6 +118,7 @@ const navGroups: NavGroup<TabId>[] = [
 
 const modalTabs = new Set<TabId>([
   "context",
+  "chronicle",
   "components",
   "storyCards",
   "brains",
@@ -132,6 +133,7 @@ const modalTabs = new Set<TabId>([
 
 const modalTitles: Partial<Record<TabId, string>> = {
   context: "Context Preview",
+  chronicle: "Adventure Chronicle",
   components: "World Blocks",
   storyCards: "Story Cards",
   brains: "Characters",
@@ -477,7 +479,47 @@ export default function App() {
   }
 
   async function continueTurn() {
-    await submitTurn("Continue.", "story");
+    if (!adventure || loading) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setError(undefined);
+
+    let next = flushPendingBeforeContext(adventure);
+    const context = buildContext(next, { latestModelOutput: latestAssistantOutput(next) });
+    setContextResult(context);
+    setAdventure(next);
+
+    try {
+      const response = await sendOpenAICompatibleChatCompletion({
+        messages: context.messages,
+        config: providerConfig(next, providerSettings),
+      });
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content });
+      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
+      next = applyMemoryProposalFromOutput(next, response.content);
+      setAdventure(next);
+      next = applyRuntimeEngines(next, { source: "output", text: response.content });
+      next = adventureReducer(next, { type: "INCREMENT_TURN" });
+      next = mergeQueuedUpdates(next);
+      setAdventure(next);
+      setContextResult(buildContext(next, { latestModelOutput: response.content }));
+      await saveAdventure(next);
+      setSaveStatus("saved");
+      isSubmittingRef.current = false;
+      void startSemanticEvaluation(next);
+      const budgetSettings = next.tokenBudgetSettings;
+      if (budgetSettings.autoSummarize && next.activeState.turn > 0 && next.activeState.turn % budgetSettings.autoSummarizeEveryNTurns === 0) {
+        void startAutoSummary(next);
+      }
+    } catch (providerError) {
+      setError(providerError instanceof Error ? providerError.message : "Continue failed.");
+      setAdventure(next);
+      await saveAdventure(next);
+    } finally {
+      setLoading(false);
+      isSubmittingRef.current = false;
+      void refreshAdventures();
+    }
   }
 
   async function regenerateLastResponse() {

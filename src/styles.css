@@ -133,7 +133,7 @@ pre {
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto;
   min-height: 100vh;
   max-width: 1600px;
   margin: 0 auto;
@@ -193,8 +193,6 @@ pre {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow-y: auto;
-  min-height: 0;
 }
 
 .nav-group {
@@ -261,8 +259,6 @@ pre {
   grid-column: 2;
   grid-row: 2;
   padding: 16px;
-  overflow: auto;
-  min-height: 0;
 }
 
 /* ── Page layouts ───────────────────────────────────── */
@@ -553,94 +549,113 @@ pre {
   font-size: 12px;
 }
 
-.story-setup-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
+/* ── Next Turn Note (inline in play, replaces story setup section) ── */
 
-.opening-scene-details,
-.author-note-details,
 .next-turn-note {
   font-size: 14px;
+  padding: 8px 14px;
+}
+
+.next-turn-note > summary {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.next-turn-note[open] > summary {
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
 }
 
 .transcript {
   display: grid;
-  gap: 12px;
+  gap: 0;
   min-height: 260px;
   max-height: calc(100vh - 380px);
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  padding: 16px;
+  padding: 20px 24px;
 }
+
+/* ── Prose-style messages (no chat bubbles) ──────────── */
 
 .message {
-  border-left: 4px solid var(--border-strong);
-  padding: 10px 12px;
-  background: var(--surface-soft);
-  border-radius: 0 4px 4px 0;
+  position: relative;
+  padding: 10px 36px 10px 0; /* right padding reserves space for hover actions */
+  border-bottom: 1px solid var(--border);
 }
 
-.message.user {
-  border-left-color: #417c69;
+.message:last-child {
+  border-bottom: none;
 }
 
-.message.assistant {
-  border-left-color: #8a6f3f;
+/* Story (user) and AI output look identical — just prose paragraphs */
+.message.user { }
+.message.assistant { }
+
+/* Do mode: character action — subtle left accent */
+.message.mode-do {
+  border-left: 3px solid #4a7c6a;
+  padding-left: 10px;
+  margin-left: -3px;
 }
 
+/* Comms / Author: out-of-character — clearly different */
 .message.comms {
-  border-left-color: var(--comms-border);
+  border-left: 3px solid var(--comms-border);
   background: var(--comms-bg);
+  border-radius: 4px;
+  padding: 8px 36px 8px 12px;
+  margin: 4px 0;
   font-style: italic;
 }
 
-.message-label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-}
-
-.message-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
+/* Hover-only edit/delete actions — absolutely positioned top-right */
 .message-actions {
+  position: absolute;
+  top: 6px;
+  right: 0;
   display: flex;
-  gap: 4px;
-  opacity: 0.35;
-  transition: opacity 120ms ease;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 100ms ease;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 1px 2px;
 }
 
 .message:hover .message-actions,
-.message:focus-within .message-actions {
+.message:focus-within .message-actions,
+.message.editing .message-actions {
   opacity: 1;
 }
 
 .message-actions button {
-  min-height: 24px;
+  min-height: 22px;
   padding: 2px 7px;
   font-size: 11px;
 }
 
 .message p {
-  margin: 5px 0 0;
+  margin: 0;
   white-space: pre-wrap;
   font-style: normal;
-  line-height: 1.65;
+  line-height: 1.72;
+  font-size: 15px;
+}
+
+.message.assistant p {
+  font-size: 15.5px;
+  line-height: 1.78;
 }
 
 .message-editor {
-  margin-top: 6px;
+  width: 100%;
   background: var(--surface);
+  margin-top: 2px;
 }
 
 /* ── Composer ───────────────────────────────────────── */
@@ -806,6 +821,105 @@ button.active-tool {
 .tool-modal-body {
   overflow: auto;
   padding: 14px;
+}
+
+/* ── Story card compact list ─────────────────────────── */
+
+.story-card-item {
+  padding: 8px 12px;
+}
+
+.story-card-item > summary {
+  margin: 0;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.story-card-item[open] > summary {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.story-card-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.story-card-title {
+  font-weight: 600;
+}
+
+.story-card-badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.story-card-keys {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.badge-type {
+  background: var(--surface-soft);
+  color: var(--label);
+}
+
+.badge-inactive {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border-style: dashed;
+}
+
+.badge-pinned {
+  background: #eef4ee;
+  color: #2a5c3b;
+  border-color: #b3d4bc;
+}
+
+.badge-protected {
+  background: #f5f0e8;
+  color: #6b4c1a;
+  border-color: #d6c49a;
+}
+
+.badge-priority {
+  background: var(--surface-soft);
+  color: var(--label);
+  font-variant-numeric: tabular-nums;
+}
+
+:root.dark-mode .badge-pinned {
+  background: #1b3326;
+  color: #8ecfa8;
+  border-color: #2e5c42;
+}
+
+:root.dark-mode .badge-protected {
+  background: #2e2614;
+  color: #c9a86a;
+  border-color: #5a4820;
+}
+
+
+/* ── Component type hint ─────────────────────────────── */
+
+.component-type-hint {
+  margin: -4px 0 0;
+  font-size: 12px;
 }
 
 /* ── Log entries ────────────────────────────────────── */
@@ -1082,7 +1196,7 @@ summary {
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto 1fr;
+    grid-template-rows: auto auto auto;
   }
 
   .sidebar {
@@ -1321,7 +1435,8 @@ summary {
 
   .play-layout {
     min-height: 100%;
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    /* header / error / next-turn-note / transcript / composer */
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   }
 
   .play-header {
@@ -1340,41 +1455,34 @@ summary {
     flex: 0 0 auto;
   }
 
-  .opening-scene-details {
-    font-size: 13px;
-  }
-
   .transcript {
-    min-height: 34vh;
-    max-height: calc(100dvh - 380px);
-    padding: 8px;
-    gap: 8px;
-  }
-
-  .story-setup-row {
-    grid-template-columns: 1fr;
+    min-height: 30vh;
+    max-height: calc(100dvh - 320px);
+    padding: 10px 12px;
   }
 
   .message {
-    padding: 8px;
-    border-left-width: 3px;
+    padding: 8px 44px 8px 0;
   }
 
-  .message-toolbar {
-    align-items: flex-start;
+  .message.comms {
+    padding: 8px 44px 8px 12px;
   }
 
   .message-actions {
-    opacity: 1;
+    opacity: 1; /* always visible on touch devices */
+    background: none;
   }
 
   .message-actions button {
     min-height: 32px;
     padding: 4px 8px;
+    font-size: 12px;
   }
 
   .message p {
-    line-height: 1.55;
+    font-size: 15px;
+    line-height: 1.6;
   }
 
   .composer {

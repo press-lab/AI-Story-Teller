@@ -1,4 +1,4 @@
-import type { ComponentType, ContextInclusionPolicy } from "../types/adventure";
+import type { ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
 import { makeComponent } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
@@ -6,123 +6,165 @@ import { CheckboxField, Field, NumberInput } from "./shared";
 const componentTypes: ComponentType[] = ["aiInstructions", "plotEssentials", "authorNote", "memory", "custom"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
+const TYPE_LABELS: Record<ComponentType, string> = {
+  aiInstructions: "AI Instructions",
+  plotEssentials: "Plot Essentials",
+  authorNote: "Author's Note",
+  memory: "Lore Block",
+  custom: "Custom",
+};
+
+const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
+  aiInstructions: "Core narration rules — second-person POV, tone, format, perspective. Loaded first, protected by default.",
+  plotEssentials: "Tiny always-on current-state constraints that would change the AI's behavior right now. AI may update this with approval.",
+  authorNote: "Near-context narrative direction. Inserted close to recent messages for maximum influence on the next response.",
+  memory: "A durable world fact or always-on lore block. Loads every turn regardless of what's in the scene.",
+  custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
+};
+
+function ComponentSummary({ component }: { component: ComponentEntry }) {
+  return (
+    <span className="story-card-summary">
+      <span className="story-card-title">{component.title}</span>
+      <span className="story-card-badges">
+        <span className="badge badge-type">{TYPE_LABELS[component.type]}</span>
+        {!component.active && <span className="badge badge-inactive">Inactive</span>}
+        {component.pinned && <span className="badge badge-pinned">Pinned</span>}
+        {component.protected && <span className="badge badge-protected">Protected</span>}
+        {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
+      </span>
+    </span>
+  );
+}
+
 export function ComponentsPage({ adventure, dispatch }: AdventurePageProps) {
   return (
     <section className="page">
+      <p className="muted" style={{ margin: 0 }}>
+        World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
+        Use them for core rules (AI Instructions), current plot state (Plot Essentials), narrative direction (Author's Note), and broad world lore (Lore Block).
+        For characters, places, and facts that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
+      </p>
+
       <div className="toolbar">
         <button
           type="button"
           onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: "New Component", content: "" }) })}
         >
-          Create Component
+          Create World Block
         </button>
       </div>
 
       <div className="list">
         {[...adventure.components].sort((a, b) => b.priority - a.priority).map((component) => (
-          <article key={component.id} className="card editor-card">
-            <div className="grid two">
-              <Field label="Title">
+          <details key={component.id} className="card story-card-item">
+            <summary><ComponentSummary component={component} /></summary>
+
+            <div className="editor-card">
+              <div className="grid two">
+                <Field label="Title">
+                  <input
+                    value={component.title}
+                    onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { title: event.target.value } })}
+                  />
+                </Field>
+                <Field label="Type">
+                  <select
+                    value={component.type}
+                    onChange={(event) =>
+                      dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { type: event.target.value as ComponentType } })
+                    }
+                  >
+                    {componentTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {TYPE_LABELS[type]}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <p className="muted component-type-hint">{TYPE_DESCRIPTIONS[component.type]}</p>
+              <Field label="Content">
+                <textarea
+                  rows={6}
+                  value={component.content}
+                  onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: event.target.value } })}
+                />
+              </Field>
+              <div className="grid four">
+                <Field label="Priority (higher loads first)">
+                  <NumberInput
+                    value={component.priority}
+                    onChange={(value) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { priority: value } })}
+                  />
+                </Field>
+                <Field label="Token Budget (0 = no limit)">
+                  <NumberInput
+                    value={component.tokenBudget ?? 0}
+                    min={0}
+                    onChange={(value) =>
+                      dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { tokenBudget: value || undefined } })
+                    }
+                  />
+                </Field>
+                <CheckboxField
+                  label="Active"
+                  checked={component.active}
+                  onChange={(checked) =>
+                    dispatch({ type: checked ? "ACTIVATE_COMPONENT" : "DEACTIVATE_COMPONENT", componentId: component.id })
+                  }
+                />
+                <CheckboxField
+                  label="Pinned (loads before triggered items)"
+                  checked={component.pinned}
+                  onChange={(checked) => dispatch({ type: checked ? "PIN_COMPONENT" : "UNPIN_COMPONENT", componentId: component.id })}
+                />
+              </div>
+              <CheckboxField
+                label="Always on (ignore inclusion policy — load every turn)"
+                checked={component.alwaysOn}
+                onChange={(checked) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { alwaysOn: checked } })}
+              />
+              <div className="grid two">
+                <CheckboxField
+                  label="Protected (cannot be dropped by token truncation)"
+                  checked={component.protected}
+                  onChange={(checked) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { protected: checked } })}
+                />
+                <Field label="Inclusion Policy">
+                  <select
+                    value={component.inclusionPolicy}
+                    onChange={(event) =>
+                      dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { inclusionPolicy: event.target.value as ContextInclusionPolicy } })
+                    }
+                  >
+                    {inclusionPolicies.map((policy) => (
+                      <option key={policy} value={policy}>
+                        {policy}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <Field label="State (runtime note visible to automation conditions)">
                 <input
-                  value={component.title}
-                  onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { title: event.target.value } })}
+                  value={component.state}
+                  onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { state: event.target.value } })}
                 />
               </Field>
-              <Field label="Type">
-                <select
-                  value={component.type}
-                  onChange={(event) =>
-                    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { type: event.target.value as ComponentType } })
-                  }
-                >
-                  {componentTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <div className="row">
+                <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "up" })}>
+                  Move Up
+                </button>
+                <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
+                  Move Down
+                </button>
+                <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
+                  Delete
+                </button>
+              </div>
             </div>
-            <Field label="Content">
-              <textarea
-                rows={6}
-                value={component.content}
-                onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: event.target.value } })}
-              />
-            </Field>
-            <div className="grid four">
-              <Field label="Priority">
-                <NumberInput
-                  value={component.priority}
-                  onChange={(value) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { priority: value } })}
-                />
-              </Field>
-              <Field label="Token Budget">
-                <NumberInput
-                  value={component.tokenBudget ?? 0}
-                  min={0}
-                  onChange={(value) =>
-                    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { tokenBudget: value || undefined } })
-                  }
-                />
-              </Field>
-              <CheckboxField
-                label="Active"
-                checked={component.active}
-                onChange={(checked) =>
-                  dispatch({ type: checked ? "ACTIVATE_COMPONENT" : "DEACTIVATE_COMPONENT", componentId: component.id })
-                }
-              />
-              <CheckboxField
-                label="Pinned"
-                checked={component.pinned}
-                onChange={(checked) => dispatch({ type: checked ? "PIN_COMPONENT" : "UNPIN_COMPONENT", componentId: component.id })}
-              />
-            </div>
-            <CheckboxField
-              label="Always on"
-              checked={component.alwaysOn}
-              onChange={(checked) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { alwaysOn: checked } })}
-            />
-            <div className="grid two">
-              <CheckboxField
-                label="Protected from truncation"
-                checked={component.protected}
-                onChange={(checked) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { protected: checked } })}
-              />
-              <Field label="Inclusion Policy">
-                <select
-                  value={component.inclusionPolicy}
-                  onChange={(event) =>
-                    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { inclusionPolicy: event.target.value as ContextInclusionPolicy } })
-                  }
-                >
-                  {inclusionPolicies.map((policy) => (
-                    <option key={policy} value={policy}>
-                      {policy}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="State">
-              <input
-                value={component.state}
-                onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { state: event.target.value } })}
-              />
-            </Field>
-            <div className="row">
-              <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "up" })}>
-                Move Up
-              </button>
-              <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
-                Move Down
-              </button>
-              <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
-                Delete
-              </button>
-            </div>
-          </article>
+          </details>
         ))}
       </div>
     </section>

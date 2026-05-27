@@ -5,11 +5,12 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
   return (
     <section className="page">
       <article className="panel">
-        <h3>Adventure Chronicle</h3>
+        <h3>Adventure Chronicle — {adventure.messages.length} entries</h3>
         <p className="muted">
-          Complete persisted transcript. This is source material for summaries and memory proposals; it is not compressed.
+          The complete local transcript of everything said in this adventure. It is stored persistently and never compressed.
+          The Chronicle is <strong>not</strong> dumped into the model context — only Recent Messages (the most recent turns)
+          and the Rolling Summary reach the model. Use this to review history, edit past entries, or delete mistakes.
         </p>
-        <strong>{adventure.messages.length} messages</strong>
       </article>
 
       <div className="list">

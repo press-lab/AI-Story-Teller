@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adventureReducer } from "../state/adventureReducer";
-import { createDefaultAdventure, makeComponent } from "../state/defaults";
+import { createDefaultAdventure } from "../state/defaults";
 import type { Adventure, AdventureAction, InputMode } from "../types/adventure";
 import { PlayPage } from "./PlayPage";
 
@@ -183,11 +183,11 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.queryByPlaceholderText(/Mira and Kael/)).not.toBeInTheDocument();
   });
 
-  it("edits the visible Next Output Bias controls through reducer actions", async () => {
+  it("edits the visible Next Turn Note controls through reducer actions", async () => {
     const user = userEvent.setup();
     render(<StatefulPlayPage />);
 
-    await user.click(screen.getByText("Next Output Bias (empty)"));
+    await user.click(screen.getByText("Next Turn Note (empty)", { exact: false }));
     await user.type(
       screen.getByLabelText("Visible next-output steering note"),
       "Do not resolve the argument yet.",
@@ -203,29 +203,4 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.queryByDisplayValue("Do not resolve the argument yet.")).not.toBeInTheDocument();
   });
 
-  it("edits Author's Note inline from the Play surface", async () => {
-    const user = userEvent.setup();
-    const adventure = {
-      ...playAdventure(),
-      components: [
-        makeComponent({
-          id: "author-note",
-          title: "Author's Note",
-          type: "authorNote",
-          content: "Keep the mood restrained.",
-          alwaysOn: true,
-          pinned: true,
-          protected: true,
-        }),
-      ],
-    };
-    render(<StatefulPlayPage initialAdventure={adventure} />);
-
-    const editor = screen.getByLabelText("Immediate narrative direction");
-    await user.clear(editor);
-    await user.type(editor, "Let the silence carry the threat.");
-
-    expect(screen.getByDisplayValue("Let the silence carry the threat.")).toBeInTheDocument();
-    expect(screen.getByText(/protected from AI mutation/i)).toBeInTheDocument();
-  });
 });

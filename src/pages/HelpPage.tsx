@@ -395,7 +395,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>Brains</li>
           <li>Quest State</li>
           <li>Rolling Summary</li>
-          <li>Next Output Bias</li>
+          <li>Next Turn Note</li>
           <li>Recent Messages</li>
         </ol>
         <p>
@@ -440,8 +440,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     id: "memory-surfaces",
     title: "Memory Surfaces",
     category: "Memory",
-    summary: "Chronicle, Rolling Summary, Next Output Bias, Story Cards, Brains, Plot Essentials, and Memory Inbox roles.",
-    tags: ["memory", "chronicle", "summary", "next output bias", "story cards", "brains"],
+    summary: "Chronicle, Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Inbox roles.",
+    tags: ["memory", "chronicle", "summary", "next turn note", "story cards", "brains"],
     body: (
       <>
         <dl>
@@ -449,8 +449,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <dd>The complete transcript. Stored locally, not compressed, not automatically dumped into context.</dd>
           <dt>Rolling Summary</dt>
           <dd>Compressed model-facing continuity, editable by the user.</dd>
-          <dt>Next Output Bias</dt>
-          <dd>Short-term user-written steering for the next generation. It is visible, token-counted, and expires by default.</dd>
+          <dt>Next Turn Note</dt>
+          <dd>Short-term user-written steering for the next generation. It is visible, token-counted, and expires after use by default.</dd>
           <dt>Story Cards</dt>
           <dd>Approved durable facts triggered by keywords, phrases, or regex configuration.</dd>
           <dt>Brains</dt>
@@ -570,6 +570,176 @@ Model:    llama-3.3-70b-versatile`}</pre>
         <p>
           AI Dungeon story text is parsed into messages. Story cards map title, keys, entry/value/content,
           and type fields into internal StoryCard or Brain candidate shapes.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "input-modes",
+    title: "Input Modes: Story, Do, Author",
+    category: "Playing",
+    summary: "How Story, Do, and Author modes shape the text submitted to the AI.",
+    tags: ["story mode", "do mode", "author mode", "input", "turn"],
+    body: (
+      <>
+        <dl>
+          <dt>Story mode</dt>
+          <dd>
+            You speak as the narrator. Type a sentence that guides the next beat of the story — a direction, a happening, or a
+            continuation. The text is submitted exactly as written.
+          </dd>
+          <dt>Do mode</dt>
+          <dd>
+            You speak as your character. Type what your character does or says. The text is automatically prefixed with "You "
+            so you don't need to write it yourself. Good for: "draw your sword", "ask her about the letter", "run".
+          </dd>
+          <dt>Author mode</dt>
+          <dd>
+            Out-of-character message to the AI. Use this to ask questions, give meta-instructions, or correct the AI's
+            behavior without it appearing as story text. Wrapped in <code>[Out of Character: …]</code> in the transcript.
+          </dd>
+        </dl>
+        <p>Press <strong>Enter</strong> to submit. Press <strong>Shift+Enter</strong> to insert a newline without submitting.</p>
+      </>
+    ),
+  },
+  {
+    id: "next-turn-note",
+    title: "Next Turn Note",
+    category: "Playing",
+    summary: "A one-turn steering note that appears near the model context and expires after use.",
+    tags: ["next turn note", "steering", "bias", "direction"],
+    body: (
+      <>
+        <p>
+          The Next Turn Note is a short instruction or reminder placed near the end of the model context — after the Rolling
+          Summary and before Recent Messages — so it strongly influences the next response.
+        </p>
+        <p>
+          It is visible (token-counted), editable, and expires after a single use by default. Use it to steer the next scene
+          without permanently changing the story setup.
+        </p>
+        <p>Examples:</p>
+        <ul>
+          <li>"Keep the confrontation unresolved — Nyxa shouldn't yield yet."</li>
+          <li>"Focus on atmosphere, not dialogue."</li>
+          <li>"This is the turning point. Commit."</li>
+        </ul>
+        <p>
+          Toggle <strong>Protected</strong> to prevent the note from being dropped by token truncation.
+          Toggle <strong>Expires after output</strong> off to keep it active across multiple turns.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "token-budget",
+    title: "Token Budget",
+    category: "Context",
+    summary: "How token budgets work for individual items and the overall context window.",
+    tags: ["token budget", "tokens", "truncation", "context budget"],
+    body: (
+      <>
+        <p>
+          Every item in context — Story Cards, World Blocks, Brains, the Rolling Summary — has an estimated token cost.
+          The total is shown in Context Preview and in the header of the Play page.
+        </p>
+        <dl>
+          <dt>Item token budget</dt>
+          <dd>
+            An optional cap per Story Card or World Block. If an item's content exceeds its budget, it is truncated or
+            excluded when the overall context is tight. Set to 0 (the default) for no per-item cap.
+          </dd>
+          <dt>Protected items</dt>
+          <dd>
+            Items marked Protected are never dropped by truncation, regardless of the budget. Use this sparingly — too many
+            protected items can crowd out triggered context.
+          </dd>
+          <dt>Priority</dt>
+          <dd>
+            When the context is over budget, higher-priority items survive longer. Items with the same priority are dropped
+            newest-first (or by pinned status).
+          </dd>
+        </dl>
+        <p>
+          Watch the token count in the play header. If you see it climbing above ~6,000–8,000 tokens with a smaller model,
+          consider shortening the Rolling Summary or reducing the number of always-on Story Cards.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "story-cards-vs-world-blocks",
+    title: "Story Cards vs World Blocks",
+    category: "Memory",
+    summary: "When to use a Story Card vs a World Block (Component).",
+    tags: ["story cards", "world blocks", "components", "memory routing"],
+    body: (
+      <>
+        <dl>
+          <dt>Story Cards</dt>
+          <dd>
+            Use for facts that are only relevant part of the time — characters, places, secrets, relationships, rules.
+            They stay dormant until their trigger keys appear in the input or output, so they don't waste token budget
+            when off-topic.
+          </dd>
+          <dt>World Blocks (Components)</dt>
+          <dd>
+            Use for context that is relevant every turn — your AI Instructions, Plot Essentials, Author's Note, and
+            broad world lore that shapes every scene. These load unconditionally and cost tokens every turn.
+          </dd>
+        </dl>
+        <p>
+          A good rule of thumb: if you'd only need to know it when the character or place comes up, it's a Story Card.
+          If it should always shape how the AI writes, it's a World Block.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "continue-action",
+    title: "Continue",
+    category: "Playing",
+    summary: "Continue asks the AI to keep writing without adding any player text.",
+    tags: ["continue", "generation", "turn"],
+    body: (
+      <>
+        <p>
+          Clicking <strong>Continue</strong> sends the current context to the AI and asks it to generate more story text —
+          without adding any player-authored message to the transcript first.
+        </p>
+        <p>
+          This is useful when the AI ended mid-scene, when you want it to keep going in the same direction, or when you
+          just don't have anything to add yet. It does <em>not</em> inject a "Continue." user message — the transcript
+          stays clean.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "opening-scene-author-note",
+    title: "Opening Scene & Author's Note",
+    category: "Playing",
+    summary: "Two special setup fields accessible from the Story Setup panel on the Play page.",
+    tags: ["opening scene", "author's note", "setup", "context"],
+    body: (
+      <>
+        <dl>
+          <dt>Opening Scene</dt>
+          <dd>
+            A fixed first assistant message that always appears at the start of the context window. It sets the stage for
+            every response — tone, setting, initial situation. It is protected from truncation by default.
+          </dd>
+          <dt>Author's Note</dt>
+          <dd>
+            A short instruction placed near the bottom of the context (close to recent messages) so it influences the
+            AI's next response strongly. Think of it as a running whisper to the narrator: "Keep the tone tense",
+            "This is a political drama, not action", "The protagonist never fully relaxes."
+          </dd>
+        </dl>
+        <p>
+          Both are accessible from the Story Setup panel at the top of the Play page, collapsed by default so they
+          don't clutter the main view.
         </p>
       </>
     ),

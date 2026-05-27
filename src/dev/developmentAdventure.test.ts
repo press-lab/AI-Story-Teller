@@ -16,13 +16,13 @@ describe("development adventure seed", () => {
     expect(adventure.title).toBe(developmentAdventureTitle);
     expect(adventure.modelConfig.apiKey).toBeUndefined();
     expect(adventure.components.length).toBeGreaterThanOrEqual(5);
-    expect(adventure.storyCards).toHaveLength(11);
+    expect(adventure.storyCards).toHaveLength(57);
     expect(adventure.brains).toHaveLength(5);
     expect(adventure.triggerRules).toHaveLength(4);
     expect(adventure.quests).toHaveLength(1);
     expect(adventure.messages).toHaveLength(1);
-    expect(adventure.components.find((component) => component.title === "Adult AU Safety and Tone")?.content).toContain(
-      "21 or older",
+    expect(adventure.components.find((component) => component.title === "AI Instructions")?.content).toContain(
+      "second person",
     );
     expect(adventure.quests[0].status).toBe("active");
     expect(adventure.quests[0].currentStepId).toBe("dev-step-war-room-briefing");
@@ -52,14 +52,14 @@ describe("development adventure seed", () => {
     ]);
 
     const storyCardIds = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id) ?? [];
-    expect(storyCardIds).toContain("dev-card-setu-renzan");
+    expect(storyCardIds).toContain("dev-card-setu");
     expect(storyCardIds).toContain("dev-card-azula");
-    expect(storyCardIds).toContain("dev-card-nyx");
+    expect(storyCardIds).toContain("dev-card-nyxa");
 
     const brainIds = result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id) ?? [];
     expect(brainIds).toContain("dev-brain-setu");
     expect(brainIds).toContain("dev-brain-azula");
-    expect(brainIds).toContain("dev-brain-nyx");
+    expect(brainIds).toContain("dev-brain-nyxa");
 
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# C. Plot Essentials");
@@ -93,13 +93,13 @@ describe("development adventure seed", () => {
   it("exports re-importable full adventure JSON and Story Card JSON", () => {
     const imported = importAdventureJson(createDevelopmentAdventureJson());
     expect(imported.title).toBe(developmentAdventureTitle);
-    expect(imported.storyCards).toHaveLength(11);
+    expect(imported.storyCards).toHaveLength(57);
     expect(imported.brains).toHaveLength(5);
 
     const parsedCards = parseAidStoryCards(createDevelopmentStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
-    expect(parsedCards.cards).toHaveLength(11);
+    expect(parsedCards.cards).toHaveLength(57);
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Setu Renzan");
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Political Betrothal Pressure");
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Princess Nyxa");
   });
 });

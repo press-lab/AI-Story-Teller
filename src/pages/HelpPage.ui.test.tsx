@@ -64,13 +64,13 @@ describe("HelpPage documentation UI", () => {
     expect(document.querySelector(".docs-content")).toBeInTheDocument();
   });
 
-  it("documents Next Output Bias as an inspectable context lane", async () => {
+  it("documents Next Turn Note as an inspectable context lane", async () => {
     const user = userEvent.setup();
     render(<HelpPage />);
 
-    await user.type(screen.getByLabelText(/search docs/i), "next output bias");
+    await user.type(screen.getByLabelText(/search docs/i), "next turn note");
 
-    expect(screen.getByText("Next Output Bias")).toBeInTheDocument();
-    expect(screen.getByText(/visible, token-counted, and expires by default/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Next Turn Note")[0]).toBeInTheDocument();
+    expect(screen.getByText(/visible, token-counted, and expires after use by default/i)).toBeInTheDocument();
   });
 });

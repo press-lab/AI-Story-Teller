@@ -15,7 +15,9 @@
       "Bash(npm run *)",
       "Bash(npm test *)",
       "Bash(npx vitest *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\sethp\\\\Documents\\\\GitHub\\\\AI Story Teller\\\\src\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

@@ -24,6 +24,19 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
 
   return (
     <section className="page">
+      <article className="panel">
+        <h3>Automations</h3>
+        <p className="muted">
+          Trigger rules run automatically after each turn and fire actions when their conditions match.
+          <strong> Keyword / regex</strong> triggers scan story text synchronously (before and after AI generation) — they're fast and exact.
+          <strong> Semantic</strong> triggers use the AI to evaluate natural-language conditions after the turn completes — they don't block the UI and run in the background.
+        </p>
+        <p className="muted">
+          Actions can update Story Cards, Brains, Plot Essentials, set state flags, or create Memory Inbox proposals.
+          Check the Trigger History and Evaluation Log panels to see what fired and why.
+        </p>
+      </article>
+
       <div className="toolbar">
         <button type="button" onClick={() => dispatch({ type: "UPSERT_TRIGGER_RULE", triggerRule: makeTriggerRule({ name: "New Trigger" }) })}>
           Create Trigger
