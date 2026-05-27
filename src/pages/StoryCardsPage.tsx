@@ -151,6 +151,20 @@ export function StoryCardsPage({ adventure, dispatch }: AdventurePageProps) {
               checked={card.autoUpdate ?? false}
               onChange={(autoUpdate) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { autoUpdate } })}
             />
+            <div className="grid two">
+              <Field label="Auto-update cooldown turns">
+                <NumberInput
+                  value={card.autoUpdateCooldownTurns ?? 3}
+                  min={0}
+                  onChange={(autoUpdateCooldownTurns) =>
+                    dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { autoUpdateCooldownTurns } })
+                  }
+                />
+              </Field>
+              <Field label="Last auto-update turn">
+                <input value={card.lastAutoUpdateTurn ?? "Never"} readOnly />
+              </Field>
+            </div>
             <Field label="State">
               <input
                 value={card.state}

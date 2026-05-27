@@ -22,6 +22,7 @@ import {
   latestAssistantOutput,
   reduceActions,
 } from "./state/turnPipeline";
+import { buildRollingSummaryPayload } from "./state/rollingSummary";
 import {
   runManualAutoCardGeneration,
   runManualBrainUpdate,
@@ -559,48 +560,12 @@ export default function App() {
     }
   }
 
-  /**
-   * Build the LLM payload for an incremental summary update.
-   * Sends the current summary + only the messages not yet captured in it.
-   * Capped at 60 new messages so the prompt stays manageable even at turn 3000.
-   */
-  function buildSummaryPayload(adventureState: Adventure): { messages: { role: "system" | "user"; content: string }[]; lastIndex: number } {
-    const allMessages = adventureState.messages;
-    const fromIndex = adventureState.rollingSummary.lastSummarizedMessageIndex ?? 0;
-    const newMessages = allMessages.slice(fromIndex).slice(-60); // cap at 60 unseen messages
-    const lastIndex = allMessages.length;
-
-    const currentSummary = adventureState.rollingSummary.content?.trim();
-    const newEventsText = newMessages.length
-      ? newMessages.map((m) => `${m.role === "assistant" ? "Story" : "Player"}: ${m.content}`).join("\n\n")
-      : "No new events.";
-
-    const userContent = currentSummary
-      ? `## Current Rolling Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nUpdate the rolling summary to incorporate these new events.`
-      : `## Story So Far\n${newEventsText}\n\nCreate a concise rolling summary of these events.`;
-
-    return {
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a continuity keeper for an interactive fiction adventure. " +
-            "Update the rolling summary to incorporate new story events. " +
-            "Preserve all important facts: character states, relationships, world details, open plot threads, completed events. " +
-            "Keep it focused and under 900 words. Write in past tense, third person.",
-        },
-        { role: "user", content: userContent },
-      ],
-      lastIndex,
-    };
-  }
-
   async function generateSummary() {
     if (!adventure || loading) return;
     setLoading(true);
     setError(undefined);
     try {
-      const { messages: summaryMessages, lastIndex } = buildSummaryPayload(adventure);
+      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventure);
       const response = await sendOpenAICompatibleChatCompletion({
         config: activeProviderConfig,
         messages: summaryMessages,
@@ -616,7 +581,7 @@ export default function App() {
   async function startAutoSummary(adventureState: Adventure) {
     // Runs silently in the background — no loading spinner, no error banner
     try {
-      const { messages: summaryMessages, lastIndex } = buildSummaryPayload(adventureState);
+      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventureState);
       const response = await sendOpenAICompatibleChatCompletion({
         config: providerConfig(adventureState, providerSettingsRef.current),
         messages: summaryMessages,

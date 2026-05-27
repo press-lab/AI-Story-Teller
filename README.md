@@ -48,12 +48,12 @@ Context sections, in fixed order:
 | `system` | A. System Shell | Global generation rules — always protected |
 | `aiInstructions` | B. AI Instructions | Components with `type === "aiInstructions"` |
 | `plotEssentials` | C. Plot Essentials | Components with `type === "plotEssentials"` |
-| `authorNote` | D. Author's Note | Components with `type === "authorNote"` |
 | `components` | E. Components | General always-on or pinned custom components |
 | `storyCards` | F. Story Cards | Triggered / pinned Story Cards and Auto-Cards |
 | `brains` | G. Brains | Active Brain entries for triggered characters |
 | `questState` | H. Quest State | Active quests and current step objectives |
 | `rollingSummary` | I. Rolling Summary | Compressed story summary, user-editable |
+| `authorNote` | D. Author's Note | Components with `type === "authorNote"`; placed near recent context for AID-style influence |
 | `nextTurnNote` | J. Next Output Bias | User-written short-term steering note for the next generation |
 | `recentMessages` | K. Recent Messages | Short-term transcript window |
 
@@ -88,7 +88,7 @@ The Context Preview page shows:
 - **Adventure Chronicle**: `adventure.messages`, the full persisted transcript. Inspectable in the Chronicle tab. Never automatically compressed or flooded into model context.
 - **Rolling Summary**: `adventure.rollingSummary`, user-editable compression of the Chronicle. Appears in section I after durable memory and before recent messages. Separate from the Chronicle.
 - **Next Output Bias**: `activeState.nextTurnNote`, a visible short-term steering note. It appears in section J, is token-counted, and expires after one successful generation by default.
-- **Story Cards**: durable recurring facts, promises, secrets, nicknames, named objects, relationship facts, locations, and rules. Trigger-matched or pinned into section F.
+- **Story Cards**: durable recurring facts, promises, secrets, nicknames, named objects, relationship facts, locations, and rules. Trigger-matched or pinned into section F. Optional AI auto-updates use a per-card cooldown and can be routed through Memory Inbox when approval is required.
 - **Brains**: opt-in character-internal state for major characters only. AI may update a Brain only when a `BrainEntry` already exists. Do not create Brains for random NPCs.
 - **Plot Essentials**: tiny always-on current-state constraints, e.g. "The Beast is hunting Seth tonight." Section C.
 - **AI Instructions**: persistent narrative generation rules. Section B. AI must not modify these.
@@ -156,11 +156,11 @@ The context builder in `src/contextBuilder/contextBuilder.ts` follows the requir
 
 ## Architecture Decision: Semantic Engine and Memory Proposals
 
-The semantic post-turn evaluator applies brain, story card, and Plot Essentials updates directly (not via Memory Inbox) because those trigger actions were explicitly configured by the user — they are not freeform AI suggestions. Auto-Cards DO go through a review queue before becoming live.
+The semantic post-turn evaluator can apply brain, story card, and Plot Essentials updates directly when `semanticEvaluationSettings.requireApprovalForAutoUpdates` is `false`. When that setting is `true`, those generated updates become Memory Inbox proposals and do not mutate active memory until approved. Auto-Cards go through a review queue before becoming live.
 
 Memory Inbox / Memory Proposals is the path for unstructured AI-suggested new memory (the `classifyMemory` flow), where the AI is making a novel durable-memory suggestion the user has not pre-authorized.
 
-`generateSummary` in `App.tsx` also applies the Rolling Summary directly. This is intentional because the user clicked the button, which is itself approval.
+`generateSummary` in `App.tsx` also applies the Rolling Summary directly. This is intentional because the user clicked the button, which is itself approval. Incremental summary generation clamps `lastSummarizedMessageIndex` against the current Chronicle length so story erases cannot desynchronize the next summary pass.
 
 See `AGENTS.md` for implementation guidance if you want to change this behavior.
 
@@ -179,6 +179,7 @@ No active product stubs are currently present. The legacy `src/autoCards/entityD
 ```sh
 npm.cmd test
 npm.cmd run build
+npm.cmd run smoke:prod
 ```
 
 The deterministic test suite covers context order/inclusion/exclusion, story-card triggering and truncation, trigger matching/action mapping, reducer actions, AI memory mutation boundaries, memory classification, Memory Inbox approval/rejection, AI Dungeon import parsing, golden memory architecture, and a multi-turn play smoke path.

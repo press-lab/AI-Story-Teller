@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "smoke:prod": "node scripts/production-smoke.mjs",
     "test": "vitest run",
     "test:live": "vitest run --config vitest.live.config.ts",
     "typecheck": "tsc -b"

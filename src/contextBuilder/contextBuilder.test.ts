@@ -87,6 +87,35 @@ function expectPreviewMatchesPayload(adventure: Adventure, mode: MemoryPriorityM
   expect(recentPayload).toEqual(includedRecent);
 }
 
+function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorityMode) {
+  const configured = {
+    ...adventure,
+    tokenBudgetSettings: budget({
+      ...adventure.tokenBudgetSettings,
+      memoryPriorityMode: mode,
+      allowSystemToPrioritizeMemory: mode !== "userLocked",
+    }),
+  } satisfies Adventure;
+  const result = buildContext(configured, {
+    currentInput: "Margo repeats hedge prince to Seth.",
+    latestModelOutput: "The Beast howls at the ward.",
+  });
+  const contextText = result.sections
+    .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
+    .map((entry) => `# ${entry.label}\n${entry.content}`)
+    .join("\n\n");
+  const wordTarget = Math.max(50, Math.min(200, configured.activeState.responseLengthHint));
+  const expectedSystem = `${contextText}\n\nRESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
+  const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
+  const expectedRecent = recentItems.flatMap((item) => {
+    if (item.id === "opening-scene") return [{ role: "assistant" as const, content: configured.openingScene }];
+    const message = configured.messages.find((entry) => entry.id === item.id);
+    return message ? [{ role: message.role, content: message.content }] : [];
+  });
+
+  expect(result.messages).toEqual([{ role: "system", content: expectedSystem }, ...expectedRecent]);
+}
+
 describe("buildContext", () => {
   it("assembles sections in the required deterministic order (A–K)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
@@ -363,6 +392,12 @@ describe("buildContext", () => {
     expectPreviewMatchesPayload(adventure, "userLocked");
     expectPreviewMatchesPayload(adventure, "systemSuggested");
     expectPreviewMatchesPayload(adventure, "hybrid");
+  });
+
+  it("reconstructs the exact provider payload from Context Preview data under each priority mode", () => {
+    for (const mode of ["userLocked", "systemSuggested", "hybrid"] as const) {
+      expectExactPayloadFromPreview(goldenAdventure(), mode);
+    }
   });
 
   it("logs inactive and cooldown exclusions", () => {

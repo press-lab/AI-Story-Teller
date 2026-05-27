@@ -25,7 +25,18 @@ function touch<T extends { updatedAt: string }>(entry: T): T {
 }
 
 function touchAdventure(state: Adventure, patch: Partial<Adventure>): Adventure {
-  return { ...state, ...patch, updatedAt: nowIso() };
+  const next = { ...state, ...patch, updatedAt: nowIso() };
+  const summarizedIndex = next.rollingSummary.lastSummarizedMessageIndex;
+  if (summarizedIndex !== undefined && summarizedIndex > next.messages.length) {
+    return {
+      ...next,
+      rollingSummary: {
+        ...next.rollingSummary,
+        lastSummarizedMessageIndex: next.messages.length,
+      },
+    };
+  }
+  return next;
 }
 
 function upsertById<T extends { id: string }>(items: T[], item: T): T[] {
@@ -447,6 +458,10 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "APPLY_STORY_CARD_UPDATE":
       return touchAdventure(state, {
         storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, content: action.content })),
+      });
+    case "MARK_STORY_CARD_UPDATED":
+      return touchAdventure(state, {
+        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, lastAutoUpdateTurn: action.turn })),
       });
     case "REORDER_STORY_CARD":
       return touchAdventure(state, { storyCards: moveByPriority(state.storyCards, action.storyCardId, action.direction) });

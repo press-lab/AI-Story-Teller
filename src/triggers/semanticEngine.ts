@@ -80,6 +80,12 @@ function isAutoCardsOnCooldown(adventure: Adventure): boolean {
   return adventure.activeState.turn - last < adventure.autoCardSettings.cooldownTurns;
 }
 
+function isStoryCardOnAutoUpdateCooldown(adventure: Adventure, card: StoryCard): boolean {
+  const last = card.lastAutoUpdateTurn;
+  if (last === undefined) return false;
+  return adventure.activeState.turn - last < (card.autoUpdateCooldownTurns ?? 3);
+}
+
 function activeSemanticRules(adventure: Adventure): SemanticCondition[] {
   return adventure.triggerRules
     .filter((rule) => rule.enabled)
@@ -155,6 +161,7 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
   return adventure.storyCards
     .filter((card) => card.active && card.autoUpdate)
+    .filter((card) => !isStoryCardOnAutoUpdateCooldown(adventure, card))
     .map((card) => ({
       id: `storyCard:${card.id}`,
       label: `Story Card: ${card.title}`,
@@ -339,7 +346,10 @@ async function generatedActionsFor(
           adventure,
         );
         return {
-          actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+          actions: [
+            { type: "ADD_MEMORY_PROPOSAL", proposal },
+            { type: "MARK_STORY_CARD_UPDATED", storyCardId: card.id, turn: adventure.activeState.turn },
+          ],
           generated: { targetType: "storyCard", targetId: card.id, title: card.title, preview: preview(content) },
         };
       }
@@ -347,7 +357,10 @@ async function generatedActionsFor(
         { type: "storyCardUpdate", storyCardId: card.id, content },
       ]);
       return {
-        actions: memoryUpdate.actions,
+        actions: [
+          ...memoryUpdate.actions,
+          { type: "MARK_STORY_CARD_UPDATED", storyCardId: card.id, turn: adventure.activeState.turn },
+        ],
         generated: { targetType: "storyCard", targetId: card.id, title: card.title, preview: preview(content) },
         error: memoryUpdate.rejectedUpdates[0]?.reason,
       };

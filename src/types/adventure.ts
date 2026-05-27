@@ -56,6 +56,9 @@ export interface StoryCard {
   tokenBudget?: number;
   /** When true, the LLM will automatically update this card after relevant scenes. */
   autoUpdate: boolean;
+  /** Minimum turns between AI-generated updates or proposals for this card. */
+  autoUpdateCooldownTurns: number;
+  lastAutoUpdateTurn?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
@@ -552,6 +555,7 @@ export type AdventureAction =
   | { type: "UNPIN_STORY_CARD"; storyCardId: string }
   | { type: "UPDATE_STORY_CARD"; storyCardId: string; patch: Partial<StoryCard> }
   | { type: "APPLY_STORY_CARD_UPDATE"; storyCardId: string; content: string }
+  | { type: "MARK_STORY_CARD_UPDATED"; storyCardId: string; turn: number }
   | { type: "REORDER_STORY_CARD"; storyCardId: string; direction: "up" | "down" }
   | { type: "UPSERT_BRAIN"; brain: BrainEntry }
   | { type: "DELETE_BRAIN"; brainId: string }

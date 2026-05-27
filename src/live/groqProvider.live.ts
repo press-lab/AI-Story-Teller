@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { loadEnv } from "vite";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { buildContext } from "../contextBuilder/contextBuilder";
+import { createDevelopmentAdventure } from "../dev/developmentAdventure";
 import { runManualAutoCardGeneration, runManualBrainUpdate, runRememberThis, runSemanticPostTurnEvaluation } from "../triggers/semanticEngine";
 import { adventureReducer } from "../state/adventureReducer";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
@@ -192,5 +194,42 @@ describe("live Groq provider integration", () => {
     expect(adventure.activeState.memoryProposals.length).toBeGreaterThan(0);
     expect(adventure.activeState.memoryProposals[0].status).toBe("pending");
     expect(adventure.storyCards.some((card) => card.content.includes("hedge prince"))).toBe(false);
+  });
+
+  it("plays one live turn against the Fire Nation development scenario context", async () => {
+    let adventure = createDevelopmentAdventure();
+    const userInput =
+      "Setu answers Azula with controlled heat: I intend to be the blade that chooses its target.";
+    adventure = adventureReducer(adventure, {
+      type: "ADD_MESSAGE",
+      id: "live-dev-user",
+      role: "user",
+      content: userInput,
+      createdAt: "2026-01-01T00:02:00.000Z",
+    });
+
+    const context = buildContext(adventure, { currentInput: userInput });
+    const payloadText = context.messages.map((message) => message.content).join("\n");
+    expect(payloadText).toContain("Opening Arc Plot Essentials");
+    expect(payloadText).toContain("Setu Renzan");
+    expect(payloadText).toContain("Princess Azula");
+    expect(context.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toContain(
+      "dev-card-setu-renzan",
+    );
+
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: { ...liveGroqConfig(), maxOutputTokens: 220 },
+      messages: context.messages,
+    });
+
+    expect(response.content.trim().length).toBeGreaterThan(40);
+    adventure = adventureReducer(adventure, {
+      type: "ADD_MESSAGE",
+      id: "live-dev-assistant",
+      role: "assistant",
+      content: response.content,
+      createdAt: "2026-01-01T00:03:00.000Z",
+    });
+    expect(adventure.messages.at(-1)?.content).toBe(response.content);
   });
 });

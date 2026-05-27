@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runManualAutoCardGeneration } from "./semanticEngine";
-import { createDefaultAdventure, makeBrain, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
+import { adventureReducer } from "../state/adventureReducer";
 import type { Adventure } from "../types/adventure";
 
 vi.mock("../providers/openAICompatible", () => ({
@@ -205,6 +206,154 @@ describe("runSemanticPostTurnEvaluation", () => {
     const evaluatedIds = result.logEntry.conditionsEvaluated.map((c) => c.id);
     expect(evaluatedIds).not.toContain("trigger:rule-kw");
     expect(evaluatedIds).not.toContain("trigger:rule-rx");
+  });
+
+  it("applies story-card auto-updates and records a per-card cooldown turn", async () => {
+    const card = makeStoryCard({
+      id: "card-margo",
+      title: "Margo",
+      content: "Margo is protective.",
+      keys: ["Margo"],
+      active: true,
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 0,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      storyCards: [card],
+      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+    };
+
+    mockProvider
+      .mockResolvedValueOnce({ content: '["storyCard:card-margo"]', raw: {} })
+      .mockResolvedValueOnce({ content: "Margo is protective and now worried about Seth.", raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((action) => action.type === "APPLY_STORY_CARD_UPDATE")).toBe(true);
+    expect(result.actions).toContainEqual({ type: "MARK_STORY_CARD_UPDATED", storyCardId: "card-margo", turn: 5 });
+  });
+
+  it("skips story-card auto-update conditions while the card is on cooldown", async () => {
+    const card = makeStoryCard({
+      id: "card-cooling",
+      title: "Cooling Card",
+      content: "Old.",
+      keys: ["cooling"],
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 5,
+      lastAutoUpdateTurn: 3,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      storyCards: [card],
+      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+    };
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(mockProvider).not.toHaveBeenCalled();
+    expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).not.toContain("storyCard:card-cooling");
+  });
+
+  it("routes brain updates to Memory Inbox when auto-update approval is required", async () => {
+    const brain = makeBrain({ id: "brain-margo", characterName: "Margo", active: true });
+    const adventure = {
+      ...baseAdventure(),
+      brains: [brain],
+      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+    };
+
+    mockProvider
+      .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
+      .mockResolvedValueOnce({ content: '{"currentState":"Margo is worried."}', raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
+    expect(result.actions.some((action) => action.type === "APPLY_BRAIN_UPDATE")).toBe(false);
+
+    let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
+    expect(reduced.brains[0].currentState).not.toBe("Margo is worried.");
+    const proposal = reduced.activeState.memoryProposals[0];
+    expect(proposal).toMatchObject({ proposedType: "brainUpdate", status: "pending", targetId: "brain-margo" });
+
+    reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
+    expect(reduced.brains[0].currentState).toBe("Margo is worried.");
+  });
+
+  it("routes story-card updates to Memory Inbox when auto-update approval is required", async () => {
+    const card = makeStoryCard({
+      id: "card-joke",
+      title: "Hedge Prince Joke",
+      content: "Old joke.",
+      keys: ["hedge prince"],
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 0,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      storyCards: [card],
+      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+    };
+
+    mockProvider
+      .mockResolvedValueOnce({ content: '["storyCard:card-joke"]', raw: {} })
+      .mockResolvedValueOnce({ content: "Margo calls Seth hedge prince only when scared.", raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
+    expect(result.actions.some((action) => action.type === "APPLY_STORY_CARD_UPDATE")).toBe(false);
+    expect(result.actions).toContainEqual({ type: "MARK_STORY_CARD_UPDATED", storyCardId: "card-joke", turn: 5 });
+
+    let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
+    expect(reduced.storyCards[0].content).toBe("Old joke.");
+    expect(reduced.storyCards[0].lastAutoUpdateTurn).toBe(5);
+    const proposal = reduced.activeState.memoryProposals[0];
+    expect(proposal).toMatchObject({ proposedType: "storyCard", status: "pending", targetId: "card-joke" });
+
+    const withPendingProposal = reduced;
+    const rejected = adventureReducer(reduced, { type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id });
+    expect(rejected.storyCards[0].content).toBe("Old joke.");
+    expect(rejected.activeState.memoryProposals[0].status).toBe("rejected");
+    reduced = adventureReducer(withPendingProposal, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
+    expect(reduced.storyCards[0].content).toBe("Margo calls Seth hedge prince only when scared.");
+  });
+
+  it("routes Plot Essentials updates to Memory Inbox when auto-update approval is required", async () => {
+    const component = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "Old premise.",
+      active: true,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [component],
+      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+    };
+
+    mockProvider
+      .mockResolvedValueOnce({ content: '["plotEssentials:component-plot"]', raw: {} })
+      .mockResolvedValueOnce({ content: "The Fire Nation court now expects a public duel.", raw: {} });
+
+    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+
+    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
+    expect(result.actions.some((action) => action.type === "APPLY_COMPONENT_UPDATE")).toBe(false);
+
+    let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
+    expect(reduced.components[0].content).toBe("Old premise.");
+    const proposal = reduced.activeState.memoryProposals[0];
+    expect(proposal).toMatchObject({ proposedType: "plotEssentialsUpdate", status: "pending", targetId: "component-plot" });
+
+    reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
+    expect(reduced.components[0].content).toBe("The Fire Nation court now expects a public duel.");
   });
 });
 

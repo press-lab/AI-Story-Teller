@@ -33,6 +33,7 @@ const testedActionTypes = [
   "UNPIN_STORY_CARD",
   "UPDATE_STORY_CARD",
   "APPLY_STORY_CARD_UPDATE",
+  "MARK_STORY_CARD_UPDATED",
   "REORDER_STORY_CARD",
   "UPSERT_BRAIN",
   "DELETE_BRAIN",
@@ -364,6 +365,8 @@ describe("adventureReducer", () => {
     expect(state.storyCards.find((entry) => entry.id === storyCard.id)).toMatchObject({ title: "Story Renamed", priority: 5 });
     state = reduce(state, { type: "APPLY_STORY_CARD_UPDATE", storyCardId: storyCard.id, content: "Generated story" });
     expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.content).toBe("Generated story");
+    state = reduce(state, { type: "MARK_STORY_CARD_UPDATED", storyCardId: storyCard.id, turn: 12 });
+    expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.lastAutoUpdateTurn).toBe(12);
 
     const before = state.storyCards.find((entry) => entry.id === storyCard.id)?.priority;
     state = reduce(state, { type: "REORDER_STORY_CARD", storyCardId: storyCard.id, direction: "up" });
@@ -657,5 +660,24 @@ describe("adventureReducer", () => {
     expect(state.messages.at(-1)?.id).toBe("msg-3");
 
     expect(state.activeState.storyUndoStack.length).toBeGreaterThan(0);
+  });
+
+  it("clamps rolling summary indexes when story sections are erased or reset", () => {
+    let state: Adventure = {
+      ...baseAdventure(),
+      rollingSummary: {
+        content: "The current transcript has already been summarized.",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        lastSummarizedMessageIndex: 2,
+      },
+    };
+
+    state = reduce(state, { type: "DELETE_LAST_MESSAGE" });
+    expect(state.messages).toHaveLength(1);
+    expect(state.rollingSummary.lastSummarizedMessageIndex).toBe(1);
+
+    state = reduce(state, { type: "RESET_RUNTIME_STATE" });
+    expect(state.messages).toHaveLength(0);
+    expect(state.rollingSummary.lastSummarizedMessageIndex).toBeUndefined();
   });
 });

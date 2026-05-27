@@ -75,6 +75,12 @@ export function defaultNextTurnNote(): NextTurnNote {
   };
 }
 
+function clampSummaryIndex(index: number | undefined, messageCount: number): number | undefined {
+  if (index === undefined) return undefined;
+  if (!Number.isFinite(index)) return 0;
+  return Math.max(0, Math.min(Math.floor(index), messageCount));
+}
+
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();
   return {
@@ -178,6 +184,8 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
     inclusionPolicy: overrides.inclusionPolicy ?? "triggered",
     priority: overrides.priority ?? 0,
     autoUpdate: overrides.autoUpdate ?? false,
+    autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns ?? 3,
+    lastAutoUpdateTurn: overrides.lastAutoUpdateTurn,
     state: overrides.state ?? "",
     tokenBudget: overrides.tokenBudget,
     createdAt: overrides.createdAt ?? timestamp,
@@ -314,6 +322,14 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         : adventure.activeState?.responseLengthHint === "long" ? 175
         : 150,
     },
+    rollingSummary: {
+      ...baseline.rollingSummary,
+      ...(adventure.rollingSummary ?? {}),
+      lastSummarizedMessageIndex: clampSummaryIndex(
+        adventure.rollingSummary?.lastSummarizedMessageIndex,
+        (adventure.messages ?? []).length,
+      ),
+    },
     brains: (adventure.brains ?? []).map((brain) => ({
       ...brain,
       source: brain.source ?? "manual",
@@ -330,6 +346,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       protected: card.protected ?? false,
       inclusionPolicy: card.inclusionPolicy ?? "triggered",
       autoUpdate: card.autoUpdate ?? false,
+      autoUpdateCooldownTurns: card.autoUpdateCooldownTurns ?? 3,
     })),
     components: (adventure.components ?? []).map((component) => {
       const defaultProtected =

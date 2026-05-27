@@ -56,6 +56,10 @@ describe("applyAIMemoryUpdate", () => {
 
     expect(result.rejectedUpdates).toEqual([]);
     expect(result.changedItemIds).toEqual(["brain-margo", "card-joke"]);
+    expect(result.appliedUpdates.find((entry) => entry.targetId === "card-joke")?.actionTypes).toEqual([
+      "APPLY_STORY_CARD_UPDATE",
+      "UPDATE_STORY_CARD",
+    ]);
     expect(next.brains[0].currentState).toBe("new");
     expect(next.storyCards[0]).toMatchObject({ content: "new card", keys: ["new"], state: "ai-updated" });
   });

@@ -33,9 +33,9 @@ Do not directly mutate adventure objects in components, trigger engines, importe
 - Keep pure functions pure. Context assembly, matching, trigger mapping, quest progression, token estimation, and import/export should remain unit-testable without React.
 - API keys must not be written into adventure JSON or IndexedDB.
 - **No opaque mega-buckets.** Do not create any section that bundles multiple conceptually distinct context types without individual item visibility. Every token in the model context must belong to a named, inspectable section.
-- Context assembly order is fixed (see `ContextSectionKind`): system -> aiInstructions -> plotEssentials -> authorNote -> components -> storyCards -> brains -> questState -> rollingSummary -> nextTurnNote -> recentMessages.
+- Context assembly order is fixed (see `ContextSectionKind`): system -> aiInstructions -> plotEssentials -> components -> storyCards -> brains -> questState -> rollingSummary -> authorNote -> nextTurnNote -> recentMessages.
 - `aiInstructions`, `plotEssentials`, and `authorNote` components each occupy their own section (B, C, D). General always-on or pinned custom components go to section E (`components`).
-- Story Cards and Auto-Cards share section F (`storyCards`). Brains are section G. Quest state is section H. Rolling Summary is section I. Next Output Bias is section J. Recent messages are section K.
+- Story Cards and Auto-Cards share section F (`storyCards`). Brains are section G. Quest state is section H. Rolling Summary is section I. Author's Note is placed near recent context for AID-style influence. Next Output Bias is section J. Recent messages are section K.
 - Protected means non-droppable during token truncation. Pinned means prioritized, not automatically non-droppable.
 - Only the system shell and user-marked protected context are absolutely non-droppable.
 - Budget cuts are controlled by `memoryPriorityMode`, `allowSystemToPrioritizeMemory`, `allowSystemToDropUnpinnedTriggeredCards`, and `allowSystemToTruncateSummary`.
@@ -56,7 +56,7 @@ Do not directly mutate adventure objects in components, trigger engines, importe
 - **Adventure Chronicle**: `adventure.messages`, the complete persisted transcript. Keep it uncompressed. Never automatically include the full Chronicle in model context. It is source material for summaries and memory proposals, not direct context.
 - **Rolling Summary**: `adventure.rollingSummary`, compression of the Chronicle. Appears in section I after durable memory and before recent messages. User-editable. Must not overwrite story cards, brains, quest state, or components.
 - **Next Output Bias**: `activeState.nextTurnNote`, a user-written short-term steering note for the next generation. Appears in section J, is visible in Context Preview, token-counted, reducer-driven, and expires after one successful generation by default.
-- **Story Cards**: durable recurring facts — private jokes, nicknames, secrets, promises, relationship facts, magical rules, recurring objects, locations, factions. Trigger-matched or pinned. Section F.
+- **Story Cards**: durable recurring facts — private jokes, nicknames, secrets, promises, relationship facts, magical rules, recurring objects, locations, factions. Trigger-matched or pinned. Section F. Optional AI auto-updates use per-card cooldown fields (`autoUpdateCooldownTurns`, `lastAutoUpdateTurn`).
 - **Brains**: opt-in evolving character-internal state for major characters only. Do not create BrainEntries for random NPCs, locations, factions, objects, or one-scene characters. Brain updates only apply when a BrainEntry already exists. If no BrainEntry exists, route durable character memory to an existing Story Card or a Story Card proposal in Memory Inbox.
 - **Plot Essentials**: tiny always-on current-state constraints. Section C. AI may update these through the approved `plotEssentialsUpdate` proposal path only.
 - **AI Instructions**: persistent generation rules. Section B. AI must not modify.
@@ -69,20 +69,15 @@ Do not add an opaque Memory Bank retrieval layer. A future Inspectable Memory Ba
 
 ## Known Architecture Decision: Semantic Engine vs Memory Proposals
 
-The semantic post-turn evaluator (`src/triggers/semanticEngine.ts`) applies brain, story card, and Plot Essentials updates **directly** — via `applyAIMemoryUpdate` → reducer actions — rather than routing through Memory Inbox (Memory Proposals).
+The semantic post-turn evaluator (`src/triggers/semanticEngine.ts`) can apply brain, story card, and Plot Essentials updates **directly** — via `applyAIMemoryUpdate` → reducer actions — when `semanticEvaluationSettings.requireApprovalForAutoUpdates` is `false`. When that setting is `true`, generated updates become Memory Inbox proposals and do not mutate active memory until approved.
 
 Auto-Cards from semantic evaluation go through a review queue (`CREATE_AUTO_CARD` → `autoCardReviewQueue`), and the user approves or discards from the Auto-Cards page. That IS a gated review path.
 
-The reason brain/story-card/plotEssentials updates are applied directly: every semantic trigger that fires a memory-update action was **explicitly configured by the user** (condition string + action type + target ID). The user opted into this behavior. These are not surprise AI suggestions — they are user-defined rules executing.
+The reason direct brain/story-card/plotEssentials updates are allowed as an option: every semantic trigger that fires a memory-update action was **explicitly configured by the user** (condition string + action type + target ID). The user opted into this behavior. These are not surprise AI suggestions — they are user-defined rules executing.
 
 Memory Inbox / Memory Proposals is the path for **unstructured AI-suggested new memory** — the `classifyMemory` flow, or future summary-extraction passes — where the source text is arbitrary and the AI is making a freeform durable-memory suggestion that the user has not pre-authorized.
 
-If you want to require user review for all semantic memory writes (including user-configured trigger actions), you would:
-1. Replace `applyAIMemoryUpdate(...)` calls in `generatedActionsFor` with `ADD_MEMORY_PROPOSAL` actions.
-2. Remove those generated actions from the immediate apply path.
-3. The user then approves from Memory Inbox, which calls `APPROVE_MEMORY_PROPOSAL`.
-
-This would match a strict reading of the spec but would make the game interrupt-heavy if semantic evaluation is frequent. Document the choice clearly if you change it.
+If you want to require user review for all semantic memory writes, set `requireApprovalForAutoUpdates` to `true` in Settings. Keep tests for both modes.
 
 ## Adding a Memory Surface
 
@@ -100,6 +95,7 @@ Run:
 ```sh
 npm.cmd test
 npm.cmd run build
+npm.cmd run smoke:prod
 ```
 
 The build runs TypeScript first and then creates the GitHub Pages-compatible static bundle in `dist/`.

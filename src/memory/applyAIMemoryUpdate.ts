@@ -114,9 +114,16 @@ export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdat
         rejectedUpdates.push(reject(update, "Story card update had no content, triggers, or state change."));
         continue;
       }
-      const action: AdventureAction = { type: "UPDATE_STORY_CARD", storyCardId: update.storyCardId, patch };
-      actions.push(action);
-      appliedUpdates.push({ targetType: "storyCard", targetId: update.storyCardId, actionTypes: [action.type] });
+      const storyActions: AdventureAction[] = [];
+      if (update.content !== undefined) {
+        storyActions.push({ type: "APPLY_STORY_CARD_UPDATE", storyCardId: update.storyCardId, content: update.content });
+      }
+      const metadataPatch = storyCardPatch({ ...update, content: undefined });
+      if (Object.keys(metadataPatch).length > 0) {
+        storyActions.push({ type: "UPDATE_STORY_CARD", storyCardId: update.storyCardId, patch: metadataPatch });
+      }
+      actions.push(...storyActions);
+      appliedUpdates.push({ targetType: "storyCard", targetId: update.storyCardId, actionTypes: storyActions.map((action) => action.type) });
       changedItemIds.push(update.storyCardId);
       continue;
     }
