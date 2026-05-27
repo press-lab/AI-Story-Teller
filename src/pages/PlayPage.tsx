@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
-import type { InputMode, Message } from "../types/adventure";
+import type { InputMode, Message, ResponseLengthHint } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -217,6 +217,18 @@ export function PlayPage({
               onClick={() => setInputMode(mode)}
             >
               {MODE_LABELS[mode]}
+            </button>
+          ))}
+          <span className="mode-sep" aria-hidden="true">|</span>
+          {(["short", "medium", "long"] as ResponseLengthHint[]).map((hint) => (
+            <button
+              key={hint}
+              type="button"
+              className={`mode-btn length-btn${adventure.activeState.responseLengthHint === hint ? " active" : ""}`}
+              title={{ short: "Short (~50–150 words)", medium: "Medium (~150–300 words)", long: "Long (~300–600 words)" }[hint]}
+              onClick={() => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint })}
+            >
+              {hint[0].toUpperCase()}
             </button>
           ))}
           <span className="muted mode-hint">

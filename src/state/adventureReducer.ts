@@ -262,13 +262,27 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       });
       return { storyCards: upsertById(state.storyCards, storyCard) };
     }
-    const brain = touch({
-      ...existing,
-      recentDevelopments: [existing.recentDevelopments, proposal.content].filter(Boolean).join("\n"),
-      lastUpdatedTurn: state.activeState.turn,
-      lastUpdatedAt: nowIso(),
-      lastGeneratedUpdatePreview: proposal.content.slice(0, 500),
-    });
+    // Content may be a JSON patch (from auto-update flow) or a plain string (from Remember This)
+    let parsedPatch: Partial<Record<BrainStateField, string>> | null = null;
+    try {
+      const parsed: unknown = JSON.parse(proposal.content);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const allowed: BrainStateField[] = ["currentState", "thoughts", "relationshipPressure", "emotionalInterpretation", "recentDevelopments"];
+        const entries = Object.entries(parsed as Record<string, unknown>).filter(([k, v]) => allowed.includes(k as BrainStateField) && typeof v === "string");
+        if (entries.length > 0) parsedPatch = Object.fromEntries(entries) as Partial<Record<BrainStateField, string>>;
+      }
+    } catch {
+      // Not JSON — fall through to plain-string append
+    }
+    const brain = parsedPatch
+      ? applyBrainUpdate(existing, parsedPatch, "replace", state.activeState.turn, proposal.content.slice(0, 500))
+      : touch({
+          ...existing,
+          recentDevelopments: [existing.recentDevelopments, proposal.content].filter(Boolean).join("\n"),
+          lastUpdatedTurn: state.activeState.turn,
+          lastUpdatedAt: nowIso(),
+          lastGeneratedUpdatePreview: proposal.content.slice(0, 500),
+        });
     return { brains: upsertById(state.brains, brain) };
   }
 
@@ -693,6 +707,10 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           ...state.activeState,
           stateFlags: { ...state.activeState.stateFlags, [action.key]: action.value },
         },
+      });
+    case "SET_RESPONSE_LENGTH_HINT":
+      return touchAdventure(state, {
+        activeState: { ...state.activeState, responseLengthHint: action.hint },
       });
     case "SET_NEXT_TURN_NOTE": {
       const timestamp = nowIso();

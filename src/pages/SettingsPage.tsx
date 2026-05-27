@@ -229,6 +229,15 @@ export function SettingsPage({
                   onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
                 />
               </Field>
+              <CheckboxField
+                label="Require approval before applying auto-updates"
+                checked={adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
+                onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
+              />
+              <p className="muted">
+                When on, all LLM-generated brain, story card, and Plot Essentials updates go to the
+                Inbox as proposals for your review instead of applying directly.
+              </p>
             </article>
 
             <article className="panel">

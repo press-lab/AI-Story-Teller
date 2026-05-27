@@ -141,16 +141,17 @@ function truncateFromFront(text: string, targetTokens: number): string {
   return words.slice(start).join(" ");
 }
 
-function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string) {
+function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string) {
   const contextText = sections
     .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
     .sort((a, b) => a.order - b.order)
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
 
+  const systemContent = lengthHintText ? `${contextText}\n\n${lengthHintText}` : contextText;
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
   return [
-    { role: "system" as const, content: contextText },
+    { role: "system" as const, content: systemContent },
     ...(openingScene ? [{ role: "assistant" as const, content: openingScene }] : []),
     ...chronologicalRecent.map((message) => ({ role: message.role, content: message.content })),
   ];
@@ -340,7 +341,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : [];
   summaryItems.forEach((entry) => pushIncluded(entry, "Rolling summary included after priority memory and before recent messages."));
 
-  // J. Next Output Bias
+  // J. Next Output Bias (+ response length hint)
   const nextTurnNote = adventure.activeState.nextTurnNote;
   if (nextTurnNote?.content.trim() && !nextTurnNote.active) {
     pushExcluded("nextTurnNote", "next-turn-note", "Next Output Bias", "inactive", "Next Output Bias has content but is not active.");
@@ -542,8 +543,15 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     (proposal) => proposal.status === "pending",
   );
 
+  const lengthHintMap: Record<string, string> = {
+    short: "RESPONSE LENGTH: Short — aim for 1–3 tight paragraphs (~50–150 words).",
+    medium: "RESPONSE LENGTH: Medium — aim for 3–5 paragraphs (~150–300 words).",
+    long: "RESPONSE LENGTH: Long — aim for 5–8 paragraphs (~300–600 words), rich scene detail.",
+  };
+  const lengthHintText = lengthHintMap[adventure.activeState.responseLengthHint ?? "medium"];
+
   return {
-    messages: buildPayload(sections, finalRecentMessages, adventure.openingScene || undefined),
+    messages: buildPayload(sections, finalRecentMessages, adventure.openingScene || undefined, lengthHintText),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,

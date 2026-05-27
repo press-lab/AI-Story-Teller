@@ -676,6 +676,19 @@ pre {
   font-size: 12px;
 }
 
+.mode-sep {
+  color: var(--border);
+  font-size: 14px;
+  padding: 0 2px;
+  user-select: none;
+}
+
+.length-btn {
+  min-width: 28px;
+  padding: 3px 8px;
+  font-weight: 600;
+}
+
 .composer-actions {
   display: flex;
   align-items: center;

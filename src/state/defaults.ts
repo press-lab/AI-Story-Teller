@@ -52,6 +52,7 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
   enabled: true,
   showLog: true,
   maxParallelUpdateCalls: 3,
+  requireApprovalForAutoUpdates: false,
 };
 
 export const defaultAutoCardSettings: AutoCardSettings = {
@@ -90,10 +91,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
         content: `You are the narrator of a collaborative interactive fiction adventure.
 Continue the story in response to the player, then leave the scene open for their next action.
 
-PERSPECTIVE: Second person ("You see...", "You feel..."). Present tense.
-
-RESPONSE LENGTH: 2–4 paragraphs. Match the weight of what happened — action beats run shorter, emotional or world-building moments can run longer.
-
 END OPEN: Never resolve a decision for the player. End each response on an actionable moment, not a conclusion.
 
 PLAYER INPUT MODES:
@@ -130,6 +127,7 @@ TONE: Match the tone the adventure has established. Do not break the fourth wall
       nextTurnNote: defaultNextTurnNote(),
       rawImports: [],
       stateFlags: {},
+      responseLengthHint: "medium",
     },
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
@@ -177,6 +175,7 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
     protected: overrides.protected ?? false,
     inclusionPolicy: overrides.inclusionPolicy ?? "triggered",
     priority: overrides.priority ?? 0,
+    autoUpdate: overrides.autoUpdate ?? false,
     state: overrides.state ?? "",
     tokenBudget: overrides.tokenBudget,
     createdAt: overrides.createdAt ?? timestamp,
@@ -322,6 +321,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       matchType: card.matchType ?? "phrase",
       protected: card.protected ?? false,
       inclusionPolicy: card.inclusionPolicy ?? "triggered",
+      autoUpdate: card.autoUpdate ?? false,
     })),
     components: (adventure.components ?? []).map((component) => {
       const defaultProtected =

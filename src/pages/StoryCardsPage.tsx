@@ -146,6 +146,11 @@ export function StoryCardsPage({ adventure, dispatch }: AdventurePageProps) {
                 </select>
               </Field>
             </div>
+            <CheckboxField
+              label="Auto-update via AI after relevant scenes"
+              checked={card.autoUpdate ?? false}
+              onChange={(autoUpdate) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { autoUpdate } })}
+            />
             <Field label="State">
               <input
                 value={card.state}

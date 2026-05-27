@@ -54,6 +54,8 @@ export interface StoryCard {
   priority: number;
   state: string;
   tokenBudget?: number;
+  /** When true, the LLM will automatically update this card after relevant scenes. */
+  autoUpdate: boolean;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
@@ -231,12 +233,16 @@ export interface ProviderRequestThrottle {
   maxRequestsPerMinute: number;
 }
 
+export type ResponseLengthHint = "short" | "medium" | "long";
+
 export interface SemanticEvaluationSettings {
   evaluationModel: string;
   messagesIncluded: number;
   enabled: boolean;
   showLog: boolean;
   maxParallelUpdateCalls: number;
+  /** When true, all LLM-generated memory updates go to the inbox for approval instead of applying directly. */
+  requireApprovalForAutoUpdates: boolean;
 }
 
 export interface AutoCardSettings {
@@ -321,7 +327,7 @@ export interface EvaluatedCondition {
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component";
+  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component" | "storyCard";
 }
 
 export interface GeneratedContentPreview {
@@ -387,6 +393,8 @@ export interface ActiveState {
   nextTurnNote: NextTurnNote;
   rawImports: RawImportEntry[];
   stateFlags: Record<string, string | number | boolean>;
+  /** Per-adventure response length preference — injected as a length instruction into every turn. */
+  responseLengthHint: ResponseLengthHint;
 }
 
 export interface Adventure {
@@ -593,6 +601,7 @@ export type AdventureAction =
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
+  | { type: "SET_RESPONSE_LENGTH_HINT"; hint: ResponseLengthHint }
   | { type: "SET_NEXT_TURN_NOTE"; note: Partial<NextTurnNote> }
   | { type: "CLEAR_NEXT_TURN_NOTE" }
   | { type: "CONSUME_NEXT_TURN_NOTE" }
