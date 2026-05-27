@@ -21,7 +21,8 @@ function response(status: number, body: unknown): Response {
 }
 
 function encode(text: string): string {
-  return btoa(text);
+  // btoa only handles Latin-1; use Buffer for full UTF-8 support
+  return Buffer.from(text, "utf-8").toString("base64");
 }
 
 function bundle(adventures: Adventure[]) {
