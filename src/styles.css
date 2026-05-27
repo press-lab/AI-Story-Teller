@@ -187,6 +187,7 @@ pre {
 .sidebar {
   grid-column: 1;
   grid-row: 2;
+  align-self: start;
   background: var(--surface);
   border-right: 1px solid var(--border);
   padding: 10px 6px;
@@ -513,9 +514,28 @@ pre {
 }
 
 .play-layout {
-  grid-template-columns: minmax(0, 1fr);
-  max-width: 1040px;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  max-width: 1200px;
   margin: 0 auto;
+  align-items: start;
+}
+
+.play-layout > .error-box {
+  grid-column: 1 / -1;
+}
+
+.play-main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.play-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: sticky;
+  top: 16px;
 }
 
 .play-header {
@@ -523,6 +543,7 @@ pre {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .play-header h2 {
@@ -572,8 +593,6 @@ pre {
   display: grid;
   gap: 0;
   min-height: 260px;
-  max-height: calc(100vh - 380px);
-  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -1239,7 +1258,13 @@ summary {
   }
 
   .play-layout {
+    grid-template-columns: 1fr;
     max-width: 100%;
+  }
+
+  .play-sidebar {
+    position: static;
+    order: -1;
   }
 
   .modal-backdrop {
@@ -1435,29 +1460,21 @@ summary {
 
   .play-layout {
     min-height: 100%;
-    /* header / error / next-turn-note / transcript / composer */
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 
-  .play-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+  /* Hide the right-side metadata panel — app header already has the title */
+  .play-sidebar {
+    display: none;
   }
 
-  .token-strip {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .token-strip span {
-    flex: 0 0 auto;
+  .play-main {
+    min-height: 0;
   }
 
   .transcript {
     min-height: 30vh;
-    max-height: calc(100dvh - 320px);
     padding: 10px 12px;
   }
 
@@ -1485,12 +1502,12 @@ summary {
     line-height: 1.6;
   }
 
+  /* Composer: sticky bottom, minimal chrome */
   .composer {
-    order: 20;
     position: sticky;
     bottom: 0;
     z-index: 5;
-    gap: 8px;
+    gap: 6px;
     margin: 0 -10px -10px;
     border-right: 0;
     border-bottom: 0;
@@ -1499,9 +1516,16 @@ summary {
     box-shadow: 0 -12px 28px rgb(0 0 0 / 0.12);
   }
 
+  /* Smaller textarea — expands as user types */
   .composer textarea {
-    min-height: 96px;
-    max-height: 30vh;
+    min-height: 56px;
+    max-height: 28vh;
+  }
+
+  /* Hide length slider and separator — not useful on mobile */
+  .length-slider-label,
+  .mode-sep {
+    display: none;
   }
 
   .mode-selector {
@@ -1521,9 +1545,10 @@ summary {
     display: none;
   }
 
+  /* Only show Take a Turn / Continue / Retry — hide the rest */
   .composer-actions {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
     gap: 6px;
   }
@@ -1532,13 +1557,18 @@ summary {
     width: 100%;
     min-width: 0;
     padding: 8px 6px;
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .composer-actions button:first-child {
     grid-column: 1 / -1;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 700;
+  }
+
+  /* Hide Erase, Undo, Redo, Remember, Context Preview on mobile */
+  .composer-actions button:nth-child(n+4) {
+    display: none;
   }
 
   .remember-inline-row {

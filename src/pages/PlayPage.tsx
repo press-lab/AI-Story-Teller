@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
@@ -54,14 +54,12 @@ export function PlayPage({
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
-  const transcriptRef = useRef<HTMLDivElement>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
 
   useEffect(() => {
-    const el = transcriptRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }, [adventure.messages.length]);
 
   async function submit() {
@@ -93,208 +91,211 @@ export function PlayPage({
 
   return (
     <section className="page play-layout">
-      <header className="play-header panel">
-        <div>
-          <h2>{adventure.title}</h2>
-          <p className="muted">Turn {adventure.activeState.turn} · {saveStatus}</p>
-        </div>
-        <div className="token-strip">
-          <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
-          {getCurrentQuestObjective(adventure.quests) && (
-            <span>{getCurrentQuestObjective(adventure.quests)}</span>
-          )}
-        </div>
-      </header>
-
       {error && <div className="error-box">{error}</div>}
 
-      <details className="panel next-turn-note">
-        <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
-        <Field label="Visible next-output steering note">
-          <textarea
-            rows={2}
-            value={nextTurnNote.content}
-            onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
-            placeholder="One-turn instruction for the next AI response. Expires after use."
-          />
-        </Field>
-        <div className="grid four">
-          <CheckboxField
-            label="Active"
-            checked={nextTurnNote.active}
-            onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
-          />
-          <CheckboxField
-            label="Pinned"
-            checked={nextTurnNote.pinned}
-            onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
-          />
-          <CheckboxField
-            label="Protected"
-            checked={nextTurnNote.protected}
-            onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
-          />
-          <CheckboxField
-            label="Expires after output"
-            checked={nextTurnNote.expiresAfterUse}
-            onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
-          />
+      <div className="play-main">
+        <div className="transcript">
+          {adventure.messages.length === 0 && (
+            <p className="muted">No turns yet. Set up your world, then start playing below.</p>
+          )}
+          {adventure.messages.map((message) => (
+            <article
+              key={message.id}
+              className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
+            >
+              <div className="message-actions">
+                <button
+                  type="button"
+                  onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
+                >
+                  {editingMessageId === message.id ? "Done" : "Edit"}
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}
+                >
+                  Delete
+                </button>
+              </div>
+              {editingMessageId === message.id ? (
+                <textarea
+                  className="message-editor"
+                  rows={messageRows(message)}
+                  value={message.content}
+                  onChange={(event) =>
+                    dispatch({ type: "UPDATE_MESSAGE", messageId: message.id, content: event.target.value })
+                  }
+                />
+              ) : (
+                <p onDoubleClick={() => setEditingMessageId(message.id)}>{message.content}</p>
+              )}
+            </article>
+          ))}
         </div>
-        <div className="toolbar">
-          <Field label="Priority">
-            <NumberInput
-              value={nextTurnNote.priority}
-              onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
+
+        <div className="composer panel">
+          <div className="mode-selector">
+            {(["do", "story", "comms"] as InputMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                title={MODE_TOOLTIPS[mode]}
+                className={`mode-btn${inputMode === mode ? " active" : ""}`}
+                onClick={() => setInputMode(mode)}
+              >
+                {MODE_LABELS[mode]}
+              </button>
+            ))}
+            <span className="mode-sep" aria-hidden="true">|</span>
+            <label className="length-slider-label">
+              <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
+              <input
+                type="range"
+                className="length-slider"
+                min={50}
+                max={200}
+                step={10}
+                value={adventure.activeState.responseLengthHint ?? 150}
+                onChange={(event) => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: Number(event.target.value) })}
+                title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
+              />
+            </label>
+            <span className="muted mode-hint">
+              {inputMode === "do" && "Character action + quoted dialogue"}
+              {inputMode === "story" && "Guide the narrative direction"}
+              {inputMode === "comms" && "Talk to the AI out of character"}
+            </span>
+          </div>
+          <textarea
+            rows={4}
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={MODE_PLACEHOLDERS[inputMode]}
+          />
+          {showRemember && (
+            <div className="remember-inline-row">
+              <input
+                autoFocus
+                value={rememberInput}
+                onChange={(event) => setRememberInput(event.target.value)}
+                onKeyDown={handleRememberKeyDown}
+                placeholder="e.g. Mira and Kael are now married"
+              />
+              <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>
+                Save
+              </button>
+              <button type="button" onClick={() => setShowRemember(false)}>✕</button>
+            </div>
+          )}
+          <div className="composer-actions">
+            <button type="button" disabled={loading || !input.trim()} onClick={submit}>
+              {loading ? "Generating..." : "Take a Turn"}
+            </button>
+            <button type="button" disabled={loading} onClick={onContinue}>
+              Continue
+            </button>
+            <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>
+              Retry
+            </button>
+            <button
+              type="button"
+              disabled={loading || adventure.messages.length === 0}
+              onClick={() => dispatch({ type: "DELETE_LAST_MESSAGE" })}
+            >
+              Erase
+            </button>
+            <button
+              type="button"
+              disabled={loading || adventure.activeState.storyUndoStack.length === 0}
+              onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
+            >
+              Undo
+            </button>
+            <button
+              type="button"
+              disabled={loading || adventure.activeState.storyRedoStack.length === 0}
+              onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
+            >
+              Redo
+            </button>
+            <button
+              type="button"
+              className={showRemember ? "active-tool" : ""}
+              onClick={() => setShowRemember((v) => !v)}
+            >
+              Remember
+            </button>
+            <button
+              type="button"
+              onClick={() => { onBuildContext(); onOpenContext(); }}
+            >
+              Context Preview
+            </button>
+            <span className="muted hint">Enter to submit · Shift+Enter for newline</span>
+          </div>
+        </div>
+      </div>
+
+      <aside className="play-sidebar">
+        <header className="play-header panel">
+          <div>
+            <h2>{adventure.title}</h2>
+            <p className="muted">Turn {adventure.activeState.turn} · {saveStatus}</p>
+          </div>
+          <div className="token-strip">
+            <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
+            {getCurrentQuestObjective(adventure.quests) && (
+              <span>{getCurrentQuestObjective(adventure.quests)}</span>
+            )}
+          </div>
+        </header>
+        <details className="panel next-turn-note">
+          <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
+          <Field label="Visible next-output steering note">
+            <textarea
+              rows={2}
+              value={nextTurnNote.content}
+              onChange={(event) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { content: event.target.value } })}
+              placeholder="One-turn instruction for the next AI response. Expires after use."
             />
           </Field>
-          <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
-            Clear
-          </button>
-        </div>
-      </details>
-
-      <div className="transcript" ref={transcriptRef}>
-        {adventure.messages.length === 0 && (
-          <p className="muted">No turns yet. Set up your world, then start playing below.</p>
-        )}
-        {adventure.messages.map((message) => (
-          <article
-            key={message.id}
-            className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
-          >
-            <div className="message-actions">
-              <button
-                type="button"
-                onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
-              >
-                {editingMessageId === message.id ? "Done" : "Edit"}
-              </button>
-              <button
-                type="button"
-                className="danger"
-                onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}
-              >
-                Delete
-              </button>
-            </div>
-            {editingMessageId === message.id ? (
-              <textarea
-                className="message-editor"
-                rows={messageRows(message)}
-                value={message.content}
-                onChange={(event) =>
-                  dispatch({ type: "UPDATE_MESSAGE", messageId: message.id, content: event.target.value })
-                }
-              />
-            ) : (
-              <p onDoubleClick={() => setEditingMessageId(message.id)}>{message.content}</p>
-            )}
-          </article>
-        ))}
-      </div>
-
-      <div className="composer panel">
-        <div className="mode-selector">
-          {(["do", "story", "comms"] as InputMode[]).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              title={MODE_TOOLTIPS[mode]}
-              className={`mode-btn${inputMode === mode ? " active" : ""}`}
-              onClick={() => setInputMode(mode)}
-            >
-              {MODE_LABELS[mode]}
-            </button>
-          ))}
-          <span className="mode-sep" aria-hidden="true">|</span>
-          <label className="length-slider-label">
-            <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
-            <input
-              type="range"
-              className="length-slider"
-              min={50}
-              max={200}
-              step={10}
-              value={adventure.activeState.responseLengthHint ?? 150}
-              onChange={(event) => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: Number(event.target.value) })}
-              title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
+          <div className="grid four">
+            <CheckboxField
+              label="Active"
+              checked={nextTurnNote.active}
+              onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
             />
-          </label>
-          <span className="muted mode-hint">
-            {inputMode === "do" && "Character action + quoted dialogue"}
-            {inputMode === "story" && "Guide the narrative direction"}
-            {inputMode === "comms" && "Talk to the AI out of character"}
-          </span>
-        </div>
-        <textarea
-          rows={4}
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={MODE_PLACEHOLDERS[inputMode]}
-        />
-        {showRemember && (
-          <div className="remember-inline-row">
-            <input
-              autoFocus
-              value={rememberInput}
-              onChange={(event) => setRememberInput(event.target.value)}
-              onKeyDown={handleRememberKeyDown}
-              placeholder="e.g. Mira and Kael are now married"
+            <CheckboxField
+              label="Pinned"
+              checked={nextTurnNote.pinned}
+              onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
             />
-            <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>
-              Save
-            </button>
-            <button type="button" onClick={() => setShowRemember(false)}>✕</button>
+            <CheckboxField
+              label="Protected"
+              checked={nextTurnNote.protected}
+              onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
+            />
+            <CheckboxField
+              label="Expires after output"
+              checked={nextTurnNote.expiresAfterUse}
+              onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
+            />
           </div>
-        )}
-        <div className="composer-actions">
-          <button type="button" disabled={loading || !input.trim()} onClick={submit}>
-            {loading ? "Generating..." : "Take a Turn"}
-          </button>
-          <button type="button" disabled={loading} onClick={onContinue}>
-            Continue
-          </button>
-          <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>
-            Retry
-          </button>
-          <button
-            type="button"
-            disabled={loading || adventure.messages.length === 0}
-            onClick={() => dispatch({ type: "DELETE_LAST_MESSAGE" })}
-          >
-            Erase
-          </button>
-          <button
-            type="button"
-            disabled={loading || adventure.activeState.storyUndoStack.length === 0}
-            onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            disabled={loading || adventure.activeState.storyRedoStack.length === 0}
-            onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
-          >
-            Redo
-          </button>
-          <button
-            type="button"
-            className={showRemember ? "active-tool" : ""}
-            onClick={() => setShowRemember((v) => !v)}
-          >
-            Remember
-          </button>
-          <button
-            type="button"
-            onClick={() => { onBuildContext(); onOpenContext(); }}
-          >
-            Context Preview
-          </button>
-          <span className="muted hint">Enter to submit · Shift+Enter for newline</span>
-        </div>
-      </div>
+          <div className="toolbar">
+            <Field label="Priority">
+              <NumberInput
+                value={nextTurnNote.priority}
+                onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
+              />
+            </Field>
+            <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
+              Clear
+            </button>
+          </div>
+        </details>
+      </aside>
     </section>
   );
 }
