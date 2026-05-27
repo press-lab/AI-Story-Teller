@@ -121,7 +121,7 @@ export function PlayPage({
       {error && <div className="error-box">{error}</div>}
 
       <div className="play-main">
-        <div className="transcript" onClick={() => { if (!input.trim()) setComposerOpen(false); }}>
+        <div className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
