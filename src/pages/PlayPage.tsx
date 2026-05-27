@@ -121,7 +121,7 @@ export function PlayPage({
       {error && <div className="error-box">{error}</div>}
 
       <div className="play-main">
-        <div className="transcript" onClick={() => setComposerOpen(false)}>
+        <div className="transcript" onClick={() => { if (!input.trim()) setComposerOpen(false); }}>
           {adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
@@ -243,10 +243,10 @@ export function PlayPage({
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
               <button
                 type="button"
-                className="take-a-turn-mobile"
+                className={`take-a-turn-mobile${input.trim() ? " has-input" : ""}`}
                 onClick={() => setComposerOpen(true)}
               >
-                Take a Turn
+                {input.trim() ? "↑ Send" : "Take a Turn"}
               </button>
               <button type="button" disabled={loading} onClick={onContinue}>
                 Continue
