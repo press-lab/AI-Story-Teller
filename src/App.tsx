@@ -100,7 +100,6 @@ const navGroups: NavGroup<TabId>[] = [
     label: "World",
     items: [
       { id: "components", label: "World Blocks" },
-      { id: "quests", label: "Quests" },
       { id: "autoCards", label: "Auto-Cards" },
     ],
   },

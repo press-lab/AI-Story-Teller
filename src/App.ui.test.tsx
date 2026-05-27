@@ -81,6 +81,7 @@ describe("App adventure tool windows", () => {
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
     await screen.findByRole("heading", { name: "Modal Test" });
+    expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
     const dialog = await screen.findByRole("dialog", { name: "Story Cards" });

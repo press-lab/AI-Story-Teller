@@ -366,7 +366,7 @@ export function ImportExportPage({
               <div className="card">
                 <h3>Step 2: Story Cards JSON</h3>
                 <p className="muted">
-                  Paste or upload AI Dungeon story cards. Cards with Inner Self agent keys are preselected as Brain imports.
+                  Paste or upload AI Dungeon story cards. Cards with character-brain agent keys are preselected as Brain imports.
                 </p>
                 <Field label="Story card files">
                   <input type="file" multiple accept=".json,application/json" onChange={loadAidCardFiles} />

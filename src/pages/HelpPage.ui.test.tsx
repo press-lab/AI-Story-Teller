@@ -39,7 +39,6 @@ describe("HelpPage documentation UI", () => {
       "Characters",
       "Summary",
       "World Blocks",
-      "Quests",
       "Auto-Cards",
       "Context Preview",
       "Automations",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
+import { makeComponent } from "../state/defaults";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -58,6 +59,9 @@ export function PlayPage({
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
+  const authorNote = [...adventure.components]
+    .filter((component) => component.type === "authorNote")
+    .sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id))[0];
 
   async function submit() {
     const text = input.trim();
@@ -116,6 +120,51 @@ export function PlayPage({
               placeholder="Describe the opening scene. Appears as the first assistant message in every context window."
             />
           </Field>
+        </details>
+
+        <details className="panel author-note-details" open={Boolean(authorNote?.content.trim())}>
+          <summary>Author's Note {authorNote?.content.trim() ? "" : "(not set)"}</summary>
+          {authorNote ? (
+            <>
+              <Field label="Immediate narrative direction">
+                <textarea
+                  rows={4}
+                  value={authorNote.content}
+                  onChange={(event) =>
+                    dispatch({
+                      type: "UPDATE_COMPONENT",
+                      componentId: authorNote.id,
+                      patch: { content: event.target.value },
+                    })
+                  }
+                  placeholder="Tone, pacing, or near-term direction for the narrator."
+                />
+              </Field>
+              <p className="muted">
+                Author's Note is protected from AI mutation and appears near the recent context for stronger influence.
+              </p>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                dispatch({
+                  type: "UPSERT_COMPONENT",
+                  component: makeComponent({
+                    title: "Author's Note",
+                    type: "authorNote",
+                    content: "",
+                    priority: 80,
+                    alwaysOn: true,
+                    pinned: true,
+                    protected: true,
+                  }),
+                })
+              }
+            >
+              Create Author's Note
+            </button>
+          )}
         </details>
 
         <details className="panel next-turn-note" open={Boolean(nextTurnNote.content.trim())}>

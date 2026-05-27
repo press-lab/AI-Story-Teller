@@ -54,6 +54,7 @@ function baseAdventure(): Adventure {
       enabled: true,
       showLog: true,
       maxParallelUpdateCalls: 2,
+      requireApprovalForAutoUpdates: false,
     },
     activeState: {
       ...createDefaultAdventure("Live Groq Test").activeState,

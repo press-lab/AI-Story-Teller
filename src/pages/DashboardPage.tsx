@@ -101,9 +101,6 @@ export function DashboardPage({
         <article className="panel cockpit-panel">
           <div className="panel-heading">
             <h3>Objective</h3>
-            <button type="button" onClick={() => onOpenTab?.("quests")}>
-              Quests
-            </button>
           </div>
           <p>{objective || "No active objective."}</p>
         </article>

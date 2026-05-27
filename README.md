@@ -143,7 +143,7 @@ The context builder in `src/contextBuilder/contextBuilder.ts` follows the requir
 - Adventure create, open, duplicate, delete, export, import, and runtime reset.
 - IndexedDB persistence.
 - Play UI with submit, continue, regenerate, last-message editing, save status, token display, context preview, and quest objective.
-- Components, Story Cards, Brains, Auto-Cards, Triggers, Quests, Summary, Settings, and Import/Export tabs.
+- Components, Story Cards, Brains, Auto-Cards, Triggers, Summary, Settings, and Import/Export tabs.
 - Chronicle and Memory Inbox tabs for inspecting transcript history and proposed durable memories.
 - Trigger matching for keyword, phrase, and regex; deterministic priority order; cooldowns; trigger log.
 - LLM semantic trigger evaluation with generated updates for brains, story cards, components, Auto-Cards, and quest steps.
@@ -151,7 +151,7 @@ The context builder in `src/contextBuilder/contextBuilder.ts` follows the requir
 - Quest lifecycle and trigger-driven quest start/progress/complete action wiring.
 - Semantic Auto-Cards with configurable detection, generation prompt, cooldown, and review queue.
 - Manual rolling summary editing and model-generated summary button.
-- AI Dungeon import flow for transcript/action JSON, metadata setup, story cards, and Inner Self brain cards.
+- AI Dungeon import flow for transcript/action JSON, metadata setup, story cards, and character brain cards.
 - Approximate token estimator in `src/tokenizer/approximateTokenCount.ts`.
 
 ## Architecture Decision: Semantic Engine and Memory Proposals

@@ -217,14 +217,14 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
   {
     id: "side-menu-quests",
     title: "Quests",
-    category: "Side Menu",
-    summary: "Track quest lifecycle, current objectives, and step completion conditions.",
+    category: "Advanced",
+    summary: "Dormant quest lifecycle support kept for compatibility with existing saves.",
     tags: ["quests", "objectives", "steps", "progression"],
     body: (
       <>
         <p>
-          Quests stores explicit quest definitions and step state. Active quest steps contribute objective
-          text to context and display in the Play and Dashboard screens.
+          Quests stores explicit quest definitions and step state. The main sidebar hides Quests for now,
+          but the data model, reducer cases, and quest engine remain for existing saves and future use.
         </p>
         <p>
           Quest progression happens through reducer actions. Semantic completion conditions can complete

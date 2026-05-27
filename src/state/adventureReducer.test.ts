@@ -83,6 +83,7 @@ const testedActionTypes = [
   "SET_SEMANTIC_EVALUATION_SETTINGS",
   "SET_AUTO_CARD_SETTINGS",
   "SET_STATE_FLAG",
+  "SET_RESPONSE_LENGTH_HINT",
   "SET_NEXT_TURN_NOTE",
   "CLEAR_NEXT_TURN_NOTE",
   "CONSUME_NEXT_TURN_NOTE",
@@ -165,6 +166,7 @@ function baseAdventure(): Adventure {
       },
       rawImports: [],
       stateFlags: {},
+      responseLengthHint: 150,
     },
     rollingSummary: { content: "summary", updatedAt: "2026-01-01T00:00:00.000Z" },
   };
@@ -247,7 +249,7 @@ describe("adventureReducer", () => {
 
     state = reduce(state, {
       type: "SET_SEMANTIC_EVALUATION_SETTINGS",
-      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2 },
+      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2, requireApprovalForAutoUpdates: false },
     });
     expect(state.semanticEvaluationSettings.evaluationModel).toBe("eval-model");
 

@@ -54,7 +54,7 @@ describe("AI Dungeon story parser", () => {
 });
 
 describe("AI Dungeon story card parser", () => {
-  it("maps story cards and detects Inner Self brain candidates", () => {
+  it("maps story cards and detects character brain candidates", () => {
     const result = parseAidStoryCards(
       JSON.stringify([
         {
