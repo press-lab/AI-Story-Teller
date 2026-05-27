@@ -166,6 +166,8 @@ export function goldenAdventure(): Adventure {
       allowSystemToTruncateSummary: true,
       recentMessageWindow: 6,
       sectionBudgets: {},
+      autoSummarize: false,
+      autoSummarizeEveryNTurns: 20,
     },
   };
 }

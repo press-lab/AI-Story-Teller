@@ -459,6 +459,12 @@ export default function App() {
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       if (mode !== "comms") void startSemanticEvaluation(next);
+      if (mode !== "comms") {
+        const budgetSettings = next.tokenBudgetSettings;
+        if (budgetSettings.autoSummarize && next.activeState.turn > 0 && next.activeState.turn % budgetSettings.autoSummarizeEveryNTurns === 0) {
+          void startAutoSummary(next);
+        }
+      }
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Provider request failed.");
       setAdventure(next);
@@ -554,28 +560,80 @@ export default function App() {
     }
   }
 
+  /**
+   * Build the LLM payload for an incremental summary update.
+   * Sends the current summary + only the messages not yet captured in it.
+   * Capped at 60 new messages so the prompt stays manageable even at turn 3000.
+   */
+  function buildSummaryPayload(adventureState: Adventure): { messages: { role: "system" | "user"; content: string }[]; lastIndex: number } {
+    const allMessages = adventureState.messages;
+    const fromIndex = adventureState.rollingSummary.lastSummarizedMessageIndex ?? 0;
+    const newMessages = allMessages.slice(fromIndex).slice(-60); // cap at 60 unseen messages
+    const lastIndex = allMessages.length;
+
+    const currentSummary = adventureState.rollingSummary.content?.trim();
+    const newEventsText = newMessages.length
+      ? newMessages.map((m) => `${m.role === "assistant" ? "Story" : "Player"}: ${m.content}`).join("\n\n")
+      : "No new events.";
+
+    const userContent = currentSummary
+      ? `## Current Rolling Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nUpdate the rolling summary to incorporate these new events.`
+      : `## Story So Far\n${newEventsText}\n\nCreate a concise rolling summary of these events.`;
+
+    return {
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a continuity keeper for an interactive fiction adventure. " +
+            "Update the rolling summary to incorporate new story events. " +
+            "Preserve all important facts: character states, relationships, world details, open plot threads, completed events. " +
+            "Keep it focused and under 900 words. Write in past tense, third person.",
+        },
+        { role: "user", content: userContent },
+      ],
+      lastIndex,
+    };
+  }
+
   async function generateSummary() {
     if (!adventure || loading) return;
     setLoading(true);
     setError(undefined);
-    const history = adventure.messages.map((message) => `${message.role}: ${message.content}`).join("\n\n");
     try {
+      const { messages: summaryMessages, lastIndex } = buildSummaryPayload(adventure);
       const response = await sendOpenAICompatibleChatCompletion({
         config: activeProviderConfig,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Create a concise rolling summary of the adventure history. Preserve durable continuity, open threads, important character state, and current scene positioning.",
-          },
-          { role: "user", content: history || "No history yet." },
-        ],
+        messages: summaryMessages,
       });
-      dispatch({ type: "UPDATE_ROLLING_SUMMARY", content: response.content });
+      dispatch({ type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex });
     } catch (summaryError) {
       setError(summaryError instanceof Error ? summaryError.message : "Summary generation failed.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function startAutoSummary(adventureState: Adventure) {
+    // Runs silently in the background — no loading spinner, no error banner
+    try {
+      const { messages: summaryMessages, lastIndex } = buildSummaryPayload(adventureState);
+      const response = await sendOpenAICompatibleChatCompletion({
+        config: providerConfig(adventureState, providerSettingsRef.current),
+        messages: summaryMessages,
+      });
+      if (isSubmittingRef.current) {
+        queuePendingUpdate(
+          [{ type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex }],
+          "autoSummary",
+        );
+        return;
+      }
+      applyActionsAndPersist([
+        { type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex },
+      ]);
+    } catch {
+      // silent — auto-summary is best-effort; user can always regenerate manually
     }
   }
 

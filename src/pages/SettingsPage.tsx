@@ -169,6 +169,18 @@ export function SettingsPage({
                 checked={adventure.tokenBudgetSettings.allowSystemToTruncateSummary}
                 onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
               />
+              <CheckboxField
+                label="Auto-summarize in background"
+                checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
+                onChange={(autoSummarize) => updateBudget({ autoSummarize })}
+              />
+              <Field label="Auto-summarize every N turns">
+                <NumberInput
+                  min={5}
+                  value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
+                  onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
+                />
+              </Field>
               <Field label="Trigger Recent Message Window">
                 <NumberInput
                   min={0}

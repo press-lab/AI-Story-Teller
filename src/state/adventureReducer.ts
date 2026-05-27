@@ -672,7 +672,13 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         },
       });
     case "UPDATE_ROLLING_SUMMARY":
-      return touchAdventure(state, { rollingSummary: { content: action.content, updatedAt: nowIso() } });
+      return touchAdventure(state, {
+        rollingSummary: {
+          content: action.content,
+          updatedAt: nowIso(),
+          lastSummarizedMessageIndex: action.lastSummarizedMessageIndex ?? state.rollingSummary.lastSummarizedMessageIndex,
+        },
+      });
     case "SET_TOKEN_BUDGET_SETTINGS":
       return touchAdventure(state, { tokenBudgetSettings: action.settings });
     case "SET_MODEL_CONFIG":

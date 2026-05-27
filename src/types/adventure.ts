@@ -197,6 +197,8 @@ export interface Quest {
 export interface RollingSummary {
   content: string;
   updatedAt: ISODateString;
+  /** Index into adventure.messages — everything before this index is captured in the summary. */
+  lastSummarizedMessageIndex?: number;
 }
 
 export interface TokenBudgetSettings {
@@ -208,6 +210,9 @@ export interface TokenBudgetSettings {
   allowSystemToTruncateSummary: boolean;
   recentMessageWindow: number;
   sectionBudgets: Partial<Record<ContextSectionKind, number>>;
+  /** Automatically regenerate the rolling summary in the background every N turns. */
+  autoSummarize: boolean;
+  autoSummarizeEveryNTurns: number;
 }
 
 export interface ProviderConfig {
@@ -340,7 +345,7 @@ export interface EvaluationLogEntry {
 export interface PendingAdventureUpdate {
   id: string;
   createdAt: ISODateString;
-  source: "semanticEvaluation" | "manual";
+  source: "semanticEvaluation" | "autoSummary" | "manual";
   actions: AdventureAction[];
 }
 
@@ -582,7 +587,7 @@ export type AdventureAction =
   | { type: "APPROVE_MEMORY_PROPOSAL"; proposalId: string; editedProposal?: Partial<MemoryProposal> }
   | { type: "REJECT_MEMORY_PROPOSAL"; proposalId: string }
   | { type: "IGNORE_MEMORY_PROPOSAL"; proposalId: string }
-  | { type: "UPDATE_ROLLING_SUMMARY"; content: string }
+  | { type: "UPDATE_ROLLING_SUMMARY"; content: string; lastSummarizedMessageIndex?: number }
   | { type: "SET_TOKEN_BUDGET_SETTINGS"; settings: TokenBudgetSettings }
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }

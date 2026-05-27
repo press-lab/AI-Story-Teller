@@ -16,17 +16,19 @@ import type {
 import { createId, nowIso } from "../utils/id";
 
 export const defaultTokenBudgetSettings: TokenBudgetSettings = {
-  maxContextTokens: 8000,
-  maxRecentMessages: 24,
+  maxContextTokens: 16000,
+  maxRecentMessages: 40,
   memoryPriorityMode: "userLocked",
   allowSystemToPrioritizeMemory: false,
   allowSystemToDropUnpinnedTriggeredCards: true,
   allowSystemToTruncateSummary: true,
-  recentMessageWindow: 8,
+  recentMessageWindow: 12,
   sectionBudgets: {
-    rollingSummary: 1200,
-    recentMessages: 3000,
+    rollingSummary: 1800,
+    recentMessages: 6000,
   },
+  autoSummarize: true,
+  autoSummarizeEveryNTurns: 20,
 };
 
 export const defaultProviderRequestThrottle: ProviderRequestThrottle = {
@@ -39,7 +41,7 @@ export const defaultModelConfig: ProviderConfig = {
   name: "deepseek",
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
-  temperature: 0.8,
+  temperature: 1.0,
   maxOutputTokens: 1200,
   requestThrottle: defaultProviderRequestThrottle,
 };
@@ -350,6 +352,9 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     tokenBudgetSettings: {
       ...defaultTokenBudgetSettings,
       ...(adventure.tokenBudgetSettings ?? {}),
+      // Ensure new fields always present even on old saves
+      autoSummarize: adventure.tokenBudgetSettings?.autoSummarize ?? true,
+      autoSummarizeEveryNTurns: adventure.tokenBudgetSettings?.autoSummarizeEveryNTurns ?? 20,
     },
     modelConfig: {
       ...defaultModelConfig,
