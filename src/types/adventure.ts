@@ -321,7 +321,7 @@ export interface EvaluatedCondition {
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards";
+  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component";
 }
 
 export interface GeneratedContentPreview {

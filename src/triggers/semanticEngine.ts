@@ -140,11 +140,24 @@ function autoCardConditions(adventure: Adventure): SemanticCondition[] {
   ];
 }
 
+function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
+  return adventure.components
+    .filter((c) => c.type === "plotEssentials" && c.active)
+    .map((component) => ({
+      id: `plotEssentials:${component.id}`,
+      label: `Plot Essentials: ${component.title}`,
+      condition: `when the story has revealed new plot-essential information, completed significant events, or established new permanent facts that should be recorded in "${component.title}" — ignore minor flavour details, only fire for durable canon changes`,
+      sourceType: "component" as const,
+      actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
+    }));
+}
+
 function buildConditions(adventure: Adventure): SemanticCondition[] {
   if (!adventure.semanticEvaluationSettings.enabled) return [];
   return [
     ...activeSemanticRules(adventure),
     ...brainConditions(adventure),
+    ...plotEssentialsConditions(adventure),
     ...questStepConditions(adventure),
     ...autoCardConditions(adventure),
   ];
