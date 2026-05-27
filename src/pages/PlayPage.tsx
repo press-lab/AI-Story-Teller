@@ -109,7 +109,7 @@ export function PlayPage({
       {error && <div className="error-box">{error}</div>}
 
       <div className="play-main">
-        <div className="transcript" onClick={() => setComposerOpen(false)}>
+        <div className="transcript" onClick={() => { setComposerOpen(false); setEditingMessageId(undefined); }}>
           {adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
@@ -117,6 +117,7 @@ export function PlayPage({
             <article
               key={message.id}
               className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
+              onClick={editingMessageId === message.id ? (e) => e.stopPropagation() : undefined}
             >
               <div className="message-actions">
                 <button
