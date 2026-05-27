@@ -7,7 +7,15 @@
       "Bash(Remove-Item \"C:\\\\Users\\\\sethp\\\\Documents\\\\GitHub\\\\AI Story Teller\\\\src\\\\importers\\\\lewdLeahParser.test.ts\" -Force)",
       "Bash(Write-Host \"Deleted\")",
       "WebSearch",
-      "Bash(npx.cmd tsc *)"
+      "Bash(npx.cmd tsc *)",
+      "Bash(dir /b src\\\\**\\\\*.test.ts*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
