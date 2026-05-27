@@ -93,6 +93,8 @@ Continue the story in response to the player, then leave the scene open for thei
 
 END OPEN: Never resolve a decision for the player. End each response on an actionable moment, not a conclusion.
 
+PERSPECTIVE: Follow the perspective the player has established — first person, second person, or third person. Match it exactly. Do not override or reassign it.
+
 PLAYER INPUT MODES:
 - Messages starting with "You " are direct player actions. Continue the scene from them.
 - Plain narrative messages are story direction from the author. Incorporate and continue.
@@ -127,7 +129,7 @@ TONE: Match the tone the adventure has established. Do not break the fourth wall
       nextTurnNote: defaultNextTurnNote(),
       rawImports: [],
       stateFlags: {},
-      responseLengthHint: "medium",
+      responseLengthHint: 150,
     },
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
@@ -305,6 +307,12 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       stateFlags: adventure.activeState?.stateFlags ?? {},
       triggerLog: adventure.activeState?.triggerLog ?? [],
       forceIncludeNextTurn: adventure.activeState?.forceIncludeNextTurn ?? [],
+      // Coerce old string hints ("short"/"medium"/"long") from pre-slider saves to numbers
+      responseLengthHint: typeof adventure.activeState?.responseLengthHint === "number"
+        ? adventure.activeState.responseLengthHint
+        : adventure.activeState?.responseLengthHint === "short" ? 75
+        : adventure.activeState?.responseLengthHint === "long" ? 175
+        : 150,
     },
     brains: (adventure.brains ?? []).map((brain) => ({
       ...brain,

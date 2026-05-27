@@ -13,10 +13,21 @@ import type {
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { matchPatterns } from "../triggers/matching";
 
-const SYSTEM_SHELL = `You are the story engine for AI Story Teller.
-Use all supplied context in priority order.
-Treat component, card, brain, quest, and summary context as authoritative continuity.
-Continue the scene in prose and keep the player able to act.`;
+const SYSTEM_SHELL = `You are the story engine for AI Story Teller. The context below is assembled for you each turn.
+
+CONTEXT SECTIONS (read all, honour their order):
+  B. AI Instructions — narrative rules and style for this adventure.
+  C. Plot Essentials — permanent world facts and canon plot state. Ground truth.
+  E. Components — general world-building context (always-on or pinned entries).
+  F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.
+  G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
+  H. Quest State — active quest objectives.
+  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
+  D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
+  J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
+  K. Recent Messages — the most recent story turns in chronological order.
+
+Honour every section. Continue the scene in prose. Keep the player able to act.`;
 
 interface BuildOptions {
   currentInput?: string;
@@ -400,12 +411,13 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     systemSection,
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
-    section("authorNote", "D. Author's Note", 3, authorNoteItems),
-    section("components", "E. Components", 4, generalComponentItems),
-    section("storyCards", "F. Story Cards", 5, storyCardItems),
-    section("brains", "G. Brains", 6, brainItems),
-    section("questState", "H. Quest State", 7, questItems),
-    section("rollingSummary", "I. Rolling Summary", 8, summaryItems),
+    section("components", "E. Components", 3, generalComponentItems),
+    section("storyCards", "F. Story Cards", 4, storyCardItems),
+    section("brains", "G. Brains", 5, brainItems),
+    section("questState", "H. Quest State", 6, questItems),
+    section("rollingSummary", "I. Rolling Summary", 7, summaryItems),
+    // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
+    section("authorNote", "D. Author's Note", 8, authorNoteItems),
     section("nextTurnNote", "J. Next Output Bias", 9, nextTurnNoteItems),
     section("recentMessages", "K. Recent Messages", 10, recentMessageItems),
   ]);
@@ -543,12 +555,10 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     (proposal) => proposal.status === "pending",
   );
 
-  const lengthHintMap: Record<string, string> = {
-    short: "RESPONSE LENGTH: Short — aim for 1–3 tight paragraphs (~50–150 words).",
-    medium: "RESPONSE LENGTH: Medium — aim for 3–5 paragraphs (~150–300 words).",
-    long: "RESPONSE LENGTH: Long — aim for 5–8 paragraphs (~300–600 words), rich scene detail.",
-  };
-  const lengthHintText = lengthHintMap[adventure.activeState.responseLengthHint ?? "medium"];
+  const wordTarget = typeof adventure.activeState.responseLengthHint === "number"
+    ? Math.max(50, Math.min(200, adventure.activeState.responseLengthHint))
+    : 150;
+  const lengthHintText = `RESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
 
   return {
     messages: buildPayload(sections, finalRecentMessages, adventure.openingScene || undefined, lengthHintText),

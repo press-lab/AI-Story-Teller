@@ -36,16 +36,17 @@ describe("development adventure seed", () => {
     });
 
     const sectionIds = result.sections.map((section) => section.id);
+    // Author's Note appears after rolling summary (AID-style placement for maximum recency influence)
     expect(sectionIds).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
-      "authorNote",
       "components",
       "storyCards",
       "brains",
       "questState",
       "rollingSummary",
+      "authorNote",
       "nextTurnNote",
       "recentMessages",
     ]);

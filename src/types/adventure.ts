@@ -233,7 +233,8 @@ export interface ProviderRequestThrottle {
   maxRequestsPerMinute: number;
 }
 
-export type ResponseLengthHint = "short" | "medium" | "long";
+/** Target word count for AI responses (50–200). Injected into every turn as a RESPONSE LENGTH instruction. */
+export type ResponseLengthHint = number;
 
 export interface SemanticEvaluationSettings {
   evaluationModel: string;
@@ -601,7 +602,7 @@ export type AdventureAction =
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
-  | { type: "SET_RESPONSE_LENGTH_HINT"; hint: ResponseLengthHint }
+  | { type: "SET_RESPONSE_LENGTH_HINT"; hint: number }
   | { type: "SET_NEXT_TURN_NOTE"; note: Partial<NextTurnNote> }
   | { type: "CLEAR_NEXT_TURN_NOTE" }
   | { type: "CONSUME_NEXT_TURN_NOTE" }

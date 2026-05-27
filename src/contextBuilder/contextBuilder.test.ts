@@ -91,16 +91,17 @@ describe("buildContext", () => {
   it("assembles sections in the required deterministic order (A–K)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
     // All 11 sections must exist in the correct order
+    // Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
-      "authorNote",
       "components",
       "storyCards",
       "brains",
       "questState",
       "rollingSummary",
+      "authorNote",
       "nextTurnNote",
       "recentMessages",
     ]);
@@ -193,7 +194,8 @@ describe("buildContext", () => {
         { id: "middle", role: "assistant", content: "middle ".repeat(80), createdAt: "2026-01-01T00:01:00.000Z" },
         { id: "new", role: "user", content: "new ".repeat(80), createdAt: "2026-01-01T00:02:00.000Z" },
       ],
-      tokenBudgetSettings: budget({ maxContextTokens: 250, maxRecentMessages: 3, recentMessageWindow: 3, sectionBudgets: {} }),
+      // Budget sized to fit system-shell + exactly 1 message (newest), dropping the 2 older ones
+      tokenBudgetSettings: budget({ maxContextTokens: 400, maxRecentMessages: 3, recentMessageWindow: 3, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure);
@@ -215,7 +217,8 @@ describe("buildContext", () => {
         content: `${"front ".repeat(120)}keep-tail`,
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
-      tokenBudgetSettings: budget({ maxContextTokens: 240, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
+      // Budget leaves room for system-shell + partial truncated summary only
+      tokenBudgetSettings: budget({ maxContextTokens: 310, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure);
@@ -238,7 +241,8 @@ describe("buildContext", () => {
       quests: [],
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
-      tokenBudgetSettings: budget({ maxContextTokens: 250, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
+      // Budget sized to fit system-shell + high-priority card only
+      tokenBudgetSettings: budget({ maxContextTokens: 420, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure, { currentInput: "signal" });
@@ -641,16 +645,17 @@ describe("buildContext", () => {
       latestModelOutput: "The Beast howls at the ward.",
     });
 
+    // Author's Note placed after rolling summary (AID-style)
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
-      "authorNote",
       "components",
       "storyCards",
       "brains",
       "questState",
       "rollingSummary",
+      "authorNote",
       "nextTurnNote",
       "recentMessages",
     ]);

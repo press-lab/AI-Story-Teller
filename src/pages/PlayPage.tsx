@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { getCurrentQuestObjective } from "../quests/questEngine";
-import type { InputMode, Message, ResponseLengthHint } from "../types/adventure";
+import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -220,17 +220,19 @@ export function PlayPage({
             </button>
           ))}
           <span className="mode-sep" aria-hidden="true">|</span>
-          {(["short", "medium", "long"] as ResponseLengthHint[]).map((hint) => (
-            <button
-              key={hint}
-              type="button"
-              className={`mode-btn length-btn${adventure.activeState.responseLengthHint === hint ? " active" : ""}`}
-              title={{ short: "Short (~50–150 words)", medium: "Medium (~150–300 words)", long: "Long (~300–600 words)" }[hint]}
-              onClick={() => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint })}
-            >
-              {hint[0].toUpperCase()}
-            </button>
-          ))}
+          <label className="length-slider-label">
+            <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
+            <input
+              type="range"
+              className="length-slider"
+              min={50}
+              max={200}
+              step={10}
+              value={adventure.activeState.responseLengthHint ?? 150}
+              onChange={(event) => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: Number(event.target.value) })}
+              title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
+            />
+          </label>
           <span className="muted mode-hint">
             {inputMode === "do" && "Character action + quoted dialogue"}
             {inputMode === "story" && "Guide the narrative direction"}
