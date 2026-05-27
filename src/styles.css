@@ -1517,8 +1517,12 @@ summary {
   }
 
   .message-actions {
-    opacity: 1; /* always visible on touch devices */
+    opacity: 0; /* hidden until message is in edit mode */
     background: none;
+  }
+
+  .message.editing .message-actions {
+    opacity: 1;
   }
 
   .message-actions button {

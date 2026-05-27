@@ -59,6 +59,7 @@ export function PlayPage({
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editingArticleRef = useRef<HTMLElement | null>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
@@ -70,6 +71,17 @@ export function PlayPage({
   useEffect(() => {
     if (composerOpen) textareaRef.current?.focus();
   }, [composerOpen]);
+
+  useEffect(() => {
+    if (!editingMessageId) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (editingArticleRef.current && !editingArticleRef.current.contains(e.target as Node)) {
+        setEditingMessageId(undefined);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [editingMessageId]);
 
   function cycleMode(dir: 1 | -1) {
     const idx = MODES.indexOf(inputMode);
@@ -109,15 +121,15 @@ export function PlayPage({
       {error && <div className="error-box">{error}</div>}
 
       <div className="play-main">
-        <div className="transcript" onClick={() => { setComposerOpen(false); setEditingMessageId(undefined); }}>
+        <div className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
           {adventure.messages.map((message) => (
             <article
               key={message.id}
+              ref={(el) => { if (editingMessageId === message.id) editingArticleRef.current = el; }}
               className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
-              onClick={editingMessageId === message.id ? (e) => e.stopPropagation() : undefined}
             >
               <div className="message-actions">
                 <button
