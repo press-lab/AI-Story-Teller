@@ -60,12 +60,13 @@ export function PlayPage({
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editingArticleRef = useRef<HTMLElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
 
   useEffect(() => {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
   }, [adventure.messages.length]);
 
   useEffect(() => {
@@ -122,7 +123,12 @@ export function PlayPage({
 
       <div className="play-main">
         <div className="transcript" onClick={() => setComposerOpen(false)}>
-          {adventure.messages.length === 0 && (
+          {adventure.openingScene && (
+            <article className="message assistant opening-scene-message">
+              <p>{adventure.openingScene}</p>
+            </article>
+          )}
+          {!adventure.openingScene && adventure.messages.length === 0 && (
             <p className="muted">No turns yet. Set up your world, then start playing below.</p>
           )}
           {adventure.messages.map((message) => (
@@ -160,6 +166,7 @@ export function PlayPage({
               )}
             </article>
           ))}
+          <div ref={bottomRef} />
         </div>
 
         <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`}>
@@ -328,7 +335,7 @@ export function PlayPage({
               placeholder="One-turn instruction for the next AI response. Expires after use."
             />
           </Field>
-          <div className="grid four">
+          <div className="next-turn-note-controls">
             <CheckboxField
               label="Active"
               checked={nextTurnNote.active}

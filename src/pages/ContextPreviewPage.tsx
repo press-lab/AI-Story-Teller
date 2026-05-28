@@ -70,7 +70,7 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
             <details open>
               <summary>
                 Memory Proposals / Pending Updates · {result.pendingProposals.length} pending
-                {" "}(not in model context — review in Memory Inbox)
+                {" "}(not in model context — review in Memory Suggestions)
               </summary>
               {result.pendingProposals.map((proposal) => (
                 <details key={proposal.id} style={{ marginLeft: "1rem" }}>

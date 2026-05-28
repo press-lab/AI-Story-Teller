@@ -78,21 +78,13 @@ type TabId =
   | "importExport"
   | "help";
 
-const navGroups: NavGroup<TabId>[] = [
-  {
-    label: "Adventure",
-    items: [
-      { id: "adventures", label: "Library" },
-      { id: "dashboard", label: "Dashboard" },
-      { id: "play", label: "Play", emphasis: "primary" },
-    ],
-  },
+const adventureNavGroups: NavGroup<TabId>[] = [
   {
     label: "Memory",
     items: [
-      { id: "memoryInbox", label: "Inbox" },
+      { id: "memoryInbox", label: "Memory Suggestions" },
       { id: "storyCards", label: "Story Cards" },
-      { id: "brains", label: "Characters" },
+      { id: "brains", label: "Character Selves" },
       { id: "summary", label: "Summary" },
       { id: "chronicle", label: "Chronicle" },
     ],
@@ -110,10 +102,8 @@ const navGroups: NavGroup<TabId>[] = [
       { id: "context", label: "Context Preview" },
       { id: "triggers", label: "Automations" },
       { id: "importExport", label: "Import / Export" },
-      { id: "settings", label: "Settings" },
     ],
   },
-  { label: "Reference", items: [{ id: "help", label: "Documentation" }] },
 ];
 
 const modalTabs = new Set<TabId>([
@@ -136,12 +126,12 @@ const modalTitles: Partial<Record<TabId, string>> = {
   chronicle: "Adventure Chronicle",
   components: "World Blocks",
   storyCards: "Story Cards",
-  brains: "Characters",
+  brains: "Character Selves",
   autoCards: "Auto-Cards",
   triggers: "Automations",
   quests: "Quests",
   summary: "Story Summary",
-  memoryInbox: "Memory Inbox",
+  memoryInbox: "Memory Suggestions",
   settings: "Settings",
   importExport: "Import / Export",
 };
@@ -305,10 +295,14 @@ export default function App() {
 
   async function createAdventure(setup: NewAdventureSetup) {
     const baseline = createDefaultAdventure(setup.title);
+    const setupHasAiInstructions = setup.components.some((c) => c.type === "aiInstructions");
     const next = {
       ...baseline,
       openingScene: setup.openingScene,
-      components: [...baseline.components, ...setup.components],
+      components: [
+        ...baseline.components.filter((c) => !(setupHasAiInstructions && c.type === "aiInstructions")),
+        ...setup.components,
+      ],
       storyCards: setup.storyCards,
     };
     await saveAdventure(next);
@@ -647,6 +641,8 @@ export default function App() {
     if (!adventure) return null;
     const common = { adventure, dispatch };
     switch (tabId) {
+      case "chronicle":
+        return <ChroniclePage {...common} />;
       case "context":
         return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={buildPreview} />;
       case "components":
@@ -674,6 +670,12 @@ export default function App() {
             onProviderSettingsChange={setProviderSettings}
             darkMode={uiPreferences.darkMode}
             onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
+            cloudSyncSettings={cloudSyncSettings}
+            cloudSyncStatus={cloudSyncStatus}
+            onCloudSyncSettingsChange={setCloudSyncSettings}
+            onPushCloudSync={pushCloudSync}
+            onPullCloudSync={pullCloudSync}
+            onLoadDevelopmentAdventure={loadDevelopmentAdventure}
           />
         );
       case "importExport":
@@ -703,12 +705,6 @@ export default function App() {
           onOpen={openAdventure}
           onDuplicate={duplicateAdventure}
           onDelete={removeAdventure}
-          cloudSyncSettings={cloudSyncSettings}
-          cloudSyncStatus={cloudSyncStatus}
-          onCloudSyncSettingsChange={setCloudSyncSettings}
-          onPushCloudSync={pushCloudSync}
-          onPullCloudSync={pullCloudSync}
-          onLoadDevelopmentAdventure={loadDevelopmentAdventure}
         />
       );
     }
@@ -726,6 +722,12 @@ export default function App() {
           onProviderSettingsChange={setProviderSettings}
           darkMode={uiPreferences.darkMode}
           onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
+          cloudSyncSettings={cloudSyncSettings}
+          cloudSyncStatus={cloudSyncStatus}
+          onCloudSyncSettingsChange={setCloudSyncSettings}
+          onPushCloudSync={pushCloudSync}
+          onPullCloudSync={pullCloudSync}
+          onLoadDevelopmentAdventure={loadDevelopmentAdventure}
         />
       );
     }
@@ -792,6 +794,36 @@ export default function App() {
     }
   })();
 
+  const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
+
+  const navGroups: NavGroup<TabId>[] = [
+    {
+      label: "Adventure",
+      items: [
+        { id: "adventures", label: "Library" },
+        { id: "dashboard", label: "Dashboard" },
+        { id: "play", label: "Play", emphasis: "primary" },
+      ],
+    },
+    ...(adventure && !["adventures", "dashboard", "settings", "help"].includes(activeTab)
+      ? adventureNavGroups.map((group) => ({
+          ...group,
+          items: group.items.map((item) =>
+            item.id === "memoryInbox" && pendingProposalCount > 0
+              ? { ...item, badge: pendingProposalCount }
+              : item,
+          ),
+        }))
+      : []),
+    {
+      label: "App",
+      items: [
+        { id: "settings", label: "Settings" },
+        { id: "help", label: "Documentation" },
+      ],
+    },
+  ];
+
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -813,7 +845,7 @@ export default function App() {
 
       <Sidebar groups={navGroups} activeItem={modalTab ?? activeTab} onChange={openTab} />
 
-      <main className="main-content">
+      <main className={`main-content${activeTab === "play" ? " play-content" : ""}`}>
         {error && activeTab !== "play" && <div className="error-box">{error}</div>}
         {page}
       </main>

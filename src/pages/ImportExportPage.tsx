@@ -252,6 +252,16 @@ export function ImportExportPage({
 
   return (
     <section className="page">
+      <article className="panel">
+        <h3>Import / Export</h3>
+        <p className="muted">
+          Export downloads your full adventure as JSON — settings, cards, brains, messages, and all.
+          Import loads a previously exported JSON back into this browser.
+          The <strong>AI Dungeon importer</strong> converts AID scenario JSON (story cards + story text)
+          into a new adventure here. Exported files can be shared, backed up, or re-imported on another device.
+        </p>
+      </article>
+
       <div className="grid two">
         <article className="panel">
           <h3>Export Adventure</h3>

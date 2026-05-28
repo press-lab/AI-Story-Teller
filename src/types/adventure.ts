@@ -15,6 +15,7 @@ export interface Message {
 }
 
 export type ComponentType =
+  | "narrationRules"
   | "aiInstructions"
   | "plotEssentials"
   | "authorNote"

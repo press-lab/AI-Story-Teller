@@ -208,7 +208,19 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     }
   }
 
-  // B. AI Instructions — all active components with type === "aiInstructions"
+  // B. Narration Rules — components with type === "narrationRules" (loaded first, before AI Instructions)
+  const narrationRulesItems = prioritySort(adventure.components).flatMap((component) => {
+    if (component.type !== "narrationRules") return [];
+    if (!component.active) {
+      logExcludedOnce(component.id, component.title, "inactive");
+      return [];
+    }
+    const next = item(component.id, "component", component.title, component.content, component.priority, component.protected, component.pinned, component.active, component.inclusionPolicy, "user");
+    pushIncluded(next, `Narration Rules loaded; priority=${component.priority}; protected=${component.protected}.`);
+    return [next];
+  });
+
+  // B2. AI Instructions — all active components with type === "aiInstructions"
   const aiInstructionItems = prioritySort(adventure.components).flatMap((component) => {
     if (component.type !== "aiInstructions") return [];
     if (!component.active) {
@@ -246,7 +258,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   // E. Components — general always-on or pinned components (not a special typed section above)
   const generalComponentItems = prioritySort(adventure.components).flatMap((component) => {
-    if (component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote") return [];
+    if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote") return [];
     if (!component.active) {
       logExcludedOnce(component.id, component.title, "inactive");
       return [];
@@ -409,6 +421,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   let sections = recalculate([
     systemSection,
+    section("narrationRules", "A2. Narration Rules", 0, narrationRulesItems),
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
     section("components", "E. Components", 3, generalComponentItems),

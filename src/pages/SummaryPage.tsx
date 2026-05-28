@@ -8,6 +8,16 @@ interface SummaryPageProps extends AdventurePageProps {
 export function SummaryPage({ adventure, dispatch, loading, onGenerateSummary }: SummaryPageProps) {
   return (
     <section className="page">
+      <article className="panel">
+        <h3>Story Summary</h3>
+        <p className="muted">
+          The rolling summary is a compressed retelling of past events that gets sent to the model every turn —
+          keeping older story context alive even after those messages scroll out of the Recent Messages window.
+          The AI auto-generates it in the background every 20 turns (configurable in Settings).
+          You can edit it freely or regenerate it manually from the full Chronicle.
+        </p>
+      </article>
+
       <div className="toolbar">
         <button type="button" disabled={loading} onClick={onGenerateSummary}>
           {loading ? "Generating..." : "Generate Summary From History"}

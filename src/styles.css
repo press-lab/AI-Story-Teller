@@ -133,8 +133,9 @@ pre {
 .app-shell {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  grid-template-rows: auto auto;
-  min-height: 100vh;
+  grid-template-rows: auto 1fr;
+  height: 100vh;
+  overflow: hidden;
   max-width: 1600px;
   margin: 0 auto;
 }
@@ -187,13 +188,13 @@ pre {
 .sidebar {
   grid-column: 1;
   grid-row: 2;
-  align-self: start;
   background: var(--surface);
   border-right: 1px solid var(--border);
   padding: 10px 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
 }
 
 .nav-group {
@@ -254,13 +255,37 @@ pre {
   border-color: var(--active-bg);
 }
 
+.nav-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: auto;
+  float: right;
+}
+
 /* ── Main content area ──────────────────────────────── */
 
 .main-content {
   grid-column: 2;
   grid-row: 2;
+  min-height: 0;
   padding: 16px;
+  overflow-y: auto;
 }
+
+.main-content.play-content {
+  overflow: hidden;
+}
+
 
 /* ── Page layouts ───────────────────────────────────── */
 
@@ -331,6 +356,15 @@ pre {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.suggestion-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-meta .eyebrow {
+  margin: 0 0 6px;
 }
 
 .panel-heading h3 {
@@ -515,9 +549,12 @@ pre {
 
 .play-layout {
   grid-template-columns: minmax(0, 1fr) 260px;
-  max-width: 1200px;
-  margin: 0 auto;
-  align-items: start;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  align-items: stretch;
 }
 
 .play-layout > .error-box {
@@ -527,23 +564,28 @@ pre {
 .play-main {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  gap: 10px;
 }
 
 .play-sidebar {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
   position: sticky;
   top: 16px;
 }
 
 .play-header {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .play-header h2 {
@@ -559,7 +601,8 @@ pre {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
 }
 
 .token-strip span {
@@ -568,6 +611,10 @@ pre {
   background: var(--page-bg);
   padding: 4px 8px;
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 /* ── Next Turn Note (inline in play, replaces story setup section) ── */
@@ -589,14 +636,81 @@ pre {
   border-bottom: 1px solid var(--border);
 }
 
+.next-turn-note-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 10px;
+}
+
+.next-turn-note-controls .check-field {
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.next-turn-note-controls .check-field input {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.next-turn-note-controls .check-field span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .transcript {
   display: grid;
   gap: 0;
-  min-height: 260px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
-  padding: 20px 24px;
+  padding: 6px 24px 24px;
+}
+
+/* ── Story card group headers ────────────────────────── */
+
+.card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-group-label {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 2px 0;
+}
+
+.sort-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.sort-toggle button {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  min-height: 0;
+}
+
+.sort-toggle button.active {
+  background: var(--active-bg);
+  color: var(--active-text);
 }
 
 /* ── Prose-style messages (no chat bubbles) ──────────── */
@@ -614,6 +728,12 @@ pre {
 /* Story (user) and AI output look identical — just prose paragraphs */
 .message.user { }
 .message.assistant { }
+
+/* Opening scene — shown before any messages, no edit/delete controls */
+.opening-scene-message {
+  border-bottom-style: dashed;
+  opacity: 0.85;
+}
 
 /* Do mode: character action — subtle left accent */
 .message.mode-do {
@@ -682,8 +802,8 @@ pre {
 .composer {
   display: grid;
   gap: 8px;
-  position: sticky;
-  bottom: 12px;
+  flex: 0 0 auto;
+  position: static;
   z-index: 4;
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.08);
 }
@@ -1246,6 +1366,17 @@ summary {
   .app-shell {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main-content {
+    overflow-y: visible;
+  }
+
+  .main-content.play-content {
+    overflow-y: auto;
   }
 
   .sidebar {
@@ -1289,12 +1420,26 @@ summary {
 
   .play-layout {
     grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100%;
     max-width: 100%;
+    align-items: start;
   }
 
   .play-sidebar {
     position: static;
     order: -1;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .play-main {
+    height: auto;
+  }
+
+  .transcript {
+    min-height: 260px;
+    overflow-y: visible;
   }
 
   .modal-backdrop {
@@ -1505,7 +1650,7 @@ summary {
 
   .transcript {
     min-height: 30vh;
-    padding: 10px 12px;
+    padding: 10px 12px 120px;
   }
 
   .message {

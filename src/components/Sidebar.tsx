@@ -2,6 +2,7 @@ export interface NavItem<T extends string> {
   id: T;
   label: string;
   emphasis?: "primary";
+  badge?: number;
 }
 
 export interface NavGroup<T extends string> {
@@ -29,6 +30,9 @@ export function Sidebar<T extends string>({ groups, activeItem, onChange }: Side
               onClick={() => onChange(item.id)}
             >
               {item.label}
+              {item.badge != null && item.badge > 0 && (
+                <span className="nav-badge">{item.badge > 99 ? "99+" : item.badge}</span>
+              )}
             </button>
           ))}
         </div>

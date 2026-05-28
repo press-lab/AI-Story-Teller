@@ -81,20 +81,7 @@ function clampSummaryIndex(index: number | undefined, messageCount: number): num
   return Math.max(0, Math.min(Math.floor(index), messageCount));
 }
 
-export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
-  const timestamp = nowIso();
-  return {
-    id: createId("adv"),
-    title,
-    openingScene: "",
-    createdAt: timestamp,
-    updatedAt: timestamp,
-    metadata: {},
-    components: [
-      makeComponent({
-        title: "Global Generation Rules",
-        type: "aiInstructions",
-        content: `You are the narrator of a collaborative interactive fiction adventure.
+export const defaultNarrationRulesContent = `You are the narrator of a collaborative interactive fiction adventure.
 Continue the story in response to the player, then leave the scene open for their next action.
 
 END OPEN: Never resolve a decision for the player. End each response on an actionable moment, not a conclusion.
@@ -108,7 +95,22 @@ PLAYER INPUT MODES:
 
 CONTINUITY: All context sections (plot essentials, story cards, character brains, rolling summary) are established canon. Never contradict them. When details are absent, invent consistently with what is established.
 
-TONE: Match the tone the adventure has established. Do not break the fourth wall, moralize, or editorialize unless in [Out of Character] mode.`,
+TONE: Match the tone the adventure has established. Do not break the fourth wall, moralize, or editorialize unless in [Out of Character] mode.`;
+
+export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
+  const timestamp = nowIso();
+  return {
+    id: createId("adv"),
+    title,
+    openingScene: "",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    metadata: {},
+    components: [
+      makeComponent({
+        title: "Global Generation Rules",
+        type: "narrationRules",
+        content: defaultNarrationRulesContent,
         priority: 100,
         alwaysOn: true,
         pinned: true,
@@ -149,7 +151,7 @@ export function makeComponent(
 ): ComponentEntry {
   const timestamp = nowIso();
   const type = overrides.type ?? "custom";
-  const defaultProtected = type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
+  const defaultProtected = type === "narrationRules" || type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
   const alwaysOn = overrides.alwaysOn ?? false;
   return {
     id: overrides.id ?? createId("component"),
@@ -350,7 +352,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     })),
     components: (adventure.components ?? []).map((component) => {
       const defaultProtected =
-        component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote";
+        component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote";
       return {
         ...component,
         protected: component.protected ?? defaultProtected,

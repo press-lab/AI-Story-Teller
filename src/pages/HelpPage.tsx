@@ -71,7 +71,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
       <>
         <p>
           Dashboard is the default home screen for an open adventure. It shows the current scene, active
-          objective, context budget, character state, Memory Inbox status, and latest evaluation log.
+          objective, context budget, character state, Memory Suggestions status, and latest evaluation log.
         </p>
         <p>
           It also includes the AID-style turn controls, so you can play from the cockpit without opening
@@ -120,14 +120,14 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
   },
   {
     id: "side-menu-inbox",
-    title: "Inbox",
+    title: "Memory Suggestions",
     category: "Side Menu",
     summary: "Review pending AI-suggested memories before they become active context.",
-    tags: ["inbox", "memory inbox", "proposals", "approve", "reject"],
+    tags: ["memory suggestions", "inbox", "proposals", "approve", "reject"],
     body: (
       <>
         <p>
-          Inbox is the Memory Inbox. AI-suggested durable memories appear here as proposals with source
+          Memory Suggestions holds AI-suggested durable memories as proposals with source
           text, proposed type, rationale, confidence, and suggested triggers.
         </p>
         <p>
@@ -365,7 +365,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>Build deterministic context with <code>buildContext</code>.</li>
           <li>Send <code>ContextBuildResult.messages</code> to the provider.</li>
           <li>Add assistant output through the reducer.</li>
-          <li>Create Memory Inbox proposals when classifier output is significant.</li>
+          <li>Create Memory Suggestions proposals when classifier output is significant.</li>
           <li>Run output-side keyword and regex automations.</li>
           <li>Increment the turn, persist, and start async semantic evaluation.</li>
         </ol>
@@ -440,7 +440,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     id: "memory-surfaces",
     title: "Memory Surfaces",
     category: "Memory",
-    summary: "Chronicle, Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Inbox roles.",
+    summary: "Chronicle, Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Suggestions roles.",
     tags: ["memory", "chronicle", "summary", "next turn note", "story cards", "brains"],
     body: (
       <>
@@ -457,7 +457,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <dd>Opt-in state for major characters only. AI may update a Brain only if it already exists.</dd>
           <dt>Plot Essentials</dt>
           <dd>Tiny always-on current-state constraints.</dd>
-          <dt>Memory Inbox</dt>
+          <dt>Memory Suggestions</dt>
           <dd>Pending proposals. Nothing in the inbox becomes active context until approved.</dd>
         </dl>
       </>

@@ -13,15 +13,38 @@ interface BrainsPageProps extends AdventurePageProps {
 export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: BrainsPageProps) {
   return (
     <section className="page">
+      <p className="muted" style={{ margin: 0 }}>
+        Character Selves track the <strong>internal state</strong> of NPCs — what they know, feel, want, and believe right now.
+        The AI reads this context when writing their dialogue and actions, and updates it automatically after relevant scenes.
+        <strong> Current State</strong> is the primary summary sent to the model.
+        <strong> Thoughts, Relationship Pressure, Emotional Interpretation,</strong> and <strong>Recent Developments</strong> are
+        supplemental lenses the AI uses when regenerating the character's state.
+      </p>
+
       <div className="toolbar">
         <button type="button" onClick={() => dispatch({ type: "UPSERT_BRAIN", brain: makeBrain({ characterName: "New Character" }) })}>
-          Create Brain
+          Create Character Self
         </button>
       </div>
 
       <div className="list">
         {[...adventure.brains].sort((a, b) => b.priority - a.priority).map((brain) => (
           <article key={brain.id} className="card editor-card">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">{brain.active ? "active" : "inactive"}{brain.pinned ? " · pinned" : ""}</p>
+                <strong>{brain.characterName || "Unnamed"}</strong>
+              </div>
+              <div className="row">
+                <button type="button" disabled={loading} onClick={() => onUpdateBrainNow(brain.id)}>
+                  Update Now
+                </button>
+                <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_BRAIN", brainId: brain.id })}>
+                  Delete
+                </button>
+              </div>
+            </div>
+
             <div className="grid two">
               <Field label="Character Name">
                 <input
@@ -36,140 +59,137 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 />
               </Field>
             </div>
-            <Field label="Aliases">
+            <Field label="Aliases (comma-separated alternate names that trigger this brain)">
               <input
                 value={commaList(brain.aliases)}
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { aliases: fromCommaList(event.target.value) } })}
               />
             </Field>
-            <Field label="Triggers">
+            <Field label="Trigger Keys (comma-separated)">
               <input
                 value={commaList(brain.triggers)}
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { triggers: fromCommaList(event.target.value) } })}
               />
             </Field>
-            <Field label="Update Condition">
-              <textarea
-                rows={3}
-                value={brain.updateCondition}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updateCondition: event.target.value } })}
-              />
-            </Field>
-            <Field label="Update Prompt Override">
-              <textarea
-                rows={4}
-                value={brain.updatePrompt}
-                placeholder="Optional. Empty uses the default brain update prompt."
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updatePrompt: event.target.value } })}
-              />
-            </Field>
-            <div className="grid two">
-              <CheckboxField
-                label="Active"
-                checked={brain.active}
-                onChange={(checked) => dispatch({ type: checked ? "ACTIVATE_BRAIN" : "DEACTIVATE_BRAIN", brainId: brain.id })}
-              />
-              <CheckboxField
-                label="Pinned"
-                checked={brain.pinned}
-                onChange={(checked) => dispatch({ type: checked ? "PIN_BRAIN" : "UNPIN_BRAIN", brainId: brain.id })}
-              />
-              <CheckboxField
-                label="Protected from truncation"
-                checked={brain.protected}
-                onChange={(checked) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { protected: checked } })}
-              />
-              <Field label="Update Mode">
-                <select
-                  value={brain.updateMode}
-                  onChange={(event) =>
-                    dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updateMode: event.target.value as "replace" | "append" } })
-                  }
-                >
-                  <option value="replace">replace</option>
-                  <option value="append">append</option>
-                </select>
-              </Field>
-              <Field label="Inclusion Policy">
-                <select
-                  value={brain.inclusionPolicy}
-                  onChange={(event) =>
-                    dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { inclusionPolicy: event.target.value as ContextInclusionPolicy } })
-                  }
-                >
-                  {inclusionPolicies.map((policy) => (
-                    <option key={policy} value={policy}>
-                      {policy}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="Token Budget">
-              <NumberInput
-                value={brain.tokenBudget ?? 0}
-                min={0}
-                onChange={(value) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { tokenBudget: value || undefined } })}
-              />
-            </Field>
-            <Field label="Current State">
+            <Field label="Current State (sent to the model every turn this character is active)">
               <textarea
                 rows={4}
                 value={brain.currentState}
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { currentState: event.target.value } })}
               />
             </Field>
-            <Field label="Thoughts">
-              <textarea
-                rows={3}
-                value={brain.thoughts}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: event.target.value } })}
-              />
-            </Field>
-            <Field label="Relationship Pressure">
-              <textarea
-                rows={3}
-                value={brain.relationshipPressure}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { relationshipPressure: event.target.value } })}
-              />
-            </Field>
-            <Field label="Emotional Interpretation">
-              <textarea
-                rows={3}
-                value={brain.emotionalInterpretation}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { emotionalInterpretation: event.target.value } })}
-              />
-            </Field>
-            <Field label="Recent Developments">
-              <textarea
-                rows={3}
-                value={brain.recentDevelopments}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { recentDevelopments: event.target.value } })}
-              />
-            </Field>
-            <div className="grid two">
-              <Field label="Last Updated">
-                <input
-                  readOnly
-                  value={
-                    brain.lastUpdatedTurn === undefined
-                      ? "Never"
-                      : `Turn ${brain.lastUpdatedTurn}${brain.lastUpdatedAt ? ` at ${new Date(brain.lastUpdatedAt).toLocaleString()}` : ""}`
-                  }
+
+            <details>
+              <summary className="muted">Update Settings &amp; AI-Managed Fields</summary>
+
+              <Field label="Update Condition">
+                <textarea
+                  rows={3}
+                  value={brain.updateCondition}
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updateCondition: event.target.value } })}
                 />
               </Field>
-              <Field label="Last Generated Update Preview">
-                <textarea rows={3} readOnly value={brain.lastGeneratedUpdatePreview ?? ""} />
+              <Field label="Update Prompt Override">
+                <textarea
+                  rows={4}
+                  value={brain.updatePrompt}
+                  placeholder="Optional. Empty uses the default brain update prompt."
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updatePrompt: event.target.value } })}
+                />
               </Field>
-            </div>
-            <div className="row">
-              <button type="button" disabled={loading} onClick={() => onUpdateBrainNow(brain.id)}>
-                Update Now
-              </button>
-              <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_BRAIN", brainId: brain.id })}>
-                Delete
-              </button>
-            </div>
+              <div className="grid two">
+                <CheckboxField
+                  label="Active"
+                  checked={brain.active}
+                  onChange={(checked) => dispatch({ type: checked ? "ACTIVATE_BRAIN" : "DEACTIVATE_BRAIN", brainId: brain.id })}
+                />
+                <CheckboxField
+                  label="Pinned"
+                  checked={brain.pinned}
+                  onChange={(checked) => dispatch({ type: checked ? "PIN_BRAIN" : "UNPIN_BRAIN", brainId: brain.id })}
+                />
+                <CheckboxField
+                  label="Protected from truncation"
+                  checked={brain.protected}
+                  onChange={(checked) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { protected: checked } })}
+                />
+                <Field label="Update Mode">
+                  <select
+                    value={brain.updateMode}
+                    onChange={(event) =>
+                      dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { updateMode: event.target.value as "replace" | "append" } })
+                    }
+                  >
+                    <option value="replace">replace</option>
+                    <option value="append">append</option>
+                  </select>
+                </Field>
+                <Field label="Inclusion Policy">
+                  <select
+                    value={brain.inclusionPolicy}
+                    onChange={(event) =>
+                      dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { inclusionPolicy: event.target.value as ContextInclusionPolicy } })
+                    }
+                  >
+                    {inclusionPolicies.map((policy) => (
+                      <option key={policy} value={policy}>
+                        {policy}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Token Budget (0 = no limit)">
+                  <NumberInput
+                    value={brain.tokenBudget ?? 0}
+                    min={0}
+                    onChange={(value) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { tokenBudget: value || undefined } })}
+                  />
+                </Field>
+              </div>
+              <Field label="Thoughts (AI-written — what this character is thinking privately)">
+                <textarea
+                  rows={3}
+                  value={brain.thoughts}
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: event.target.value } })}
+                />
+              </Field>
+              <Field label="Relationship Pressure (AI-written — tensions or pulls toward specific people)">
+                <textarea
+                  rows={3}
+                  value={brain.relationshipPressure}
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { relationshipPressure: event.target.value } })}
+                />
+              </Field>
+              <Field label="Emotional Interpretation (AI-written — how this character reads the current scene)">
+                <textarea
+                  rows={3}
+                  value={brain.emotionalInterpretation}
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { emotionalInterpretation: event.target.value } })}
+                />
+              </Field>
+              <Field label="Recent Developments (AI-written — what just changed for this character)">
+                <textarea
+                  rows={3}
+                  value={brain.recentDevelopments}
+                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { recentDevelopments: event.target.value } })}
+                />
+              </Field>
+              <div className="grid two">
+                <Field label="Last Updated">
+                  <input
+                    readOnly
+                    value={
+                      brain.lastUpdatedTurn === undefined
+                        ? "Never"
+                        : `Turn ${brain.lastUpdatedTurn}${brain.lastUpdatedAt ? ` at ${new Date(brain.lastUpdatedAt).toLocaleString()}` : ""}`
+                    }
+                  />
+                </Field>
+                <Field label="Last Generated Update Preview">
+                  <textarea rows={3} readOnly value={brain.lastGeneratedUpdatePreview ?? ""} />
+                </Field>
+              </div>
+            </details>
           </article>
         ))}
       </div>

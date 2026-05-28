@@ -2,6 +2,7 @@ import type {
   Adventure,
   AdventureAction,
   AutoCardSettings,
+  CloudSyncSettings,
   MemoryPriorityMode,
   ProviderRequestThrottle,
   SemanticEvaluationSettings,
@@ -9,6 +10,21 @@ import type {
 } from "../types/adventure";
 import type { RuntimeProviderSettings } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
+import {
+  createDevelopmentAdventureJson,
+  createDevelopmentStoryCardsJson,
+  developmentAdventureTitle,
+} from "../dev/developmentAdventure";
+
+function downloadJson(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 const fallbackThrottle: ProviderRequestThrottle = {
   enabled: false,
@@ -23,6 +39,12 @@ interface SettingsPageProps {
   onProviderSettingsChange: (settings: RuntimeProviderSettings) => void;
   darkMode: boolean;
   onDarkModeChange: (darkMode: boolean) => void;
+  cloudSyncSettings?: CloudSyncSettings;
+  cloudSyncStatus?: string;
+  onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
+  onPushCloudSync?: () => Promise<void>;
+  onPullCloudSync?: () => Promise<void>;
+  onLoadDevelopmentAdventure?: () => Promise<void>;
 }
 
 export function SettingsPage({
@@ -32,7 +54,17 @@ export function SettingsPage({
   onProviderSettingsChange,
   darkMode,
   onDarkModeChange,
+  cloudSyncSettings,
+  cloudSyncStatus,
+  onCloudSyncSettingsChange,
+  onPushCloudSync,
+  onPullCloudSync,
+  onLoadDevelopmentAdventure,
 }: SettingsPageProps) {
+  function updateCloudSync(patch: Partial<CloudSyncSettings>) {
+    if (!cloudSyncSettings || !onCloudSyncSettingsChange) return;
+    onCloudSyncSettingsChange({ ...cloudSyncSettings, ...patch });
+  }
   function updateProvider(patch: Partial<RuntimeProviderSettings>) {
     const next = { ...providerSettings, ...patch };
     onProviderSettingsChange(next);
@@ -236,7 +268,7 @@ export function SettingsPage({
               />
               <p className="muted">
                 When on, all LLM-generated brain, story card, and Plot Essentials updates go to the
-                Inbox as proposals for your review instead of applying directly.
+                Memory Suggestions as proposals for your review instead of applying directly.
               </p>
             </article>
 
@@ -266,6 +298,116 @@ export function SettingsPage({
               </Field>
             </article>
           </>
+        )}
+
+        {cloudSyncSettings && onCloudSyncSettingsChange && (
+          <article className="panel cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Personal Cloud Sync</p>
+                <h3>Switch between phone and computer</h3>
+                <p className="muted">
+                  Sync all local adventures through a private GitHub repo while keeping this app hosted on GitHub Pages.
+                  The token is stored only in this browser's localStorage.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid three">
+              <Field label="GitHub token">
+                <input
+                  type="password"
+                  value={cloudSyncSettings.token}
+                  onChange={(event) => updateCloudSync({ token: event.target.value })}
+                  placeholder="Fine-grained token with repo contents access"
+                />
+              </Field>
+              <Field label="Owner / username">
+                <input
+                  value={cloudSyncSettings.owner}
+                  onChange={(event) => updateCloudSync({ owner: event.target.value })}
+                  placeholder="Leave blank to use token owner"
+                />
+              </Field>
+              <Field label="Private repo">
+                <input
+                  value={cloudSyncSettings.repo}
+                  onChange={(event) => updateCloudSync({ repo: event.target.value })}
+                />
+              </Field>
+            </div>
+
+            <div className="grid three">
+              <Field label="Branch">
+                <input
+                  value={cloudSyncSettings.branch}
+                  onChange={(event) => updateCloudSync({ branch: event.target.value })}
+                />
+              </Field>
+              <Field label="Sync file path">
+                <input
+                  value={cloudSyncSettings.path}
+                  onChange={(event) => updateCloudSync({ path: event.target.value })}
+                />
+              </Field>
+              <CheckboxField
+                label="Create private repo if missing"
+                checked={cloudSyncSettings.createPrivateRepoIfMissing}
+                onChange={(createPrivateRepoIfMissing) => updateCloudSync({ createPrivateRepoIfMissing })}
+              />
+            </div>
+
+            <div className="toolbar">
+              <button type="button" disabled={!onPullCloudSync} onClick={onPullCloudSync}>
+                Pull From GitHub
+              </button>
+              <button type="button" disabled={!onPushCloudSync} onClick={onPushCloudSync}>
+                Push To GitHub
+              </button>
+              {cloudSyncStatus && <span className="status-pill">{cloudSyncStatus}</span>}
+            </div>
+            <p className="notice">
+              Sync merges by adventure ID and keeps the newest <code>updatedAt</code> copy. It does not sync provider API keys.
+            </p>
+          </article>
+        )}
+
+        {onLoadDevelopmentAdventure && (
+          <details className="panel dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
+            <summary>Developer Test Adventure</summary>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Playtest Seed</p>
+                <h3>{developmentAdventureTitle}</h3>
+                <p className="muted">
+                  Loads a complete adult Fire Nation AU scenario with World Blocks, Story Cards, Characters,
+                  semantic triggers, a quest, a rolling summary, and one opening message. Use it to test live
+                  LLM updates without rebuilding setup by hand.
+                </p>
+              </div>
+            </div>
+            <div className="toolbar">
+              <button type="button" onClick={onLoadDevelopmentAdventure}>
+                Load Development Adventure
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadJson("ai-story-teller-dev-adventure.json", createDevelopmentAdventureJson())}
+              >
+                Download Adventure JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadJson("ai-story-teller-dev-story-cards.json", createDevelopmentStoryCardsJson())}
+              >
+                Download Story Cards JSON
+              </button>
+            </div>
+            <p className="notice">
+              The full adventure JSON can be re-uploaded through Import / Export. The Story Cards JSON can be
+              pasted or uploaded in New Adventure setup or the Story Cards editor.
+            </p>
+          </details>
         )}
       </div>
     </section>

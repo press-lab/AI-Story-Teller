@@ -32,7 +32,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
           <strong> Semantic</strong> triggers use the AI to evaluate natural-language conditions after the turn completes — they don't block the UI and run in the background.
         </p>
         <p className="muted">
-          Actions can update Story Cards, Brains, Plot Essentials, set state flags, or create Memory Inbox proposals.
+          Actions can update Story Cards, Brains, Plot Essentials, set state flags, or create Memory Suggestion proposals.
           Check the Trigger History and Evaluation Log panels to see what fired and why.
         </p>
       </article>

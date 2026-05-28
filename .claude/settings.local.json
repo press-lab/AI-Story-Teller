@@ -17,7 +17,17 @@
       "Bash(npx vitest *)",
       "Bash(npx tsc *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\sethp\\\\Documents\\\\GitHub\\\\AI Story Teller\\\\src\" -Recurse -Directory)",
-      "Bash(Select-Object FullName)"
+      "Bash(Select-Object FullName)",
+      "PowerShell(& \"$env:APPDATA\\\\Claude\\\\claude-code\\\\2.1.149\\\\claude.exe\" --version)",
+      "PowerShell($env:ANTHROPIC_API_KEY; $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC; $env:DISABLE_TELEMETRY; $env:CLAUDE_CODE_USE_BEDROCK; $env:CLAUDE_CODE_USE_VERTEX)",
+      "PowerShell($env:ANTHROPIC_API_KEY)",
+      "PowerShell($env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC)",
+      "PowerShell($env:DISABLE_TELEMETRY)",
+      "PowerShell($env:CLAUDE_CODE_USE_BEDROCK)",
+      "PowerShell($env:CLAUDE_CODE_USE_VERTEX)",
+      "PowerShell($claudeDir = \"$env:APPDATA\\\\Claude\\\\claude-code\\\\2.1.149\"; [Environment]::SetEnvironmentVariable\\(\"PATH\", \\([Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\) + \";$claudeDir\"\\), \"User\"\\); Write-Output \"Done. Added: $claudeDir\")",
+      "PowerShell(Get-ChildItem \"$env:APPDATA\\\\Claude\\\\claude-code\" -Depth 0 | Select-Object Name, LastWriteTime; Get-ChildItem \"$env:LOCALAPPDATA\\\\AnthropicClaude\" -Depth 1 -ErrorAction SilentlyContinue | Select-Object Name, LastWriteTime)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp"
     ]
   }
 }

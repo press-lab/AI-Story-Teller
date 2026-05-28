@@ -156,7 +156,7 @@ export function DashboardPage({
 
         <article className="panel cockpit-panel">
           <div className="panel-heading">
-            <h3>Memory Inbox</h3>
+            <h3>Memory Suggestions</h3>
             <button type="button" onClick={() => onOpenTab?.("memoryInbox")}>
               Review
             </button>

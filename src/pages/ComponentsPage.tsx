@@ -3,22 +3,26 @@ import { makeComponent } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
-const componentTypes: ComponentType[] = ["aiInstructions", "plotEssentials", "authorNote", "memory", "custom"];
+const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "authorNote"]);
+
+const activeComponentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "authorNote", "custom"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
 const TYPE_LABELS: Record<ComponentType, string> = {
+  narrationRules: "Narration Rules",
   aiInstructions: "AI Instructions",
   plotEssentials: "Plot Essentials",
   authorNote: "Author's Note",
-  memory: "Lore Block",
+  memory: "Lore Block (legacy)",
   custom: "Custom",
 };
 
 const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
-  aiInstructions: "Core narration rules — second-person POV, tone, format, perspective. Loaded first, protected by default.",
-  plotEssentials: "Tiny always-on current-state constraints that would change the AI's behavior right now. AI may update this with approval.",
-  authorNote: "Near-context narrative direction. Inserted close to recent messages for maximum influence on the next response.",
-  memory: "A durable world fact or always-on lore block. Loads every turn regardless of what's in the scene.",
+  narrationRules: "Global narration style — POV, tone, format, writing rules. Loaded first. One per adventure.",
+  aiInstructions: "Direct AI behavior rules that sit separately from narration style — model constraints, persona, safety scope. One per adventure.",
+  plotEssentials: "Tiny always-on current-state constraints that change the AI's behavior right now. AI may update with approval. One per adventure.",
+  authorNote: "Near-context narrative direction. Inserted close to recent messages for maximum influence on the next response. One per adventure.",
+  memory: "Legacy lore block. Move content to a Story Card with type Lore for triggered inclusion.",
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
 
@@ -38,20 +42,36 @@ function ComponentSummary({ component }: { component: ComponentEntry }) {
 }
 
 export function ComponentsPage({ adventure, dispatch }: AdventurePageProps) {
+  const existingTypes = new Set(adventure.components.map((c) => c.type));
+
+  const availableTypes = activeComponentTypes.filter(
+    (t) => !SINGLETON_TYPES.has(t) || !existingTypes.has(t),
+  );
+
   return (
     <section className="page">
       <p className="muted" style={{ margin: 0 }}>
         World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
-        Use them for core rules (AI Instructions), current plot state (Plot Essentials), narrative direction (Author's Note), and broad world lore (Lore Block).
-        For characters, places, and facts that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
+        Use them for narration rules, plot state, and author direction.
+        For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
+        <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons — one of each per adventure.
       </p>
 
       <div className="toolbar">
+        {availableTypes.filter((t) => SINGLETON_TYPES.has(t)).map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: TYPE_LABELS[type], content: "", type }) })}
+          >
+            Add {TYPE_LABELS[type]}
+          </button>
+        ))}
         <button
           type="button"
-          onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: "New Component", content: "" }) })}
+          onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: "New Block", content: "", type: "custom" }) })}
         >
-          Create World Block
+          Add Custom Block
         </button>
       </div>
 
@@ -75,7 +95,8 @@ export function ComponentsPage({ adventure, dispatch }: AdventurePageProps) {
                       dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { type: event.target.value as ComponentType } })
                     }
                   >
-                    {componentTypes.map((type) => (
+                    {/* Show current type always, then available types (excluding current) */}
+                    {[component.type, ...activeComponentTypes.filter((t) => t !== component.type && (!SINGLETON_TYPES.has(t) || !existingTypes.has(t)))].map((type) => (
                       <option key={type} value={type}>
                         {TYPE_LABELS[type]}
                       </option>

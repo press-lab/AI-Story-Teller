@@ -18,6 +18,17 @@ export function AutoCardsPage({ adventure, dispatch, loading, onGenerateAutoCard
 
   return (
     <section className="page">
+      <article className="panel">
+        <h3>Auto-Cards</h3>
+        <p className="muted">
+          Auto-Cards are <strong>AI-generated Story Cards</strong> — the model watches for new entities (characters, places, objects)
+          matching your detection condition and proposes a card for each one. Generated cards land in the Review Queue for your approval
+          before entering the active card pool.
+          <strong> The settings panel</strong> controls when generation triggers and what the AI is told to write.
+          Each approved card behaves like a normal Story Card: triggered by keywords, updated on a cooldown, and included in context only when relevant.
+        </p>
+      </article>
+
       <div className="toolbar">
         <button type="button" onClick={() => dispatch({ type: "UPSERT_AUTO_CARD", autoCard: makeAutoCard({ title: "New Auto-Card", content: "" }) })}>
           Create Auto-Card
