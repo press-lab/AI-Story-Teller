@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Sidebar, type NavGroup } from "./components/Sidebar";
 import { buildContext } from "./contextBuilder/contextBuilder";
 import {
   deleteAdventure,
@@ -64,6 +63,7 @@ type TabId =
   | "adventures"
   | "dashboard"
   | "play"
+  | "edit"
   | "chronicle"
   | "context"
   | "components"
@@ -78,33 +78,32 @@ type TabId =
   | "importExport"
   | "help";
 
-const adventureNavGroups: NavGroup<TabId>[] = [
-  {
-    label: "Memory",
-    items: [
-      { id: "memoryInbox", label: "Memory Suggestions" },
-      { id: "storyCards", label: "Story Cards" },
-      { id: "brains", label: "Character Selves" },
-      { id: "summary", label: "Summary" },
-      { id: "chronicle", label: "Chronicle" },
-    ],
-  },
-  {
-    label: "World",
-    items: [
-      { id: "components", label: "World Blocks" },
-      { id: "autoCards", label: "Auto-Cards" },
-    ],
-  },
-  {
-    label: "Inspector",
-    items: [
-      { id: "context", label: "Context Preview" },
-      { id: "triggers", label: "Automations" },
-      { id: "importExport", label: "Import / Export" },
-    ],
-  },
+type EditorTabId =
+  | "components"
+  | "storyCards"
+  | "brains"
+  | "memoryInbox"
+  | "summary"
+  | "chronicle"
+  | "autoCards"
+  | "triggers"
+  | "context"
+  | "importExport";
+
+const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
+  { id: "components", label: "Plot" },
+  { id: "storyCards", label: "Story Cards" },
+  { id: "brains", label: "Characters" },
+  { id: "memoryInbox", label: "Memory", badge: "memory" },
+  { id: "summary", label: "Summary" },
+  { id: "chronicle", label: "Chronicle" },
+  { id: "autoCards", label: "Auto-Cards" },
+  { id: "triggers", label: "Automation" },
+  { id: "context", label: "Context" },
+  { id: "importExport", label: "Import / Export" },
 ];
+
+const editorTabIds = new Set<TabId>(editorTabs.map((tab) => tab.id));
 
 const modalTabs = new Set<TabId>([
   "context",
@@ -151,6 +150,7 @@ function providerConfig(adventure: Adventure, settings: RuntimeProviderSettings)
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("adventures");
+  const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
@@ -226,7 +226,22 @@ export default function App() {
     setAdventure((current) => (current ? adventureReducer(current, action) : current));
   }, []);
 
+  function openEditor(tabId: EditorTabId = "components") {
+    setModalTab(undefined);
+    setEditorTab(tabId);
+    setActiveTab("edit");
+  }
+
   function openTab(tabId: TabId) {
+    if (adventure && editorTabIds.has(tabId)) {
+      openEditor(tabId as EditorTabId);
+      return;
+    }
+    if (["adventures", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
+      setModalTab(undefined);
+      setActiveTab(tabId);
+      return;
+    }
     if (adventure && modalTabs.has(tabId)) {
       setModalTab(tabId);
       return;
@@ -308,7 +323,7 @@ export default function App() {
     await saveAdventure(next);
     setAdventure(next);
     setModalTab(undefined);
-    setActiveTab("play");
+    setActiveTab("dashboard");
     await refreshAdventures();
   }
 
@@ -318,7 +333,7 @@ export default function App() {
     setAdventure(next);
     setContextResult(buildContext(next, { latestModelOutput: latestAssistantOutput(next) }));
     setModalTab(undefined);
-    setActiveTab("play");
+    setActiveTab("dashboard");
     await refreshAdventures();
   }
 
@@ -378,7 +393,7 @@ export default function App() {
     setAdventure(next);
     setContextResult(undefined);
     setModalTab(undefined);
-    setActiveTab("play");
+    setActiveTab("dashboard");
   }
 
   async function duplicateAdventure(id: string) {
@@ -388,7 +403,7 @@ export default function App() {
     await saveAdventure(copy);
     setAdventure(copy);
     setModalTab(undefined);
-    setActiveTab("play");
+    setActiveTab("dashboard");
     await refreshAdventures();
   }
 
@@ -408,7 +423,7 @@ export default function App() {
       await saveAdventure(next);
       setAdventure(next);
       setModalTab(undefined);
-      setActiveTab("play");
+      setActiveTab("dashboard");
       await refreshAdventures();
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : "Import failed.");
@@ -695,6 +710,8 @@ export default function App() {
     }
   }
 
+  const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
+
   const page = (() => {
     if (activeTab === "adventures") {
       return (
@@ -754,7 +771,7 @@ export default function App() {
             onContinue={continueTurn}
             onRegenerate={regenerateLastResponse}
             onBuildContext={buildPreview}
-            onOpenContext={() => openTab("context")}
+            onOpenContext={() => openEditor("context")}
             onRememberThis={rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
           />
@@ -771,10 +788,47 @@ export default function App() {
             onContinue={continueTurn}
             onRegenerate={regenerateLastResponse}
             onBuildContext={buildPreview}
-            onOpenContext={() => openTab("context")}
+            onOpenContext={() => openEditor("context")}
             onRememberThis={rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
           />
+        );
+      case "edit":
+        return (
+          <section className="page editor-workspace">
+            <header className="editor-header panel">
+              <div>
+                <p className="eyebrow">Edit Adventure</p>
+                <h2>{adventure.title}</h2>
+                <p className="muted">{saveStatus}</p>
+              </div>
+              <div className="editor-header-actions">
+                <button type="button" onClick={() => setActiveTab("play")}>
+                  Play
+                </button>
+                <button type="button" onClick={() => setActiveTab("dashboard")}>
+                  Finish
+                </button>
+              </div>
+            </header>
+            <nav className="editor-tabs" aria-label="Adventure editor">
+              {editorTabs.map((tab) => {
+                const badge = tab.badge === "memory" ? pendingProposalCount : 0;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={editorTab === tab.id ? "active" : ""}
+                    onClick={() => setEditorTab(tab.id)}
+                  >
+                    {tab.label}
+                    {badge > 0 && <span className="nav-badge">{badge > 99 ? "99+" : badge}</span>}
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="editor-body">{renderAdventureTool(editorTab)}</div>
+          </section>
         );
       case "chronicle":
         return <ChroniclePage {...common} />;
@@ -794,35 +848,7 @@ export default function App() {
     }
   })();
 
-  const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
-
-  const navGroups: NavGroup<TabId>[] = [
-    {
-      label: "Adventure",
-      items: [
-        { id: "adventures", label: "Library" },
-        { id: "dashboard", label: "Dashboard" },
-        { id: "play", label: "Play", emphasis: "primary" },
-      ],
-    },
-    ...(adventure && !["adventures", "dashboard", "settings", "help"].includes(activeTab)
-      ? adventureNavGroups.map((group) => ({
-          ...group,
-          items: group.items.map((item) =>
-            item.id === "memoryInbox" && pendingProposalCount > 0
-              ? { ...item, badge: pendingProposalCount }
-              : item,
-          ),
-        }))
-      : []),
-    {
-      label: "App",
-      items: [
-        { id: "settings", label: "Settings" },
-        { id: "help", label: "Documentation" },
-      ],
-    },
-  ];
+  const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
 
   return (
     <div className="app-shell">
@@ -831,8 +857,56 @@ export default function App() {
           <h1>AI Story Teller</h1>
           {adventure && <p className="muted">{adventure.title}</p>}
         </div>
+        <nav className="app-nav" aria-label="Primary">
+          <button
+            type="button"
+            className={activeTopTab === "adventures" ? "active" : ""}
+            onClick={() => openTab("adventures")}
+          >
+            Library
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "dashboard" ? "active" : ""}
+            disabled={!adventure}
+            onClick={() => openTab("dashboard")}
+          >
+            Adventure
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "play" ? "active primary" : "primary"}
+            disabled={!adventure}
+            onClick={() => openTab("play")}
+          >
+            Play
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "edit" ? "active" : ""}
+            disabled={!adventure}
+            onClick={() => openEditor(editorTab)}
+          >
+            Edit
+            {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
+          </button>
+        </nav>
         <div className="header-meta">
           {adventure && <span className="status-pill">{saveStatus}</span>}
+          <button
+            type="button"
+            className={activeTopTab === "settings" ? "theme-toggle active" : "theme-toggle"}
+            onClick={() => openTab("settings")}
+          >
+            Settings
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "help" ? "theme-toggle active" : "theme-toggle"}
+            onClick={() => openTab("help")}
+          >
+            Docs
+          </button>
           <button
             type="button"
             className="theme-toggle"
@@ -843,9 +917,7 @@ export default function App() {
         </div>
       </header>
 
-      <Sidebar groups={navGroups} activeItem={modalTab ?? activeTab} onChange={openTab} />
-
-      <main className={`main-content${activeTab === "play" ? " play-content" : ""}`}>
+      <main className={`main-content${activeTab === "play" ? " play-content" : ""}${activeTab === "edit" ? " edit-content" : ""}`}>
         {error && activeTab !== "play" && <div className="error-box">{error}</div>}
         {page}
       </main>

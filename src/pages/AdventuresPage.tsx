@@ -450,17 +450,25 @@ export function AdventuresPage({
   }
 
   return (
-    <section className="page">
-      <div className="panel-heading">
-        <h3>Library</h3>
-        <button type="button" onClick={() => setView("create")}>
+    <section className="page library-page">
+      <header className="library-header">
+        <div>
+          <p className="eyebrow">Library</p>
+          <h2>Choose an adventure</h2>
+          <p className="muted">Continue a saved story, duplicate a setup, or start a new world.</p>
+        </div>
+        <button type="button" className="primary-action" onClick={() => setView("create")}>
           New Adventure
         </button>
-      </div>
-      <div className="list">
+      </header>
+      <div className="library-grid">
         {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}
         {adventures.map((adventure) => (
-          <article key={adventure.id} className="card">
+          <article key={adventure.id} className="library-card">
+            <div className="library-card-cover" aria-hidden="true">
+              <span>{adventure.title.slice(0, 1).toUpperCase()}</span>
+            </div>
+            <div className="library-card-body">
             <div>
               <h3>{adventure.title}</h3>
               <p className="muted">
@@ -469,9 +477,9 @@ export function AdventuresPage({
               </p>
               {currentAdventure?.id === adventure.id && <p className="status-pill">Open</p>}
             </div>
-            <div className="row">
-              <button type="button" onClick={() => onOpen(adventure.id)}>
-                Open
+            <div className="library-card-actions">
+              <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
+                Continue
               </button>
               <button type="button" onClick={() => onDuplicate(adventure.id)}>
                 Duplicate
@@ -479,6 +487,7 @@ export function AdventuresPage({
               <button type="button" className="danger" onClick={() => onDelete(adventure.id)}>
                 Delete
               </button>
+            </div>
             </div>
           </article>
         ))}

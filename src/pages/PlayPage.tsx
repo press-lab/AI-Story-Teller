@@ -64,6 +64,7 @@ export function PlayPage({
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
+  const pendingMemoryCount = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
@@ -325,6 +326,36 @@ export function PlayPage({
             )}
           </div>
         </header>
+        <nav className="panel play-tool-drawer" aria-label="Adventure tools">
+          <p className="eyebrow">Adventure Tools</p>
+          <div className="play-tool-grid">
+            <button type="button" onClick={() => onOpenTab?.("components")}>
+              Plot
+            </button>
+            <button type="button" onClick={() => onOpenTab?.("storyCards")}>
+              Cards
+            </button>
+            <button type="button" onClick={() => onOpenTab?.("brains")}>
+              Characters
+            </button>
+            <button type="button" onClick={() => onOpenTab?.("memoryInbox")}>
+              Memory
+              {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onBuildContext();
+                onOpenContext();
+              }}
+            >
+              Context
+            </button>
+            <button type="button" onClick={() => onOpenTab?.("edit")}>
+              Edit All
+            </button>
+          </div>
+        </nav>
         <details className="panel next-turn-note">
           <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
           <Field label="Visible next-output steering note">

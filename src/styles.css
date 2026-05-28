@@ -132,23 +132,19 @@ pre {
 
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-rows: auto 1fr;
   height: 100vh;
   overflow: hidden;
-  max-width: 1600px;
-  margin: 0 auto;
 }
 
 .app-header {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
+  padding: 10px clamp(14px, 2vw, 28px);
 }
 
 .app-title h1 {
@@ -160,6 +156,52 @@ pre {
 .app-title p {
   margin: 2px 0 0;
   font-size: 13px;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.app-nav button,
+.editor-tabs button,
+.quick-edit-strip button,
+.play-tool-grid button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.app-nav button {
+  min-height: 34px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.app-nav button:hover:not(:disabled),
+.app-nav button.active {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+.app-nav button.primary {
+  border-color: #d89425;
+  background: #f0a82f;
+  color: #1e1608;
+}
+
+.app-nav button.primary:hover:not(:disabled),
+.app-nav button.primary.active {
+  background: #ffbb45;
+  color: #160f05;
 }
 
 .header-meta {
@@ -181,6 +223,11 @@ pre {
   font-size: 12px;
   padding: 4px 10px;
   min-height: 28px;
+}
+
+.theme-toggle.active {
+  background: var(--control-hover);
+  color: var(--text);
 }
 
 /* ── Sidebar nav ────────────────────────────────────── */
@@ -275,14 +322,17 @@ pre {
 /* ── Main content area ──────────────────────────────── */
 
 .main-content {
-  grid-column: 2;
   grid-row: 2;
   min-height: 0;
-  padding: 16px;
+  padding: clamp(14px, 2vw, 28px);
   overflow-y: auto;
 }
 
 .main-content.play-content {
+  overflow: hidden;
+}
+
+.main-content.edit-content {
   overflow: hidden;
 }
 
@@ -547,6 +597,260 @@ pre {
   gap: 8px;
 }
 
+.library-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.library-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+
+.library-header h2 {
+  margin: 0 0 4px;
+  font-size: clamp(26px, 4vw, 42px);
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.library-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 0.08);
+}
+
+.library-card-cover {
+  min-height: 150px;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+  background:
+    linear-gradient(90deg, rgb(26 14 12 / 0.84), rgb(70 28 15 / 0.36), rgb(12 20 21 / 0.2)),
+    linear-gradient(145deg, #35110d 0%, #783016 42%, #1e3a3a 100%);
+  color: #ffe7c4;
+}
+
+.library-card-cover span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(255 255 255 / 0.25);
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.22);
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.library-card-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.library-card h3 {
+  margin: 0 0 4px;
+}
+
+.library-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.adventure-detail-page {
+  max-width: 1120px;
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.adventure-hero-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.08);
+}
+
+.adventure-cover {
+  min-height: clamp(220px, 32vh, 360px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 28px;
+  background:
+    linear-gradient(90deg, rgb(26 14 12 / 0.9), rgb(54 22 15 / 0.35), rgb(18 22 22 / 0.1)),
+    linear-gradient(155deg, #35110d 0%, #7a2c17 34%, #242d2d 66%, #111514 100%);
+}
+
+.adventure-cover-mark {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid rgb(255 255 255 / 0.24);
+  border-radius: 10px;
+  background: rgb(0 0 0 / 0.24);
+  color: #ffe7c4;
+  font-size: 42px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.22);
+}
+
+.adventure-hero-body {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px;
+}
+
+.adventure-hero-body h2 {
+  margin: 0 0 4px;
+  font-size: clamp(28px, 4vw, 48px);
+  line-height: 1.05;
+}
+
+.adventure-hero-actions,
+.editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+button.primary-action,
+.editor-header-actions button:last-child {
+  border-color: #d89425;
+  background: #f0a82f;
+  color: #1e1608;
+  font-weight: 800;
+}
+
+button.primary-action:hover:not(:disabled),
+.editor-header-actions button:last-child:hover:not(:disabled) {
+  background: #ffbb45;
+}
+
+.adventure-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+}
+
+.adventure-prose-panel,
+.adventure-stats-panel {
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.adventure-prose-panel p:last-child {
+  margin: 0;
+  max-width: 78ch;
+  white-space: pre-wrap;
+  line-height: 1.75;
+  font-size: 16px;
+}
+
+.adventure-stats-panel {
+  display: grid;
+  gap: 0;
+}
+
+.adventure-stat {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+
+.adventure-stat:first-child {
+  padding-top: 0;
+}
+
+.adventure-stat span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.adventure-stat strong {
+  max-width: 210px;
+  text-align: right;
+}
+
+.quick-edit-strip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quick-edit-strip button {
+  min-height: 38px;
+  background: var(--surface);
+}
+
+.editor-workspace {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.editor-header h2 {
+  margin: 0 0 4px;
+}
+
+.editor-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.editor-tabs button {
+  min-height: 38px;
+  flex: 0 0 auto;
+  border-color: transparent;
+  background: var(--surface-soft);
+  color: var(--button-text);
+}
+
+.editor-tabs button.active {
+  border-color: var(--active-bg);
+  background: var(--active-bg);
+  color: var(--active-text);
+}
+
+.editor-body {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+}
+
 .play-layout {
   grid-template-columns: minmax(0, 1fr) 260px;
   width: 100%;
@@ -618,6 +922,29 @@ pre {
 }
 
 /* ── Next Turn Note (inline in play, replaces story setup section) ── */
+
+.play-tool-drawer {
+  display: grid;
+  gap: 8px;
+}
+
+.play-tool-drawer .eyebrow {
+  margin: 0;
+}
+
+.play-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.play-tool-grid button {
+  min-width: 0;
+  min-height: 36px;
+  white-space: normal;
+  background: var(--surface-soft);
+  font-size: 12px;
+}
 
 .next-turn-note {
   font-size: 14px;
@@ -1365,10 +1692,26 @@ summary {
 @media (max-width: 860px) {
   .app-shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto minmax(0, 1fr);
     height: auto;
     min-height: 100vh;
     overflow: visible;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+  }
+
+  .app-title {
+    min-width: 180px;
+  }
+
+  .app-nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-top: 4px;
   }
 
   .main-content {
@@ -1407,15 +1750,22 @@ summary {
 
   .main-content {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 2;
   }
 
   .grid.two,
   .grid.three,
   .grid.four,
   .dashboard-grid,
-  .docs-layout {
+  .docs-layout,
+  .adventure-detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .adventure-hero-body,
+  .editor-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .play-layout {
@@ -1500,7 +1850,7 @@ summary {
     max-width: none;
     height: 100dvh;
     min-height: 100dvh;
-    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .app-header {
@@ -1606,7 +1956,8 @@ summary {
   }
 
   .dashboard-page,
-  .play-layout {
+  .play-layout,
+  .adventure-detail-page {
     max-width: none;
   }
 
@@ -1623,6 +1974,27 @@ summary {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adventure-cover {
+    min-height: 190px;
+    padding: 18px;
+  }
+
+  .adventure-hero-actions,
+  .editor-header-actions,
+  .quick-edit-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .editor-workspace {
+    height: auto;
+  }
+
+  .editor-body {
+    overflow: visible;
   }
 
   .cockpit-panel {
