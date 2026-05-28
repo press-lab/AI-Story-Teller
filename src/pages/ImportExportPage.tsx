@@ -285,8 +285,29 @@ export function ImportExportPage({
 
       <article className="panel">
         <h3>Import from AI Dungeon</h3>
+        <p className="muted">
+          Quick path: upload your AID <strong>.json</strong> export file below — the importer will auto-detect the story and cards.
+          Or use the step-by-step wizard for full control.
+        </p>
+        <Field label="Upload AID JSON file (quick import)">
+          <input
+            type="file"
+            accept=".json,application/json"
+            onChange={async (event) => {
+              const texts = await readFiles(event);
+              if (!texts.length) return;
+              const merged = mergeAidStoryParseResults(texts.map(parseAidStoryText));
+              applyAidStoryResult(merged);
+              // Also try to parse cards from the same file
+              const mergedCards = mergeAidCardParseResults(texts.map(parseAidStoryCards));
+              if (mergedCards.cards.length > 0) applyAidCardResult(mergedCards);
+              setAidOpen(true);
+              setAidStep(3);
+            }}
+          />
+        </Field>
         <button type="button" onClick={() => setAidOpen((open) => !open)}>
-          {aidOpen ? "Collapse AI Dungeon Import" : "Expand AI Dungeon Import"}
+          {aidOpen ? "Collapse step-by-step wizard" : "Step-by-step wizard (advanced)"}
         </button>
 
         {aidOpen && (

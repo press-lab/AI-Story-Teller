@@ -70,6 +70,10 @@ body,
   min-height: 100%;
 }
 
+h1, h2, h3, h4 {
+  font-weight: 500;
+}
+
 button,
 input,
 select,
@@ -166,8 +170,9 @@ pre {
 
 .app-brand {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
 }
 
 .app-title .muted {
@@ -871,7 +876,7 @@ button.primary-action,
   border-color: #d89425;
   background: #f0a82f;
   color: #1e1608;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 button.primary-action:hover:not(:disabled),
@@ -1426,6 +1431,60 @@ button.active-tool {
   font-weight: 600;
 }
 
+/* ── Play right panel (AID-style tool drawer) ─────── */
+
+.app-shell.has-play-panel {
+  grid-template-columns: var(--sidebar-width) 1fr 400px;
+}
+
+.play-right-panel {
+  grid-column: 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.play-right-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.play-right-panel-header .eyebrow {
+  margin: 0 0 2px;
+}
+
+.play-right-panel-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.play-right-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+
+/* Context trim warning badge */
+.trim-warning {
+  border: 1px solid var(--notice-border);
+  border-radius: 6px;
+  background: var(--notice-bg);
+  padding: 3px 7px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: help;
+  white-space: nowrap;
+}
+
 /* Modal tools */
 
 .modal-backdrop {
@@ -1978,6 +2037,19 @@ summary {
   .docs-layout {
     grid-template-rows: auto minmax(0, 1fr);
   }
+
+  /* Play right panel: collapse grid back to 1 column, stack panel below */
+  .app-shell.has-play-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .play-right-panel {
+    grid-column: 1;
+    grid-row: 3;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    max-height: 50vh;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2443,5 +2515,21 @@ summary {
     overflow: visible;
     min-height: 0;
     padding-right: 0;
+  }
+
+  /* Play right panel: full-screen overlay on phone */
+  .play-right-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    grid-column: unset;
+    grid-row: unset;
+    border-left: none;
+    border-top: none;
+    max-height: none;
+  }
+
+  .play-right-panel-header {
+    padding: calc(10px + env(safe-area-inset-top)) 14px 10px;
   }
 }

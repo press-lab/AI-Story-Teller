@@ -109,7 +109,14 @@ function actionsFromJson(value: unknown): unknown[] | undefined {
         .flatMap((item) => (item as { actions: unknown[] }).actions);
     }
   }
-  if (isRecord(value) && Array.isArray(value.actions)) return value.actions;
+  if (isRecord(value)) {
+    // Direct actions array on the top-level object
+    if (Array.isArray(value.actions)) return value.actions;
+    // Nested inside `adventure` (some AID export formats)
+    if (isRecord(value.adventure) && Array.isArray(value.adventure.actions)) return value.adventure.actions as unknown[];
+    // Nested inside `data`
+    if (isRecord(value.data) && Array.isArray(value.data.actions)) return value.data.actions as unknown[];
+  }
   return undefined;
 }
 

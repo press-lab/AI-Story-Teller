@@ -52,6 +52,7 @@ export function PlayPage({
   onOpenContext,
   onRememberThis,
   onOpenTab,
+  onOpenPlayTool,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("story");
@@ -68,6 +69,26 @@ export function PlayPage({
   const nextTurnNote = adventure.activeState.nextTurnNote;
   const pendingMemoryCount = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
   const thumbnail = getAdventureThumbnail(adventure);
+
+  // Context trim info — what was dropped from context due to token budget
+  const budgetDropped = contextResult?.excludedItems.filter((i) => i.reason === "budget_exceeded") ?? [];
+  const droppedMessages = budgetDropped.filter((i) => i.sourceType === "message").length;
+  const droppedCards = budgetDropped.filter((i) => i.sourceType === "storyCard" || i.sourceType === "autoCard").length;
+  const summaryTruncated = budgetDropped.some((i) => i.sourceType === "summary");
+  const totalDropped = budgetDropped.length;
+  const trimTooltip = [
+    droppedMessages > 0 && `${droppedMessages} story turn${droppedMessages !== 1 ? "s" : ""} dropped`,
+    droppedCards > 0 && `${droppedCards} story card${droppedCards !== 1 ? "s" : ""} dropped`,
+    summaryTruncated && "summary truncated",
+  ].filter(Boolean).join(" · ");
+
+  function openTool(tabId: string) {
+    if (onOpenPlayTool) {
+      onOpenPlayTool(tabId);
+    } else {
+      onOpenTab?.(tabId);
+    }
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
@@ -325,6 +346,11 @@ export function PlayPage({
           </div>
           <div className="token-strip">
             <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
+            {totalDropped > 0 && (
+              <span className="trim-warning" title={trimTooltip || "Context trimmed to fit token budget"}>
+                ⚠ {totalDropped} dropped
+              </span>
+            )}
             {getCurrentQuestObjective(adventure.quests) && (
               <span>{getCurrentQuestObjective(adventure.quests)}</span>
             )}
@@ -333,16 +359,16 @@ export function PlayPage({
         <nav className="panel play-tool-drawer" aria-label="Adventure tools">
           <p className="eyebrow">Adventure Tools</p>
           <div className="play-tool-grid">
-            <button type="button" onClick={() => onOpenTab?.("components")}>
+            <button type="button" onClick={() => openTool("components")}>
               Plot
             </button>
-            <button type="button" onClick={() => onOpenTab?.("storyCards")}>
+            <button type="button" onClick={() => openTool("storyCards")}>
               Cards
             </button>
-            <button type="button" onClick={() => onOpenTab?.("brains")}>
+            <button type="button" onClick={() => openTool("brains")}>
               Characters
             </button>
-            <button type="button" onClick={() => onOpenTab?.("memoryInbox")}>
+            <button type="button" onClick={() => openTool("memoryInbox")}>
               Memory
               {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
             </button>
@@ -350,7 +376,7 @@ export function PlayPage({
               type="button"
               onClick={() => {
                 onBuildContext();
-                onOpenContext();
+                openTool("context");
               }}
             >
               Context

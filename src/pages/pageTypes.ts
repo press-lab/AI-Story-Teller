@@ -21,4 +21,6 @@ export interface PlayRuntimeProps extends AdventurePageProps {
   onOpenContext: () => void;
   onRememberThis: (fact: string) => Promise<void>;
   onOpenTab?: (tabId: string) => void;
+  /** Opens a tool in the play-page right panel (instead of navigating away). */
+  onOpenPlayTool?: (tabId: string) => void;
 }

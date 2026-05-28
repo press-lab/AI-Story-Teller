@@ -154,6 +154,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("adventures");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
+  const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
@@ -204,11 +205,14 @@ export default function App() {
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setModalTab(undefined);
+      if (event.key === "Escape") {
+        if (playPanelTab) { setPlayPanelTab(undefined); return; }
+        setModalTab(undefined);
+      }
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, []);
+  }, [playPanelTab]);
 
   useEffect(() => {
     if (!adventure) return;
@@ -230,11 +234,14 @@ export default function App() {
 
   function openEditor(tabId: EditorTabId = "components") {
     setModalTab(undefined);
+    setPlayPanelTab(undefined);
     setEditorTab(tabId);
     setActiveTab("edit");
   }
 
   function openTab(tabId: TabId) {
+    // Navigating away from play page closes the play panel
+    if (tabId !== "play") setPlayPanelTab(undefined);
     if (adventure && editorTabIds.has(tabId)) {
       openEditor(tabId as EditorTabId);
       return;
@@ -778,6 +785,7 @@ export default function App() {
             onOpenContext={() => openEditor("context")}
             onRememberThis={rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
+            onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
           />
         );
       case "dashboard":
@@ -862,8 +870,10 @@ export default function App() {
 
   const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
 
+  const hasPlayPanel = activeTab === "play" && Boolean(playPanelTab) && Boolean(adventure);
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell${hasPlayPanel ? " has-play-panel" : ""}`}>
       <header className="app-header">
         <div className="app-title">
           <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
@@ -935,6 +945,21 @@ export default function App() {
         {error && activeTab !== "play" && <div className="error-box">{error}</div>}
         {page}
       </main>
+
+      {hasPlayPanel && playPanelTab && adventure && (
+        <aside className="play-right-panel" aria-label={modalTitles[playPanelTab as TabId] ?? "Adventure Tool"}>
+          <header className="play-right-panel-header">
+            <div>
+              <p className="eyebrow">Adventure Tool</p>
+              <h2>{modalTitles[playPanelTab as TabId] ?? "Tool"}</h2>
+            </div>
+            <button type="button" onClick={() => setPlayPanelTab(undefined)} title="Close panel">✕</button>
+          </header>
+          <div className="play-right-panel-body">
+            {renderAdventureTool(playPanelTab)}
+          </div>
+        </aside>
+      )}
 
       {modalTab && adventure && (
         <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalTab(undefined)}>
