@@ -25,6 +25,8 @@ import { buildRollingSummaryPayload } from "./state/rollingSummary";
 import {
   runManualAutoCardGeneration,
   runManualBrainUpdate,
+  runManualPlotEssentialsUpdate,
+  runManualStoryCardsUpdate,
   runRememberThis,
   runSemanticPostTurnEvaluation,
 } from "./triggers/semanticEngine";
@@ -621,6 +623,36 @@ export default function App() {
     }
   }
 
+  async function suggestPlotUpdates() {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runManualPlotEssentialsUpdate(adventure, activeProviderConfig);
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Plot update suggestions failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function suggestCardUpdates() {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runManualStoryCardsUpdate(adventure, activeProviderConfig);
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Story card update suggestions failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function generateSummary() {
     if (!adventure || loading) return;
     setLoading(true);
@@ -671,9 +703,9 @@ export default function App() {
       case "context":
         return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={buildPreview} />;
       case "components":
-        return <ComponentsPage {...common} />;
+        return <ComponentsPage {...common} loading={loading} onSuggestPlotUpdates={suggestPlotUpdates} />;
       case "storyCards":
-        return <StoryCardsPage {...common} />;
+        return <StoryCardsPage {...common} loading={loading} onSuggestCardUpdates={suggestCardUpdates} />;
       case "brains":
         return <BrainsPage {...common} loading={loading} onUpdateBrainNow={updateBrainNow} />;
       case "autoCards":

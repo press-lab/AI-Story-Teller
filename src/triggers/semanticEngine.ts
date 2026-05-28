@@ -572,6 +572,99 @@ export async function runManualAutoCardGeneration(
   return { actions: [...result.actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
 }
 
+export async function runManualPlotEssentialsUpdate(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+): Promise<SemanticRunResult> {
+  const components = adventure.components.filter((c) => c.type === "plotEssentials" && c.active);
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+
+  if (components.length === 0) {
+    const logEntry = { ...emptyLog, errors: ["No active Plot Essentials components found."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  // Always route to Memory Inbox regardless of requireApprovalForAutoUpdates setting
+  const forcePropose = {
+    ...adventure,
+    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+  };
+
+  const tasks = components.map((component) => () =>
+    generatedActionsFor(forcePropose, providerConfig, { type: "updateComponent", componentId: component.id }, `manualPlot:${component.id}`),
+  );
+  const results = await runLimited(adventure.semanticEvaluationSettings.maxParallelUpdateCalls, tasks);
+
+  const actions: AdventureAction[] = [];
+  const generatedContent: GeneratedContentPreview[] = [];
+  const errors: string[] = [];
+  const actionsExecuted: string[] = [];
+
+  for (const result of results) {
+    actions.push(...result.actions);
+    if (result.generated) { generatedContent.push(result.generated); actionsExecuted.push(`Manual plot update: ${result.generated.title}`); }
+    if (result.error) errors.push(result.error);
+  }
+
+  const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsFired: components.map((c) => `manualPlot:${c.id}`), actionsExecuted, generatedContent, errors };
+  return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+}
+
+export async function runManualStoryCardsUpdate(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+): Promise<SemanticRunResult> {
+  const cards = adventure.storyCards.filter((c) => c.active);
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+
+  if (cards.length === 0) {
+    const logEntry = { ...emptyLog, errors: ["No active Story Cards found."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  const forcePropose = {
+    ...adventure,
+    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+  };
+
+  const tasks = cards.map((card) => () =>
+    generatedActionsFor(forcePropose, providerConfig, { type: "updateStoryCard", storyCardId: card.id }, `manualCard:${card.id}`),
+  );
+  const results = await runLimited(adventure.semanticEvaluationSettings.maxParallelUpdateCalls, tasks);
+
+  const actions: AdventureAction[] = [];
+  const generatedContent: GeneratedContentPreview[] = [];
+  const errors: string[] = [];
+  const actionsExecuted: string[] = [];
+
+  for (const result of results) {
+    actions.push(...result.actions);
+    if (result.generated) { generatedContent.push(result.generated); actionsExecuted.push(`Manual card update: ${result.generated.title}`); }
+    if (result.error) errors.push(result.error);
+  }
+
+  const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsFired: cards.map((c) => `manualCard:${c.id}`), actionsExecuted, generatedContent, errors };
+  return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+}
+
 export async function runRememberThis(
   adventure: Adventure,
   config: ProviderConfig,

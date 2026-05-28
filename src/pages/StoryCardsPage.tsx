@@ -42,7 +42,12 @@ function sortCards(cards: StoryCard[], mode: SortMode): StoryCard[] {
   return [...cards].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export function StoryCardsPage({ adventure, dispatch }: AdventurePageProps) {
+interface StoryCardsPageProps extends AdventurePageProps {
+  loading?: boolean;
+  onSuggestCardUpdates?: () => Promise<void>;
+}
+
+export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpdates }: StoryCardsPageProps) {
   const [importText, setImportText] = useState("");
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
@@ -91,6 +96,16 @@ export function StoryCardsPage({ adventure, dispatch }: AdventurePageProps) {
         >
           Create Story Card
         </button>
+        {onSuggestCardUpdates && (
+          <button
+            type="button"
+            disabled={loading || adventure.storyCards.filter((c) => c.active).length === 0}
+            onClick={onSuggestCardUpdates}
+            title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
+          >
+            {loading ? "Generating…" : "Suggest Updates"}
+          </button>
+        )}
         <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
           Copy Story Cards JSON
         </button>

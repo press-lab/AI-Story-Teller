@@ -41,8 +41,14 @@ function ComponentSummary({ component }: { component: ComponentEntry }) {
   );
 }
 
-export function ComponentsPage({ adventure, dispatch }: AdventurePageProps) {
+interface ComponentsPageProps extends AdventurePageProps {
+  loading?: boolean;
+  onSuggestPlotUpdates?: () => Promise<void>;
+}
+
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates }: ComponentsPageProps) {
   const existingTypes = new Set(adventure.components.map((c) => c.type));
+  const hasActivePlotEssentials = adventure.components.some((c) => c.type === "plotEssentials" && c.active);
 
   const availableTypes = activeComponentTypes.filter(
     (t) => !SINGLETON_TYPES.has(t) || !existingTypes.has(t),
@@ -73,6 +79,16 @@ export function ComponentsPage({ adventure, dispatch }: AdventurePageProps) {
         >
           Add Custom Block
         </button>
+        {onSuggestPlotUpdates && (
+          <button
+            type="button"
+            disabled={loading || !hasActivePlotEssentials}
+            onClick={onSuggestPlotUpdates}
+            title="Ask the AI to review recent story turns and suggest updates to Plot Essentials. Results appear in Memory Suggestions."
+          >
+            {loading ? "Generating…" : "Suggest Updates"}
+          </button>
+        )}
       </div>
 
       <div className="list">
