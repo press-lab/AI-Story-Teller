@@ -266,6 +266,9 @@ export function AdventuresPage({
               Components become World Blocks. Use Plot Essentials for tiny always-on premise/current-state context.
             </p>
             <div className="toolbar">
+              <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("aiInstructions")])}>
+                Add AI Instructions
+              </button>
               <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("plotEssentials")])}>
                 Add Plot Essentials
               </button>

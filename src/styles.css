@@ -216,15 +216,17 @@ pre {
 }
 
 .app-nav button.primary {
-  border-color: #d89425;
-  background: #f0a82f;
-  color: #1e1608;
+  border-color: var(--active-bg);
+  background: var(--active-bg);
+  color: var(--active-text);
+  font-weight: 700;
 }
 
 .app-nav button.primary:hover:not(:disabled),
 .app-nav button.primary.active {
-  background: #ffbb45;
-  color: #160f05;
+  background: var(--active-bg);
+  color: var(--active-text);
+  opacity: 0.88;
 }
 
 .header-meta {
