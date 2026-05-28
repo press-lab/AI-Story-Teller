@@ -100,13 +100,23 @@ export function PlayPage({
 
   useEffect(() => {
     if (!editingMessageId) return;
+    let startX = 0, startY = 0;
     function handlePointerDown(e: PointerEvent) {
+      startX = e.clientX; startY = e.clientY;
+    }
+    // Use pointerup so scroll gestures (which fire pointercancel, not pointerup) don't dismiss edit mode
+    function handlePointerUp(e: PointerEvent) {
+      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) return;
       if (editingArticleRef.current && !editingArticleRef.current.contains(e.target as Node)) {
         setEditingMessageId(undefined);
       }
     }
     document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("pointerup", handlePointerUp);
+    };
   }, [editingMessageId]);
 
   function cycleMode(dir: 1 | -1) {
