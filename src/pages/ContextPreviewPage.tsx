@@ -1,6 +1,30 @@
 import { buildContext } from "../contextBuilder/contextBuilder";
 import type { AdventurePageProps } from "./pageTypes";
-import type { ContextBuildResult } from "../types/adventure";
+import type { ContextBuildResult, ContextItem, ContextSection } from "../types/adventure";
+
+interface DuplicateWarning {
+  a: ContextItem;
+  b: ContextItem;
+  overlap: number;
+}
+
+function detectDuplicateContent(sections: ContextSection[]): DuplicateWarning[] {
+  const items = sections.flatMap((s) =>
+    s.items.filter((entry) => entry.content.trim().length > 80 && entry.sourceType !== "system"),
+  );
+  const warnings: DuplicateWarning[] = [];
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      const wordsA = new Set(items[i].content.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+      const wordsB = new Set(items[j].content.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
+      if (wordsA.size < 10 || wordsB.size < 10) continue;
+      const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
+      const overlap = intersection / Math.min(wordsA.size, wordsB.size);
+      if (overlap > 0.5) warnings.push({ a: items[i], b: items[j], overlap });
+    }
+  }
+  return warnings;
+}
 
 interface ContextPreviewPageProps extends AdventurePageProps {
   contextResult?: ContextBuildResult;
@@ -9,6 +33,12 @@ interface ContextPreviewPageProps extends AdventurePageProps {
 
 export function ContextPreviewPage({ adventure, contextResult, onBuildContext }: ContextPreviewPageProps) {
   const result = contextResult ?? buildContext(adventure);
+  const duplicates = detectDuplicateContent(result.sections);
+
+  const totalActualIn = adventure.messages.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
+  const totalActualOut = adventure.messages.reduce((sum, m) => sum + (m.usage?.completionTokens ?? 0), 0);
+  const hasActualUsage = totalActualIn > 0 || totalActualOut > 0;
+
   return (
     <section className="page">
       <div className="toolbar">
@@ -16,7 +46,26 @@ export function ContextPreviewPage({ adventure, contextResult, onBuildContext }:
           Rebuild Preview
         </button>
         <strong>Total estimate: {result.totalEstimatedTokens} tokens</strong>
+        {hasActualUsage && (
+          <span className="muted">Session: ↑{totalActualIn.toLocaleString()} ↓{totalActualOut.toLocaleString()} tokens</span>
+        )}
       </div>
+      {duplicates.length > 0 && (
+        <details className="panel" style={{ borderLeft: "3px solid var(--color-warning, #f0a)" }}>
+          <summary>Duplicate Content Warnings ({duplicates.length})</summary>
+          <p className="muted" style={{ margin: "0.25rem 0" }}>
+            These items share significant word overlap (&gt;50%). Consolidating duplicates reduces token usage and prevents contradictions.
+          </p>
+          <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+            {duplicates.map(({ a, b, overlap }, idx) => (
+              <li key={idx} style={{ marginBottom: "0.25rem" }}>
+                <strong>{a.title}</strong> ↔ <strong>{b.title}</strong>
+                <span className="muted"> — {Math.round(overlap * 100)}% word overlap</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <p className="muted" style={{ margin: 0 }}>
         Everything the model sees — assembled from Story Cards, World Blocks, Brains, summary, and recent messages.

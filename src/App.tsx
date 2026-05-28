@@ -469,7 +469,7 @@ export default function App() {
         config: providerConfig(next, providerSettings),
       });
       const assistantMode = mode === "comms" ? "comms" : undefined;
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, inputMode: assistantMode });
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, inputMode: assistantMode, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       if (mode !== "comms") next = applyMemoryProposalFromOutput(next, response.content);
       setAdventure(next);
@@ -515,7 +515,7 @@ export default function App() {
         messages: context.messages,
         config: providerConfig(next, providerSettings),
       });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content });
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       next = applyMemoryProposalFromOutput(next, response.content);
       setAdventure(next);
@@ -559,7 +559,7 @@ export default function App() {
         messages: context.messages,
         config: providerConfig(next, providerSettings),
       });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content });
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       next = applyMemoryProposalFromOutput(next, response.content);
       setAdventure(next);

@@ -1488,6 +1488,14 @@ button.active-tool {
   white-space: nowrap;
 }
 
+/* Per-turn token usage footer on assistant messages */
+.message-usage {
+  display: block;
+  font-size: 0.75em;
+  margin-top: 0.25rem;
+  opacity: 0.6;
+}
+
 /* Inline context-drop warning on last AI message */
 .context-drop-warning {
   display: inline;

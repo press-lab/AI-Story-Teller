@@ -1,4 +1,4 @@
-import type { ChatMessage, ProviderConfig, ProviderRequestThrottle } from "../types/adventure";
+import type { ChatMessage, ProviderConfig, ProviderRequestThrottle, ProviderUsage } from "../types/adventure";
 
 export interface SendChatCompletionOptions {
   messages: ChatMessage[];
@@ -9,6 +9,7 @@ export interface SendChatCompletionOptions {
 export interface ProviderResponse {
   content: string;
   raw: unknown;
+  usage?: ProviderUsage;
 }
 
 let throttleQueue: Promise<void> = Promise.resolve();
@@ -112,6 +113,7 @@ export async function sendOpenAICompatibleChatCompletion({
   const raw = (await response.json().catch(() => ({}))) as {
     error?: { message?: string };
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
   };
 
   if (!response.ok) {
@@ -123,5 +125,13 @@ export async function sendOpenAICompatibleChatCompletion({
     throw new Error("Provider returned no message content.");
   }
 
-  return { content, raw };
+  const usage: ProviderUsage | undefined = raw.usage
+    ? {
+        promptTokens: raw.usage.prompt_tokens ?? 0,
+        completionTokens: raw.usage.completion_tokens ?? 0,
+        totalTokens: raw.usage.total_tokens ?? 0,
+      }
+    : undefined;
+
+  return { content, raw, usage };
 }

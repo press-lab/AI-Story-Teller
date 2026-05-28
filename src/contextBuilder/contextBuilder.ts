@@ -131,7 +131,18 @@ function isForced(adventure: Adventure, sourceType: ContextItem["sourceType"], i
 }
 
 function selectedRecentMessages(adventure: Adventure): Message[] {
-  return adventure.messages.slice(-adventure.tokenBudgetSettings.maxRecentMessages).reverse();
+  const byCount = adventure.messages.slice(-adventure.tokenBudgetSettings.maxRecentMessages).reverse();
+  const tokenCap = adventure.tokenBudgetSettings.sectionBudgets.recentMessages;
+  if (!tokenCap) return byCount;
+  let tokens = 0;
+  const result: Message[] = [];
+  for (const msg of byCount) {
+    const cost = approximateTokenCount(msg.content);
+    if (tokens + cost > tokenCap) break;
+    tokens += cost;
+    result.push(msg);
+  }
+  return result;
 }
 
 function recalculate(sections: ContextSection[]): ContextSection[] {
@@ -358,11 +369,14 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // I. Rolling Summary
-  const summaryItems = adventure.rollingSummary.content
-    ? [item("rolling-summary", "summary", "Rolling Summary", adventure.rollingSummary.content, 0, false, false, true, "always", "user")]
+  // I. Rolling Summary — pre-cap to sectionBudgets.rollingSummary before assembly
+  const summaryCap = budgetSettings.sectionBudgets.rollingSummary;
+  const rawSummaryContent = adventure.rollingSummary.content;
+  const summaryContent = summaryCap && rawSummaryContent ? truncateFromFront(rawSummaryContent, summaryCap) : rawSummaryContent;
+  const summaryItems = summaryContent
+    ? [item("rolling-summary", "summary", "Rolling Summary", summaryContent, 0, false, false, true, "always", "user")]
     : [];
-  summaryItems.forEach((entry) => pushIncluded(entry, "Rolling summary included after priority memory and before recent messages."));
+  summaryItems.forEach((entry) => pushIncluded(entry, `Rolling summary included${summaryCap ? `; pre-capped to ${summaryCap} tokens` : ""}.`));
 
   // J. Next Output Bias (+ response length hint)
   const nextTurnNote = adventure.activeState.nextTurnNote;
@@ -395,6 +409,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   // K. Recent Messages
   const recentMessages = selectedRecentMessages(adventure);
+  // Protect the newest assistant message (Last Scene) so it survives tight budget cuts
+  const lastAssistantIndex = recentMessages.findIndex((m) => m.role === "assistant");
   const recentMessageItems = recentMessages.map((message, index) =>
     item(
       message.id,
@@ -402,7 +418,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       `${message.role} message ${index + 1}`,
       message.content,
       recentMessages.length - index,
-      false,
+      index === lastAssistantIndex,
       false,
       true,
       "always",
@@ -410,12 +426,12 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     ),
   );
   recentMessageItems.forEach((entry, index) =>
-    pushIncluded(entry, `Recent message included newest-first in preview; chronological payload order is preserved. recencyPriority=${recentMessages.length - index}.`),
+    pushIncluded(entry, `Recent message included newest-first in preview; chronological payload order is preserved. recencyPriority=${recentMessages.length - index}${index === lastAssistantIndex ? "; protected=last assistant scene" : ""}.`),
   );
-  // Opening scene is appended last (oldest) so it appears first in the chronological payload
-  if (adventure.openingScene) {
+  // Opening scene only seeds context before any play messages exist; once play begins it stays in the transcript but not the context
+  if (adventure.openingScene && adventure.messages.length === 0) {
     const openingItem = item("opening-scene", "message", "Opening Scene", adventure.openingScene, 0, true, false, true, "always", "user");
-    pushIncluded(openingItem, "Opening scene is always included and protected; appears as the first assistant message before the recent window.");
+    pushIncluded(openingItem, "Opening scene included as first play message; no story turns yet.");
     recentMessageItems.push(openingItem);
   }
 
@@ -572,8 +588,11 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : 150;
   const lengthHintText = `RESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
 
+  // Opening scene is sent as the first message only before any play turns exist
+  const payloadOpeningScene = adventure.messages.length === 0 ? (adventure.openingScene || undefined) : undefined;
+
   return {
-    messages: buildPayload(sections, finalRecentMessages, adventure.openingScene || undefined, lengthHintText),
+    messages: buildPayload(sections, finalRecentMessages, payloadOpeningScene, lengthHintText),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,

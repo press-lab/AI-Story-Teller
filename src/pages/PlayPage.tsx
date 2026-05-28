@@ -197,19 +197,26 @@ export function PlayPage({
                   }
                 />
               ) : (
-                <p onDoubleClick={() => setEditingMessageId(message.id)}>
-                  {message.content}
-                  {message.role === "assistant" && message.id === lastAssistant?.id && totalDropped > 0 && (
-                    <button
-                      type="button"
-                      className="context-drop-warning"
-                      title={trimTooltip || "Context was trimmed to fit token budget"}
-                      onClick={(e) => { e.stopPropagation(); onBuildContext(); onOpenContext(); }}
-                    >
-                      ⚠️
-                    </button>
+                <>
+                  <p onDoubleClick={() => setEditingMessageId(message.id)}>
+                    {message.content}
+                    {message.role === "assistant" && message.id === lastAssistant?.id && totalDropped > 0 && (
+                      <button
+                        type="button"
+                        className="context-drop-warning"
+                        title={trimTooltip || "Context was trimmed to fit token budget"}
+                        onClick={(e) => { e.stopPropagation(); onBuildContext(); onOpenContext(); }}
+                      >
+                        ⚠️
+                      </button>
+                    )}
+                  </p>
+                  {message.role === "assistant" && message.usage && (
+                    <span className="message-usage muted">
+                      ↑{message.usage.promptTokens} ↓{message.usage.completionTokens} tokens
+                    </span>
                   )}
-                </p>
+                </>
               )}
             </article>
           ))}

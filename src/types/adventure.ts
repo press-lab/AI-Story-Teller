@@ -11,6 +11,7 @@ export interface Message {
   role: MessageRole;
   content: string;
   inputMode?: InputMode;
+  usage?: ProviderUsage;
   createdAt: ISODateString;
 }
 
@@ -239,6 +240,12 @@ export interface ProviderRequestThrottle {
 
 /** Target word count for AI responses (50–200). Injected into every turn as a RESPONSE LENGTH instruction. */
 export type ResponseLengthHint = number;
+
+export interface ProviderUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
 
 export interface SemanticEvaluationSettings {
   evaluationModel: string;
@@ -540,7 +547,7 @@ export type AdventureAction =
   | { type: "SET_TITLE"; title: string }
   | { type: "SET_OPENING_SCENE"; content: string }
   | { type: "UPDATE_METADATA"; metadata: JsonObject }
-  | { type: "ADD_MESSAGE"; role: MessageRole; content: string; id?: string; createdAt?: ISODateString; inputMode?: InputMode }
+  | { type: "ADD_MESSAGE"; role: MessageRole; content: string; id?: string; createdAt?: ISODateString; inputMode?: InputMode; usage?: ProviderUsage }
   | { type: "UPDATE_MESSAGE"; messageId: string; content: string }
   | { type: "DELETE_MESSAGE"; messageId: string }
   | { type: "DELETE_LAST_MESSAGE" }

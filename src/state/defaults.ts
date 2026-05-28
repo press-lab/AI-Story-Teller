@@ -31,6 +31,22 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   autoSummarizeEveryNTurns: 20,
 };
 
+export const cheapTokenBudgetPreset: Partial<TokenBudgetSettings> = {
+  maxContextTokens: 8000,
+  maxRecentMessages: 15,
+  sectionBudgets: { rollingSummary: 800, recentMessages: 3000 },
+  autoSummarize: true,
+  autoSummarizeEveryNTurns: 10,
+};
+
+export const heavyTokenBudgetPreset: Partial<TokenBudgetSettings> = {
+  maxContextTokens: 32000,
+  maxRecentMessages: 80,
+  sectionBudgets: { rollingSummary: 4000, recentMessages: 12000 },
+  autoSummarize: true,
+  autoSummarizeEveryNTurns: 30,
+};
+
 export const defaultProviderRequestThrottle: ProviderRequestThrottle = {
   enabled: false,
   minSecondsBetweenRequests: 2,
