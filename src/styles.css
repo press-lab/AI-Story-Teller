@@ -1488,6 +1488,24 @@ button.active-tool {
   white-space: nowrap;
 }
 
+/* Inline context-drop warning on last AI message */
+.context-drop-warning {
+  display: inline;
+  border: none;
+  background: none;
+  padding: 0 0 0 4px;
+  min-height: 0;
+  font-size: 14px;
+  line-height: inherit;
+  cursor: pointer;
+  vertical-align: baseline;
+  opacity: 0.75;
+}
+.context-drop-warning:hover {
+  opacity: 1;
+  background: none;
+}
+
 /* Modal tools */
 
 .modal-backdrop {
