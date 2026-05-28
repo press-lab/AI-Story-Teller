@@ -2267,6 +2267,7 @@ summary {
   }
 
   .play-layout {
+    height: 100%;
     min-height: 100%;
     grid-template-columns: 1fr;
     grid-template-rows: auto;
@@ -2278,7 +2279,9 @@ summary {
   }
 
   .play-main {
+    height: 100%;
     min-height: 0;
+    overflow-y: auto;
   }
 
   .transcript {
