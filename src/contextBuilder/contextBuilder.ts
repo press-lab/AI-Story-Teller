@@ -130,19 +130,29 @@ function isForced(adventure: Adventure, sourceType: ContextItem["sourceType"], i
   );
 }
 
-function selectedRecentMessages(adventure: Adventure): Message[] {
-  const byCount = adventure.messages.slice(-adventure.tokenBudgetSettings.maxRecentMessages).reverse();
+function selectedRecentMessages(adventure: Adventure, seedMessage?: Message): Message[] {
   const tokenCap = adventure.tokenBudgetSettings.sectionBudgets.recentMessages;
-  if (!tokenCap) return byCount;
-  let tokens = 0;
+  const countCap = adventure.tokenBudgetSettings.maxRecentMessages;
+  const messages = adventure.messages;
   const result: Message[] = [];
-  for (const msg of byCount) {
+  let tokens = 0;
+  // Walk newest-first; token cap is the primary constraint, count cap is a safety ceiling
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (result.length >= countCap) break;
+    const msg = messages[i];
     const cost = approximateTokenCount(msg.content);
-    if (tokens + cost > tokenCap) break;
+    if (tokenCap && tokens + cost > tokenCap) break;
     tokens += cost;
     result.push(msg);
   }
-  return result;
+  // Append seed (opening scene) as oldest entry if it fits
+  if (seedMessage && result.length < countCap) {
+    const cost = approximateTokenCount(seedMessage.content);
+    if (!tokenCap || tokens + cost <= tokenCap) {
+      result.push(seedMessage);
+    }
+  }
+  return result; // newest-first; seed is last (oldest)
 }
 
 function recalculate(sections: ContextSection[]): ContextSection[] {
@@ -407,18 +417,27 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     ),
   );
 
-  // K. Recent Messages
-  const recentMessages = selectedRecentMessages(adventure);
-  // Protect the newest assistant message (Last Scene) so it survives tight budget cuts
-  const lastAssistantIndex = recentMessages.findIndex((m) => m.role === "assistant");
+  // K. Recent Messages — opening scene is a virtual oldest message, subject to normal budget management
+  const openingSeed: Message | undefined = adventure.openingScene
+    ? { id: "opening-scene", role: "assistant" as const, content: adventure.openingScene, createdAt: adventure.createdAt }
+    : undefined;
+  const recentMessages = selectedRecentMessages(adventure, openingSeed);
+
+  // Protect Last Exchange: newest assistant response (Last Scene) and the user turn that preceded it
+  const lastAssistantIndex = recentMessages.findIndex((m) => m.role === "assistant" && m.id !== "opening-scene");
+  const lastUserIndex =
+    lastAssistantIndex >= 0 && recentMessages[lastAssistantIndex + 1]?.role === "user"
+      ? lastAssistantIndex + 1
+      : -1;
+
   const recentMessageItems = recentMessages.map((message, index) =>
     item(
       message.id,
       "message",
-      `${message.role} message ${index + 1}`,
+      message.id === "opening-scene" ? "Opening Scene" : `${message.role} message ${index + 1}`,
       message.content,
       recentMessages.length - index,
-      index === lastAssistantIndex,
+      index === lastAssistantIndex || index === lastUserIndex,
       false,
       true,
       "always",
@@ -426,14 +445,11 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     ),
   );
   recentMessageItems.forEach((entry, index) =>
-    pushIncluded(entry, `Recent message included newest-first in preview; chronological payload order is preserved. recencyPriority=${recentMessages.length - index}${index === lastAssistantIndex ? "; protected=last assistant scene" : ""}.`),
+    pushIncluded(
+      entry,
+      `Recent message included newest-first; recencyPriority=${recentMessages.length - index}${index === lastAssistantIndex ? "; protected=last scene" : index === lastUserIndex ? "; protected=last exchange" : ""}.`,
+    ),
   );
-  // Opening scene only seeds context before any play messages exist; once play begins it stays in the transcript but not the context
-  if (adventure.openingScene && adventure.messages.length === 0) {
-    const openingItem = item("opening-scene", "message", "Opening Scene", adventure.openingScene, 0, true, false, true, "always", "user");
-    pushIncluded(openingItem, "Opening scene included as first play message; no story turns yet.");
-    recentMessageItems.push(openingItem);
-  }
 
   let sections = recalculate([
     systemSection,
@@ -588,11 +604,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : 150;
   const lengthHintText = `RESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
 
-  // Opening scene is sent as the first message only before any play turns exist
-  const payloadOpeningScene = adventure.messages.length === 0 ? (adventure.openingScene || undefined) : undefined;
-
   return {
-    messages: buildPayload(sections, finalRecentMessages, payloadOpeningScene, lengthHintText),
+    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,
