@@ -142,6 +142,7 @@ pre {
 }
 
 .app-header {
+  grid-column: 1 / -1; /* always span all columns, even when right panel is open */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1434,11 +1435,11 @@ button.active-tool {
 /* ── Play right panel (AID-style tool drawer) ─────── */
 
 .app-shell.has-play-panel {
-  grid-template-columns: var(--sidebar-width) 1fr 400px;
+  grid-template-columns: 1fr 400px;
 }
 
 .play-right-panel {
-  grid-column: 3;
+  grid-column: 2;
   grid-row: 2;
   display: flex;
   flex-direction: column;
