@@ -121,7 +121,7 @@ describe("side menu page smoke coverage", () => {
       />
     ));
     expect(screen.getByText("Export Adventure")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Expand AI Dungeon Import" }));
+    await user.click(screen.getByRole("button", { name: "Step-by-step wizard (advanced)" }));
     expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
     cleanup();
 
