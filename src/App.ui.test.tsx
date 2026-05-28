@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Adventure } from "./types/adventure";
@@ -60,7 +60,7 @@ function installLocalStorage() {
   });
 }
 
-describe("App adventure tool windows", () => {
+describe("App adventure tool workspace", () => {
   beforeEach(() => {
     savedAdventures = [];
     installLocalStorage();
@@ -71,27 +71,25 @@ describe("App adventure tool windows", () => {
     cleanup();
   });
 
-  it("opens management tools as modal windows without leaving the adventure cockpit", async () => {
+  it("opens management tools in the editor workspace without losing the adventure", async () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
     const titleInput = screen.getByDisplayValue("New Adventure");
     await user.clear(titleInput);
-    await user.type(titleInput, "Modal Test");
+    await user.type(titleInput, "Workspace Test");
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
-    await screen.findByRole("heading", { name: "Modal Test" });
+    await screen.findByRole("heading", { name: "Workspace Test" });
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Story Cards" });
-    expect(dialog).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Modal Test" })).toBeInTheDocument();
-    expect(within(dialog).getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole("button", { name: "Close" }));
-
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("heading", { name: "Modal Test" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Finish" }));
+    expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
   });
 });

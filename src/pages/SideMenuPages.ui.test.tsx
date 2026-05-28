@@ -49,8 +49,8 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
 
     renderWithAdventure((adventure, dispatch) => <ComponentsPage adventure={adventure} dispatch={dispatch} />);
-    await user.click(screen.getByRole("button", { name: "Create World Block" }));
-    expect(screen.getByDisplayValue("New Component")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add Custom Block" }));
+    expect(screen.getByDisplayValue("New Block")).toBeInTheDocument();
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <StoryCardsPage adventure={adventure} dispatch={dispatch} />);
@@ -61,7 +61,7 @@ describe("side menu page smoke coverage", () => {
     renderWithAdventure((adventure, dispatch) => (
       <BrainsPage adventure={adventure} dispatch={dispatch} loading={false} onUpdateBrainNow={async () => undefined} />
     ));
-    await user.click(screen.getByRole("button", { name: "Create Brain" }));
+    await user.click(screen.getByRole("button", { name: "Create Character Self" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
     cleanup();
 
@@ -81,14 +81,13 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
     renderWithAdventure((adventure, dispatch) => <MemoryInboxPage adventure={adventure} dispatch={dispatch} />);
 
-    await user.type(screen.getByLabelText("Classify Source Text"), "Margo calls Seth hedge prince as a private joke.");
-    await user.click(screen.getByRole("button", { name: "Create Proposal" }));
+    await user.type(screen.getByLabelText("Source Text"), "Margo calls Seth hedge prince as a private joke.");
+    await user.click(screen.getByRole("button", { name: "Create Suggestion" }));
 
-    expect(screen.getByDisplayValue("pending")).toBeInTheDocument();
     expect(screen.getAllByDisplayValue("Margo calls Seth hedge prince as a private joke.")[0]).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Approve" }));
-    expect(screen.getByDisplayValue("approved")).toBeInTheDocument();
+    expect(screen.getByText(/approved/i)).toBeInTheDocument();
   });
 
   it("covers Inspector pages and Chronicle/Summary entry points", async () => {

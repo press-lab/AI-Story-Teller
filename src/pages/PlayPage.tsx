@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -65,6 +67,7 @@ export function PlayPage({
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
   const pendingMemoryCount = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
+  const thumbnail = getAdventureThumbnail(adventure);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
@@ -315,6 +318,7 @@ export function PlayPage({
 
       <aside className="play-sidebar">
         <header className="play-header panel">
+          <AdventureThumbnailFrame thumbnail={thumbnail} title={adventure.title} className="play-sidebar-thumbnail" />
           <div>
             <h2>{adventure.title}</h2>
             <p className="muted">Turn {adventure.activeState.turn} · {saveStatus}</p>

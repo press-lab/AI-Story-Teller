@@ -300,6 +300,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     ...baseline,
     ...adventure,
     openingScene: adventure.openingScene ?? "",
+    metadata: adventure.metadata ?? {},
     activeState: {
       ...baseline.activeState,
       ...adventure.activeState,

@@ -39,6 +39,7 @@ import type {
 } from "./types/adventure";
 import { importAdventureJson } from "./utils/json";
 import { createId, nowIso } from "./utils/id";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { createDevelopmentAdventure } from "./dev/developmentAdventure";
 import type { RuntimeProviderSettings } from "./pages/pageTypes";
@@ -58,6 +59,7 @@ import { MemoryInboxPage } from "./pages/MemoryInboxPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
+import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 
 type TabId =
   | "adventures"
@@ -314,6 +316,7 @@ export default function App() {
     const next = {
       ...baseline,
       openingScene: setup.openingScene,
+      metadata: setup.thumbnailImage ? thumbnailMetadataPatch(setup.thumbnailImage) : baseline.metadata,
       components: [
         ...baseline.components.filter((c) => !(setupHasAiInstructions && c.type === "aiInstructions")),
         ...setup.components,
@@ -711,6 +714,7 @@ export default function App() {
   }
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
+  const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
 
   const page = (() => {
     if (activeTab === "adventures") {
@@ -803,10 +807,18 @@ export default function App() {
                 <p className="muted">{saveStatus}</p>
               </div>
               <div className="editor-header-actions">
+                <AdventureThumbnailPicker
+                  thumbnail={currentThumbnail}
+                  title={adventure.title}
+                  compact
+                  onChange={(thumbnail) =>
+                    dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
+                  }
+                />
                 <button type="button" onClick={() => setActiveTab("play")}>
                   Play
                 </button>
-                <button type="button" onClick={() => setActiveTab("dashboard")}>
+                <button type="button" className="primary-action" onClick={() => setActiveTab("dashboard")}>
                   Finish
                 </button>
               </div>
@@ -854,8 +866,10 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-title">
-          <h1>AI Story Teller</h1>
-          {adventure && <p className="muted">{adventure.title}</p>}
+          <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
+            <span className="app-brand">AI Story Teller</span>
+            {adventure && <span className="muted">{adventure.title}</span>}
+          </button>
         </div>
         <nav className="app-nav" aria-label="Primary">
           <button

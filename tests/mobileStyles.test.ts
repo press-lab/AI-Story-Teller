@@ -14,15 +14,14 @@ describe("mobile layout contract", () => {
     expect(html).toContain("viewport-fit=cover");
   });
 
-  it("switches phones to a dedicated mobile shell with bottom navigation", () => {
+  it("switches phones to a dedicated mobile shell with wrapped top navigation", () => {
     const css = readProjectFile("src/styles.css");
     const mobileBlock = css.match(/@media \(max-width: 640px\) \{[\s\S]*$/)?.[0] ?? "";
 
     expect(mobileBlock).toContain("height: 100dvh");
-    expect(mobileBlock).toMatch(/\.app-shell\s*{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\) auto/s);
-    expect(mobileBlock).toMatch(/\.sidebar\s*{[^}]*grid-row:\s*3/s);
-    expect(mobileBlock).toMatch(/\.sidebar\s*{[^}]*overflow-x:\s*auto/s);
-    expect(mobileBlock).toMatch(/\.nav-item\s*{[^}]*min-height:\s*44px/s);
+    expect(mobileBlock).toMatch(/\.app-shell\s*{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)/s);
+    expect(mobileBlock).toMatch(/\.app-nav\s*{[^}]*overflow-x:\s*auto/s);
+    expect(mobileBlock).toMatch(/button\s*{[^}]*min-height:\s*44px/s);
   });
 
   it("keeps the mobile play composer touch-sized and available while reading the story", () => {

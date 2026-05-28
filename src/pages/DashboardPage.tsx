@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { getCurrentQuestObjective } from "../quests/questEngine";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 
 function scenePreview(adventure: PlayRuntimeProps["adventure"]): string {
@@ -16,6 +18,7 @@ function previewText(text: string, maxLength = 900): string {
 
 export function DashboardPage({
   adventure,
+  dispatch,
   contextResult,
   saveStatus,
   onBuildContext,
@@ -27,15 +30,12 @@ export function DashboardPage({
   const pendingProposals = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending");
   const activeCards = adventure.storyCards.filter((card) => card.active);
   const activeCharacters = adventure.brains.filter((brain) => brain.active);
+  const thumbnail = getAdventureThumbnail(adventure);
 
   return (
     <section className="page adventure-detail-page">
       <article className="adventure-hero-card">
-        <div className="adventure-cover" aria-hidden="true">
-          <div className="adventure-cover-mark">
-            <span>{adventure.title.slice(0, 1).toUpperCase()}</span>
-          </div>
-        </div>
+        <AdventureThumbnailFrame thumbnail={thumbnail} title={adventure.title} className="adventure-cover" />
         <div className="adventure-hero-body">
           <div>
             <p className="eyebrow">Current Adventure</p>
@@ -61,6 +61,14 @@ export function DashboardPage({
               Inspect
             </button>
           </div>
+          <AdventureThumbnailPicker
+            thumbnail={thumbnail}
+            title={adventure.title}
+            compact
+            onChange={(nextThumbnail) =>
+              dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(nextThumbnail ?? null) })
+            }
+          />
         </div>
       </article>
 

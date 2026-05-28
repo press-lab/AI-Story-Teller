@@ -196,7 +196,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   // A. System Shell
   const systemItem = item("system-shell", "system", "System Shell", SYSTEM_SHELL, 1000, true, false, true, "always", "system");
   pushIncluded(systemItem, "System shell is always included and protected.");
-  const systemSection = section("system", "A. System Shell / Global Generation Rules", 0, [systemItem]);
 
   // Track which component IDs have already been logged as excluded to avoid double-logging
   const loggedExcluded = new Set<string>();
@@ -219,6 +218,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     pushIncluded(next, `Narration Rules loaded; priority=${component.priority}; protected=${component.protected}.`);
     return [next];
   });
+  const systemSection = section("system", "A. System Shell / Global Generation Rules", 0, [systemItem, ...narrationRulesItems]);
 
   // B2. AI Instructions — all active components with type === "aiInstructions"
   const aiInstructionItems = prioritySort(adventure.components).flatMap((component) => {
@@ -421,7 +421,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   let sections = recalculate([
     systemSection,
-    section("narrationRules", "A2. Narration Rules", 0, narrationRulesItems),
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
     section("components", "E. Components", 3, generalComponentItems),

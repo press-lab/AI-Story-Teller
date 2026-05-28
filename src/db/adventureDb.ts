@@ -1,5 +1,6 @@
-import type { Adventure } from "../types/adventure";
+import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
 import { normalizeAdventure } from "../state/defaults";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 
 const DB_NAME = "ai-story-teller";
 const DB_VERSION = 1;
@@ -10,6 +11,7 @@ export interface AdventureSummary {
   title: string;
   updatedAt: string;
   createdAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -71,6 +73,7 @@ export async function listAdventures(): Promise<AdventureSummary[]> {
       title: adventure.title,
       createdAt: adventure.createdAt,
       updatedAt: adventure.updatedAt,
+      thumbnailImage: getAdventureThumbnail(adventure),
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

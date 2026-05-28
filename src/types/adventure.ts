@@ -425,11 +425,20 @@ export interface Adventure {
   autoCardSettings: AutoCardSettings;
 }
 
+export interface AdventureThumbnailImage {
+  dataUrl: string;
+  name?: string;
+  altText?: string;
+  mimeType?: string;
+  updatedAt?: ISODateString;
+}
+
 export interface NewAdventureSetup {
   title: string;
   openingScene: string;
   components: ComponentEntry[];
   storyCards: StoryCard[];
+  thumbnailImage?: AdventureThumbnailImage;
 }
 
 export interface CloudSyncSettings {

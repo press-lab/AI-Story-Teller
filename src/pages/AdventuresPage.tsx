@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import type {
   Adventure,
+  AdventureThumbnailImage,
   ComponentEntry,
   ComponentType,
   NewAdventureSetup,
@@ -12,6 +13,7 @@ import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../s
 import { parseAidStoryCards } from "../importers/aidCardParser";
 import { createId } from "../utils/id";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
+import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -135,6 +137,7 @@ export function AdventuresPage({
   const [view, setView] = useState<"list" | "create">("list");
   const [title, setTitle] = useState("New Adventure");
   const [openingScene, setOpeningScene] = useState("");
+  const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
   const [componentDrafts, setComponentDrafts] = useState<ComponentDraft[]>([{
     id: createId("componentDraft"),
     title: "Global Generation Rules",
@@ -206,6 +209,7 @@ export function AdventuresPage({
       openingScene: openingScene.trim(),
       components: starterComponents,
       storyCards: [...manualStoryCards, ...jsonStoryCards],
+      thumbnailImage,
     });
   }
 
@@ -232,6 +236,15 @@ export function AdventuresPage({
           <Field label="Adventure title">
             <input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
+
+          <details className="setup-panel" open={!!thumbnailImage}>
+            <summary>Thumbnail Image</summary>
+            <AdventureThumbnailPicker
+              thumbnail={thumbnailImage}
+              title={title}
+              onChange={setThumbnailImage}
+            />
+          </details>
 
           <details className="setup-panel" open={!!openingScene}>
             <summary>Opening Scene</summary>
@@ -465,9 +478,11 @@ export function AdventuresPage({
         {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}
         {adventures.map((adventure) => (
           <article key={adventure.id} className="library-card">
-            <div className="library-card-cover" aria-hidden="true">
-              <span>{adventure.title.slice(0, 1).toUpperCase()}</span>
-            </div>
+            <AdventureThumbnailFrame
+              thumbnail={adventure.thumbnailImage}
+              title={adventure.title}
+              className="library-card-cover"
+            />
             <div className="library-card-body">
             <div>
               <h3>{adventure.title}</h3>
