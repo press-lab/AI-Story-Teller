@@ -69,6 +69,7 @@ describe("PlayPage AID-style controls", () => {
     const onRegenerate = vi.fn<AsyncHandler>(async () => undefined);
     render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} onContinue={onContinue} onRegenerate={onRegenerate} />);
 
+    await user.click(screen.getByRole("button", { name: "Story" }));
     await user.type(screen.getByPlaceholderText("Guide the next story beat..."), "The hallway tilts.");
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     expect(onSubmitTurn).toHaveBeenCalledWith("The hallway tilts.", "story");

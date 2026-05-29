@@ -4,6 +4,18 @@ import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
+function StoryParagraphs({ content, trailing }: { content: string; trailing?: React.ReactNode }) {
+  const paras = content.split(/\n\n+/);
+  if (paras.length === 1) return <p>{content}{trailing}</p>;
+  return (
+    <>
+      {paras.map((para, i) => (
+        <p key={i}>{para}{i === paras.length - 1 && trailing}</p>
+      ))}
+    </>
+  );
+}
+
 const MODES: InputMode[] = ["do", "story", "comms"];
 
 const MODE_LABELS: Record<InputMode, string> = {
@@ -220,7 +232,7 @@ export function PlayPage({
                   onChange={(e) => dispatch({ type: "SET_OPENING_SCENE", content: e.target.value })}
                 />
               ) : (
-                <p>{adventure.openingScene}</p>
+                <StoryParagraphs content={adventure.openingScene} />
               )}
             </article>
           )}
@@ -258,10 +270,10 @@ export function PlayPage({
                   }
                 />
               ) : (
-                <>
-                  <p onDoubleClick={() => setEditingMessageId(message.id)}>
-                    {message.content}
-                    {message.role === "assistant" && message.id === lastAssistant?.id && totalDropped > 0 && (
+                <div onDoubleClick={() => setEditingMessageId(message.id)}>
+                  <StoryParagraphs
+                    content={message.content}
+                    trailing={message.role === "assistant" && message.id === lastAssistant?.id && totalDropped > 0 && (
                       <button
                         type="button"
                         className="context-drop-warning"
@@ -271,13 +283,13 @@ export function PlayPage({
                         ⚠️
                       </button>
                     )}
-                  </p>
+                  />
                   {message.role === "assistant" && message.usage && (
                     <span className="message-usage muted">
                       ↑{message.usage.promptTokens} ↓{message.usage.completionTokens} tokens
                     </span>
                   )}
-                </>
+                </div>
               )}
             </article>
           ))}
