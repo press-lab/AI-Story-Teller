@@ -612,7 +612,7 @@ export function AdventuresPage({
         <article className="panel">
           <div className="panel-heading">
             <div>
-              <button type="button" onClick={() => setView("list")}>← Library</button>
+              <button type="button" onClick={() => { setView("list"); onDismissError?.(); }}>← Library</button>
               <p className="eyebrow">GitHub Save Slots</p>
               <h3>Load a saved adventure</h3>
             </div>

@@ -66,19 +66,22 @@ export function decodeBase64Utf8(text: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-// GitHub Contents API returns content:"" and download_url for files > 1 MB.
+// GitHub Contents API returns content:"" for files > 1 MB.
+// Re-fetch with Accept: application/vnd.github.raw to get raw text via api.github.com (avoids raw.githubusercontent.com CORS issues).
 export async function fetchGitHubFileContent(settings: CloudSyncSettings, apiPath: string): Promise<{ text: string; sha: string }> {
-  const remote = await githubRequest<{ sha: string; content: string; download_url?: string }>(settings, apiPath);
+  const remote = await githubRequest<{ sha: string; content: string }>(settings, apiPath);
   if (remote.content) {
     return { text: decodeBase64Utf8(remote.content), sha: remote.sha };
   }
-  if (remote.download_url) {
-    // download_url already carries embedded auth — adding Bearer triggers a CORS preflight that raw.githubusercontent.com rejects
-    const resp = await fetch(remote.download_url);
-    if (!resp.ok) throw new Error(`Failed to download file from GitHub (HTTP ${resp.status}).`);
-    return { text: await resp.text(), sha: remote.sha };
-  }
-  throw new Error("GitHub returned no content for this file. It may be missing or corrupted.");
+  const rawResp = await fetch(`https://api.github.com${apiPath}`, {
+    headers: {
+      Accept: "application/vnd.github.raw",
+      "X-GitHub-Api-Version": "2022-11-28",
+      Authorization: `Bearer ${settings.token}`,
+    },
+  });
+  if (!rawResp.ok) throw new Error(`Failed to download file from GitHub (HTTP ${rawResp.status}).`);
+  return { text: await rawResp.text(), sha: remote.sha };
 }
 
 export async function githubRequest<T>(settings: CloudSyncSettings, path: string, init: RequestInit = {}): Promise<T> {
