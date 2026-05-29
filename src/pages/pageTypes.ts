@@ -1,5 +1,23 @@
 import type { Adventure, AdventureAction, ContextBuildResult, InputMode, ProviderConfig } from "../types/adventure";
 
+export interface UiPreferences {
+  darkMode: boolean;
+  density: "compact" | "comfortable";
+  storyFontSize: number;
+  maxContentWidth: number;
+  showTokenEstimates: boolean;
+  showAdvancedSettings: boolean;
+}
+
+export const defaultUiPreferences: UiPreferences = {
+  darkMode: false,
+  density: "comfortable",
+  storyFontSize: 15,
+  maxContentWidth: 1100,
+  showTokenEstimates: true,
+  showAdvancedSettings: false,
+};
+
 export interface AdventurePageProps {
   adventure: Adventure;
   dispatch: (action: AdventureAction) => void;

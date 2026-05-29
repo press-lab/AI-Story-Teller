@@ -14,7 +14,8 @@ import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
-import type { RuntimeProviderSettings } from "./pages/pageTypes";
+import type { RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
+import { defaultUiPreferences } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
@@ -131,9 +132,10 @@ export default function App() {
     "ai-story-teller-provider-settings",
     providerInitial,
   );
-  const [uiPreferences, setUiPreferences] = useLocalStorage("ai-story-teller-ui-preferences", {
-    darkMode: false,
-  });
+  const [uiPreferences, setUiPreferences] = useLocalStorage<UiPreferences>(
+    "ai-story-teller-ui-preferences",
+    defaultUiPreferences,
+  );
   const [cloudSyncSettings, setCloudSyncSettings] = useLocalStorage<CloudSyncSettings>(
     "ai-story-teller-cloud-sync-settings",
     defaultCloudSyncSettings,
@@ -144,8 +146,13 @@ export default function App() {
   );
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark-mode", uiPreferences.darkMode);
-  }, [uiPreferences.darkMode]);
+    const root = document.documentElement;
+    root.classList.toggle("dark-mode", uiPreferences.darkMode);
+    root.setAttribute("data-density", uiPreferences.density);
+    root.style.setProperty("--story-font-size", `${uiPreferences.storyFontSize}px`);
+    root.style.setProperty("--content-max-width", `${uiPreferences.maxContentWidth}px`);
+    root.classList.toggle("hide-token-estimates", !uiPreferences.showTokenEstimates);
+  }, [uiPreferences]);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
@@ -289,8 +296,8 @@ export default function App() {
             dispatch={dispatch}
             providerSettings={runtime.activeProviderConfig}
             onProviderSettingsChange={setProviderSettings}
-            darkMode={uiPreferences.darkMode}
-            onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
+            uiPreferences={uiPreferences}
+            onUiPreferencesChange={setUiPreferences}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -348,8 +355,8 @@ export default function App() {
           dispatch={dispatch}
           providerSettings={runtime.activeProviderConfig}
           onProviderSettingsChange={setProviderSettings}
-          darkMode={uiPreferences.darkMode}
-          onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
+          uiPreferences={uiPreferences}
+          onUiPreferencesChange={setUiPreferences}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -533,9 +540,10 @@ export default function App() {
           <button
             type="button"
             className="theme-toggle"
+            title="Toggle dark mode"
             onClick={() => setUiPreferences({ ...uiPreferences, darkMode: !uiPreferences.darkMode })}
           >
-            {uiPreferences.darkMode ? "Light" : "Dark"}
+            {uiPreferences.darkMode ? "☀" : "☾"}
           </button>
         </div>
       </header>

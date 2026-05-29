@@ -9,7 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure, defaultModelConfig } from "../state/defaults";
 import type { AdventureAction } from "../types/adventure";
 import { SettingsPage } from "./SettingsPage";
-import type { RuntimeProviderSettings } from "./pageTypes";
+import type { RuntimeProviderSettings, UiPreferences } from "./pageTypes";
+import { defaultUiPreferences } from "./pageTypes";
 
 function providerSettings(): RuntimeProviderSettings {
   return {
@@ -27,6 +28,7 @@ describe("SettingsPage API throttle controls", () => {
     const user = userEvent.setup();
     const onProviderSettingsChange = vi.fn();
     const dispatch = vi.fn<(action: AdventureAction) => void>();
+    const advancedPrefs: UiPreferences = { ...defaultUiPreferences, showAdvancedSettings: true };
 
     function StatefulSettingsPage() {
       const [settings, setSettings] = useState(providerSettings());
@@ -39,8 +41,8 @@ describe("SettingsPage API throttle controls", () => {
             setSettings(next);
             onProviderSettingsChange(next);
           }}
-          darkMode={false}
-          onDarkModeChange={vi.fn()}
+          uiPreferences={advancedPrefs}
+          onUiPreferencesChange={vi.fn()}
         />
       );
     }

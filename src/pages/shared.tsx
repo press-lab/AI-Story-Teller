@@ -36,15 +36,18 @@ export function NumberInput({
   value,
   onChange,
   min,
+  max,
 }: {
   value: number;
   onChange: (value: number) => void;
   min?: number;
+  max?: number;
 }) {
   return (
     <input
       type="number"
       min={min}
+      max={max}
       value={Number.isFinite(value) ? value : 0}
       onChange={(event) => onChange(Number(event.target.value))}
     />

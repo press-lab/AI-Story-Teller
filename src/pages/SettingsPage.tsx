@@ -8,7 +8,7 @@ import type {
   SemanticEvaluationSettings,
   TokenBudgetSettings,
 } from "../types/adventure";
-import type { RuntimeProviderSettings } from "./pageTypes";
+import type { RuntimeProviderSettings, UiPreferences } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -42,8 +42,8 @@ interface SettingsPageProps {
   dispatch: (action: AdventureAction) => void;
   providerSettings: RuntimeProviderSettings;
   onProviderSettingsChange: (settings: RuntimeProviderSettings) => void;
-  darkMode: boolean;
-  onDarkModeChange: (darkMode: boolean) => void;
+  uiPreferences: UiPreferences;
+  onUiPreferencesChange: (prefs: UiPreferences) => void;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -57,8 +57,8 @@ export function SettingsPage({
   dispatch,
   providerSettings,
   onProviderSettingsChange,
-  darkMode,
-  onDarkModeChange,
+  uiPreferences,
+  onUiPreferencesChange,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -66,10 +66,17 @@ export function SettingsPage({
   onPullCloudSync,
   onLoadDevelopmentAdventure,
 }: SettingsPageProps) {
+  const advanced = uiPreferences.showAdvancedSettings;
+
+  function updateUi(patch: Partial<UiPreferences>) {
+    onUiPreferencesChange({ ...uiPreferences, ...patch });
+  }
+
   function updateCloudSync(patch: Partial<CloudSyncSettings>) {
     if (!cloudSyncSettings || !onCloudSyncSettingsChange) return;
     onCloudSyncSettingsChange({ ...cloudSyncSettings, ...patch });
   }
+
   function updateProvider(patch: Partial<RuntimeProviderSettings>) {
     const next = { ...providerSettings, ...patch };
     onProviderSettingsChange(next);
@@ -102,27 +109,57 @@ export function SettingsPage({
   return (
     <section className="page">
       <div className="grid two">
+
+        {/* ── Interface ─────────────────────────────── */}
         <article className="panel">
           <h3>Interface</h3>
-          <CheckboxField label="Dark mode" checked={darkMode} onChange={onDarkModeChange} />
+          <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
+          <Field label="Density">
+            <select
+              value={uiPreferences.density}
+              onChange={(e) => updateUi({ density: e.target.value as "compact" | "comfortable" })}
+            >
+              <option value="comfortable">Comfortable</option>
+              <option value="compact">Compact</option>
+            </select>
+          </Field>
+          <div className="grid two">
+            <Field label="Story text size (px)">
+              <NumberInput min={12} max={24} value={uiPreferences.storyFontSize} onChange={(storyFontSize) => updateUi({ storyFontSize })} />
+            </Field>
+            <Field label="Max content width (px)">
+              <NumberInput min={600} max={1800} value={uiPreferences.maxContentWidth} onChange={(maxContentWidth) => updateUi({ maxContentWidth })} />
+            </Field>
+          </div>
+          <CheckboxField
+            label="Show token estimates in play"
+            checked={uiPreferences.showTokenEstimates}
+            onChange={(showTokenEstimates) => updateUi({ showTokenEstimates })}
+          />
+          <CheckboxField
+            label="Show advanced settings"
+            checked={uiPreferences.showAdvancedSettings}
+            onChange={(showAdvancedSettings) => updateUi({ showAdvancedSettings })}
+          />
         </article>
 
+        {/* ── Provider ──────────────────────────────── */}
         <article className="panel">
           <h3>Provider</h3>
           <Field label="Provider Name">
-            <input value={providerSettings.name} onChange={(event) => updateProvider({ name: event.target.value })} />
+            <input value={providerSettings.name} onChange={(e) => updateProvider({ name: e.target.value })} />
           </Field>
           <Field label="Base URL">
-            <input value={providerSettings.baseUrl} onChange={(event) => updateProvider({ baseUrl: event.target.value })} />
+            <input value={providerSettings.baseUrl} onChange={(e) => updateProvider({ baseUrl: e.target.value })} />
           </Field>
           <Field label="Model">
-            <input value={providerSettings.model} onChange={(event) => updateProvider({ model: event.target.value })} />
+            <input value={providerSettings.model} onChange={(e) => updateProvider({ model: e.target.value })} />
           </Field>
           <Field label="API Key">
             <input
               type="password"
               value={providerSettings.apiKey}
-              onChange={(event) => onProviderSettingsChange({ ...providerSettings, apiKey: event.target.value })}
+              onChange={(e) => onProviderSettingsChange({ ...providerSettings, apiKey: e.target.value })}
               placeholder="Stored only in localStorage"
             />
           </Field>
@@ -134,44 +171,48 @@ export function SettingsPage({
               <NumberInput min={1} value={providerSettings.maxOutputTokens} onChange={(value) => updateProvider({ maxOutputTokens: value })} />
             </Field>
           </div>
-          <h4>API Throttle</h4>
-          <CheckboxField
-            label="Enable API request throttle"
-            checked={providerSettings.requestThrottle?.enabled ?? fallbackThrottle.enabled}
-            onChange={(enabled) => updateThrottle({ enabled })}
-          />
-          <div className="grid two">
-            <Field label="Minimum seconds between API calls">
-              <NumberInput
-                min={0}
-                value={providerSettings.requestThrottle?.minSecondsBetweenRequests ?? fallbackThrottle.minSecondsBetweenRequests}
-                onChange={(minSecondsBetweenRequests) => updateThrottle({ minSecondsBetweenRequests })}
+          {advanced && (
+            <>
+              <h4>API Throttle</h4>
+              <CheckboxField
+                label="Enable API request throttle"
+                checked={providerSettings.requestThrottle?.enabled ?? fallbackThrottle.enabled}
+                onChange={(enabled) => updateThrottle({ enabled })}
               />
-            </Field>
-            <Field label="Max API calls per minute">
-              <NumberInput
-                min={0}
-                value={providerSettings.requestThrottle?.maxRequestsPerMinute ?? fallbackThrottle.maxRequestsPerMinute}
-                onChange={(maxRequestsPerMinute) => updateThrottle({ maxRequestsPerMinute })}
-              />
-            </Field>
-          </div>
-          <p className="muted">
-            The throttle is enforced before every provider call, including turns, summaries, Remember This,
-            semantic evaluation, and generated memory updates. Use 0 for no per-minute cap.
-          </p>
+              <div className="grid two">
+                <Field label="Minimum seconds between API calls">
+                  <NumberInput
+                    min={0}
+                    value={providerSettings.requestThrottle?.minSecondsBetweenRequests ?? fallbackThrottle.minSecondsBetweenRequests}
+                    onChange={(minSecondsBetweenRequests) => updateThrottle({ minSecondsBetweenRequests })}
+                  />
+                </Field>
+                <Field label="Max API calls per minute">
+                  <NumberInput
+                    min={0}
+                    value={providerSettings.requestThrottle?.maxRequestsPerMinute ?? fallbackThrottle.maxRequestsPerMinute}
+                    onChange={(maxRequestsPerMinute) => updateThrottle({ maxRequestsPerMinute })}
+                  />
+                </Field>
+              </div>
+              <p className="muted">
+                Enforced before every provider call. Use 0 for no per-minute cap.
+              </p>
+            </>
+          )}
           <p className="muted">API keys are not written to adventure JSON or IndexedDB saves.</p>
         </article>
 
-        {adventure && (
-          <>
-            <article className="panel">
-              <h3>Context Budget</h3>
-              <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
-                <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
-                <button type="button" title="16k tokens, 40 messages — balanced default" onClick={() => updateBudget(defaultTokenBudgetSettings)}>Normal</button>
-                <button type="button" title="32k tokens, 80 messages, large section budgets — maximum context" onClick={() => updateBudget(heavyTokenBudgetPreset)}>Heavy</button>
-              </div>
+        {/* ── Context Budget (advanced) ─────────────── */}
+        {advanced && adventure && (
+          <article className="panel" style={{ gridColumn: "1 / -1" }}>
+            <h3>Context Budget</h3>
+            <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
+              <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
+              <button type="button" title="16k tokens, 40 messages — balanced default" onClick={() => updateBudget(defaultTokenBudgetSettings)}>Normal</button>
+              <button type="button" title="32k tokens, 80 messages, large section budgets — maximum context" onClick={() => updateBudget(heavyTokenBudgetPreset)}>Heavy</button>
+            </div>
+            <div className="grid two">
               <Field label="Max Context Tokens">
                 <NumberInput
                   min={512}
@@ -189,39 +230,12 @@ export function SettingsPage({
               <Field label="Memory Priority Mode">
                 <select
                   value={adventure.tokenBudgetSettings.memoryPriorityMode}
-                  onChange={(event) => updateBudget({ memoryPriorityMode: event.target.value as MemoryPriorityMode })}
+                  onChange={(e) => updateBudget({ memoryPriorityMode: e.target.value as MemoryPriorityMode })}
                 >
                   <option value="userLocked">userLocked</option>
                   <option value="systemSuggested">systemSuggested</option>
                   <option value="hybrid">hybrid</option>
                 </select>
-              </Field>
-              <CheckboxField
-                label="Allow system to prioritize memory"
-                checked={adventure.tokenBudgetSettings.allowSystemToPrioritizeMemory}
-                onChange={(allowSystemToPrioritizeMemory) => updateBudget({ allowSystemToPrioritizeMemory })}
-              />
-              <CheckboxField
-                label="Allow system to drop unpinned triggered cards"
-                checked={adventure.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
-                onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
-              />
-              <CheckboxField
-                label="Allow system to truncate rolling summary"
-                checked={adventure.tokenBudgetSettings.allowSystemToTruncateSummary}
-                onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
-              />
-              <CheckboxField
-                label="Auto-summarize in background"
-                checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
-                onChange={(autoSummarize) => updateBudget({ autoSummarize })}
-              />
-              <Field label="Auto-summarize every N turns">
-                <NumberInput
-                  min={5}
-                  value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
-                  onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
-                />
               </Field>
               <Field label="Trigger Recent Message Window">
                 <NumberInput
@@ -230,86 +244,125 @@ export function SettingsPage({
                   onChange={(value) => updateBudget({ recentMessageWindow: value })}
                 />
               </Field>
-              <Field label="Section Budgets JSON">
-                <JsonTextarea
-                  value={adventure.tokenBudgetSettings.sectionBudgets}
-                  onValidChange={(sectionBudgets) => updateBudget({ sectionBudgets })}
+            </div>
+            <div className="grid two" style={{ marginTop: "0.5rem" }}>
+              <div>
+                <CheckboxField
+                  label="Allow system to prioritize memory"
+                  checked={adventure.tokenBudgetSettings.allowSystemToPrioritizeMemory}
+                  onChange={(allowSystemToPrioritizeMemory) => updateBudget({ allowSystemToPrioritizeMemory })}
                 />
-              </Field>
-            </article>
-
-            <article className="panel">
-              <h3>LLM Evaluation</h3>
-              <Field label="Evaluation Model Override">
-                <input
-                  value={adventure.semanticEvaluationSettings.evaluationModel}
-                  placeholder={providerSettings.model}
-                  onChange={(event) => updateSemanticSettings({ evaluationModel: event.target.value })}
+                <CheckboxField
+                  label="Allow system to drop unpinned triggered cards"
+                  checked={adventure.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
+                  onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
                 />
-              </Field>
-              <Field label="Messages Included In Evaluation">
-                <NumberInput
-                  min={1}
-                  value={adventure.semanticEvaluationSettings.messagesIncluded}
-                  onChange={(messagesIncluded) => updateSemanticSettings({ messagesIncluded })}
+                <CheckboxField
+                  label="Allow system to truncate rolling summary"
+                  checked={adventure.tokenBudgetSettings.allowSystemToTruncateSummary}
+                  onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
                 />
-              </Field>
-              <CheckboxField
-                label="Enable semantic triggers"
-                checked={adventure.semanticEvaluationSettings.enabled}
-                onChange={(enabled) => updateSemanticSettings({ enabled })}
-              />
-              <CheckboxField
-                label="Show evaluation log on Automations page"
-                checked={adventure.semanticEvaluationSettings.showLog}
-                onChange={(showLog) => updateSemanticSettings({ showLog })}
-              />
-              <Field label="Max Parallel Update Calls">
-                <NumberInput
-                  min={1}
-                  value={adventure.semanticEvaluationSettings.maxParallelUpdateCalls}
-                  onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
+              </div>
+              <div>
+                <CheckboxField
+                  label="Auto-summarize in background"
+                  checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
+                  onChange={(autoSummarize) => updateBudget({ autoSummarize })}
                 />
-              </Field>
-              <CheckboxField
-                label="Require approval before applying auto-updates"
-                checked={adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
-                onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
-              />
-              <p className="muted">
-                When on, all LLM-generated brain, story card, and Plot Essentials updates go to the
-                Memory Suggestions as proposals for your review instead of applying directly.
-              </p>
-            </article>
-
-            <article className="panel">
-              <h3>Auto-Cards</h3>
-              <CheckboxField label="Enable Auto-Cards" checked={adventure.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
-              <Field label="Detection Condition">
-                <textarea
-                  rows={3}
-                  value={adventure.autoCardSettings.detectionCondition}
-                  onChange={(event) => updateAutoCardSettings({ detectionCondition: event.target.value })}
-                />
-              </Field>
-              <Field label="Generation Prompt">
-                <textarea
-                  rows={5}
-                  value={adventure.autoCardSettings.generationPrompt}
-                  onChange={(event) => updateAutoCardSettings({ generationPrompt: event.target.value })}
-                />
-              </Field>
-              <Field label="Cooldown Between Generations (turns)">
-                <NumberInput
-                  min={0}
-                  value={adventure.autoCardSettings.cooldownTurns}
-                  onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
-                />
-              </Field>
-            </article>
-          </>
+                <Field label="Auto-summarize every N turns">
+                  <NumberInput
+                    min={5}
+                    value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
+                    onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
+                  />
+                </Field>
+                <Field label="Section Budgets JSON">
+                  <JsonTextarea
+                    value={adventure.tokenBudgetSettings.sectionBudgets}
+                    onValidChange={(sectionBudgets) => updateBudget({ sectionBudgets })}
+                  />
+                </Field>
+              </div>
+            </div>
+          </article>
         )}
 
+        {/* ── LLM Evaluation (advanced) ─────────────── */}
+        {advanced && adventure && (
+          <article className="panel">
+            <h3>LLM Evaluation</h3>
+            <Field label="Evaluation Model Override">
+              <input
+                value={adventure.semanticEvaluationSettings.evaluationModel}
+                placeholder={providerSettings.model}
+                onChange={(e) => updateSemanticSettings({ evaluationModel: e.target.value })}
+              />
+            </Field>
+            <Field label="Messages Included In Evaluation">
+              <NumberInput
+                min={1}
+                value={adventure.semanticEvaluationSettings.messagesIncluded}
+                onChange={(messagesIncluded) => updateSemanticSettings({ messagesIncluded })}
+              />
+            </Field>
+            <CheckboxField
+              label="Enable semantic triggers"
+              checked={adventure.semanticEvaluationSettings.enabled}
+              onChange={(enabled) => updateSemanticSettings({ enabled })}
+            />
+            <CheckboxField
+              label="Show evaluation log on Automations page"
+              checked={adventure.semanticEvaluationSettings.showLog}
+              onChange={(showLog) => updateSemanticSettings({ showLog })}
+            />
+            <Field label="Max Parallel Update Calls">
+              <NumberInput
+                min={1}
+                value={adventure.semanticEvaluationSettings.maxParallelUpdateCalls}
+                onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
+              />
+            </Field>
+            <CheckboxField
+              label="Require approval before applying auto-updates"
+              checked={adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
+              onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
+            />
+            <p className="muted">
+              When on, all LLM-generated updates go to Memory Suggestions for your review instead of applying directly.
+            </p>
+          </article>
+        )}
+
+        {/* ── Auto-Cards (advanced) ─────────────────── */}
+        {advanced && adventure && (
+          <article className="panel">
+            <h3>Auto-Cards</h3>
+            <CheckboxField label="Enable Auto-Cards" checked={adventure.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
+            <Field label="Detection Condition">
+              <textarea
+                rows={3}
+                value={adventure.autoCardSettings.detectionCondition}
+                onChange={(e) => updateAutoCardSettings({ detectionCondition: e.target.value })}
+              />
+            </Field>
+            <Field label="Generation Prompt">
+              <textarea
+                rows={5}
+                value={adventure.autoCardSettings.generationPrompt}
+                onChange={(e) => updateAutoCardSettings({ generationPrompt: e.target.value })}
+              />
+            </Field>
+            <Field label="Cooldown Between Generations (turns)">
+              <NumberInput
+                min={0}
+                value={adventure.autoCardSettings.cooldownTurns}
+                onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
+              />
+            </Field>
+          </article>
+        )}
+
+        {/* ── Cloud Sync ────────────────────────────── */}
         {cloudSyncSettings && onCloudSyncSettingsChange && (
           <article className="panel cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
             <div className="panel-heading">
@@ -317,8 +370,7 @@ export function SettingsPage({
                 <p className="eyebrow">Personal Cloud Sync</p>
                 <h3>Switch between phone and computer</h3>
                 <p className="muted">
-                  Sync all local adventures through a private GitHub repo while keeping this app hosted on GitHub Pages.
-                  The token is stored only in this browser's localStorage.
+                  Sync all local adventures through a private GitHub repo. Token is stored only in localStorage.
                 </p>
               </div>
             </div>
@@ -328,21 +380,21 @@ export function SettingsPage({
                 <input
                   type="password"
                   value={cloudSyncSettings.token}
-                  onChange={(event) => updateCloudSync({ token: event.target.value })}
+                  onChange={(e) => updateCloudSync({ token: e.target.value })}
                   placeholder="Fine-grained token with repo contents access"
                 />
               </Field>
               <Field label="Owner / username">
                 <input
                   value={cloudSyncSettings.owner}
-                  onChange={(event) => updateCloudSync({ owner: event.target.value })}
+                  onChange={(e) => updateCloudSync({ owner: e.target.value })}
                   placeholder="Leave blank to use token owner"
                 />
               </Field>
               <Field label="Private repo">
                 <input
                   value={cloudSyncSettings.repo}
-                  onChange={(event) => updateCloudSync({ repo: event.target.value })}
+                  onChange={(e) => updateCloudSync({ repo: e.target.value })}
                 />
               </Field>
             </div>
@@ -351,13 +403,13 @@ export function SettingsPage({
               <Field label="Branch">
                 <input
                   value={cloudSyncSettings.branch}
-                  onChange={(event) => updateCloudSync({ branch: event.target.value })}
+                  onChange={(e) => updateCloudSync({ branch: e.target.value })}
                 />
               </Field>
               <Field label="Sync file path">
                 <input
                   value={cloudSyncSettings.path}
-                  onChange={(event) => updateCloudSync({ path: event.target.value })}
+                  onChange={(e) => updateCloudSync({ path: e.target.value })}
                 />
               </Field>
               <CheckboxField
@@ -382,7 +434,8 @@ export function SettingsPage({
           </article>
         )}
 
-        {onLoadDevelopmentAdventure && (
+        {/* ── Dev Adventure (advanced) ──────────────── */}
+        {advanced && onLoadDevelopmentAdventure && (
           <details className="panel dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
             <summary>Developer Test Adventure</summary>
             <div className="panel-heading">
@@ -391,8 +444,7 @@ export function SettingsPage({
                 <h3>{developmentAdventureTitle}</h3>
                 <p className="muted">
                   Loads a complete adult Fire Nation AU scenario with World Blocks, Story Cards, Characters,
-                  semantic triggers, a quest, a rolling summary, and one opening message. Use it to test live
-                  LLM updates without rebuilding setup by hand.
+                  semantic triggers, a quest, a rolling summary, and one opening message.
                 </p>
               </div>
             </div>
@@ -419,6 +471,7 @@ export function SettingsPage({
             </p>
           </details>
         )}
+
       </div>
     </section>
   );
