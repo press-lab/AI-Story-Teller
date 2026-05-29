@@ -395,6 +395,9 @@ export default function App() {
             onRememberThis={runtime.rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
+            playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
+            playPanelTitle={playPanelTab ? (modalTitles[playPanelTab as TabId] ?? "Tool") : undefined}
+            onClosePlayPanel={() => setPlayPanelTab(undefined)}
           />
         );
       case "dashboard":
@@ -478,10 +481,9 @@ export default function App() {
   })();
 
   const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
-  const hasPlayPanel = activeTab === "play" && Boolean(playPanelTab) && Boolean(adventure);
 
   return (
-    <div className={`app-shell${hasPlayPanel ? " has-play-panel" : ""}`}>
+    <div className="app-shell">
       <header className="app-header">
         <div className="app-title">
           <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
@@ -554,21 +556,6 @@ export default function App() {
         {runtime.error && activeTab !== "play" && <div className="error-box">{runtime.error}</div>}
         {page}
       </main>
-
-      {hasPlayPanel && playPanelTab && adventure && (
-        <aside className="play-right-panel" aria-label={modalTitles[playPanelTab as TabId] ?? "Adventure Tool"}>
-          <header className="play-right-panel-header">
-            <div>
-              <p className="eyebrow">Adventure Tool</p>
-              <h2>{modalTitles[playPanelTab as TabId] ?? "Tool"}</h2>
-            </div>
-            <button type="button" onClick={() => setPlayPanelTab(undefined)} title="Close panel">✕</button>
-          </header>
-          <div className="play-right-panel-body">
-            {renderAdventureTool(playPanelTab)}
-          </div>
-        </aside>
-      )}
 
       {gitHubSaveLoad.pendingConflict && (
         <GitHubSaveConflictDialog

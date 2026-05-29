@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
+import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { getCurrentQuestObjective } from "../quests/questEngine";
-import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 
 function scenePreview(adventure: PlayRuntimeProps["adventure"]): string {
@@ -61,14 +61,6 @@ export function DashboardPage({
               Inspect
             </button>
           </div>
-          <AdventureThumbnailPicker
-            thumbnail={thumbnail}
-            title={adventure.title}
-            compact
-            onChange={(nextThumbnail) =>
-              dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(nextThumbnail ?? null) })
-            }
-          />
         </div>
       </article>
 

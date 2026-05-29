@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Adventure, AdventureAction, ContextBuildResult, InputMode, ProviderConfig } from "../types/adventure";
 
 export interface UiPreferences {
@@ -41,4 +42,8 @@ export interface PlayRuntimeProps extends AdventurePageProps {
   onOpenTab?: (tabId: string) => void;
   /** Opens a tool in the play-page right panel (instead of navigating away). */
   onOpenPlayTool?: (tabId: string) => void;
+  /** Content to render in the sidebar panel (below the nav buttons). */
+  playPanelContent?: ReactNode;
+  playPanelTitle?: string;
+  onClosePlayPanel?: () => void;
 }

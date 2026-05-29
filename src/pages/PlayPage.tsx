@@ -51,6 +51,9 @@ export function PlayPage({
   onRememberThis,
   onOpenTab,
   onOpenPlayTool,
+  playPanelContent,
+  playPanelTitle,
+  onClosePlayPanel,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("story");
@@ -375,8 +378,8 @@ export function PlayPage({
         </div>
       </div>
 
-      {/* Compact right sidebar — desktop only */}
-      <aside className="play-sidebar">
+      {/* Compact right sidebar — expands when a tool panel is open */}
+      <aside className={`play-sidebar${playPanelContent ? " has-panel" : ""}`}>
         <div className="play-status">
           <span className="muted">Turn {adventure.activeState.turn} · {saveStatus}</span>
           <div className="token-strip">
@@ -395,6 +398,18 @@ export function PlayPage({
         <nav className="play-tool-nav" aria-label="Adventure tools">
           {toolButtons}
         </nav>
+
+        {playPanelContent && (
+          <div className="play-sidebar-panel">
+            <div className="play-sidebar-panel-header">
+              <span className="play-sidebar-panel-title">{playPanelTitle ?? "Tool"}</span>
+              <button type="button" onClick={onClosePlayPanel} title="Close panel">✕</button>
+            </div>
+            <div className="play-sidebar-panel-body">
+              {playPanelContent}
+            </div>
+          </div>
+        )}
 
         <details className="next-turn-note panel" style={{ flex: "0 0 auto" }}>
           <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
