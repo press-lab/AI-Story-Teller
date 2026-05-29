@@ -57,7 +57,7 @@ export function PlayPage({
   onDismissError,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
-  const [inputMode, setInputMode] = useState<InputMode>("story");
+  const [inputMode, setInputMode] = useState<InputMode>("do");
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
