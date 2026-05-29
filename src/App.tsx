@@ -183,7 +183,7 @@ export default function App() {
 
   function navigateTo(tabId: TabId) {
     setActiveTab(tabId);
-    history.pushState({ tab: tabId }, "");
+    try { history.pushState({ tab: tabId }, ""); } catch { /* iOS Safari SecurityError if push limit hit */ }
   }
 
   const dispatch = useCallback((action: AdventureAction) => {
