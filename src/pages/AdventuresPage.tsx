@@ -252,9 +252,14 @@ export function AdventuresPage({
                 Add starter context and Story Cards now, or leave everything blank and build it later.
               </p>
             </div>
-            <button type="button" onClick={createAdventure}>
-              Create Adventure
-            </button>
+            <div className="toolbar">
+              <button type="button" onClick={() => setView("aidImport")}>
+                Import from AI Dungeon
+              </button>
+              <button type="button" className="primary-action" onClick={createAdventure}>
+                Create Adventure
+              </button>
+            </div>
           </div>
 
           <Field label="Adventure title">
@@ -606,7 +611,7 @@ export function AdventuresPage({
             </div>
             <div className="library-card-actions">
               <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
-                Continue
+                Select
               </button>
               {onOpenEdit && (
                 <button type="button" onClick={() => onOpenEdit(adventure.id)}>

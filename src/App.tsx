@@ -488,7 +488,7 @@ export default function App() {
         <div className="app-title">
           <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
             <span className="app-brand">AI Story Teller</span>
-            {adventure && <span className="muted">{adventure.title}</span>}
+            {adventure && activeTab === "play" && <span className="muted">{adventure.title}</span>}
           </button>
         </div>
         <nav className="app-nav" aria-label="Primary">
