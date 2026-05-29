@@ -84,7 +84,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const allItems = result.sections.flatMap((s) => s.items);
 
   function patchCondense(itemId: string, patch: Partial<CondenseEntry>) {
-    setCondenseMap((m) => ({ ...m, [itemId]: { phase: "idle", ...m[itemId], ...patch } }));
+    setCondenseMap((m) => ({ ...m, [itemId]: { ...{ phase: "idle" as const }, ...m[itemId], ...patch } }));
   }
 
   async function condenseItem(item: ContextItem) {
