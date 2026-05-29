@@ -48,7 +48,7 @@ function sanitizeAdventure(adventure: Adventure): Adventure {
   return normalizeAdventure({ ...adventure, modelConfig });
 }
 
-function encodeBase64Utf8(text: string): string {
+export function encodeBase64Utf8(text: string): string {
   const bytes = new TextEncoder().encode(text);
   let binary = "";
   for (let index = 0; index < bytes.length; index += 0x8000) {
@@ -57,7 +57,7 @@ function encodeBase64Utf8(text: string): string {
   return btoa(binary);
 }
 
-function decodeBase64Utf8(text: string): string {
+export function decodeBase64Utf8(text: string): string {
   const binary = atob(text.replace(/\s/g, ""));
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
@@ -66,7 +66,7 @@ function decodeBase64Utf8(text: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-async function githubRequest<T>(settings: CloudSyncSettings, path: string, init: RequestInit = {}): Promise<T> {
+export async function githubRequest<T>(settings: CloudSyncSettings, path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`https://api.github.com${path}`, {
     ...init,
     headers: {
@@ -84,13 +84,13 @@ async function githubRequest<T>(settings: CloudSyncSettings, path: string, init:
   return raw as T;
 }
 
-async function resolveOwner(settings: CloudSyncSettings): Promise<string> {
+export async function resolveOwner(settings: CloudSyncSettings): Promise<string> {
   if (settings.owner.trim()) return settings.owner.trim();
   const user = await githubRequest<GitHubUserResponse>(settings, "/user");
   return user.login;
 }
 
-async function ensureRepo(settings: CloudSyncSettings, owner: string): Promise<void> {
+export async function ensureRepo(settings: CloudSyncSettings, owner: string): Promise<void> {
   try {
     await githubRequest(settings, `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(settings.repo)}`);
   } catch (error) {

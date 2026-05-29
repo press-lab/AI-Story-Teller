@@ -3,6 +3,8 @@ import type {
   AdventureAction,
   AutoCardSettings,
   CloudSyncSettings,
+  GitHubSaveSettings,
+  GitHubSaveSlot,
   MemoryPriorityMode,
   ProviderRequestThrottle,
   SemanticEvaluationSettings,
@@ -49,6 +51,13 @@ interface SettingsPageProps {
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
   onPushCloudSync?: () => Promise<void>;
   onPullCloudSync?: () => Promise<void>;
+  gitHubSaveSettings?: GitHubSaveSettings;
+  onGitHubSaveSettingsChange?: (settings: GitHubSaveSettings) => void;
+  saveSlots?: GitHubSaveSlot[];
+  savesStatus?: string;
+  onListSaves?: () => void;
+  onSaveNow?: () => void;
+  onLoadSave?: (slot: GitHubSaveSlot) => void;
   onLoadDevelopmentAdventure?: () => Promise<void>;
 }
 
@@ -64,11 +73,23 @@ export function SettingsPage({
   onCloudSyncSettingsChange,
   onPushCloudSync,
   onPullCloudSync,
+  gitHubSaveSettings,
+  onGitHubSaveSettingsChange,
+  saveSlots,
+  savesStatus,
+  onListSaves,
+  onSaveNow,
+  onLoadSave,
   onLoadDevelopmentAdventure,
 }: SettingsPageProps) {
   function updateCloudSync(patch: Partial<CloudSyncSettings>) {
     if (!cloudSyncSettings || !onCloudSyncSettingsChange) return;
     onCloudSyncSettingsChange({ ...cloudSyncSettings, ...patch });
+  }
+
+  function updateGitHubSave(patch: Partial<GitHubSaveSettings>) {
+    if (!gitHubSaveSettings || !onGitHubSaveSettingsChange) return;
+    onGitHubSaveSettingsChange({ ...gitHubSaveSettings, ...patch });
   }
   function updateProvider(patch: Partial<RuntimeProviderSettings>) {
     const next = { ...providerSettings, ...patch };
@@ -378,6 +399,83 @@ export function SettingsPage({
             </div>
             <p className="notice">
               Sync merges by adventure ID and keeps the newest <code>updatedAt</code> copy. It does not sync provider API keys.
+            </p>
+          </article>
+        )}
+
+        {gitHubSaveSettings && onGitHubSaveSettingsChange && (
+          <article className="panel" style={{ gridColumn: "1 / -1" }}>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Save Slots</p>
+                <h3>Save and load full adventures from GitHub</h3>
+                <p className="muted">
+                  Each save is a complete snapshot stored in your private GitHub repo. Secrets (API keys) are never saved.
+                  Uses the same token, owner, repo, and branch as the Cloud Sync above.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid three">
+              <CheckboxField
+                label="Auto-save after turns"
+                checked={gitHubSaveSettings.autoSaveEnabled}
+                onChange={(autoSaveEnabled) => updateGitHubSave({ autoSaveEnabled })}
+              />
+              <Field label="Auto-save every N turns">
+                <NumberInput
+                  min={1}
+                  value={gitHubSaveSettings.autoSaveEveryNTurns}
+                  onChange={(autoSaveEveryNTurns) => updateGitHubSave({ autoSaveEveryNTurns })}
+                />
+              </Field>
+              <Field label="Saves folder path">
+                <input
+                  value={gitHubSaveSettings.savesBasePath}
+                  onChange={(event) => updateGitHubSave({ savesBasePath: event.target.value })}
+                />
+              </Field>
+            </div>
+
+            <div className="toolbar">
+              <button type="button" disabled={!onListSaves} onClick={onListSaves}>
+                List Saves
+              </button>
+              <button type="button" disabled={!onSaveNow || !adventure} onClick={onSaveNow}>
+                Save Now
+              </button>
+              {savesStatus && <span className="status-pill">{savesStatus}</span>}
+            </div>
+
+            {saveSlots && saveSlots.length > 0 && (
+              <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.75rem", fontSize: "0.875rem" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+                    <th style={{ padding: "0.35rem 0.5rem" }}>Adventure</th>
+                    <th style={{ padding: "0.35rem 0.5rem" }}>Type</th>
+                    <th style={{ padding: "0.35rem 0.5rem" }}>Turn</th>
+                    <th style={{ padding: "0.35rem 0.5rem" }}>Saved</th>
+                    <th style={{ padding: "0.35rem 0.5rem" }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {saveSlots.map((slot) => (
+                    <tr key={slot.saveId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.title}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{new Date(slot.savedAt).toLocaleString()}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>
+                        <button type="button" onClick={() => onLoadSave?.(slot)}>Load</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            <p className="notice">
+              Loading a save will overwrite the local copy for that adventure and switch to it.
             </p>
           </article>
         )}

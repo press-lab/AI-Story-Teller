@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { adventureReducer } from "./state/adventureReducer";
 import { saveAdventure } from "./db/adventureDb";
 import { defaultCloudSyncSettings } from "./sync/githubSync";
+import { defaultGitHubSaveSettings } from "./sync/githubSaves";
+import { useGitHubSaves } from "./hooks/useGitHubSaves";
 import { defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
@@ -9,7 +11,7 @@ import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
 import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
-import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult } from "./types/adventure";
+import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings, GitHubSaveSlot } from "./types/adventure";
 import type { RuntimeProviderSettings } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -129,6 +131,10 @@ export default function App() {
     "ai-story-teller-cloud-sync-settings",
     defaultCloudSyncSettings,
   );
+  const [gitHubSaveSettings, setGitHubSaveSettings] = useLocalStorage<GitHubSaveSettings>(
+    "ai-story-teller-github-save-settings",
+    defaultGitHubSaveSettings,
+  );
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark-mode", uiPreferences.darkMode);
@@ -213,6 +219,25 @@ export default function App() {
     saveSyncedAdventures,
   );
 
+  const gitHubSaves = useGitHubSaves(cloudSyncSettings, gitHubSaveSettings);
+
+  useEffect(() => {
+    if (!adventure || !gitHubSaveSettings.autoSaveEnabled) return;
+    void gitHubSaves.autoSaveIfDue(adventure);
+    // intentional: fire only when the turn counter increments
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adventure?.activeState.turn]);
+
+  async function loadGitHubSaveToLibrary(slot: GitHubSaveSlot) {
+    const loaded = await gitHubSaves.loadSave(slot);
+    if (!loaded) return;
+    await saveAdventure(loaded);
+    setAdventure(loaded);
+    await library.refreshAdventures();
+    setModalTab(undefined);
+    setActiveTab("dashboard");
+  }
+
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
     const common = { adventure, dispatch };
@@ -251,6 +276,13 @@ export default function App() {
             onCloudSyncSettingsChange={setCloudSyncSettings}
             onPushCloudSync={pushCloudSync}
             onPullCloudSync={pullCloudSync}
+            gitHubSaveSettings={gitHubSaveSettings}
+            onGitHubSaveSettingsChange={setGitHubSaveSettings}
+            saveSlots={gitHubSaves.saveSlots}
+            savesStatus={gitHubSaves.savesStatus}
+            onListSaves={() => void gitHubSaves.listSaves()}
+            onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
+            onLoadSave={(slot) => void loadGitHubSaveToLibrary(slot)}
             onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
           />
         );
@@ -306,6 +338,13 @@ export default function App() {
           onCloudSyncSettingsChange={setCloudSyncSettings}
           onPushCloudSync={pushCloudSync}
           onPullCloudSync={pullCloudSync}
+          gitHubSaveSettings={gitHubSaveSettings}
+          onGitHubSaveSettingsChange={setGitHubSaveSettings}
+          saveSlots={gitHubSaves.saveSlots}
+          savesStatus={gitHubSaves.savesStatus}
+          onListSaves={() => void gitHubSaves.listSaves()}
+          onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
+          onLoadSave={(slot) => void loadGitHubSaveToLibrary(slot)}
           onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
         />
       );

@@ -457,6 +457,21 @@ export interface CloudSyncSettings {
   createPrivateRepoIfMissing: boolean;
 }
 
+export interface GitHubSaveSettings {
+  autoSaveEnabled: boolean;
+  autoSaveEveryNTurns: number;
+  savesBasePath: string;
+}
+
+export interface GitHubSaveSlot {
+  saveId: string;
+  adventureId: string;
+  title: string;
+  savedAt: ISODateString;
+  turnCount: number;
+  saveType: "manual" | "auto";
+}
+
 export type ContextSectionKind =
   | "system"          // A. System Shell
   | "aiInstructions"  // B. AI Instructions components
