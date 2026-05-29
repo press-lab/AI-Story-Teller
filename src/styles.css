@@ -1509,7 +1509,26 @@ button.primary-action:hover:not(:disabled),
   flex: 0 0 auto;
   position: static;
   z-index: 4;
-  box-shadow: 0 10px 28px rgb(0 0 0 / 0.08);
+}
+
+/* Strip panel chrome — no box, no shadow, just a hairline top border */
+.composer.panel {
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 10px 24px 16px;
+}
+
+/* Align all composer rows with the story text column */
+.composer > .mode-selector,
+.composer > .composer-input-row,
+.composer > .composer-actions,
+.composer > .remember-inline-row {
+  max-width: 76ch;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .mode-selector {
@@ -1520,27 +1539,33 @@ button.primary-action:hover:not(:disabled),
 }
 
 .mode-btn {
-  font-size: 12px;
-  padding: 3px 10px;
-  min-height: 26px;
+  font-size: 11px;
+  padding: 2px 9px;
+  min-height: 22px;
   border-radius: 999px;
+  opacity: 0.55;
+  border-color: transparent;
+  background: transparent;
+}
+
+.mode-btn:hover:not(:disabled) {
+  opacity: 0.85;
+  background: transparent;
 }
 
 .mode-btn.active {
+  opacity: 1;
   background: var(--active-bg);
   color: var(--active-text);
   border-color: var(--active-bg);
 }
 
 .mode-hint {
-  font-size: 12px;
+  display: none;
 }
 
 .mode-sep {
-  color: var(--border);
-  font-size: 14px;
-  padding: 0 2px;
-  user-select: none;
+  display: none;
 }
 
 .length-slider-label {
@@ -1609,8 +1634,9 @@ button.primary-action:hover:not(:disabled),
 }
 
 .hint {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+  opacity: 0.6;
 }
 
 /* ── Remember This ──────────────────────────────────── */
