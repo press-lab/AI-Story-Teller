@@ -90,12 +90,18 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   async function condenseItem(item: ContextItem) {
     if (!providerConfig) return;
     patchCondense(item.id, { phase: "loading" });
+    setExpandedId(item.id);
     try {
       const draft = await runCondenseContent(item.title, item.content, providerConfig);
       patchCondense(item.id, { phase: "ready", draft, editing: false, editValue: draft });
     } catch (err) {
       patchCondense(item.id, { phase: "error", error: err instanceof Error ? err.message : "Condense failed." });
     }
+  }
+
+  function deleteItem(item: ContextItem) {
+    if (item.sourceType === "component") dispatch({ type: "DELETE_COMPONENT", componentId: item.id });
+    else if (item.sourceType === "storyCard") dispatch({ type: "DELETE_STORY_CARD", storyCardId: item.id });
   }
 
   function applyCondenseToItem(item: ContextItem, content: string) {
@@ -218,14 +224,25 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           <p className="muted" style={{ margin: "0.25rem 0" }}>
             These items share &gt;50% word overlap. Run <strong>Auto Dedup</strong> for AI-suggested fixes.
           </p>
-          <ul style={{ margin: 0, paddingLeft: "1.25rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.25rem" }}>
             {duplicates.map(({ a, b, overlap }, idx) => (
-              <li key={idx}>
-                <strong>{a.title}</strong> ↔ <strong>{b.title}</strong>
-                <span className="muted"> — {Math.round(overlap * 100)}%</span>
-              </li>
+              <div key={idx} style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                <span><strong>{a.title}</strong> ↔ <strong>{b.title}</strong> <span className="muted">— {Math.round(overlap * 100)}%</span></span>
+                {(a.sourceType === "component" || a.sourceType === "storyCard") && (
+                  <button type="button" className="danger" style={{ fontSize: "0.75rem", padding: "0.1rem 0.5rem" }}
+                    onClick={() => deleteItem(a)}>
+                    Delete "{a.title}"
+                  </button>
+                )}
+                {(b.sourceType === "component" || b.sourceType === "storyCard") && (
+                  <button type="button" className="danger" style={{ fontSize: "0.75rem", padding: "0.1rem 0.5rem" }}
+                    onClick={() => deleteItem(b)}>
+                    Delete "{b.title}"
+                  </button>
+                )}
+              </div>
             ))}
-          </ul>
+          </div>
         </details>
       )}
 
