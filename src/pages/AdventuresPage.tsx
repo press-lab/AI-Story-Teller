@@ -9,6 +9,7 @@ import type {
   StoryCard,
   StoryCardType,
 } from "../types/adventure";
+import { AidImportWizard } from "../components/AidImportWizard";
 import type { AdventureSummary } from "../db/adventureDb";
 import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../state/defaults";
 import { parseAidStoryCards } from "../importers/aidCardParser";
@@ -24,6 +25,7 @@ interface AdventuresPageProps {
   onOpenEdit: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
   savesStatus?: string;
   onListSaves?: () => void;
@@ -144,12 +146,13 @@ export function AdventuresPage({
   onOpenEdit,
   onDuplicate,
   onDelete,
+  onCreateAdventureFromImport,
   saveSlots,
   savesStatus,
   onListSaves,
   onLoadSave,
 }: AdventuresPageProps) {
-  const [view, setView] = useState<"list" | "create" | "github">("list");
+  const [view, setView] = useState<"list" | "create" | "aidImport" | "github">("list");
 
   useEffect(() => {
     if (view === "github") onListSaves?.();
@@ -486,6 +489,30 @@ export function AdventuresPage({
     );
   }
 
+  if (view === "aidImport") {
+    return (
+      <section className="page">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Import</p>
+              <h3>Import from AI Dungeon</h3>
+              <p className="muted">
+                Upload your AID export files. Multiple files are read in filename order and merged in sequence.
+              </p>
+            </div>
+          </div>
+          <AidImportWizard
+            onCreateAdventureFromImport={onCreateAdventureFromImport}
+            onComplete={() => setView("list")}
+            onBack={() => setView("list")}
+            backLabel="← Library"
+          />
+        </article>
+      </section>
+    );
+  }
+
   if (view === "github") {
     return (
       <section className="page">
@@ -549,6 +576,9 @@ export function AdventuresPage({
               Load from GitHub
             </button>
           )}
+          <button type="button" onClick={() => setView("aidImport")}>
+            Import from AID
+          </button>
           <button type="button" className="primary-action" onClick={() => setView("create")}>
             New Adventure
           </button>
