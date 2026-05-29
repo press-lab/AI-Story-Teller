@@ -77,7 +77,13 @@ export async function githubRequest<T>(settings: CloudSyncSettings, path: string
     },
   });
 
-  const raw = (await response.json().catch(() => ({}))) as { message?: string };
+  let raw: { message?: string };
+  try {
+    raw = (await response.json()) as { message?: string };
+  } catch {
+    if (!response.ok) throw new Error(`GitHub sync failed with HTTP ${response.status}.`);
+    throw new Error(`GitHub returned an empty or unreadable response (HTTP ${response.status}).`);
+  }
   if (!response.ok) {
     throw new Error(raw.message || `GitHub sync failed with HTTP ${response.status}.`);
   }
@@ -122,6 +128,7 @@ async function fetchBundle(
       settings,
       `${contentPath(settings, owner)}?ref=${encodeURIComponent(settings.branch.trim())}`,
     );
+    if (!remote.content) throw new Error("GitHub returned empty content for the sync bundle.");
     const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as CloudSyncBundle;
     if (parsed.app !== "ai-story-teller" || !Array.isArray(parsed.adventures)) {
       throw new Error("GitHub sync file is not an AI Story Teller sync bundle.");

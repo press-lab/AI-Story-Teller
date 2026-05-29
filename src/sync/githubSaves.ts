@@ -69,6 +69,7 @@ async function fetchIndex(
   const path = `${indexFilePath(cloudSettings, saveSettings, owner)}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`;
   try {
     const remote = await githubRequest<GitHubContentResponse>(cloudSettings, path);
+    if (!remote.content) throw new Error("GitHub returned empty content for the save index.");
     const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as GitHubSaveIndex;
     if (parsed.app !== "ai-story-teller") throw new Error("Not a valid AI Story Teller save index.");
     return { index: parsed, sha: remote.sha };
@@ -175,6 +176,7 @@ export async function loadGitHubSave(
   const owner = await resolveOwner(cloudSettings);
   const path = `${saveFilePath(cloudSettings, saveSettings, owner, slot.adventureId, slot.saveId)}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`;
   const remote = await githubRequest<GitHubContentResponse>(cloudSettings, path);
+  if (!remote.content) throw new Error("GitHub returned empty content for this save file. The file may be missing or corrupted.");
   const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as GitHubSaveFile;
   if (parsed.app !== "ai-story-teller" || !parsed.adventure) {
     throw new Error("Not a valid AI Story Teller save file.");
