@@ -67,21 +67,23 @@ export function decodeBase64Utf8(text: string): string {
 }
 
 // GitHub Contents API returns content:"" for files > 1 MB.
-// Re-fetch with Accept: application/vnd.github.raw to get raw text via api.github.com (avoids raw.githubusercontent.com CORS issues).
+// Fall back to the Git blobs API which reliably returns raw content for any size.
 export async function fetchGitHubFileContent(settings: CloudSyncSettings, apiPath: string): Promise<{ text: string; sha: string }> {
   const remote = await githubRequest<{ sha: string; content: string }>(settings, apiPath);
   if (remote.content) {
     return { text: decodeBase64Utf8(remote.content), sha: remote.sha };
   }
-  const rawResp = await fetch(`https://api.github.com${apiPath}`, {
+  // apiPath is /repos/{owner}/{repo}/contents/... — extract the repo root
+  const repoBase = apiPath.split("/contents/")[0];
+  const blobResp = await fetch(`https://api.github.com${repoBase}/git/blobs/${remote.sha}`, {
     headers: {
       Accept: "application/vnd.github.raw",
       "X-GitHub-Api-Version": "2022-11-28",
       Authorization: `Bearer ${settings.token}`,
     },
   });
-  if (!rawResp.ok) throw new Error(`Failed to download file from GitHub (HTTP ${rawResp.status}).`);
-  return { text: await rawResp.text(), sha: remote.sha };
+  if (!blobResp.ok) throw new Error(`Failed to fetch save file from GitHub (HTTP ${blobResp.status}).`);
+  return { text: await blobResp.text(), sha: remote.sha };
 }
 
 export async function githubRequest<T>(settings: CloudSyncSettings, path: string, init: RequestInit = {}): Promise<T> {
