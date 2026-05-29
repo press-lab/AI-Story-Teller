@@ -121,6 +121,9 @@ export function DashboardPage({
         <button type="button" onClick={() => onOpenTab?.("triggers")}>
           Automation
         </button>
+        <button type="button" onClick={() => onOpenTab?.("cloudSaves")}>
+          Saves
+        </button>
       </section>
     </section>
   );

@@ -32,6 +32,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
+import { CloudSavesPage } from "./pages/CloudSavesPage";
 
 type TabId =
   | "adventures"
@@ -48,6 +49,7 @@ type TabId =
   | "quests"
   | "summary"
   | "memoryInbox"
+  | "cloudSaves"
   | "settings"
   | "importExport"
   | "help";
@@ -62,6 +64,7 @@ type EditorTabId =
   | "autoCards"
   | "triggers"
   | "context"
+  | "cloudSaves"
   | "importExport";
 
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
@@ -74,6 +77,7 @@ const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = 
   { id: "autoCards", label: "Auto-Cards" },
   { id: "triggers", label: "Automation" },
   { id: "context", label: "Context" },
+  { id: "cloudSaves", label: "Saves" },
   { id: "importExport", label: "Import / Export" },
 ];
 
@@ -105,6 +109,7 @@ const modalTitles: Partial<Record<TabId, string>> = {
   quests: "Quests",
   summary: "Story Summary",
   memoryInbox: "Memory Suggestions",
+  cloudSaves: "GitHub Saves",
   settings: "Settings",
   importExport: "Import / Export",
 };
@@ -264,6 +269,19 @@ export default function App() {
         return <SummaryPage {...common} loading={runtime.loading} onGenerateSummary={runtime.generateSummary} />;
       case "memoryInbox":
         return <MemoryInboxPage {...common} />;
+      case "cloudSaves":
+        return (
+          <CloudSavesPage
+            adventure={adventure}
+            gitHubSaveSettings={gitHubSaveSettings}
+            onGitHubSaveSettingsChange={setGitHubSaveSettings}
+            saveSlots={gitHubSaves.saveSlots}
+            savesStatus={gitHubSaves.savesStatus}
+            onListSaves={() => void gitHubSaves.listSaves()}
+            onSaveNow={() => void gitHubSaves.saveNow(adventure)}
+            onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
+          />
+        );
       case "settings":
         return (
           <SettingsPage
@@ -278,13 +296,6 @@ export default function App() {
             onCloudSyncSettingsChange={setCloudSyncSettings}
             onPushCloudSync={pushCloudSync}
             onPullCloudSync={pullCloudSync}
-            gitHubSaveSettings={gitHubSaveSettings}
-            onGitHubSaveSettingsChange={setGitHubSaveSettings}
-            saveSlots={gitHubSaves.saveSlots}
-            savesStatus={gitHubSaves.savesStatus}
-            onListSaves={() => void gitHubSaves.listSaves()}
-            onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
-            onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
             onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
           />
         );
@@ -340,13 +351,6 @@ export default function App() {
           onCloudSyncSettingsChange={setCloudSyncSettings}
           onPushCloudSync={pushCloudSync}
           onPullCloudSync={pullCloudSync}
-          gitHubSaveSettings={gitHubSaveSettings}
-          onGitHubSaveSettingsChange={setGitHubSaveSettings}
-          saveSlots={gitHubSaves.saveSlots}
-          savesStatus={gitHubSaves.savesStatus}
-          onListSaves={() => void gitHubSaves.listSaves()}
-          onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
-          onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
           onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
         />
       );
