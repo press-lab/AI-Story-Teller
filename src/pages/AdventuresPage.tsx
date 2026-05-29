@@ -35,6 +35,7 @@ interface AdventuresPageProps {
   onDismissError?: () => void;
   onListSaves?: () => void;
   onLoadSave?: (slot: GitHubSaveSlot) => void;
+  onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
 }
 
@@ -157,9 +158,12 @@ export function AdventuresPage({
   onDismissError,
   onListSaves,
   onLoadSave,
+  onDeleteSave,
   providerConfig,
 }: AdventuresPageProps) {
   const [view, setView] = useState<"list" | "create" | "aidImport" | "github">("list");
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
   useEffect(() => {
     if (view === "github") onListSaves?.();
@@ -376,15 +380,21 @@ export function AdventuresPage({
               Components become World Blocks. Use Plot Essentials for tiny always-on premise/current-state context.
             </p>
             <div className="toolbar">
-              <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("aiInstructions")])}>
-                Add AI Instructions
-              </button>
-              <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("plotEssentials")])}>
-                Add Plot Essentials
-              </button>
-              <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("authorNote")])}>
-                Add Author's Note
-              </button>
+              {!componentDrafts.some((d) => d.type === "aiInstructions") && (
+                <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("aiInstructions")])}>
+                  Add AI Instructions
+                </button>
+              )}
+              {!componentDrafts.some((d) => d.type === "plotEssentials") && (
+                <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("plotEssentials")])}>
+                  Add Plot Essentials
+                </button>
+              )}
+              {!componentDrafts.some((d) => d.type === "authorNote") && (
+                <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("authorNote")])}>
+                  Add Author's Note
+                </button>
+              )}
               <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("custom")])}>
                 Add Custom Component
               </button>
@@ -412,13 +422,16 @@ export function AdventuresPage({
                         <NumberInput value={draft.priority} onChange={(priority) => updateComponentDraft(draft.id, { priority })} />
                       </Field>
                     </div>
-                    <Field label="Content">
-                      <textarea
-                        rows={5}
-                        value={draft.content}
-                        onChange={(event) => updateComponentDraft(draft.id, { content: event.target.value })}
-                      />
-                    </Field>
+                    <div style={{ position: "relative" }}>
+                      <Field label="Content">
+                        <textarea
+                          rows={expandedIds[draft.id] ? 18 : 5}
+                          value={draft.content}
+                          onChange={(event) => updateComponentDraft(draft.id, { content: event.target.value })}
+                        />
+                      </Field>
+                      <button type="button" style={{ position: "absolute", top: 0, right: 0, fontSize: "0.7rem", padding: "0.1rem 0.4rem" }} onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
+                    </div>
                     <div className="grid four">
                       <CheckboxField
                         label="Always on"
@@ -493,13 +506,16 @@ export function AdventuresPage({
                             placeholder="Margo, hedge prince, hidden oath"
                           />
                         </Field>
-                        <Field label="Content">
-                          <textarea
-                            rows={5}
-                            value={draft.content}
-                            onChange={(event) => updateStoryCardDraft(draft.id, { content: event.target.value })}
-                          />
-                        </Field>
+                        <div style={{ position: "relative" }}>
+                          <Field label="Content">
+                            <textarea
+                              rows={expandedIds[draft.id] ? 18 : 5}
+                              value={draft.content}
+                              onChange={(event) => updateStoryCardDraft(draft.id, { content: event.target.value })}
+                            />
+                          </Field>
+                          <button type="button" style={{ position: "absolute", top: 0, right: 0, fontSize: "0.7rem", padding: "0.1rem 0.4rem" }} onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
+                        </div>
                         <div className="grid three">
                           <Field label="Priority">
                             <NumberInput value={draft.priority} onChange={(priority) => updateStoryCardDraft(draft.id, { priority })} />
@@ -646,13 +662,21 @@ export function AdventuresPage({
                       <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
                       <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
                       <td style={{ padding: "0.35rem 0.5rem", fontFamily: "monospace" }}>{formatUtc(slot.savedAt)}</td>
-                      <td style={{ padding: "0.35rem 0.5rem" }}>
+                      <td style={{ padding: "0.35rem 0.5rem", display: "flex", gap: "0.35rem" }}>
                         <button
                           type="button"
                           disabled={isLoading || !!loadingSlotId}
                           onClick={() => onLoadSave?.(slot)}
                         >
                           {isLoading ? "Loading…" : "Load"}
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          disabled={!!loadingSlotId}
+                          onClick={() => { if (window.confirm(`Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`)) onDeleteSave?.(slot); }}
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

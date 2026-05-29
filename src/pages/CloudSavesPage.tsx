@@ -13,6 +13,7 @@ interface CloudSavesPageProps {
   onListSaves: () => void;
   onSaveNow: () => void;
   onLoadSave: (slot: GitHubSaveSlot) => void;
+  onDeleteSave: (slot: GitHubSaveSlot) => void;
 }
 
 function formatUtc(iso: string): string {
@@ -31,6 +32,7 @@ export function CloudSavesPage({
   onListSaves,
   onSaveNow,
   onLoadSave,
+  onDeleteSave,
 }: CloudSavesPageProps) {
   function update(patch: Partial<GitHubSaveSettings>) {
     onGitHubSaveSettingsChange({ ...gitHubSaveSettings, ...patch });
@@ -105,13 +107,21 @@ export function CloudSavesPage({
                       <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
                       <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
                       <td style={{ padding: "0.35rem 0.5rem", fontFamily: "monospace" }}>{formatUtc(slot.savedAt)}</td>
-                      <td style={{ padding: "0.35rem 0.5rem" }}>
+                      <td style={{ padding: "0.35rem 0.5rem", display: "flex", gap: "0.35rem" }}>
                         <button
                           type="button"
                           disabled={isLoading || !!loadingSlotId}
                           onClick={() => onLoadSave(slot)}
                         >
                           {isLoading ? "Loading…" : "Load"}
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          disabled={!!loadingSlotId}
+                          onClick={() => { if (window.confirm(`Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`)) onDeleteSave(slot); }}
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

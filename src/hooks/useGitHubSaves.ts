@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
-import { listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "../sync/githubSaves";
+import { deleteGitHubSave, listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "../sync/githubSaves";
 
 export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: GitHubSaveSettings) {
   const [saveSlots, setSaveSlots] = useState<GitHubSaveSlot[]>([]);
@@ -65,5 +65,19 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
     [cloudSettings, saveSettings],
   );
 
-  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, autoSaveIfDue };
+  const deleteSave = useCallback(
+    async (slot: GitHubSaveSlot): Promise<void> => {
+      setSavesStatus("Deleting…");
+      try {
+        await deleteGitHubSave(cloudSettings, saveSettings, slot);
+        setSaveSlots((current) => current.filter((s) => s.saveId !== slot.saveId));
+        setSavesStatus("Save deleted");
+      } catch (error) {
+        setSavesStatus(error instanceof Error ? error.message : "Delete failed.");
+      }
+    },
+    [cloudSettings, saveSettings],
+  );
+
+  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, deleteSave, autoSaveIfDue };
 }

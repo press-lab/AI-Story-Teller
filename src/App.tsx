@@ -318,6 +318,7 @@ export default function App() {
             onListSaves={() => void gitHubSaves.listSaves()}
             onSaveNow={() => void gitHubSaves.saveNow(adventure)}
             onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
+            onDeleteSave={(slot) => void gitHubSaves.deleteSave(slot)}
           />
         );
       case "settings":
@@ -376,6 +377,7 @@ export default function App() {
           onDismissError={gitHubSaveLoad.clearLoadError}
           onListSaves={() => void gitHubSaves.listSaves()}
           onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
+          onDeleteSave={(slot) => void gitHubSaves.deleteSave(slot)}
           providerConfig={runtime.activeProviderConfig}
         />
       );

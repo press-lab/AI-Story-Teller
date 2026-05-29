@@ -161,6 +161,32 @@ export async function saveToGitHub(
   return slot;
 }
 
+export async function deleteGitHubSave(
+  cloudSettings: CloudSyncSettings,
+  saveSettings: GitHubSaveSettings,
+  slot: GitHubSaveSlot,
+): Promise<void> {
+  assertSettings(cloudSettings);
+  const owner = await resolveOwner(cloudSettings);
+  const path = saveFilePath(cloudSettings, saveSettings, owner, slot.adventureId, slot.saveId);
+  const meta = await githubRequest<{ sha: string }>(cloudSettings, `${path}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`);
+  await githubRequest(cloudSettings, path, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: `Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})`,
+      sha: meta.sha,
+      branch: cloudSettings.branch.trim(),
+    }),
+  });
+  const { index, sha } = await fetchIndex(cloudSettings, saveSettings, owner);
+  await writeIndex(cloudSettings, saveSettings, owner, {
+    ...index,
+    updatedAt: new Date().toISOString() as typeof index.updatedAt,
+    slots: index.slots.filter((s) => s.saveId !== slot.saveId),
+  }, sha);
+}
+
 export async function loadGitHubSave(
   cloudSettings: CloudSyncSettings,
   saveSettings: GitHubSaveSettings,
