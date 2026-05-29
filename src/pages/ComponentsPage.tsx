@@ -29,9 +29,8 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
 function ComponentSummary({ component }: { component: ComponentEntry }) {
   return (
     <span className="story-card-summary">
-      <span className="story-card-title">{component.title}</span>
+      <span className="story-card-title">{TYPE_LABELS[component.type]}</span>
       <span className="story-card-badges">
-        <span className="badge badge-type">{TYPE_LABELS[component.type]}</span>
         {!component.active && <span className="badge badge-inactive">Inactive</span>}
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
@@ -98,20 +97,14 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
 
             <div className="editor-card">
               <div className="grid two">
-                <Field label="Title">
-                  <input
-                    value={component.title}
-                    onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { title: event.target.value } })}
-                  />
-                </Field>
                 <Field label="Type">
                   <select
                     value={component.type}
-                    onChange={(event) =>
-                      dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { type: event.target.value as ComponentType } })
-                    }
+                    onChange={(event) => {
+                      const newType = event.target.value as ComponentType;
+                      dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { type: newType, title: TYPE_LABELS[newType] } });
+                    }}
                   >
-                    {/* Show current type always, then available types (excluding current) */}
                     {[component.type, ...activeComponentTypes.filter((t) => t !== component.type && (!SINGLETON_TYPES.has(t) || !existingTypes.has(t)))].map((type) => (
                       <option key={type} value={type}>
                         {TYPE_LABELS[type]}
