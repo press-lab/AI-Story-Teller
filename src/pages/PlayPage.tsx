@@ -73,6 +73,7 @@ export function PlayPage({
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
+  const [showModes, setShowModes] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
@@ -332,23 +333,29 @@ export function PlayPage({
         />
         <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={{ height: composerHeight, overflow: "auto" }}>
           <div className="mode-selector">
-            {(["do", "story", "comms"] as InputMode[]).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                title={MODE_TOOLTIPS[mode]}
-                className={`mode-btn mode-btn-full${inputMode === mode ? " active" : ""}`}
-                onClick={() => setInputMode(mode)}
-              >
-                {MODE_LABELS[mode]}
-              </button>
-            ))}
-            <div className="mode-cycle">
-              <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)} title="Previous mode">‹</button>
-              <span className="mode-cycle-label" title={MODE_TOOLTIPS[inputMode]}>{MODE_LABELS[inputMode]}</span>
-              <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(1)} title="Next mode">›</button>
-            </div>
-            <span className="mode-sep" aria-hidden="true">|</span>
+            <button
+              type="button"
+              className="mode-chip"
+              title={MODE_TOOLTIPS[inputMode]}
+              onClick={() => setShowModes((v) => !v)}
+            >
+              {MODE_LABELS[inputMode]}
+            </button>
+            {showModes && (
+              <>
+                {(["do", "story", "comms"] as InputMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    title={MODE_TOOLTIPS[mode]}
+                    className={`mode-btn mode-btn-full${inputMode === mode ? " active" : ""}`}
+                    onClick={() => { setInputMode(mode); setShowModes(false); }}
+                  >
+                    {MODE_LABELS[mode]}
+                  </button>
+                ))}
+              </>
+            )}
             <label className="length-slider-label">
               <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
               <input
@@ -362,11 +369,6 @@ export function PlayPage({
                 title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
               />
             </label>
-            <span className="muted mode-hint">
-              {inputMode === "do" && "Character action + quoted dialogue"}
-              {inputMode === "story" && "Guide the narrative direction"}
-              {inputMode === "comms" && "Talk to the AI out of character"}
-            </span>
           </div>
           <div className="composer-input-row">
             <textarea
@@ -443,13 +445,6 @@ export function PlayPage({
                 onClick={() => setShowRemember((v) => !v)}
               >
                 Remember
-              </button>
-              <button
-                type="button"
-                className="action-extra"
-                onClick={() => { onBuildContext(); onOpenContext(); }}
-              >
-                Context Preview
               </button>
               <button
                 type="button"

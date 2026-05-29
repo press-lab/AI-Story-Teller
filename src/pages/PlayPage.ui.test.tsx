@@ -69,6 +69,7 @@ describe("PlayPage AID-style controls", () => {
     const onRegenerate = vi.fn<AsyncHandler>(async () => undefined);
     render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} onContinue={onContinue} onRegenerate={onRegenerate} />);
 
+    await user.click(screen.getByRole("button", { name: "Do" })); // open mode panel
     await user.click(screen.getByRole("button", { name: "Story" }));
     await user.type(screen.getByPlaceholderText("Guide the next story beat..."), "The hallway tilts.");
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
@@ -127,7 +128,7 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
   });
 
-  it("opens context preview from the composer's Context Preview button", async () => {
+  it("opens context preview from the toolkit nav", async () => {
     const user = userEvent.setup();
     const onOpenTab = vi.fn();
     const onBuildContext = vi.fn();
@@ -147,8 +148,7 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    // The tool strip was removed — Context Preview is now in the composer actions row
-    const contextBtn = screen.getByRole("button", { name: "Context Preview" });
+    const contextBtn = screen.getAllByRole("button", { name: "Context" })[0];
     await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");

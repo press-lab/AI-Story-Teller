@@ -1440,8 +1440,12 @@ button.primary-action:hover:not(:disabled),
   border-bottom: none;
 }
 
-/* Story (user) and AI output look identical — just prose paragraphs */
-.message.user { }
+/* User turns get a subtle tinted background to distinguish from AI prose */
+.message.user {
+  background: var(--surface-soft);
+  border-radius: 4px;
+  padding-left: 10px;
+}
 .message.assistant { }
 
 /* Opening scene — shown before any messages, no edit/delete controls */
@@ -1552,18 +1556,34 @@ button.primary-action:hover:not(:disabled),
   flex-wrap: wrap;
 }
 
-.mode-btn {
-  font-size: 11px;
-  padding: 2px 9px;
-  min-height: 22px;
+.mode-chip {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 10px;
+  min-height: 24px;
   border-radius: 999px;
-  opacity: 0.55;
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+
+.mode-chip:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.mode-btn {
+  font-size: 13px;
+  padding: 2px 10px;
+  min-height: 24px;
+  border-radius: 999px;
+  opacity: 0.6;
   border-color: transparent;
   background: transparent;
 }
 
 .mode-btn:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.9;
   background: transparent;
 }
 
