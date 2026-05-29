@@ -171,15 +171,15 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
             {dedupLoading ? "Analyzing…" : "Auto Dedup"}
           </button>
         )}
-        <strong>{result.totalEstimatedTokens} tokens</strong>
-        {hasActualUsage && (
-          <span className="muted token-metrics">
-            <span title="Total prompt tokens sent across all turns">total&nbsp;{totalActualIn.toLocaleString()}</span>
-            <span className="token-metrics-sep">·</span>
-            {lastSentTokens != null && <><span title="Prompt tokens sent on the last turn">last&nbsp;{lastSentTokens.toLocaleString()}</span><span className="token-metrics-sep">·</span></>}
-            <span title="Average prompt tokens per turn">avg&nbsp;{avgSentTokens?.toLocaleString()}</span>
-          </span>
-        )}
+        <span className="muted token-metrics">
+          <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} est</span>
+          <span className="token-metrics-sep">·</span>
+          <span title="Total prompt tokens sent across all turns">total&nbsp;{hasActualUsage ? totalActualIn.toLocaleString() : "—"}</span>
+          <span className="token-metrics-sep">·</span>
+          <span title="Prompt tokens sent on the last turn">last&nbsp;{lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
+          <span className="token-metrics-sep">·</span>
+          <span title="Average prompt tokens per turn">avg&nbsp;{avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
+        </span>
         {dedupError && (
           <span className="context-inline-error">
             {dedupError}
