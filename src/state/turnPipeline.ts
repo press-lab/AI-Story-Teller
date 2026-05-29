@@ -8,12 +8,14 @@ import type {
   ContextBuildResult,
   InputMode,
   MemoryProposal,
+  ProviderUsage,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import { adventureReducer } from "./adventureReducer";
 
 export interface MockableProviderResponse {
   content: string;
+  usage?: ProviderUsage;
 }
 
 export interface RunTurnPipelineOptions {
@@ -113,6 +115,7 @@ export async function runTurnPipeline({
     inputMode: mode === "comms" ? "comms" : undefined,
     id: assistantMessageId,
     createdAt,
+    usage: response.usage,
   });
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 

@@ -1,49 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildContext } from "./contextBuilder/contextBuilder";
-import {
-  deleteAdventure,
-  getAdventure,
-  listAdventures,
-  saveAdventure,
-  type AdventureSummary,
-} from "./db/adventureDb";
-import {
-  defaultCloudSyncSettings,
-  pullGitHubCloudSync,
-  pushGitHubCloudSync,
-} from "./sync/githubSync";
-import { sendOpenAICompatibleChatCompletion } from "./providers/openAICompatible";
-import { createDefaultAdventure, defaultModelConfig } from "./state/defaults";
+import { useCallback, useEffect, useState } from "react";
 import { adventureReducer } from "./state/adventureReducer";
-import {
-  applyRuntimeEngines,
-  createMemoryProposalAction,
-  latestAssistantOutput,
-  reduceActions,
-} from "./state/turnPipeline";
-import { buildRollingSummaryPayload } from "./state/rollingSummary";
-import {
-  runManualAutoCardGeneration,
-  runManualBrainUpdate,
-  runManualPlotEssentialsUpdate,
-  runManualStoryCardsUpdate,
-  runRememberThis,
-  runSemanticPostTurnEvaluation,
-} from "./triggers/semanticEngine";
-import type {
-  Adventure,
-  AdventureAction,
-  ContextBuildResult,
-  InputMode,
-  NewAdventureSetup,
-  PendingAdventureUpdate,
-  CloudSyncSettings,
-} from "./types/adventure";
-import { importAdventureJson } from "./utils/json";
-import { createId, nowIso } from "./utils/id";
-import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
+import { saveAdventure } from "./db/adventureDb";
+import { defaultCloudSyncSettings } from "./sync/githubSync";
+import { defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { createDevelopmentAdventure } from "./dev/developmentAdventure";
+import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
+import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
+import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
+import { useCloudSyncController } from "./hooks/useCloudSyncController";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
+import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult } from "./types/adventure";
 import type { RuntimeProviderSettings } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -144,25 +110,14 @@ const providerInitial: RuntimeProviderSettings = {
   apiKey: "",
 };
 
-function providerConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
-  return {
-    ...adventure.modelConfig,
-    ...settings,
-    apiKey: settings.apiKey,
-  };
-}
-
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("adventures");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
-  const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | undefined>();
   const [providerSettings, setProviderSettings] = useLocalStorage<RuntimeProviderSettings>(
     "ai-story-teller-provider-settings",
     providerInitial,
@@ -174,32 +129,6 @@ export default function App() {
     "ai-story-teller-cloud-sync-settings",
     defaultCloudSyncSettings,
   );
-  const [cloudSyncStatus, setCloudSyncStatus] = useState("");
-  const adventureRef = useRef<Adventure | undefined>(adventure);
-  const providerSettingsRef = useRef(providerSettings);
-  const isSubmittingRef = useRef(false);
-  const queuedUpdatesRef = useRef<PendingAdventureUpdate[]>([]);
-
-  const activeProviderConfig = useMemo(
-    () => (adventure ? providerConfig(adventure, providerSettings) : providerSettings),
-    [adventure, providerSettings],
-  );
-
-  const refreshAdventures = useCallback(async () => {
-    setAdventures(await listAdventures());
-  }, []);
-
-  useEffect(() => {
-    void refreshAdventures();
-  }, [refreshAdventures]);
-
-  useEffect(() => {
-    adventureRef.current = adventure;
-  }, [adventure]);
-
-  useEffect(() => {
-    providerSettingsRef.current = providerSettings;
-  }, [providerSettings]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark-mode", uiPreferences.darkMode);
@@ -216,20 +145,6 @@ export default function App() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [playPanelTab]);
 
-  useEffect(() => {
-    if (!adventure) return;
-    setSaveStatus("saving");
-    const timeout = window.setTimeout(() => {
-      saveAdventure(adventure)
-        .then(() => {
-          setSaveStatus("saved");
-          void refreshAdventures();
-        })
-        .catch((saveError: unknown) => setSaveStatus(saveError instanceof Error ? saveError.message : "save failed"));
-    }, 350);
-    return () => window.clearTimeout(timeout);
-  }, [adventure, refreshAdventures]);
-
   const dispatch = useCallback((action: AdventureAction) => {
     setAdventure((current) => (current ? adventureReducer(current, action) : current));
   }, []);
@@ -242,7 +157,6 @@ export default function App() {
   }
 
   function openTab(tabId: TabId) {
-    // Navigating away from play page closes the play panel
     if (tabId !== "play") setPlayPanelTab(undefined);
     if (adventure && editorTabIds.has(tabId)) {
       openEditor(tabId as EditorTabId);
@@ -261,438 +175,43 @@ export default function App() {
     setActiveTab(tabId);
   }
 
-  function applyActionsAndPersist(actions: AdventureAction[]) {
-    setAdventure((current) => {
-      if (!current) return current;
-      const next = reduceActions(current, actions);
-      adventureRef.current = next;
-      void saveAdventure(next).then(() => {
-        setSaveStatus("saved");
-        void refreshAdventures();
-      });
-      return next;
-    });
-  }
+  const library = useAdventureLibrary(
+    setAdventure,
+    setContextResult,
+    (tab) => setActiveTab(tab as TabId),
+    () => setModalTab(undefined),
+    (msg) => console.error(msg),
+  );
 
-  function queuePendingUpdate(actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
-    const update: PendingAdventureUpdate = {
-      id: createId("pending"),
-      createdAt: nowIso(),
-      source,
-      actions,
-    };
-    queuedUpdatesRef.current = [...queuedUpdatesRef.current, update];
-    dispatch({ type: "QUEUE_PENDING_UPDATE", update });
-  }
+  useAdventureAutosave(adventure, setSaveStatus, () => void library.refreshAdventures());
 
-  function mergeQueuedUpdates(adventureState: Adventure): Adventure {
-    if (queuedUpdatesRef.current.length === 0) return adventureState;
-    let next = adventureState;
-    for (const update of queuedUpdatesRef.current) {
-      next = adventureReducer(next, { type: "QUEUE_PENDING_UPDATE", update });
-    }
-    queuedUpdatesRef.current = [];
-    return next;
-  }
-
-  function flushPendingBeforeContext(adventureState: Adventure): Adventure {
-    return adventureReducer(mergeQueuedUpdates(adventureState), { type: "FLUSH_PENDING_UPDATES" });
-  }
-
-  function applyMemoryProposalFromOutput(snapshot: Adventure, text: string): Adventure {
-    const action = createMemoryProposalAction(snapshot, text);
-    return action ? adventureReducer(snapshot, action) : snapshot;
-  }
-
-  async function startSemanticEvaluation(snapshot: Adventure) {
-    if (!snapshot.semanticEvaluationSettings.enabled) return;
-    const result = await runSemanticPostTurnEvaluation(snapshot, providerConfig(snapshot, providerSettingsRef.current));
-    if (isSubmittingRef.current) {
-      queuePendingUpdate(result.actions, "semanticEvaluation");
-      return;
-    }
-    applyActionsAndPersist(result.actions);
-  }
-
-  const buildPreview = useCallback(() => {
-    if (!adventure) return;
-    setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
-  }, [adventure]);
-
-  async function createAdventure(setup: NewAdventureSetup) {
-    const baseline = createDefaultAdventure(setup.title);
-    const setupHasAiInstructions = setup.components.some((c) => c.type === "aiInstructions");
-    const next = {
-      ...baseline,
-      openingScene: setup.openingScene,
-      metadata: setup.thumbnailImage ? thumbnailMetadataPatch(setup.thumbnailImage) : baseline.metadata,
-      components: [
-        ...baseline.components.filter((c) => !(setupHasAiInstructions && c.type === "aiInstructions")),
-        ...setup.components,
-      ],
-      storyCards: setup.storyCards,
-    };
-    await saveAdventure(next);
-    setAdventure(next);
-    setModalTab(undefined);
-    setActiveTab("dashboard");
-    await refreshAdventures();
-  }
-
-  async function loadDevelopmentAdventure() {
-    const next = createDevelopmentAdventure();
-    await saveAdventure(next);
-    setAdventure(next);
-    setContextResult(buildContext(next, { latestModelOutput: latestAssistantOutput(next) }));
-    setModalTab(undefined);
-    setActiveTab("dashboard");
-    await refreshAdventures();
-  }
-
-  async function allSavedAdventures(): Promise<Adventure[]> {
-    const summaries = await listAdventures();
-    const loaded = await Promise.all(summaries.map((summary) => getAdventure(summary.id)));
-    return loaded.filter((entry): entry is Adventure => Boolean(entry));
-  }
+  const runtime = useAdventureRuntime(
+    adventure,
+    setAdventure,
+    providerSettings,
+    setSaveStatus,
+    setContextResult,
+    openTab,
+    library.refreshAdventures,
+  );
 
   async function saveSyncedAdventures(syncedAdventures: Adventure[]) {
-    for (const syncedAdventure of syncedAdventures) {
-      await saveAdventure(syncedAdventure);
+    for (const synced of syncedAdventures) {
+      await saveAdventure(synced);
     }
-    if (adventure) {
-      const syncedCurrent = syncedAdventures.find((entry) => entry.id === adventure.id);
-      if (syncedCurrent && syncedCurrent.updatedAt.localeCompare(adventure.updatedAt) >= 0) {
-        setAdventure(syncedCurrent);
-      }
-    }
-    await refreshAdventures();
+    setAdventure((current) => {
+      if (!current) return current;
+      const syncedCurrent = syncedAdventures.find((s) => s.id === current.id);
+      return syncedCurrent && syncedCurrent.updatedAt.localeCompare(current.updatedAt) >= 0 ? syncedCurrent : current;
+    });
+    await library.refreshAdventures();
   }
 
-  async function pushCloudSync() {
-    setCloudSyncStatus("Pushing to GitHub...");
-    try {
-      const localAdventures = await allSavedAdventures();
-      const result = await pushGitHubCloudSync(cloudSyncSettings, localAdventures);
-      await saveSyncedAdventures(result.adventures);
-      setCloudSyncStatus(
-        `Pushed ${result.adventures.length} adventure(s) to ${result.owner}/${result.repo}:${result.path}.`,
-      );
-    } catch (syncError) {
-      setCloudSyncStatus(syncError instanceof Error ? syncError.message : "Cloud push failed.");
-    }
-  }
-
-  async function pullCloudSync() {
-    setCloudSyncStatus("Pulling from GitHub...");
-    try {
-      const localAdventures = await allSavedAdventures();
-      const result = await pullGitHubCloudSync(cloudSyncSettings, localAdventures);
-      await saveSyncedAdventures(result.adventures);
-      setCloudSyncStatus(
-        `Pulled ${result.remoteAdventureCount} remote adventure(s); local library now has ${result.adventures.length}.`,
-      );
-    } catch (syncError) {
-      setCloudSyncStatus(syncError instanceof Error ? syncError.message : "Cloud pull failed.");
-    }
-  }
-
-  async function openAdventure(id: string) {
-    const next = await getAdventure(id);
-    if (!next) {
-      setError("Adventure could not be opened.");
-      return;
-    }
-    setAdventure(next);
-    setContextResult(undefined);
-    setModalTab(undefined);
-    setActiveTab("dashboard");
-  }
-
-  async function duplicateAdventure(id: string) {
-    const existing = await getAdventure(id);
-    if (!existing) return;
-    const copy = importAdventureJson(JSON.stringify(existing), true);
-    await saveAdventure(copy);
-    setAdventure(copy);
-    setModalTab(undefined);
-    setActiveTab("dashboard");
-    await refreshAdventures();
-  }
-
-  async function removeAdventure(id: string) {
-    if (!window.confirm("Delete this adventure from IndexedDB?")) return;
-    await deleteAdventure(id);
-    if (adventure?.id === id) {
-      setAdventure(undefined);
-      setModalTab(undefined);
-    }
-    await refreshAdventures();
-  }
-
-  async function importAdventure(text: string) {
-    try {
-      const next = importAdventureJson(text);
-      await saveAdventure(next);
-      setAdventure(next);
-      setModalTab(undefined);
-      setActiveTab("dashboard");
-      await refreshAdventures();
-    } catch (importError) {
-      setError(importError instanceof Error ? importError.message : "Import failed.");
-    }
-  }
-
-  async function createAdventureFromImport(next: Adventure) {
-    await saveAdventure(next);
-    setAdventure(next);
-    setContextResult(undefined);
-    setModalTab(undefined);
-    await refreshAdventures();
-  }
-
-  async function submitTurn(text: string, mode: InputMode = "story") {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-
-    let next = flushPendingBeforeContext(adventure);
-    next = adventureReducer(next, { type: "ADD_MESSAGE", role: "user", content: text, inputMode: mode });
-    next = applyRuntimeEngines(next, { source: "input", text });
-    const context = buildContext(next, { currentInput: text, latestModelOutput: latestAssistantOutput(next) });
-    setContextResult(context);
-    setAdventure(next);
-
-    try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: providerConfig(next, providerSettings),
-      });
-      const assistantMode = mode === "comms" ? "comms" : undefined;
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, inputMode: assistantMode, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      if (mode !== "comms") next = applyMemoryProposalFromOutput(next, response.content);
-      setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
-      next = adventureReducer(next, { type: "INCREMENT_TURN" });
-      next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
-      await saveAdventure(next);
-      setSaveStatus("saved");
-      isSubmittingRef.current = false;
-      if (mode !== "comms") void startSemanticEvaluation(next);
-      if (mode !== "comms") {
-        const budgetSettings = next.tokenBudgetSettings;
-        if (budgetSettings.autoSummarize && next.activeState.turn > 0 && next.activeState.turn % budgetSettings.autoSummarizeEveryNTurns === 0) {
-          void startAutoSummary(next);
-        }
-      }
-    } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Provider request failed.");
-      setAdventure(next);
-      await saveAdventure(next);
-    } finally {
-      setLoading(false);
-      isSubmittingRef.current = false;
-      void refreshAdventures();
-    }
-  }
-
-  async function continueTurn() {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-
-    let next = flushPendingBeforeContext(adventure);
-    const context = buildContext(next, { latestModelOutput: latestAssistantOutput(next) });
-    setContextResult(context);
-    setAdventure(next);
-
-    try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: providerConfig(next, providerSettings),
-      });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = applyMemoryProposalFromOutput(next, response.content);
-      setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
-      next = adventureReducer(next, { type: "INCREMENT_TURN" });
-      next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
-      await saveAdventure(next);
-      setSaveStatus("saved");
-      isSubmittingRef.current = false;
-      void startSemanticEvaluation(next);
-      const budgetSettings = next.tokenBudgetSettings;
-      if (budgetSettings.autoSummarize && next.activeState.turn > 0 && next.activeState.turn % budgetSettings.autoSummarizeEveryNTurns === 0) {
-        void startAutoSummary(next);
-      }
-    } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Continue failed.");
-      setAdventure(next);
-      await saveAdventure(next);
-    } finally {
-      setLoading(false);
-      isSubmittingRef.current = false;
-      void refreshAdventures();
-    }
-  }
-
-  async function regenerateLastResponse() {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-    let next = flushPendingBeforeContext(adventure);
-    next = adventureReducer(next, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" });
-    const lastUser = [...next.messages].reverse().find((message) => message.role === "user")?.content ?? "Continue.";
-    const context = buildContext(next, { currentInput: lastUser, latestModelOutput: latestAssistantOutput(next) });
-    setContextResult(context);
-
-    try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: providerConfig(next, providerSettings),
-      });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = applyMemoryProposalFromOutput(next, response.content);
-      setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
-      next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
-      await saveAdventure(next);
-      setSaveStatus("saved");
-      isSubmittingRef.current = false;
-      void startSemanticEvaluation(next);
-    } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Regeneration failed.");
-      setAdventure(next);
-    } finally {
-      setLoading(false);
-      isSubmittingRef.current = false;
-    }
-  }
-
-  async function rememberThis(fact: string) {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runRememberThis(adventure, activeProviderConfig, fact);
-      applyActionsAndPersist(result.actions);
-      openTab("memoryInbox");
-    } catch (rememberError) {
-      setError(rememberError instanceof Error ? rememberError.message : "Remember This failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function updateBrainNow(brainId: string) {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runManualBrainUpdate(adventure, activeProviderConfig, brainId);
-      applyActionsAndPersist(result.actions);
-    } catch (manualError) {
-      setError(manualError instanceof Error ? manualError.message : "Manual brain update failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function generateAutoCardNow() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runManualAutoCardGeneration(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
-    } catch (manualError) {
-      setError(manualError instanceof Error ? manualError.message : "Manual Auto-Card generation failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function suggestPlotUpdates() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runManualPlotEssentialsUpdate(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
-      openTab("memoryInbox");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Plot update suggestions failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function suggestCardUpdates() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runManualStoryCardsUpdate(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
-      openTab("memoryInbox");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Story card update suggestions failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function generateSummary() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventure);
-      const response = await sendOpenAICompatibleChatCompletion({
-        config: activeProviderConfig,
-        messages: summaryMessages,
-      });
-      dispatch({ type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex });
-    } catch (summaryError) {
-      setError(summaryError instanceof Error ? summaryError.message : "Summary generation failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function startAutoSummary(adventureState: Adventure) {
-    // Runs silently in the background — no loading spinner, no error banner
-    try {
-      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventureState);
-      const response = await sendOpenAICompatibleChatCompletion({
-        config: providerConfig(adventureState, providerSettingsRef.current),
-        messages: summaryMessages,
-      });
-      if (isSubmittingRef.current) {
-        queuePendingUpdate(
-          [{ type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex }],
-          "autoSummary",
-        );
-        return;
-      }
-      applyActionsAndPersist([
-        { type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex },
-      ]);
-    } catch {
-      // silent — auto-summary is best-effort; user can always regenerate manually
-    }
-  }
+  const { cloudSyncStatus, pushCloudSync, pullCloudSync } = useCloudSyncController(
+    cloudSyncSettings,
+    library.allSavedAdventures,
+    saveSyncedAdventures,
+  );
 
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
@@ -701,21 +220,21 @@ export default function App() {
       case "chronicle":
         return <ChroniclePage {...common} />;
       case "context":
-        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={buildPreview} />;
+        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} />;
       case "components":
-        return <ComponentsPage {...common} loading={loading} onSuggestPlotUpdates={suggestPlotUpdates} />;
+        return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} />;
       case "storyCards":
-        return <StoryCardsPage {...common} loading={loading} onSuggestCardUpdates={suggestCardUpdates} />;
+        return <StoryCardsPage {...common} loading={runtime.loading} onSuggestCardUpdates={runtime.suggestCardUpdates} />;
       case "brains":
-        return <BrainsPage {...common} loading={loading} onUpdateBrainNow={updateBrainNow} />;
+        return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} />;
       case "autoCards":
-        return <AutoCardsPage {...common} loading={loading} onGenerateAutoCardNow={generateAutoCardNow} />;
+        return <AutoCardsPage {...common} loading={runtime.loading} onGenerateAutoCardNow={runtime.generateAutoCardNow} />;
       case "triggers":
         return <TriggersPage {...common} />;
       case "quests":
         return <QuestsPage {...common} />;
       case "summary":
-        return <SummaryPage {...common} loading={loading} onGenerateSummary={generateSummary} />;
+        return <SummaryPage {...common} loading={runtime.loading} onGenerateSummary={runtime.generateSummary} />;
       case "memoryInbox":
         return <MemoryInboxPage {...common} />;
       case "settings":
@@ -723,7 +242,7 @@ export default function App() {
           <SettingsPage
             adventure={adventure}
             dispatch={dispatch}
-            providerSettings={activeProviderConfig}
+            providerSettings={runtime.activeProviderConfig}
             onProviderSettingsChange={setProviderSettings}
             darkMode={uiPreferences.darkMode}
             onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
@@ -732,15 +251,15 @@ export default function App() {
             onCloudSyncSettingsChange={setCloudSyncSettings}
             onPushCloudSync={pushCloudSync}
             onPullCloudSync={pullCloudSync}
-            onLoadDevelopmentAdventure={loadDevelopmentAdventure}
+            onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
           />
         );
       case "importExport":
         return (
           <ImportExportPage
             {...common}
-            onImportAdventure={importAdventure}
-            onCreateAdventureFromImport={createAdventureFromImport}
+            onImportAdventure={library.importAdventure}
+            onCreateAdventureFromImport={library.createAdventureFromImport}
             onOpenImportedAdventure={() => {
               setModalTab(undefined);
               setActiveTab("play");
@@ -759,12 +278,12 @@ export default function App() {
     if (activeTab === "adventures") {
       return (
         <AdventuresPage
-          adventures={adventures}
+          adventures={library.adventures}
           currentAdventure={adventure}
-          onCreate={createAdventure}
-          onOpen={openAdventure}
-          onDuplicate={duplicateAdventure}
-          onDelete={removeAdventure}
+          onCreate={library.createAdventure}
+          onOpen={library.openAdventure}
+          onDuplicate={library.duplicateAdventure}
+          onDelete={(id) => library.removeAdventure(id, adventure?.id)}
         />
       );
     }
@@ -778,7 +297,7 @@ export default function App() {
         <SettingsPage
           adventure={adventure}
           dispatch={dispatch}
-          providerSettings={activeProviderConfig}
+          providerSettings={runtime.activeProviderConfig}
           onProviderSettingsChange={setProviderSettings}
           darkMode={uiPreferences.darkMode}
           onDarkModeChange={(darkMode) => setUiPreferences({ ...uiPreferences, darkMode })}
@@ -787,7 +306,7 @@ export default function App() {
           onCloudSyncSettingsChange={setCloudSyncSettings}
           onPushCloudSync={pushCloudSync}
           onPullCloudSync={pullCloudSync}
-          onLoadDevelopmentAdventure={loadDevelopmentAdventure}
+          onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
         />
       );
     }
@@ -807,15 +326,15 @@ export default function App() {
           <PlayPage
             {...common}
             contextResult={contextResult}
-            loading={loading}
-            error={error}
+            loading={runtime.loading}
+            error={runtime.error}
             saveStatus={saveStatus}
-            onSubmitTurn={submitTurn}
-            onContinue={continueTurn}
-            onRegenerate={regenerateLastResponse}
-            onBuildContext={buildPreview}
+            onSubmitTurn={runtime.submitTurn}
+            onContinue={runtime.continueTurn}
+            onRegenerate={runtime.regenerateLastResponse}
+            onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
-            onRememberThis={rememberThis}
+            onRememberThis={runtime.rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
           />
@@ -825,15 +344,15 @@ export default function App() {
           <DashboardPage
             {...common}
             contextResult={contextResult}
-            loading={loading}
-            error={error}
+            loading={runtime.loading}
+            error={runtime.error}
             saveStatus={saveStatus}
-            onSubmitTurn={submitTurn}
-            onContinue={continueTurn}
-            onRegenerate={regenerateLastResponse}
-            onBuildContext={buildPreview}
+            onSubmitTurn={runtime.submitTurn}
+            onContinue={runtime.continueTurn}
+            onRegenerate={runtime.regenerateLastResponse}
+            onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
-            onRememberThis={rememberThis}
+            onRememberThis={runtime.rememberThis}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
           />
         );
@@ -901,7 +420,6 @@ export default function App() {
   })();
 
   const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
-
   const hasPlayPanel = activeTab === "play" && Boolean(playPanelTab) && Boolean(adventure);
 
   return (
@@ -974,7 +492,7 @@ export default function App() {
       </header>
 
       <main className={`main-content${activeTab === "play" ? " play-content" : ""}${activeTab === "edit" ? " edit-content" : ""}`}>
-        {error && activeTab !== "play" && <div className="error-box">{error}</div>}
+        {runtime.error && activeTab !== "play" && <div className="error-box">{runtime.error}</div>}
         {page}
       </main>
 
