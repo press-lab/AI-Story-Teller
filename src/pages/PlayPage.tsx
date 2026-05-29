@@ -84,6 +84,15 @@ export function PlayPage({
       return 160;
     }
   });
+
+  const [composerHeight, setComposerHeight] = useState(() => {
+    try {
+      const stored = localStorage.getItem("play-composer-height");
+      return stored ? parseInt(stored, 10) : 180;
+    } catch {
+      return 180;
+    }
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -112,6 +121,19 @@ export function PlayPage({
       const next = Math.round(Math.max(120, Math.min(600, startWidth + startX - ev.clientX)));
       setToolkitWidth(next);
       try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
+    };
+    el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
+  }
+
+  function startComposerResize(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const startY = e.clientY;
+    const startHeight = composerHeight;
+    const el = e.currentTarget;
+    el.onpointermove = (ev: PointerEvent) => {
+      const next = Math.round(Math.max(100, Math.min(500, startHeight + startY - ev.clientY)));
+      setComposerHeight(next);
+      try { localStorage.setItem("play-composer-height", String(next)); } catch { /* ignore */ }
     };
     el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
   }
@@ -301,7 +323,14 @@ export function PlayPage({
           {toolButtons}
         </nav>
 
-        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`}>
+        <div
+          className="composer-resize-handle"
+          onPointerDown={startComposerResize}
+          title="Drag to resize"
+          role="separator"
+          aria-orientation="horizontal"
+        />
+        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={{ height: composerHeight, overflow: "auto" }}>
           <div className="mode-selector">
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
               <button

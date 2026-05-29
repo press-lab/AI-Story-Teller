@@ -1128,6 +1128,20 @@ button.primary-action:hover:not(:disabled),
   background: var(--border-strong);
 }
 
+.composer-resize-handle {
+  height: 4px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: var(--border);
+  transition: background 0.1s;
+  touch-action: none;
+}
+
+.composer-resize-handle:hover,
+.composer-resize-handle:active {
+  background: var(--border-strong);
+}
+
 .play-layout > .error-box {
   grid-column: 1 / -1;
 }
@@ -2386,7 +2400,7 @@ summary {
   }
 
   .play-tool-row {
-    display: flex;
+    display: none;
     gap: 4px;
     overflow-x: auto;
     padding: 5px 8px;
@@ -2671,7 +2685,8 @@ summary {
   }
 
   .play-sidebar,
-  .play-toolkit-handle {
+  .play-toolkit-handle,
+  .play-tool-row {
     display: none;
   }
 
