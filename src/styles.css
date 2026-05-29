@@ -2117,6 +2117,8 @@ summary {
 .context-preview-page .context-preview-toolbar {
   flex-wrap: wrap;
 }
+.token-metrics { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
+.token-metrics-sep { opacity: 0.4; }
 .context-inline-error {
   color: var(--color-error, #c0392b);
   font-size: 0.85rem;

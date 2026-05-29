@@ -76,9 +76,12 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const [dedupLoading, setDedupLoading] = useState(false);
   const [dedupError, setDedupError] = useState<string | undefined>();
 
-  const totalActualIn = adventure.messages.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
-  const totalActualOut = adventure.messages.reduce((sum, m) => sum + (m.usage?.completionTokens ?? 0), 0);
-  const hasActualUsage = totalActualIn > 0 || totalActualOut > 0;
+  const messagesWithUsage = adventure.messages.filter((m) => m.usage != null);
+  const totalActualIn = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
+  const totalActualOut = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.completionTokens ?? 0), 0);
+  const hasActualUsage = messagesWithUsage.length > 0;
+  const lastSentTokens = [...messagesWithUsage].reverse()[0]?.usage?.promptTokens;
+  const avgSentTokens = hasActualUsage ? Math.round(totalActualIn / messagesWithUsage.length) : undefined;
 
   const nonEmptySections = result.sections.filter((s) => s.items.length > 0);
   const allItems = result.sections.flatMap((s) => s.items);
@@ -168,9 +171,14 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
             {dedupLoading ? "Analyzing…" : "Auto Dedup"}
           </button>
         )}
-        <strong>{result.totalEstimatedTokens} tokens total</strong>
+        <strong>{result.totalEstimatedTokens} tokens</strong>
         {hasActualUsage && (
-          <span className="muted">↑{totalActualIn.toLocaleString()} ↓{totalActualOut.toLocaleString()} session</span>
+          <span className="muted token-metrics">
+            <span title="Total prompt tokens sent across all turns">total&nbsp;{totalActualIn.toLocaleString()}</span>
+            <span className="token-metrics-sep">·</span>
+            {lastSentTokens != null && <><span title="Prompt tokens sent on the last turn">last&nbsp;{lastSentTokens.toLocaleString()}</span><span className="token-metrics-sep">·</span></>}
+            <span title="Average prompt tokens per turn">avg&nbsp;{avgSentTokens?.toLocaleString()}</span>
+          </span>
         )}
         {dedupError && (
           <span className="context-inline-error">
