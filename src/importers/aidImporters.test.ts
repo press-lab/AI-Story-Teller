@@ -48,7 +48,7 @@ describe("AI Dungeon story parser", () => {
     expect(result.sourceKind).toBe("metadata-json");
     expect(result.detectedTitle).toBe("Ash Crown");
     expect(result.rollingSummarySuggestion).toBe("A tense arrival at court.");
-    expect(result.setupComponents.map((component) => component.title)).toContain("AI Dungeon Memory");
+    expect(result.setupComponents.map((component) => component.title)).toContain("AI Dungeon Plot Essentials");
     expect(result.setupComponents.map((component) => component.title)).toContain("AI Dungeon Instructions");
   });
 });

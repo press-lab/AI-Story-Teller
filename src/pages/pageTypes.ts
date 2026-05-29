@@ -32,6 +32,7 @@ export interface PlayRuntimeProps extends AdventurePageProps {
   contextResult?: ContextBuildResult;
   loading: boolean;
   error?: string;
+  onDismissError?: () => void;
   saveStatus: string;
   onSubmitTurn: (text: string, mode: InputMode) => Promise<void>;
   onContinue: () => Promise<void>;

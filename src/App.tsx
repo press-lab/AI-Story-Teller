@@ -165,6 +165,27 @@ export default function App() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [playPanelTab]);
 
+  // Browser back/forward support
+  useEffect(() => {
+    history.replaceState({ tab: "adventures" }, "");
+    function onPopState(event: PopStateEvent) {
+      const tab = event.state?.tab as TabId | undefined;
+      if (tab) {
+        setActiveTab(tab);
+        setModalTab(undefined);
+        setPlayPanelTab(undefined);
+      }
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function navigateTo(tabId: TabId) {
+    setActiveTab(tabId);
+    history.pushState({ tab: tabId }, "");
+  }
+
   const dispatch = useCallback((action: AdventureAction) => {
     setAdventure((current) => (current ? adventureReducer(current, action) : current));
   }, []);
@@ -173,7 +194,7 @@ export default function App() {
     setModalTab(undefined);
     setPlayPanelTab(undefined);
     setEditorTab(tabId);
-    setActiveTab("edit");
+    navigateTo("edit");
   }
 
   function openTab(tabId: TabId) {
@@ -184,7 +205,7 @@ export default function App() {
     }
     if (["adventures", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
       setModalTab(undefined);
-      setActiveTab(tabId);
+      navigateTo(tabId);
       return;
     }
     if (adventure && modalTabs.has(tabId)) {
@@ -192,13 +213,13 @@ export default function App() {
       return;
     }
     setModalTab(undefined);
-    setActiveTab(tabId);
+    navigateTo(tabId);
   }
 
   const library = useAdventureLibrary(
     setAdventure,
     setContextResult,
-    (tab) => setActiveTab(tab as TabId),
+    (tab) => navigateTo(tab as TabId),
     () => setModalTab(undefined),
     (msg) => console.error(msg),
   );
@@ -247,8 +268,9 @@ export default function App() {
     setAdventure(loaded);
     await library.refreshAdventures();
     setModalTab(undefined);
-    setActiveTab("dashboard");
-  }, [library.refreshAdventures]); // setters are stable React guarantees
+    navigateTo("dashboard");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [library.refreshAdventures]); // setters and navigateTo are stable
 
   const gitHubSaveLoad = useGitHubSaveLoad(gitHubSaves.loadSave, applyGitHubSave);
 
@@ -259,7 +281,7 @@ export default function App() {
       case "chronicle":
         return <ChroniclePage {...common} />;
       case "context":
-        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} />;
+        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={runtime.activeProviderConfig} />;
       case "components":
         return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} />;
       case "storyCards":
@@ -314,7 +336,7 @@ export default function App() {
             onCreateAdventureFromImport={library.createAdventureFromImport}
             onOpenImportedAdventure={() => {
               setModalTab(undefined);
-              setActiveTab("play");
+              navigateTo("play");
             }}
           />
         );
@@ -386,6 +408,7 @@ export default function App() {
             contextResult={contextResult}
             loading={runtime.loading}
             error={runtime.error}
+            onDismissError={runtime.clearError}
             saveStatus={saveStatus}
             onSubmitTurn={runtime.submitTurn}
             onContinue={runtime.continueTurn}
@@ -558,7 +581,12 @@ export default function App() {
       </header>
 
       <main className={`main-content${activeTab === "play" ? " play-content" : ""}${activeTab === "edit" ? " edit-content" : ""}`}>
-        {runtime.error && activeTab !== "play" && <div className="error-box">{runtime.error}</div>}
+        {runtime.error && activeTab !== "play" && (
+          <div className="error-box error-dismissible">
+            <span>{runtime.error}</span>
+            <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={runtime.clearError}>×</button>
+          </div>
+        )}
         {page}
       </main>
 

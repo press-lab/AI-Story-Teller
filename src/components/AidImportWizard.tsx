@@ -15,7 +15,6 @@ import type { Adventure, BrainEntry, Message, StoryCard } from "../types/adventu
 import { nowIso } from "../utils/id";
 import { Field } from "../pages/shared";
 
-type AidStep = 1 | 2 | 3 | 4;
 type SummaryMode = "blank" | "firstN" | "imported";
 
 interface AidImportCompletion {
@@ -74,21 +73,7 @@ function selectedCounts(cards: AidCardParseResult["cards"], targets: Record<stri
   );
 }
 
-function StepIndicator({ step }: { step: AidStep }) {
-  const labels = ["Story", "Cards", "Review", "Done"];
-  return (
-    <div className="toolbar" aria-label="AI Dungeon import step">
-      {labels.map((label, index) => (
-        <span key={label} className="status-pill">
-          {index + 1 === step ? <strong>{index + 1}. {label}</strong> : `${index + 1}. ${label}`}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBack, backLabel = "← Back" }: AidImportWizardProps) {
-  const [aidStep, setAidStep] = useState<AidStep>(1);
   const [aidStoryText, setAidStoryText] = useState("");
   const [aidStoryResult, setAidStoryResult] = useState<AidStoryParseResult>();
   const [aidMessages, setAidMessages] = useState<Message[]>([]);
@@ -141,28 +126,12 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
     applyCardResult(mergeAidCardParseResults(texts.map(parseAidStoryCards)));
   }
 
-  async function loadQuickFiles(event: ChangeEvent<HTMLInputElement>) {
-    const texts = await readFilesAlphabetical(event);
-    if (!texts.length) return;
-    const mergedStory = mergeAidStoryParseResults(texts.map(parseAidStoryText));
-    applyStoryResult(mergedStory);
-    const mergedCards = mergeAidCardParseResults(texts.map(parseAidStoryCards));
-    if (mergedCards.cards.length > 0) applyCardResult(mergedCards);
-    setAidStep(3);
-  }
-
   function parseStoryInput() {
     applyStoryResult(parseAidStoryText(aidStoryText));
   }
 
   function parseCardInput() {
     applyCardResult(parseAidStoryCards(aidCardText));
-  }
-
-  function goToStep(step: AidStep) {
-    if (step === 2 && !aidStoryResult) parseStoryInput();
-    if (step === 3 && !aidCardResult) parseCardInput();
-    setAidStep(step);
   }
 
   function setCardTarget(cardId: string, target: AidCardImportTarget) {
@@ -186,14 +155,6 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
     setAidCardTargets(
       Object.fromEntries(aidCardResult.cards.map((card) => [card.id, target] satisfies [string, AidCardImportTarget])),
     );
-  }
-
-  function updateMessage(index: number, patch: Partial<Message>) {
-    setAidMessages((messages) => messages.map((m, i) => (i === index ? { ...m, ...patch } : m)));
-  }
-
-  function deleteMessage(index: number) {
-    setAidMessages((messages) => messages.filter((_, i) => i !== index));
   }
 
   async function createAdventure() {
@@ -254,167 +215,118 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
       brainCount: selectedBrains.length,
       componentCount: setupComponents.length,
     });
-    setAidStep(4);
+  }
+
+  if (aidCompletion) {
+    return (
+      <div className="card">
+        <h3>Import Complete</h3>
+        <p className="notice">
+          Created <strong>{aidCompletion.title}</strong>: {aidCompletion.messageCount} messages,{" "}
+          {aidCompletion.storyCardCount} story cards, {aidCompletion.brainCount} brains,{" "}
+          {aidCompletion.componentCount} setup components.
+        </p>
+        <div className="toolbar">
+          <button type="button" onClick={onComplete}>Open New Adventure</button>
+        </div>
+        <p className="muted">Adventure id: {aidCompletion.adventureId}</p>
+      </div>
+    );
   }
 
   return (
     <div className="list">
-      <StepIndicator step={aidStep} />
-
-      {aidStep === 1 && (
-        <div className="card">
-          <h3>Step 1: Story Text or Action JSON</h3>
-          <p className="muted">
-            Quick path: upload your AID <strong>.json</strong> export files below — the importer reads them
-            in filename order and auto-detects story and cards.
-          </p>
-          <Field label="Upload AID JSON files (quick import, multi-file OK)">
-            <input type="file" multiple accept=".json,.txt,application/json,text/plain" onChange={loadQuickFiles} />
-          </Field>
-          <p className="muted">
-            Or paste a transcript / upload action .json files for step-by-step control.
-          </p>
-          <Field label="Story / action files">
-            <input type="file" multiple accept=".txt,.json,application/json,text/plain" onChange={loadStoryFiles} />
-          </Field>
+      <div className="card">
+        <h3>Step 1: Story Text or Action JSON</h3>
+        <p className="muted">
+          Upload your AID export <strong>.json</strong> files — multiple files are merged in filename order.
+        </p>
+        <Field label="Story / action files (multi-file OK)">
+          <input type="file" multiple accept=".json,.txt,application/json,text/plain" onChange={loadStoryFiles} />
+        </Field>
+        <details>
+          <summary className="muted">Paste story text or JSON instead</summary>
           <Field label="Pasted story text or action JSON">
             <textarea
-              rows={12}
+              rows={8}
               value={aidStoryText}
               onChange={(event) => setAidStoryText(event.target.value)}
               placeholder="Paste AI Dungeon transcript or actions JSON here."
             />
           </Field>
-          <div className="toolbar">
-            {onBack && (
-              <button type="button" onClick={onBack}>
-                {backLabel}
-              </button>
-            )}
-            <button type="button" onClick={parseStoryInput}>
-              Parse Story
-            </button>
-            <button type="button" onClick={() => goToStep(2)}>
-              Continue to Story Cards
-            </button>
-          </div>
+          <button type="button" onClick={parseStoryInput}>Parse Story Text</button>
+        </details>
 
-          {aidStoryResult && (
-            <div className="list">
-              <div className="grid three">
-                <div>
-                  <strong>{aidMessages.length}</strong>
-                  <span className="muted"> messages</span>
-                </div>
-                <div>
-                  <strong>{aidStoryResult.setupComponents.length}</strong>
-                  <span className="muted"> setup components</span>
-                </div>
-                <div>
-                  <strong>{aidStoryResult.sourceKind}</strong>
-                  <span className="muted"> source</span>
-                </div>
+        {aidStoryResult && (
+          <div className="list">
+            <div className="grid three">
+              <div>
+                <strong>{aidMessages.length}</strong>
+                <span className="muted"> messages</span>
               </div>
-              {aidStoryResult.detectedTitle && (
-                <p className="notice">Detected title: {aidStoryResult.detectedTitle}</p>
-              )}
-              {aidStoryResult.warnings.map((w) => (
-                <p key={w} className="notice">{w}</p>
-              ))}
-              <details open>
-                <summary>Preview Parsed Messages</summary>
-                {aidMessages.length === 0 && <p className="muted">No messages parsed from this input.</p>}
-                <div className="list" style={{ maxHeight: 420, overflow: "auto" }}>
-                  {aidMessages.map((message, index) => (
-                    <div key={message.id} className="card">
-                      <div className="grid two">
-                        <Field label={`Message ${index + 1} role`}>
-                          <select
-                            value={message.role}
-                            onChange={(event) => updateMessage(index, { role: event.target.value as Message["role"] })}
-                          >
-                            <option value="assistant">assistant</option>
-                            <option value="user">user</option>
-                            <option value="system">system</option>
-                          </select>
-                        </Field>
-                        <Field label="Created at">
-                          <input
-                            value={message.createdAt}
-                            onChange={(event) => updateMessage(index, { createdAt: event.target.value })}
-                          />
-                        </Field>
-                      </div>
-                      <textarea
-                        rows={3}
-                        value={message.content}
-                        onChange={(event) => updateMessage(index, { content: event.target.value })}
-                      />
-                      <button type="button" className="danger" onClick={() => deleteMessage(index)}>
-                        Remove Message
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </details>
+              <div>
+                <strong>{aidStoryResult.setupComponents.length}</strong>
+                <span className="muted"> setup components</span>
+              </div>
+              <div>
+                <strong>{aidStoryResult.sourceKind}</strong>
+                <span className="muted"> source</span>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+            {aidStoryResult.detectedTitle && (
+              <p className="notice">Detected title: {aidStoryResult.detectedTitle}</p>
+            )}
+            {aidStoryResult.warnings.map((w) => (
+              <p key={w} className="notice">{w}</p>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {aidStep === 2 && (
-        <div className="card">
-          <h3>Step 2: Story Cards JSON</h3>
-          <p className="muted">
-            Paste or upload AI Dungeon story cards. Multiple files are read in filename order. Cards with
-            character-brain agent keys are preselected as Brain imports.
-          </p>
-          <Field label="Story card files (multi-file OK)">
-            <input type="file" multiple accept=".json,application/json" onChange={loadCardFiles} />
-          </Field>
+      <div className="card">
+        <h3>Step 2: Story Cards</h3>
+        <p className="muted">
+          Upload AI Dungeon story card files. Cards with character keys are pre-assigned as Brains.
+        </p>
+        <Field label="Story card files (multi-file OK)">
+          <input type="file" multiple accept=".json,application/json" onChange={loadCardFiles} />
+        </Field>
+        <details>
+          <summary className="muted">Paste story card JSON instead</summary>
           <Field label="Pasted story card JSON">
             <textarea
-              rows={12}
+              rows={8}
               value={aidCardText}
               onChange={(event) => setAidCardText(event.target.value)}
               placeholder="Paste AI Dungeon story card JSON here."
             />
           </Field>
-          <div className="toolbar">
-            <button type="button" onClick={() => goToStep(1)}>Back</button>
-            <button type="button" onClick={parseCardInput}>Parse Cards</button>
-            <button type="button" onClick={() => goToStep(3)}>Continue to Review</button>
-          </div>
+          <button type="button" onClick={parseCardInput}>Parse Story Cards</button>
+        </details>
 
-          {aidCardResult?.error && <p className="error-box">Invalid JSON: {aidCardResult.error}</p>}
-          {aidCardResult && (
-            <div className="list">
-              <div className="grid four">
-                <div><strong>{aidCardResult.cards.length}</strong><span className="muted"> parsed</span></div>
-                <div><strong>{cardCounts.storyCards}</strong><span className="muted"> story cards</span></div>
-                <div><strong>{cardCounts.brains}</strong><span className="muted"> brains</span></div>
-                <div><strong>{aidCardResult.skipped.length}</strong><span className="muted"> skipped</span></div>
-              </div>
-              <div className="toolbar">
-                <button type="button" onClick={() => setAllBrainCandidates("brain")}>Brain Candidates to Brain</button>
-                <button type="button" onClick={() => setAllBrainCandidates("storyCard")}>Brain Candidates to Story Card</button>
-                <button type="button" onClick={() => setAllCards("storyCard")}>All to Story Card</button>
-              </div>
-              {aidCardResult.warnings.map((w) => <p key={w} className="notice">{w}</p>)}
-              {aidCardResult.skipped.map((s) => (
-                <p key={`${s.sourceIndex}-${s.reason}`} className="notice">
-                  Skipped card {s.sourceIndex + 1}: {s.reason}
-                </p>
-              ))}
+        {aidCardResult && (
+          <div className="list">
+            {aidCardResult.error && <p className="error-box">Invalid JSON: {aidCardResult.error}</p>}
+            <div className="grid four">
+              <div><strong>{aidCardResult.cards.length}</strong><span className="muted"> parsed</span></div>
+              <div><strong>{cardCounts.storyCards}</strong><span className="muted"> story cards</span></div>
+              <div><strong>{cardCounts.brains}</strong><span className="muted"> brains</span></div>
+              <div><strong>{aidCardResult.skipped.length}</strong><span className="muted"> skipped</span></div>
+            </div>
+            <div className="toolbar">
+              <button type="button" onClick={() => setAllBrainCandidates("brain")}>Brain Candidates → Brain</button>
+              <button type="button" onClick={() => setAllBrainCandidates("storyCard")}>Brain Candidates → Story Card</button>
+              <button type="button" onClick={() => setAllCards("storyCard")}>All → Story Card</button>
+            </div>
+            {aidCardResult.warnings.map((w) => <p key={w} className="notice">{w}</p>)}
+            {aidCardResult.cards.length > 0 && (
               <details open>
-                <summary>Preview Parsed Cards</summary>
-                {aidCardResult.cards.length === 0 && <p className="muted">No cards parsed.</p>}
-                <div style={{ maxHeight: 440, overflow: "auto" }}>
+                <summary>Card Assignments ({aidCardResult.cards.length})</summary>
+                <div style={{ maxHeight: 300, overflow: "auto" }}>
                   <table>
                     <thead>
                       <tr>
                         <th>Import as</th>
-                        <th>Label</th>
                         <th>Title</th>
                         <th>Keys</th>
                         <th>Content</th>
@@ -433,11 +345,6 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
                               <option value="skip">Skip</option>
                             </select>
                           </td>
-                          <td>
-                            {card.suggestion === "storyCard" ? "Story Card" : card.suggestion === "brain" ? "Brain" : "Ambiguous"}
-                            <br />
-                            <span className="muted">{card.suggestionReason}</span>
-                          </td>
                           <td>{card.title}</td>
                           <td>{shortPreview(card.keysText, 120)}</td>
                           <td>{shortPreview(card.content)}</td>
@@ -447,80 +354,60 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
                   </table>
                 </div>
               </details>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
-      {aidStep === 3 && (
-        <div className="card">
-          <h3>Step 3: Review and Map</h3>
-          <Field label="New adventure name">
+      <div className="card">
+        <h3>Create Adventure</h3>
+        <Field label="Adventure name">
+          <input
+            value={aidAdventureName}
+            onChange={(event) => setAidAdventureName(event.target.value)}
+            placeholder={aidStoryResult?.detectedTitle || "Imported AI Dungeon Adventure"}
+          />
+        </Field>
+        <Field label="Rolling summary">
+          <select value={summaryMode} onChange={(event) => setSummaryMode(event.target.value as SummaryMode)}>
+            <option value="blank">Leave blank</option>
+            <option value="firstN">Use first N parsed messages</option>
+            {aidStoryResult?.rollingSummarySuggestion && (
+              <option value="imported">Use AI Dungeon story summary</option>
+            )}
+          </select>
+        </Field>
+        {summaryMode === "firstN" && (
+          <Field label="Messages to include in rolling summary">
             <input
-              value={aidAdventureName}
-              onChange={(event) => setAidAdventureName(event.target.value)}
-              placeholder={aidStoryResult?.detectedTitle || "Imported AI Dungeon Adventure"}
+              type="number"
+              min={1}
+              value={summaryMessageCount}
+              onChange={(event) => setSummaryMessageCount(Number(event.target.value))}
             />
           </Field>
-          <div className="grid four">
-            <div><strong>{aidMessages.length}</strong><span className="muted"> messages</span></div>
-            <div><strong>{cardCounts.storyCards}</strong><span className="muted"> story cards</span></div>
-            <div><strong>{cardCounts.brains}</strong><span className="muted"> brains</span></div>
-            <div><strong>{aidStoryResult?.setupComponents.length ?? 0}</strong><span className="muted"> setup components</span></div>
-          </div>
-          <Field label="Rolling summary">
-            <select value={summaryMode} onChange={(event) => setSummaryMode(event.target.value as SummaryMode)}>
-              <option value="blank">Leave blank</option>
-              <option value="firstN">Use first N parsed messages</option>
-              {aidStoryResult?.rollingSummarySuggestion && (
-                <option value="imported">Use AI Dungeon story summary</option>
-              )}
-            </select>
-          </Field>
-          {summaryMode === "firstN" && (
-            <Field label="Messages to include in rolling summary">
-              <input
-                type="number"
-                min={1}
-                value={summaryMessageCount}
-                onChange={(event) => setSummaryMessageCount(Number(event.target.value))}
-              />
-            </Field>
-          )}
-          {summaryMode === "imported" && aidStoryResult?.rollingSummarySuggestion && (
-            <textarea rows={5} readOnly value={aidStoryResult.rollingSummarySuggestion} />
-          )}
-          {!canCreate && <p className="notice">Nothing has been selected for import yet.</p>}
-          <div className="toolbar">
-            <button type="button" onClick={() => goToStep(2)}>Back</button>
-            <button type="button" disabled={!canCreate} onClick={createAdventure}>
-              Create Adventure
+        )}
+        {summaryMode === "imported" && aidStoryResult?.rollingSummarySuggestion && (
+          <textarea rows={4} readOnly value={aidStoryResult.rollingSummarySuggestion} />
+        )}
+        <div className="grid four">
+          <div><strong>{aidMessages.length}</strong><span className="muted"> messages</span></div>
+          <div><strong>{cardCounts.storyCards}</strong><span className="muted"> story cards</span></div>
+          <div><strong>{cardCounts.brains}</strong><span className="muted"> brains</span></div>
+          <div><strong>{aidStoryResult?.setupComponents.length ?? 0}</strong><span className="muted"> components</span></div>
+        </div>
+        {!canCreate && <p className="notice">Load story or card files above to enable import.</p>}
+        <div className="toolbar">
+          {onBack && (
+            <button type="button" onClick={onBack}>
+              {backLabel}
             </button>
-          </div>
-        </div>
-      )}
-
-      {aidStep === 4 && (
-        <div className="card">
-          <h3>Step 4: Import Complete</h3>
-          {aidCompletion ? (
-            <>
-              <p className="notice">
-                Created <strong>{aidCompletion.title}</strong>: {aidCompletion.messageCount} messages,{" "}
-                {aidCompletion.storyCardCount} story cards, {aidCompletion.brainCount} brains,{" "}
-                {aidCompletion.componentCount} setup components.
-              </p>
-              <div className="toolbar">
-                <button type="button" onClick={() => setAidStep(3)}>Back</button>
-                <button type="button" onClick={onComplete}>Open New Adventure</button>
-              </div>
-              <p className="muted">Adventure id: {aidCompletion.adventureId}</p>
-            </>
-          ) : (
-            <p className="muted">No completed AI Dungeon import yet.</p>
           )}
+          <button type="button" disabled={!canCreate} onClick={createAdventure}>
+            Create Adventure
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

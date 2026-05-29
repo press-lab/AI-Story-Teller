@@ -371,6 +371,7 @@ export function useAdventureRuntime(
   return {
     loading,
     error,
+    clearError: () => setError(undefined),
     activeProviderConfig,
     buildPreview,
     submitTurn,

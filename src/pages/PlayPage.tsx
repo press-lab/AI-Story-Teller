@@ -54,6 +54,7 @@ export function PlayPage({
   playPanelContent,
   playPanelTitle,
   onClosePlayPanel,
+  onDismissError,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("story");
@@ -190,7 +191,16 @@ export function PlayPage({
 
   return (
     <section className="page play-layout">
-      {error && <div className="error-box">{error}</div>}
+      {error && (
+        <div className="error-box error-dismissible">
+          <span>{error}</span>
+          {onDismissError && (
+            <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={onDismissError}>
+              ×
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="play-main">
         <div className="transcript" onClick={() => setComposerOpen(false)}>
