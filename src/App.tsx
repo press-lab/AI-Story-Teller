@@ -306,6 +306,8 @@ export default function App() {
             onGitHubSaveSettingsChange={setGitHubSaveSettings}
             saveSlots={gitHubSaves.saveSlots}
             savesStatus={gitHubSaves.savesStatus}
+            loadingSlotId={gitHubSaveLoad.loadingSlotId}
+            loadError={gitHubSaveLoad.loadError}
             onListSaves={() => void gitHubSaves.listSaves()}
             onSaveNow={() => void gitHubSaves.saveNow(adventure)}
             onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
@@ -362,6 +364,8 @@ export default function App() {
           onDelete={(id) => library.removeAdventure(id, adventure?.id)}
           saveSlots={gitHubSaves.saveSlots}
           savesStatus={gitHubSaves.savesStatus}
+          loadingSlotId={gitHubSaveLoad.loadingSlotId}
+          loadError={gitHubSaveLoad.loadError}
           onListSaves={() => void gitHubSaves.listSaves()}
           onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
         />

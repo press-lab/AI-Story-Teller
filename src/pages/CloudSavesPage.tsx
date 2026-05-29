@@ -7,6 +7,8 @@ interface CloudSavesPageProps {
   onGitHubSaveSettingsChange: (settings: GitHubSaveSettings) => void;
   saveSlots: GitHubSaveSlot[];
   savesStatus: string;
+  loadingSlotId?: string;
+  loadError?: string;
   onListSaves: () => void;
   onSaveNow: () => void;
   onLoadSave: (slot: GitHubSaveSlot) => void;
@@ -22,6 +24,8 @@ export function CloudSavesPage({
   onGitHubSaveSettingsChange,
   saveSlots,
   savesStatus,
+  loadingSlotId,
+  loadError,
   onListSaves,
   onSaveNow,
   onLoadSave,
@@ -72,6 +76,8 @@ export function CloudSavesPage({
             {savesStatus && <span className="status-pill">{savesStatus}</span>}
           </div>
 
+          {loadError && <p className="error-box" style={{ marginTop: "0.5rem" }}>{loadError}</p>}
+
           {saveSlots.length > 0 && (
             <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.75rem", fontSize: "0.875rem" }}>
               <thead>
@@ -84,17 +90,26 @@ export function CloudSavesPage({
                 </tr>
               </thead>
               <tbody>
-                {saveSlots.map((slot) => (
-                  <tr key={slot.saveId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.title}</td>
-                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
-                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
-                    <td style={{ padding: "0.35rem 0.5rem", fontFamily: "monospace" }}>{formatUtc(slot.savedAt)}</td>
-                    <td style={{ padding: "0.35rem 0.5rem" }}>
-                      <button type="button" onClick={() => onLoadSave(slot)}>Load</button>
-                    </td>
-                  </tr>
-                ))}
+                {saveSlots.map((slot) => {
+                  const isLoading = loadingSlotId === slot.saveId;
+                  return (
+                    <tr key={slot.saveId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.title}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
+                      <td style={{ padding: "0.35rem 0.5rem", fontFamily: "monospace" }}>{formatUtc(slot.savedAt)}</td>
+                      <td style={{ padding: "0.35rem 0.5rem" }}>
+                        <button
+                          type="button"
+                          disabled={isLoading || !!loadingSlotId}
+                          onClick={() => onLoadSave(slot)}
+                        >
+                          {isLoading ? "Loading…" : "Load"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

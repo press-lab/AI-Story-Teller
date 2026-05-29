@@ -13,30 +13,52 @@ export function useGitHubSaveLoad(
   onApply: (adventure: Adventure) => Promise<void>,
 ) {
   const [pendingConflict, setPendingConflict] = useState<PendingConflict | undefined>();
+  const [loadingSlotId, setLoadingSlotId] = useState<string | undefined>();
+  const [loadError, setLoadError] = useState<string | undefined>();
 
   const initiateLoad = useCallback(
     async (slot: GitHubSaveSlot) => {
-      const loaded = await loadSave(slot);
-      if (!loaded) return;
-      const existing = await getAdventure(loaded.id);
-      if (!existing) {
-        await onApply(loaded);
-        return;
+      setLoadingSlotId(slot.saveId);
+      setLoadError(undefined);
+      try {
+        const loaded = await loadSave(slot);
+        if (!loaded) {
+          setLoadingSlotId(undefined);
+          return;
+        }
+        const existing = await getAdventure(loaded.id);
+        if (!existing) {
+          await onApply(loaded);
+          setLoadingSlotId(undefined);
+          return;
+        }
+        setLoadingSlotId(undefined);
+        setPendingConflict({ loaded, local: existing, slot });
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : "Load failed.");
+        setLoadingSlotId(undefined);
       }
-      setPendingConflict({ loaded, local: existing, slot });
     },
     [loadSave, onApply],
   );
 
   const confirmOverwrite = useCallback(async () => {
     if (!pendingConflict) return;
-    await onApply(pendingConflict.loaded);
+    setLoadingSlotId(pendingConflict.slot.saveId);
+    setLoadError(undefined);
+    try {
+      await onApply(pendingConflict.loaded);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Apply failed.");
+    }
+    setLoadingSlotId(undefined);
     setPendingConflict(undefined);
   }, [pendingConflict, onApply]);
 
   const cancelOverwrite = useCallback(() => {
     setPendingConflict(undefined);
+    setLoadError(undefined);
   }, []);
 
-  return { pendingConflict, initiateLoad, confirmOverwrite, cancelOverwrite };
+  return { pendingConflict, loadingSlotId, loadError, initiateLoad, confirmOverwrite, cancelOverwrite };
 }
