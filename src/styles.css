@@ -1186,7 +1186,7 @@ button.primary-action:hover:not(:disabled),
   background: var(--page-bg);
   color: var(--button-text);
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -2145,7 +2145,7 @@ summary {
   color: var(--text-muted, #888);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: var(--bg);
+  background: var(--surface);
 }
 .context-table td {
   padding: 0.35rem 0.5rem;
@@ -2171,7 +2171,7 @@ summary {
 .context-table .col-actions { width: 86px; }
 .context-expanded-row td {
   padding: 0 0 0.75rem;
-  background: var(--bg, #fff);
+  background: var(--surface);
 }
 .context-expanded-inner {
   padding: 0.5rem 0.75rem;
@@ -2359,7 +2359,7 @@ summary {
     flex: 0 0 auto;
     min-height: 30px;
     padding: 3px 12px;
-    font-size: 13px;
+    font-size: 15px;
     white-space: nowrap;
     background: var(--surface-soft);
     scroll-snap-align: start;

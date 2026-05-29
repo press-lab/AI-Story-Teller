@@ -51,6 +51,7 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
   const [importText, setImportText] = useState("");
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
+  const [search, setSearch] = useState("");
   const newCardRef = useRef<HTMLDetailsElement | null>(null);
 
   useEffect(() => {
@@ -71,9 +72,15 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
     }
   }
 
+  const searchLower = search.toLowerCase().trim();
+  function cardMatchesSearch(card: StoryCard): boolean {
+    if (!searchLower) return true;
+    return card.title.toLowerCase().includes(searchLower) || card.keys.some((k) => k.toLowerCase().includes(searchLower));
+  }
+
   // Group cards by type, only include types that have at least one card
   const groups: Array<{ type: StoryCardType; cards: StoryCard[] }> = TYPE_ORDER
-    .map((type) => ({ type, cards: sortCards(adventure.storyCards.filter((c) => c.type === type), sortMode) }))
+    .map((type) => ({ type, cards: sortCards(adventure.storyCards.filter((c) => c.type === type && cardMatchesSearch(c)), sortMode) }))
     .filter((g) => g.cards.length > 0);
 
   return (
@@ -86,6 +93,13 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
       </p>
 
       <div className="toolbar">
+        <input
+          type="search"
+          placeholder="Search cards…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          style={{ flex: 1, minWidth: "8rem", maxWidth: "20rem" }}
+        />
         <button
           type="button"
           onClick={() => {

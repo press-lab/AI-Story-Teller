@@ -117,7 +117,8 @@ export async function sendOpenAICompatibleChatCompletion({
   };
 
   if (!response.ok) {
-    throw new Error(raw.error?.message || `Provider request failed with HTTP ${response.status}.`);
+    const url = completionEndpoint(config.baseUrl);
+    throw new Error(raw.error?.message || `Provider request failed with HTTP ${response.status} (${url}).`);
   }
 
   const content = raw.choices?.[0]?.message?.content;

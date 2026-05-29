@@ -63,6 +63,7 @@ export function PlayPage({
   const [showOverflow, setShowOverflow] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
+  const [editingOpeningScene, setEditingOpeningScene] = useState(false);
   const [toolkitWidth, setToolkitWidth] = useState(() => {
     try {
       const stored = localStorage.getItem("play-toolkit-width");
@@ -205,8 +206,22 @@ export function PlayPage({
       <div className="play-main">
         <div className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.openingScene && (
-            <article className="message assistant opening-scene-message">
-              <p>{adventure.openingScene}</p>
+            <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
+              <div className="message-actions">
+                <button type="button" onClick={() => setEditingOpeningScene(!editingOpeningScene)}>
+                  {editingOpeningScene ? "Done" : "Edit"}
+                </button>
+              </div>
+              {editingOpeningScene ? (
+                <textarea
+                  className="message-editor"
+                  rows={8}
+                  value={adventure.openingScene}
+                  onChange={(e) => dispatch({ type: "SET_OPENING_SCENE", content: e.target.value })}
+                />
+              ) : (
+                <p>{adventure.openingScene}</p>
+              )}
             </article>
           )}
           {!adventure.openingScene && adventure.messages.length === 0 && (
