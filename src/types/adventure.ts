@@ -430,6 +430,14 @@ export interface Adventure {
   modelConfig: ProviderConfig;
   semanticEvaluationSettings: SemanticEvaluationSettings;
   autoCardSettings: AutoCardSettings;
+  memoryAutoApprove: MemoryAutoApproveSettings;
+}
+
+export interface MemoryAutoApproveSettings {
+  summaryUpdate: boolean;
+  plotEssentialsUpdate: boolean;
+  storyCard: boolean;
+  brainUpdate: boolean;
 }
 
 export interface AdventureThumbnailImage {
@@ -637,6 +645,7 @@ export type AdventureAction =
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
+  | { type: "SET_MEMORY_AUTO_APPROVE"; settings: MemoryAutoApproveSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
   | { type: "SET_RESPONSE_LENGTH_HINT"; hint: number }
   | { type: "SET_NEXT_TURN_NOTE"; note: Partial<NextTurnNote> }

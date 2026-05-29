@@ -654,13 +654,25 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           rawImports: deleteById(state.activeState.rawImports, action.rawImportId),
         },
       });
-    case "ADD_MEMORY_PROPOSAL":
+    case "ADD_MEMORY_PROPOSAL": {
+      const autoApprove = state.memoryAutoApprove?.[action.proposal.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
+      if (autoApprove) {
+        const approved = updateMemoryProposal(action.proposal, { status: "approved" });
+        return touchAdventure(state, {
+          ...applyApprovedMemoryProposal(state, approved),
+          activeState: {
+            ...state.activeState,
+            memoryProposals: [approved, ...state.activeState.memoryProposals],
+          },
+        });
+      }
       return touchAdventure(state, {
         activeState: {
           ...state.activeState,
           memoryProposals: [action.proposal, ...state.activeState.memoryProposals],
         },
       });
+    }
     case "UPDATE_MEMORY_PROPOSAL":
       return touchAdventure(state, {
         activeState: {
@@ -717,6 +729,8 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, { semanticEvaluationSettings: action.settings });
     case "SET_AUTO_CARD_SETTINGS":
       return touchAdventure(state, { autoCardSettings: action.settings });
+    case "SET_MEMORY_AUTO_APPROVE":
+      return touchAdventure(state, { memoryAutoApprove: action.settings });
     case "SET_STATE_FLAG":
       return touchAdventure(state, {
         activeState: {

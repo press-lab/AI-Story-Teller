@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
-import type { MemoryProposal, MemoryProposalType } from "../types/adventure";
+import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
-import { Field, NumberInput, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
 
 const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "summaryUpdate", "ignore"];
 
@@ -42,6 +42,12 @@ export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
     setSourceText("");
   }
 
+  const autoApprove = adventure.memoryAutoApprove;
+
+  function setAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
+    dispatch({ type: "SET_MEMORY_AUTO_APPROVE", settings: { ...autoApprove, ...patch } });
+  }
+
   return (
     <section className="page">
       <article className="panel">
@@ -53,6 +59,13 @@ export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
           <strong> Reject</strong> to dismiss it cleanly, or <strong>Ignore</strong> to remove it from view without applying.
           You can edit the content before approving.
         </p>
+        <div className="auto-approve-toggles">
+          <span className="auto-approve-label muted">Auto-approve:</span>
+          <CheckboxField label="Summary" checked={autoApprove.summaryUpdate} onChange={(v) => setAutoApprove({ summaryUpdate: v })} />
+          <CheckboxField label="Plot Essentials" checked={autoApprove.plotEssentialsUpdate} onChange={(v) => setAutoApprove({ plotEssentialsUpdate: v })} />
+          <CheckboxField label="Story Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
+          <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
+        </div>
       </article>
 
       <details className="panel">
