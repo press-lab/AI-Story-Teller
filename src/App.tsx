@@ -346,7 +346,7 @@ export default function App() {
           savesStatus={gitHubSaves.savesStatus}
           onListSaves={() => void gitHubSaves.listSaves()}
           onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
-          onLoadSave={(slot) => void loadGitHubSaveToLibrary(slot)}
+          onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
           onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
         />
       );
