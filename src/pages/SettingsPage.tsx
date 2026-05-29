@@ -11,7 +11,7 @@ import type {
 import type { RuntimeProviderSettings } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
-  cheapTokenBudgetPreset,
+  lightTokenBudgetPreset,
   defaultTokenBudgetSettings,
   heavyTokenBudgetPreset,
 } from "../state/defaults";
@@ -168,7 +168,7 @@ export function SettingsPage({
             <article className="panel">
               <h3>Context Budget</h3>
               <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
-                <button type="button" title="8k tokens, 15 messages, tight section budgets — lowest cost" onClick={() => updateBudget(cheapTokenBudgetPreset)}>Cheap</button>
+                <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
                 <button type="button" title="16k tokens, 40 messages — balanced default" onClick={() => updateBudget(defaultTokenBudgetSettings)}>Normal</button>
                 <button type="button" title="32k tokens, 80 messages, large section budgets — maximum context" onClick={() => updateBudget(heavyTokenBudgetPreset)}>Heavy</button>
               </div>

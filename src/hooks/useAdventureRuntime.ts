@@ -9,6 +9,7 @@ import {
   createMemoryProposalAction,
   latestAssistantOutput,
   reduceActions,
+  runTurnPipeline,
 } from "../state/turnPipeline";
 import {
   runManualAutoCardGeneration,
@@ -152,28 +153,28 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
 
-    let next = flushPendingBeforeContext(adventure);
-    next = adventureReducer(next, { type: "ADD_MESSAGE", role: "user", content: text, inputMode: mode });
-    next = applyRuntimeEngines(next, { source: "input", text });
-    const context = buildContext(next, { currentInput: text, latestModelOutput: latestAssistantOutput(next) });
-    setContextResult(context);
-    setAdventure(next);
+    const base = flushPendingBeforeContext(adventure);
+    let snapshotWithUserMsg: typeof adventure | undefined;
 
     try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: mergeProviderConfig(next, providerSettings),
+      const result = await runTurnPipeline({
+        adventure: base,
+        text,
+        mode,
+        sendChatCompletion: async (messages, snapshot, context) => {
+          snapshotWithUserMsg = snapshot;
+          setAdventure(snapshot);
+          setContextResult(context);
+          return sendOpenAICompatibleChatCompletion({
+            messages,
+            config: mergeProviderConfig(snapshot, providerSettings),
+          });
+        },
       });
-      const assistantMode = mode === "comms" ? "comms" : undefined;
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, inputMode: assistantMode, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      if (mode !== "comms") next = applyMemoryProposalFromOutput(next, response.content);
+
+      let next = mergeQueuedUpdates(result.adventure);
       setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
-      next = adventureReducer(next, { type: "INCREMENT_TURN" });
-      next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
+      setContextResult(result.postTurnContext);
       await saveAdventure(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
@@ -183,8 +184,9 @@ export function useAdventureRuntime(
       }
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Provider request failed.");
-      setAdventure(next);
-      await saveAdventure(next);
+      const errorState = snapshotWithUserMsg ?? base;
+      setAdventure(errorState);
+      await saveAdventure(errorState);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;

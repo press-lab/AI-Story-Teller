@@ -364,25 +364,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // H. Quest State
-  const questItems = prioritySort(adventure.quests).flatMap((quest) => {
-    const forced = isForced(adventure, "quest", quest.id);
-    if (quest.status !== "active" && !forced) {
-      pushExcluded("quest", quest.id, quest.title, "inactive");
-      return [];
-    }
-    const step = quest.steps.find((entry) => entry.id === quest.currentStepId);
-    const content = [
-      quest.description,
-      step?.objective && `Current objective: ${step.objective}`,
-      step?.contextText,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const next = item(quest.id, "quest", quest.title, content, quest.priority, quest.protected, quest.pinned, quest.status === "active", quest.inclusionPolicy, "user");
-    pushIncluded(next, `Quest context included for active objective; priority=${quest.priority}; protected=${quest.protected}.`);
-    return [next];
-  });
+  // H. Quest State — disabled; quests are not UI-exposed so their data never enters context
+  const questItems: ContextItem[] = [];
 
   // I. Rolling Summary — pre-cap to sectionBudgets.rollingSummary before assembly
   const summaryCap = budgetSettings.sectionBudgets.rollingSummary;

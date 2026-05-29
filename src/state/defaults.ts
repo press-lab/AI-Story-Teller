@@ -31,7 +31,7 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   autoSummarizeEveryNTurns: 20,
 };
 
-export const cheapTokenBudgetPreset: Partial<TokenBudgetSettings> = {
+export const lightTokenBudgetPreset: Partial<TokenBudgetSettings> = {
   maxContextTokens: 8000,
   maxRecentMessages: 15,
   sectionBudgets: { rollingSummary: 800, recentMessages: 3000 },
