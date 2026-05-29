@@ -1,6 +1,6 @@
 import { normalizeAdventure } from "../state/defaults";
 import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot, ISODateString } from "../types/adventure";
-import { decodeBase64Utf8, encodeBase64Utf8, ensureRepo, githubRequest, resolveOwner } from "./githubSync";
+import { encodeBase64Utf8, ensureRepo, fetchGitHubFileContent, githubRequest, resolveOwner } from "./githubSync";
 
 export const defaultGitHubSaveSettings: GitHubSaveSettings = {
   autoSaveEnabled: false,
@@ -21,11 +21,6 @@ interface GitHubSaveIndex {
   version: 1;
   updatedAt: ISODateString;
   slots: GitHubSaveSlot[];
-}
-
-interface GitHubContentResponse {
-  sha: string;
-  content: string;
 }
 
 function assertSettings(settings: CloudSyncSettings): void {
@@ -68,11 +63,10 @@ async function fetchIndex(
 ): Promise<{ index: GitHubSaveIndex; sha?: string }> {
   const path = `${indexFilePath(cloudSettings, saveSettings, owner)}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`;
   try {
-    const remote = await githubRequest<GitHubContentResponse>(cloudSettings, path);
-    if (!remote.content) throw new Error("GitHub returned empty content for the save index.");
-    const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as GitHubSaveIndex;
+    const { text, sha } = await fetchGitHubFileContent(cloudSettings, path);
+    const parsed = JSON.parse(text) as GitHubSaveIndex;
     if (parsed.app !== "ai-story-teller") throw new Error("Not a valid AI Story Teller save index.");
-    return { index: parsed, sha: remote.sha };
+    return { index: parsed, sha };
   } catch (error) {
     if (error instanceof Error && /not found/i.test(error.message)) {
       return { index: { app: "ai-story-teller", version: 1, updatedAt: new Date().toISOString(), slots: [] } };
@@ -175,9 +169,8 @@ export async function loadGitHubSave(
   assertSettings(cloudSettings);
   const owner = await resolveOwner(cloudSettings);
   const path = `${saveFilePath(cloudSettings, saveSettings, owner, slot.adventureId, slot.saveId)}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`;
-  const remote = await githubRequest<GitHubContentResponse>(cloudSettings, path);
-  if (!remote.content) throw new Error("GitHub returned empty content for this save file. The file may be missing or corrupted.");
-  const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as GitHubSaveFile;
+  const { text } = await fetchGitHubFileContent(cloudSettings, path);
+  const parsed = JSON.parse(text) as GitHubSaveFile;
   if (parsed.app !== "ai-story-teller" || !parsed.adventure) {
     throw new Error("Not a valid AI Story Teller save file.");
   }

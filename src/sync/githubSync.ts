@@ -66,6 +66,22 @@ export function decodeBase64Utf8(text: string): string {
   return new TextDecoder().decode(bytes);
 }
 
+// GitHub Contents API returns content:"" and download_url for files > 1 MB.
+export async function fetchGitHubFileContent(settings: CloudSyncSettings, apiPath: string): Promise<{ text: string; sha: string }> {
+  const remote = await githubRequest<{ sha: string; content: string; download_url?: string }>(settings, apiPath);
+  if (remote.content) {
+    return { text: decodeBase64Utf8(remote.content), sha: remote.sha };
+  }
+  if (remote.download_url) {
+    const resp = await fetch(remote.download_url, {
+      headers: { Authorization: `Bearer ${settings.token}` },
+    });
+    if (!resp.ok) throw new Error(`Failed to download file from GitHub (HTTP ${resp.status}).`);
+    return { text: await resp.text(), sha: remote.sha };
+  }
+  throw new Error("GitHub returned no content for this file. It may be missing or corrupted.");
+}
+
 export async function githubRequest<T>(settings: CloudSyncSettings, path: string, init: RequestInit = {}): Promise<T> {
   const response = await fetch(`https://api.github.com${path}`, {
     ...init,
@@ -124,17 +140,16 @@ async function fetchBundle(
   owner: string,
 ): Promise<{ bundle?: CloudSyncBundle; sha?: string }> {
   try {
-    const remote = await githubRequest<GitHubContentResponse>(
+    const { text, sha } = await fetchGitHubFileContent(
       settings,
       `${contentPath(settings, owner)}?ref=${encodeURIComponent(settings.branch.trim())}`,
     );
-    if (!remote.content) throw new Error("GitHub returned empty content for the sync bundle.");
-    const parsed = JSON.parse(decodeBase64Utf8(remote.content)) as CloudSyncBundle;
+    const parsed = JSON.parse(text) as CloudSyncBundle;
     if (parsed.app !== "ai-story-teller" || !Array.isArray(parsed.adventures)) {
       throw new Error("GitHub sync file is not an AI Story Teller sync bundle.");
     }
     return {
-      sha: remote.sha,
+      sha,
       bundle: {
         ...parsed,
         adventures: parsed.adventures.map(sanitizeAdventure),
