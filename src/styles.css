@@ -1417,7 +1417,7 @@ button.primary-action:hover:not(:disabled),
   position: relative;
   padding: 10px 36px 10px 0; /* right padding reserves space for hover actions */
   border-bottom: 1px solid var(--border);
-  max-width: 68ch;
+  max-width: 76ch;
   margin-inline: auto;
   width: 100%;
 }
@@ -1440,7 +1440,6 @@ button.primary-action:hover:not(:disabled),
 .message.mode-do {
   border-left: 3px solid #4a7c6a;
   padding-left: 10px;
-  margin-left: -3px;
 }
 
 /* Comms / Author: out-of-character — clearly different */
