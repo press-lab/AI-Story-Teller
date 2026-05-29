@@ -274,6 +274,12 @@ export default function App() {
 
   const gitHubSaveLoad = useGitHubSaveLoad(gitHubSaves.loadSave, applyGitHubSave);
 
+  useEffect(() => {
+    gitHubSaveLoad.clearLoadError();
+  // clear error whenever the user navigates away from any GitHub saves screen
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, modalTab]);
+
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
     const common = { adventure, dispatch };
@@ -308,6 +314,7 @@ export default function App() {
             savesStatus={gitHubSaves.savesStatus}
             loadingSlotId={gitHubSaveLoad.loadingSlotId}
             loadError={gitHubSaveLoad.loadError}
+            onDismissError={gitHubSaveLoad.clearLoadError}
             onListSaves={() => void gitHubSaves.listSaves()}
             onSaveNow={() => void gitHubSaves.saveNow(adventure)}
             onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
@@ -366,6 +373,7 @@ export default function App() {
           savesStatus={gitHubSaves.savesStatus}
           loadingSlotId={gitHubSaveLoad.loadingSlotId}
           loadError={gitHubSaveLoad.loadError}
+          onDismissError={gitHubSaveLoad.clearLoadError}
           onListSaves={() => void gitHubSaves.listSaves()}
           onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
           providerConfig={runtime.activeProviderConfig}

@@ -73,9 +73,8 @@ export async function fetchGitHubFileContent(settings: CloudSyncSettings, apiPat
     return { text: decodeBase64Utf8(remote.content), sha: remote.sha };
   }
   if (remote.download_url) {
-    const resp = await fetch(remote.download_url, {
-      headers: { Authorization: `Bearer ${settings.token}` },
-    });
+    // download_url already carries embedded auth — adding Bearer triggers a CORS preflight that raw.githubusercontent.com rejects
+    const resp = await fetch(remote.download_url);
     if (!resp.ok) throw new Error(`Failed to download file from GitHub (HTTP ${resp.status}).`);
     return { text: await resp.text(), sha: remote.sha };
   }

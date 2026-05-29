@@ -9,6 +9,7 @@ interface CloudSavesPageProps {
   savesStatus: string;
   loadingSlotId?: string;
   loadError?: string;
+  onDismissError?: () => void;
   onListSaves: () => void;
   onSaveNow: () => void;
   onLoadSave: (slot: GitHubSaveSlot) => void;
@@ -26,6 +27,7 @@ export function CloudSavesPage({
   savesStatus,
   loadingSlotId,
   loadError,
+  onDismissError,
   onListSaves,
   onSaveNow,
   onLoadSave,
@@ -76,7 +78,12 @@ export function CloudSavesPage({
             {savesStatus && <span className="status-pill">{savesStatus}</span>}
           </div>
 
-          {loadError && <p className="error-box" style={{ marginTop: "0.5rem" }}>{loadError}</p>}
+          {loadError && (
+            <div className="error-box error-dismissible" style={{ marginTop: "0.5rem" }}>
+              <span>{loadError}</span>
+              <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={onDismissError}>×</button>
+            </div>
+          )}
 
           {saveSlots.length > 0 && (
             <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.75rem", fontSize: "0.875rem" }}>

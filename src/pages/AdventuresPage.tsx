@@ -32,6 +32,7 @@ interface AdventuresPageProps {
   savesStatus?: string;
   loadingSlotId?: string;
   loadError?: string;
+  onDismissError?: () => void;
   onListSaves?: () => void;
   onLoadSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
@@ -156,6 +157,7 @@ export function AdventuresPage({
   savesStatus,
   loadingSlotId,
   loadError,
+  onDismissError,
   onListSaves,
   onLoadSave,
   providerConfig,
@@ -623,7 +625,12 @@ export function AdventuresPage({
             </div>
           </div>
 
-          {loadError && <p className="error-box" style={{ marginBottom: "0.75rem" }}>{loadError}</p>}
+          {loadError && (
+            <div className="error-box error-dismissible" style={{ marginBottom: "0.75rem" }}>
+              <span>{loadError}</span>
+              <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={onDismissError}>×</button>
+            </div>
+          )}
 
           {(!saveSlots || saveSlots.length === 0) ? (
             <p className="muted">{savesStatus?.startsWith("Loading") ? "Loading…" : "No saves found."}</p>

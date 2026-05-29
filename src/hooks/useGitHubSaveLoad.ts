@@ -55,5 +55,7 @@ export function useGitHubSaveLoad(
     setLoadError(undefined);
   }, []);
 
-  return { pendingConflict, loadingSlotId, loadError, initiateLoad, confirmOverwrite, cancelOverwrite };
+  const clearLoadError = useCallback(() => setLoadError(undefined), []);
+
+  return { pendingConflict, loadingSlotId, loadError, initiateLoad, confirmOverwrite, cancelOverwrite, clearLoadError };
 }
