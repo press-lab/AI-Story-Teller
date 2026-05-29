@@ -368,6 +368,7 @@ export default function App() {
           loadError={gitHubSaveLoad.loadError}
           onListSaves={() => void gitHubSaves.listSaves()}
           onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
+          providerConfig={runtime.activeProviderConfig}
         />
       );
     }

@@ -6,6 +6,7 @@ import type {
   ComponentType,
   GitHubSaveSlot,
   NewAdventureSetup,
+  ProviderConfig,
   StoryCard,
   StoryCardType,
 } from "../types/adventure";
@@ -13,6 +14,7 @@ import { AidImportWizard } from "../components/AidImportWizard";
 import type { AdventureSummary } from "../db/adventureDb";
 import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../state/defaults";
 import { parseAidStoryCards } from "../importers/aidCardParser";
+import { runAdventureGen } from "../ai/adventureGen";
 import { createId } from "../utils/id";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
@@ -32,6 +34,7 @@ interface AdventuresPageProps {
   loadError?: string;
   onListSaves?: () => void;
   onLoadSave?: (slot: GitHubSaveSlot) => void;
+  providerConfig?: ProviderConfig;
 }
 
 interface ComponentDraft {
@@ -155,6 +158,7 @@ export function AdventuresPage({
   loadError,
   onListSaves,
   onLoadSave,
+  providerConfig,
 }: AdventuresPageProps) {
   const [view, setView] = useState<"list" | "create" | "aidImport" | "github">("list");
 
@@ -181,6 +185,9 @@ export function AdventuresPage({
   const [jsonStoryCards, setJsonStoryCards] = useState<StoryCard[]>([]);
   const [jsonImportError, setJsonImportError] = useState<string | undefined>();
   const [jsonImportMessages, setJsonImportMessages] = useState<string[]>([]);
+  const [premise, setPremise] = useState("");
+  const [genLoading, setGenLoading] = useState(false);
+  const [genError, setGenError] = useState<string | undefined>();
 
   const starterComponents = componentDrafts.map(componentFromDraft).filter((component): component is ComponentEntry => Boolean(component));
   const manualStoryCards = manualStoryCardDrafts.map(storyCardFromDraft).filter((card): card is StoryCard => Boolean(card));
@@ -241,6 +248,50 @@ export function AdventuresPage({
     });
   }
 
+  async function generateAdventure() {
+    if (!providerConfig || !premise.trim()) return;
+    setGenLoading(true);
+    setGenError(undefined);
+    try {
+      const result = await runAdventureGen(premise, providerConfig);
+      if (result.title) setTitle(result.title);
+      if (result.openingScene) setOpeningScene(result.openingScene);
+      if (result.components.length > 0) {
+        setComponentDrafts((existing) => {
+          const kept = existing.filter((d) => d.protected);
+          const generated = result.components.map((c) => ({
+            id: createId("componentDraft"),
+            title: c.title,
+            type: c.type as ComponentType,
+            content: c.content,
+            priority: c.priority ?? 80,
+            alwaysOn: c.alwaysOn ?? true,
+            pinned: c.pinned ?? true,
+            protected: false,
+          }));
+          return [...kept, ...generated];
+        });
+      }
+      if (result.storyCards.length > 0) {
+        setManualStoryCardDrafts(
+          result.storyCards.map((card) => ({
+            id: createId("storyCardDraft"),
+            title: card.title,
+            type: card.type as StoryCardType,
+            keysText: (card.keys ?? []).join(", "),
+            content: card.content,
+            priority: card.priority ?? 0,
+            pinned: card.pinned ?? false,
+          })),
+        );
+      }
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : "Generation failed.");
+    } finally {
+      setGenLoading(false);
+    }
+  }
+
   if (view === "create") {
     return (
       <section className="page">
@@ -265,6 +316,35 @@ export function AdventuresPage({
               </button>
             </div>
           </div>
+
+          {providerConfig && (
+            <details className="setup-panel" open={!title || title === "New Adventure"}>
+              <summary>Generate with AI</summary>
+              <p className="muted">
+                Describe your adventure idea and the AI will draft a title, opening scene, components, and story cards for you to review.
+              </p>
+              <Field label="Premise">
+                <textarea
+                  rows={4}
+                  value={premise}
+                  onChange={(event) => setPremise(event.target.value)}
+                  placeholder="e.g. A disgraced knight in a crumbling empire must choose between loyalty to a corrupt emperor and a rebel cause led by his estranged sister…"
+                />
+              </Field>
+              {genError && <p className="error-box">{genError}</p>}
+              <div className="toolbar">
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={genLoading || !premise.trim()}
+                  onClick={() => void generateAdventure()}
+                >
+                  {genLoading ? "Generating…" : "Generate"}
+                </button>
+                {genLoading && <span className="status-pill">Thinking…</span>}
+              </div>
+            </details>
+          )}
 
           <Field label="Adventure title">
             <input value={title} onChange={(event) => setTitle(event.target.value)} />
