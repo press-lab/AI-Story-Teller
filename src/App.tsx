@@ -4,6 +4,8 @@ import { saveAdventure } from "./db/adventureDb";
 import { defaultCloudSyncSettings } from "./sync/githubSync";
 import { defaultGitHubSaveSettings } from "./sync/githubSaves";
 import { useGitHubSaves } from "./hooks/useGitHubSaves";
+import { useGitHubSaveLoad } from "./hooks/useGitHubSaveLoad";
+import { GitHubSaveConflictDialog } from "./components/GitHubSaveConflictDialog";
 import { defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
@@ -11,7 +13,7 @@ import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
 import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
-import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings, GitHubSaveSlot } from "./types/adventure";
+import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
 import type { RuntimeProviderSettings } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -228,15 +230,15 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adventure?.activeState.turn]);
 
-  async function loadGitHubSaveToLibrary(slot: GitHubSaveSlot) {
-    const loaded = await gitHubSaves.loadSave(slot);
-    if (!loaded) return;
+  const applyGitHubSave = useCallback(async (loaded: Adventure) => {
     await saveAdventure(loaded);
     setAdventure(loaded);
     await library.refreshAdventures();
     setModalTab(undefined);
     setActiveTab("dashboard");
-  }
+  }, [library.refreshAdventures]); // setters are stable React guarantees
+
+  const gitHubSaveLoad = useGitHubSaveLoad(gitHubSaves.loadSave, applyGitHubSave);
 
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
@@ -282,7 +284,7 @@ export default function App() {
             savesStatus={gitHubSaves.savesStatus}
             onListSaves={() => void gitHubSaves.listSaves()}
             onSaveNow={adventure ? () => void gitHubSaves.saveNow(adventure) : undefined}
-            onLoadSave={(slot) => void loadGitHubSaveToLibrary(slot)}
+            onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
             onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
           />
         );
@@ -548,6 +550,14 @@ export default function App() {
             {renderAdventureTool(playPanelTab)}
           </div>
         </aside>
+      )}
+
+      {gitHubSaveLoad.pendingConflict && (
+        <GitHubSaveConflictDialog
+          {...gitHubSaveLoad.pendingConflict}
+          onConfirm={() => void gitHubSaveLoad.confirmOverwrite()}
+          onCancel={gitHubSaveLoad.cancelOverwrite}
+        />
       )}
 
       {modalTab && adventure && (
