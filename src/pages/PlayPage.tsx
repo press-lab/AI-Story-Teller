@@ -62,6 +62,14 @@ export function PlayPage({
   const [showOverflow, setShowOverflow] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
+  const [toolkitWidth, setToolkitWidth] = useState(() => {
+    try {
+      const stored = localStorage.getItem("play-toolkit-width");
+      return stored ? parseInt(stored, 10) : 160;
+    } catch {
+      return 160;
+    }
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -80,6 +88,19 @@ export function PlayPage({
     droppedCards > 0 && `${droppedCards} story card${droppedCards !== 1 ? "s" : ""} dropped`,
     summaryTruncated && "summary truncated",
   ].filter(Boolean).join(" · ");
+
+  function startToolkitResize(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startWidth = toolkitWidth;
+    const el = e.currentTarget;
+    el.onpointermove = (ev: PointerEvent) => {
+      const next = Math.round(Math.max(120, Math.min(600, startWidth + startX - ev.clientX)));
+      setToolkitWidth(next);
+      try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
+    };
+    el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
+  }
 
   function openTool(tabId: string) {
     if (onOpenPlayTool) {
@@ -378,8 +399,20 @@ export function PlayPage({
         </div>
       </div>
 
-      {/* Compact right sidebar — expands when a tool panel is open */}
-      <aside className={`play-sidebar${playPanelContent ? " has-panel" : ""}`}>
+      {/* Drag handle between story column and Toolkit */}
+      <div
+        className="play-toolkit-handle"
+        onPointerDown={startToolkitResize}
+        title="Drag to resize Toolkit"
+        role="separator"
+        aria-orientation="vertical"
+      />
+
+      {/* Toolkit — compact nav + optional tool panel */}
+      <aside
+        className={`play-sidebar${playPanelContent ? " has-panel" : ""}`}
+        style={{ width: toolkitWidth }}
+      >
         <div className="play-status">
           <span className="muted">Turn {adventure.activeState.turn} · {saveStatus}</span>
           <div className="token-strip">
