@@ -22,10 +22,10 @@ interface AdventuresPageProps {
   currentAdventure?: Adventure;
   onCreate: (setup: NewAdventureSetup) => Promise<void>;
   onOpen: (id: string) => Promise<void>;
-  onOpenEdit: (id: string) => Promise<void>;
+  onOpenEdit?: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
+  onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
   savesStatus?: string;
   onListSaves?: () => void;
@@ -502,12 +502,14 @@ export function AdventuresPage({
               </p>
             </div>
           </div>
-          <AidImportWizard
-            onCreateAdventureFromImport={onCreateAdventureFromImport}
-            onComplete={() => setView("list")}
-            onBack={() => setView("list")}
-            backLabel="← Library"
-          />
+          {onCreateAdventureFromImport && (
+            <AidImportWizard
+              onCreateAdventureFromImport={onCreateAdventureFromImport}
+              onComplete={() => setView("list")}
+              onBack={() => setView("list")}
+              backLabel="← Library"
+            />
+          )}
         </article>
       </section>
     );
@@ -606,9 +608,11 @@ export function AdventuresPage({
               <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
                 Continue
               </button>
-              <button type="button" onClick={() => onOpenEdit(adventure.id)}>
-                Edit
-              </button>
+              {onOpenEdit && (
+                <button type="button" onClick={() => onOpenEdit(adventure.id)}>
+                  Edit
+                </button>
+              )}
               <button type="button" onClick={() => onDuplicate(adventure.id)}>
                 Duplicate
               </button>

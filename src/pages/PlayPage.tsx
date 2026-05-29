@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
-import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -67,10 +65,8 @@ export function PlayPage({
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const nextTurnNote = adventure.activeState.nextTurnNote;
-  const pendingMemoryCount = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
-  const thumbnail = getAdventureThumbnail(adventure);
+  const pendingMemoryCount = adventure.activeState.memoryProposals.filter((p) => p.status === "pending").length;
 
-  // Context trim info — what was dropped from context due to token budget
   const budgetDropped = contextResult?.excludedItems.filter((i) => i.reason === "budget_exceeded") ?? [];
   const droppedMessages = budgetDropped.filter((i) => i.sourceType === "message").length;
   const droppedCards = budgetDropped.filter((i) => i.sourceType === "storyCard" || i.sourceType === "autoCard").length;
@@ -101,10 +97,7 @@ export function PlayPage({
   useEffect(() => {
     if (!editingMessageId) return;
     let startX = 0, startY = 0;
-    function handlePointerDown(e: PointerEvent) {
-      startX = e.clientX; startY = e.clientY;
-    }
-    // Use pointerup so scroll gestures (which fire pointercancel, not pointerup) don't dismiss edit mode
+    function handlePointerDown(e: PointerEvent) { startX = e.clientX; startY = e.clientY; }
     function handlePointerUp(e: PointerEvent) {
       if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) return;
       if (editingArticleRef.current && !editingArticleRef.current.contains(e.target as Node)) {
@@ -151,6 +144,25 @@ export function PlayPage({
     if (event.key === "Enter") void remember();
     if (event.key === "Escape") setShowRemember(false);
   }
+
+  const toolButtons = (
+    <>
+      <button type="button" onClick={() => openTool("components")}>Plot</button>
+      <button type="button" onClick={() => openTool("storyCards")}>Cards</button>
+      <button type="button" onClick={() => openTool("brains")}>Characters</button>
+      <button type="button" onClick={() => openTool("memoryInbox")}>
+        Memory
+        {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+      </button>
+      <button
+        type="button"
+        onClick={() => { onBuildContext(); openTool("context"); }}
+      >
+        Context
+      </button>
+      <button type="button" onClick={() => onOpenTab?.("edit")}>Edit All</button>
+    </>
+  );
 
   return (
     <section className="page play-layout">
@@ -223,9 +235,13 @@ export function PlayPage({
           <div ref={bottomRef} />
         </div>
 
+        {/* Compact tool strip — visible on tablet/mobile, hidden on desktop */}
+        <nav className="play-tool-row" aria-label="Adventure tools">
+          {toolButtons}
+        </nav>
+
         <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`}>
           <div className="mode-selector">
-            {/* Desktop: individual pill buttons */}
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
               <button
                 key={mode}
@@ -237,7 +253,6 @@ export function PlayPage({
                 {MODE_LABELS[mode]}
               </button>
             ))}
-            {/* Mobile: cycling mode pill */}
             <div className="mode-cycle">
               <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)} title="Previous mode">‹</button>
               <span className="mode-cycle-label" title={MODE_TOOLTIPS[inputMode]}>{MODE_LABELS[inputMode]}</span>
@@ -291,9 +306,7 @@ export function PlayPage({
                 onKeyDown={handleRememberKeyDown}
                 placeholder="e.g. Mira and Kael are now married"
               />
-              <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>
-                Save
-              </button>
+              <button type="button" disabled={loading || !rememberInput.trim()} onClick={remember}>Save</button>
               <button type="button" onClick={() => setShowRemember(false)}>✕</button>
             </div>
           )}
@@ -309,12 +322,8 @@ export function PlayPage({
               >
                 {input.trim() ? "↑ Send" : "Take a Turn"}
               </button>
-              <button type="button" disabled={loading} onClick={onContinue}>
-                Continue
-              </button>
-              <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>
-                Retry
-              </button>
+              <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
+              <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button
                 type="button"
                 disabled={loading || adventure.messages.length === 0}
@@ -366,13 +375,10 @@ export function PlayPage({
         </div>
       </div>
 
+      {/* Compact right sidebar — desktop only */}
       <aside className="play-sidebar">
-        <header className="play-header panel">
-          <AdventureThumbnailFrame thumbnail={thumbnail} title={adventure.title} className="play-sidebar-thumbnail" />
-          <div>
-            <h2>{adventure.title}</h2>
-            <p className="muted">Turn {adventure.activeState.turn} · {saveStatus}</p>
-          </div>
+        <div className="play-status">
+          <span className="muted">Turn {adventure.activeState.turn} · {saveStatus}</span>
           <div className="token-strip">
             <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
             {totalDropped > 0 && (
@@ -384,38 +390,13 @@ export function PlayPage({
               <span>{getCurrentQuestObjective(adventure.quests)}</span>
             )}
           </div>
-        </header>
-        <nav className="panel play-tool-drawer" aria-label="Adventure tools">
-          <p className="eyebrow">Adventure Tools</p>
-          <div className="play-tool-grid">
-            <button type="button" onClick={() => openTool("components")}>
-              Plot
-            </button>
-            <button type="button" onClick={() => openTool("storyCards")}>
-              Cards
-            </button>
-            <button type="button" onClick={() => openTool("brains")}>
-              Characters
-            </button>
-            <button type="button" onClick={() => openTool("memoryInbox")}>
-              Memory
-              {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onBuildContext();
-                openTool("context");
-              }}
-            >
-              Context
-            </button>
-            <button type="button" onClick={() => onOpenTab?.("edit")}>
-              Edit All
-            </button>
-          </div>
+        </div>
+
+        <nav className="play-tool-nav" aria-label="Adventure tools">
+          {toolButtons}
         </nav>
-        <details className="panel next-turn-note">
+
+        <details className="next-turn-note panel" style={{ flex: "0 0 auto" }}>
           <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
           <Field label="Visible next-output steering note">
             <textarea
@@ -426,37 +407,16 @@ export function PlayPage({
             />
           </Field>
           <div className="next-turn-note-controls">
-            <CheckboxField
-              label="Active"
-              checked={nextTurnNote.active}
-              onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })}
-            />
-            <CheckboxField
-              label="Pinned"
-              checked={nextTurnNote.pinned}
-              onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })}
-            />
-            <CheckboxField
-              label="Protected"
-              checked={nextTurnNote.protected}
-              onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })}
-            />
-            <CheckboxField
-              label="Expires after output"
-              checked={nextTurnNote.expiresAfterUse}
-              onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })}
-            />
+            <CheckboxField label="Active" checked={nextTurnNote.active} onChange={(active) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { active } })} />
+            <CheckboxField label="Pinned" checked={nextTurnNote.pinned} onChange={(pinned) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { pinned } })} />
+            <CheckboxField label="Protected" checked={nextTurnNote.protected} onChange={(protectedValue) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { protected: protectedValue } })} />
+            <CheckboxField label="Expires after output" checked={nextTurnNote.expiresAfterUse} onChange={(expiresAfterUse) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { expiresAfterUse } })} />
           </div>
           <div className="toolbar">
             <Field label="Priority">
-              <NumberInput
-                value={nextTurnNote.priority}
-                onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })}
-              />
+              <NumberInput value={nextTurnNote.priority} onChange={(priority) => dispatch({ type: "SET_NEXT_TURN_NOTE", note: { priority } })} />
             </Field>
-            <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>
-              Clear
-            </button>
+            <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>Clear</button>
           </div>
         </details>
       </aside>

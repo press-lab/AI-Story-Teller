@@ -1022,7 +1022,7 @@ button.primary-action:hover:not(:disabled),
 }
 
 .play-layout {
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 160px;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -1041,51 +1041,87 @@ button.primary-action:hover:not(:disabled),
   min-width: 0;
   min-height: 0;
   height: 100%;
-  gap: 10px;
+  gap: 0;
 }
 
+/* Compact sidebar — desktop only */
 .play-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 10px;
   min-height: 0;
   max-height: 100%;
-  overflow: auto;
-  position: sticky;
-  top: 16px;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
 }
 
-.play-header {
+.play-status {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  display: grid;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.play-status .token-strip {
+  gap: 4px;
+}
+
+.play-status .token-strip span {
+  font-size: 11px;
+  padding: 2px 5px;
+}
+
+/* Compact vertical tool nav */
+.play-tool-nav {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
+  flex: 1;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
 }
 
-.play-sidebar-thumbnail {
-  width: 100%;
-  min-height: 116px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px;
-  background:
-    linear-gradient(90deg, rgb(26 14 12 / 0.84), rgb(70 28 15 / 0.36), rgb(12 20 21 / 0.2)),
-    linear-gradient(145deg, #35110d 0%, #783016 42%, #1e3a3a 100%);
+.play-tool-nav button {
+  min-height: 0;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--button-text);
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  justify-content: flex-start;
 }
 
-.play-sidebar-thumbnail .adventure-thumbnail-fallback span {
-  width: 40px;
-  height: 40px;
-  font-size: 22px;
+.play-tool-nav button:hover:not(:disabled) {
+  background: var(--control-hover);
 }
 
-.play-header h2 {
-  margin: 0 0 2px;
-  font-size: 18px;
+/* Horizontal tool strip — hidden on desktop, shown at ≤860px */
+.play-tool-row {
+  display: none;
+  flex-shrink: 0;
 }
 
-.play-header p {
-  margin: 0;
+/* Dense right-panel content (tool drawers) */
+.play-right-panel-body .panel,
+.play-right-panel-body .card {
+  padding: 8px;
+}
+
+.play-right-panel-body .grid {
+  gap: 8px;
+}
+
+.play-right-panel-body .page {
+  gap: 10px;
+}
+
+.play-right-panel-body h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
 }
 
 .token-strip {
@@ -1110,42 +1146,25 @@ button.primary-action:hover:not(:disabled),
 
 /* ── Next Turn Note (inline in play, replaces story setup section) ── */
 
-.play-tool-drawer {
-  display: grid;
-  gap: 8px;
-}
-
-.play-tool-drawer .eyebrow {
-  margin: 0;
-}
-
-.play-tool-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-
-.play-tool-grid button {
-  min-width: 0;
-  min-height: 36px;
-  white-space: normal;
-  background: var(--surface-soft);
-  font-size: 12px;
-}
-
 .next-turn-note {
-  font-size: 14px;
-  padding: 8px 14px;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-bottom: none;
+  margin: 0;
 }
 
 .next-turn-note > summary {
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
 .next-turn-note[open] > summary {
-  padding-bottom: 8px;
+  padding-bottom: 6px;
   margin-bottom: 4px;
   border-bottom: 1px solid var(--border);
 }
@@ -2043,11 +2062,31 @@ summary {
     align-items: start;
   }
 
+  /* Hide sidebar on tablet/mobile — tool row in play-main takes over */
   .play-sidebar {
-    position: static;
-    order: -1;
-    max-height: none;
-    overflow: visible;
+    display: none;
+  }
+
+  .play-tool-row {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 5px 8px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .play-tool-row button {
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 3px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+    background: var(--surface-soft);
+    scroll-snap-align: start;
   }
 
   .play-main {
@@ -2313,9 +2352,14 @@ summary {
     grid-template-rows: minmax(0, 1fr);
   }
 
-  /* Hide the right-side metadata panel — app header already has the title */
   .play-sidebar {
     display: none;
+  }
+
+  /* Tool row: give buttons proper touch targets while staying compact */
+  .play-tool-row button {
+    min-height: 40px;
+    padding: 6px 14px;
   }
 
   .play-main {
