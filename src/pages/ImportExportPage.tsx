@@ -30,7 +30,6 @@ export function ImportExportPage({
 }: ImportExportPageProps) {
   const exportText = useMemo(() => exportAdventureJson(adventure), [adventure]);
   const [importText, setImportText] = useState("");
-  const [aidOpen, setAidOpen] = useState(false);
 
   async function importAdventure() {
     await onImportAdventure(importText);
@@ -79,17 +78,10 @@ export function ImportExportPage({
           Convert an AID scenario export into a new adventure. Multiple export files are read in filename
           order — upload them all at once and the importer merges them in sequence.
         </p>
-        <button type="button" onClick={() => setAidOpen((open) => !open)}>
-          {aidOpen ? "Collapse AID importer" : "Open AID import wizard"}
-        </button>
-        {aidOpen && (
-          <AidImportWizard
-            onCreateAdventureFromImport={onCreateAdventureFromImport}
-            onComplete={onOpenImportedAdventure}
-            onBack={() => setAidOpen(false)}
-            backLabel="Collapse"
-          />
-        )}
+        <AidImportWizard
+          onCreateAdventureFromImport={onCreateAdventureFromImport}
+          onComplete={onOpenImportedAdventure}
+        />
       </article>
 
       <article className="panel">

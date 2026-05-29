@@ -584,7 +584,7 @@ export function AdventuresPage({
             </button>
           )}
           <button type="button" onClick={() => setView("aidImport")}>
-            Import from AID
+            Import from AI Dungeon
           </button>
           <button type="button" className="primary-action" onClick={() => setView("create")}>
             New Adventure
