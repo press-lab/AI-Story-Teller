@@ -189,8 +189,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           appears after priority memory and before Recent Messages.
         </p>
         <p>
-          Updating the summary must not overwrite Story Cards, Brains, quest state, or raw imported
-          source text.
+          Updating the summary must not overwrite Story Cards, Brains, or raw imported source text.
         </p>
       </>
     ),
@@ -218,17 +217,19 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     id: "side-menu-quests",
     title: "Quests",
     category: "Advanced",
-    summary: "Dormant quest lifecycle support kept for compatibility with existing saves.",
+    summary: "Dormant quest system — data model and reducer preserved but context injection is disabled.",
     tags: ["quests", "objectives", "steps", "progression"],
     body: (
       <>
         <p>
-          Quests stores explicit quest definitions and step state. The main sidebar hides Quests for now,
-          but the data model, reducer cases, and quest engine remain for existing saves and future use.
+          Quests stores explicit quest definitions and step state. The quest UI is not exposed in the
+          sidebar and quest context injection is disabled: quest data never enters the provider payload
+          regardless of quest status in saved adventure files.
         </p>
         <p>
-          Quest progression happens through reducer actions. Semantic completion conditions can complete
-          the current step and activate the next step.
+          The data model, reducer cases, and quest engine are preserved for existing saves and future use.
+          Re-enabling context injection requires uncommenting the quest assembly block in{" "}
+          <code>contextBuilder.ts</code>.
         </p>
       </>
     ),
@@ -389,12 +390,11 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>System Shell</li>
           <li>AI Instructions</li>
           <li>Plot Essentials</li>
-          <li>Author's Note</li>
           <li>Components</li>
           <li>Story Cards</li>
           <li>Brains</li>
-          <li>Quest State</li>
           <li>Rolling Summary</li>
+          <li>Author's Note</li>
           <li>Next Turn Note</li>
           <li>Recent Messages</li>
         </ol>
@@ -727,8 +727,9 @@ Model:    llama-3.3-70b-versatile`}</pre>
         <dl>
           <dt>Opening Scene</dt>
           <dd>
-            A fixed first assistant message that always appears at the start of the context window. It sets the stage for
-            every response — tone, setting, initial situation. It is protected from truncation by default.
+            A first assistant message placed at the oldest end of the Recent Messages window. It sets the stage for
+            the story — tone, setting, initial situation. It is included when the context budget allows and falls
+            off naturally as the conversation grows long, like any other message.
           </dd>
           <dt>Author's Note</dt>
           <dd>

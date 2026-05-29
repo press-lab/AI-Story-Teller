@@ -28,7 +28,7 @@ describe("development adventure seed", () => {
     expect(adventure.quests[0].currentStepId).toBe("dev-step-war-room-briefing");
   });
 
-  it("builds inspectable context with triggered cards, brains, quest state, and summary", () => {
+  it("builds inspectable context with triggered cards, brains, and summary", () => {
     const adventure = createDevelopmentAdventure();
     const result = buildContext(adventure, {
       currentInput: "Setu studies Azula and Nyx before answering the mission briefing.",
@@ -64,7 +64,6 @@ describe("development adventure seed", () => {
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# C. Plot Essentials");
     expect(result.messages[0].content).toContain("# F. Story Cards");
-    expect(result.messages[0].content).toContain("Opening Arc: Ashes Under the Crown");
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual([
       "dev-component-court-pressure",
       "dev-component-combat-doctrine",

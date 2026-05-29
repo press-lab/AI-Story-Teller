@@ -13,11 +13,7 @@ import type {
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { matchPatterns } from "../triggers/matching";
 
-function buildSystemShell(hasActiveQuests: boolean): string {
-  const questLine = hasActiveQuests
-    ? "  H. Quest State — active quest objectives.\n"
-    : "";
-  return `You are the story engine for AI Story Teller. The context below is assembled for you each turn.
+const SYSTEM_SHELL = `You are the story engine for AI Story Teller. The context below is assembled for you each turn.
 
 CONTEXT SECTIONS (read all, honour their order):
   B. AI Instructions — narrative rules and style for this adventure.
@@ -25,13 +21,12 @@ CONTEXT SECTIONS (read all, honour their order):
   E. Components — general world-building context (always-on or pinned entries).
   F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.
   G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
-${questLine}  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
+  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
   D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
   K. Recent Messages — the most recent story turns in chronological order.
 
 Honour every section. Continue the scene in prose. Keep the player able to act.`;
-}
 
 interface BuildOptions {
   currentInput?: string;
@@ -219,8 +214,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   }
 
   // A. System Shell
-  const hasActiveQuests = adventure.quests.some((q) => q.status === "active");
-  const systemItem = item("system-shell", "system", "System Shell", buildSystemShell(hasActiveQuests), 1000, true, false, true, "always", "system");
+  const systemItem = item("system-shell", "system", "System Shell", SYSTEM_SHELL, 1000, true, false, true, "always", "system");
   pushIncluded(systemItem, "System shell is always included and protected.");
 
   // Track which component IDs have already been logged as excluded to avoid double-logging
@@ -411,12 +405,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : undefined;
   const recentMessages = selectedRecentMessages(adventure, openingSeed);
 
-  // Protect Last Exchange: newest assistant response (Last Scene) and the user turn that preceded it
-  const lastAssistantIndex = recentMessages.findIndex((m) => m.role === "assistant" && m.id !== "opening-scene");
-  const lastUserIndex =
-    lastAssistantIndex >= 0 && recentMessages[lastAssistantIndex + 1]?.role === "user"
-      ? lastAssistantIndex + 1
-      : -1;
+  // Protect the newest message (index 0 — current player input or last scene) and the opening scene.
+  // Protecting index 0 ensures the most-recently-added message survives a tight budget.
+  const openingSceneIndex = recentMessages.findIndex((m) => m.id === "opening-scene");
 
   const recentMessageItems = recentMessages.map((message, index) =>
     item(
@@ -425,7 +416,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       message.id === "opening-scene" ? "Opening Scene" : `${message.role} message ${index + 1}`,
       message.content,
       recentMessages.length - index,
-      index === lastAssistantIndex || index === lastUserIndex,
+      index === 0 || (openingSceneIndex >= 0 && index === openingSceneIndex),
       false,
       true,
       "always",
@@ -435,7 +426,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   recentMessageItems.forEach((entry, index) =>
     pushIncluded(
       entry,
-      `Recent message included newest-first; recencyPriority=${recentMessages.length - index}${index === lastAssistantIndex ? "; protected=last scene" : index === lastUserIndex ? "; protected=last exchange" : ""}.`,
+      `Recent message included newest-first; recencyPriority=${recentMessages.length - index}${index === 0 ? "; protected=newest" : openingSceneIndex >= 0 && index === openingSceneIndex ? "; protected=opening-scene" : ""}.`,
     ),
   );
 

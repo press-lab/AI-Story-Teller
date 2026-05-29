@@ -142,7 +142,7 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "components")).toEqual(["Always", "Pinned"]);
     expect(itemTitles(adventureForContext(), "storyCards")).toEqual(["Keyed Story", "Lantern Auto"]);
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
-    expect(itemTitles(adventureForContext(), "questState")).toEqual(["Quest"]);
+    expect(itemTitles(adventureForContext(), "questState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
     expect(itemTitles(adventureForContext(), "nextTurnNote")).toEqual([]);
     expect(itemTitles(adventureForContext(), "recentMessages")).toEqual(["assistant message 1", "user message 2"]);
@@ -700,7 +700,7 @@ describe("buildContext", () => {
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual(["component-pinned"]);
     expect(result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toEqual(["card-joke", "card-beast"]);
     expect(result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id)).toEqual(["brain-margo", "brain-seth"]);
-    expect(result.sections.find((section) => section.id === "questState")?.items.map((item) => item.id)).toEqual(["quest-ward"]);
+    expect(result.sections.find((section) => section.id === "questState")?.items.map((item) => item.id)).toEqual([]);
     expect(result.sections.find((section) => section.id === "nextTurnNote")?.items).toEqual([]);
     expect(result.sections.find((section) => section.id === "recentMessages")?.items.map((item) => item.id)).toEqual([
       "msg-6",
