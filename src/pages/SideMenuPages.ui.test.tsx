@@ -50,7 +50,7 @@ describe("side menu page smoke coverage", () => {
 
     renderWithAdventure((adventure, dispatch) => <ComponentsPage adventure={adventure} dispatch={dispatch} />);
     await user.click(screen.getByRole("button", { name: "Add Custom Block" }));
-    expect(screen.getByDisplayValue("New Block")).toBeInTheDocument();
+    expect(screen.getByText("Custom", { selector: ".story-card-title" })).toBeInTheDocument();
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <StoryCardsPage adventure={adventure} dispatch={dispatch} />);

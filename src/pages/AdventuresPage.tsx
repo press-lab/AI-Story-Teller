@@ -40,7 +40,6 @@ interface AdventuresPageProps {
 
 interface ComponentDraft {
   id: string;
-  title: string;
   type: ComponentType;
   content: string;
   priority: number;
@@ -87,7 +86,6 @@ function blankComponentDraft(type: ComponentType = "plotEssentials"): ComponentD
   const fixed = isFixedComponentType(type);
   return {
     id: createId("componentDraft"),
-    title: type === "plotEssentials" ? "Plot Essentials" : "New Component",
     type,
     content: "",
     priority: defaultComponentPriority(type),
@@ -110,11 +108,10 @@ function blankStoryCardDraft(): StoryCardDraft {
 }
 
 function componentFromDraft(draft: ComponentDraft): ComponentEntry | undefined {
-  const title = draft.title.trim();
   const content = draft.content.trim();
-  if (!title && !content) return undefined;
+  if (!content) return undefined;
   return makeComponent({
-    title: title || "Untitled Component",
+    title: COMPONENT_TYPE_LABELS[draft.type],
     type: draft.type,
     content,
     priority: draft.priority,
@@ -174,7 +171,6 @@ export function AdventuresPage({
   const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
   const [componentDrafts, setComponentDrafts] = useState<ComponentDraft[]>([{
     id: createId("componentDraft"),
-    title: "Global Generation Rules",
     type: "narrationRules",
     content: defaultNarrationRulesContent,
     priority: 100,
@@ -263,7 +259,6 @@ export function AdventuresPage({
           const kept = existing.filter((d) => d.protected);
           const generated = result.components.map((c) => ({
             id: createId("componentDraft"),
-            title: c.title,
             type: c.type as ComponentType,
             content: c.content,
             priority: c.priority ?? 80,
@@ -400,10 +395,7 @@ export function AdventuresPage({
               <div className="list">
                 {componentDrafts.map((draft) => (
                   <article key={draft.id} className="card editor-card">
-                    <div className="grid three">
-                      <Field label="Title">
-                        <input value={draft.title} onChange={(event) => updateComponentDraft(draft.id, { title: event.target.value })} />
-                      </Field>
+                    <div className="grid two">
                       <Field label="Type">
                         <select
                           value={draft.type}
