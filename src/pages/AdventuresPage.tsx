@@ -21,6 +21,7 @@ interface AdventuresPageProps {
   currentAdventure?: Adventure;
   onCreate: (setup: NewAdventureSetup) => Promise<void>;
   onOpen: (id: string) => Promise<void>;
+  onOpenEdit: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
@@ -140,6 +141,7 @@ export function AdventuresPage({
   currentAdventure,
   onCreate,
   onOpen,
+  onOpenEdit,
   onDuplicate,
   onDelete,
   saveSlots,
@@ -573,6 +575,9 @@ export function AdventuresPage({
             <div className="library-card-actions">
               <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
                 Continue
+              </button>
+              <button type="button" onClick={() => onOpenEdit(adventure.id)}>
+                Edit
               </button>
               <button type="button" onClick={() => onDuplicate(adventure.id)}>
                 Duplicate
