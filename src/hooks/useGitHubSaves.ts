@@ -5,7 +5,7 @@ import { listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from ".
 export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: GitHubSaveSettings) {
   const [saveSlots, setSaveSlots] = useState<GitHubSaveSlot[]>([]);
   const [savesStatus, setSavesStatus] = useState("");
-  const lastAutoSavedTurnRef = useRef(-1);
+  const lastAutoSavedTurnRef = useRef<Record<string, number>>({});
 
   const listSaves = useCallback(async () => {
     setSavesStatus("Loading saves…");
@@ -51,10 +51,11 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
 
   const autoSaveIfDue = useCallback(
     async (adventure: Adventure): Promise<void> => {
-      if (!shouldAutoSave(adventure, saveSettings, lastAutoSavedTurnRef.current)) return;
+      const lastTurn = lastAutoSavedTurnRef.current[adventure.id] ?? -1;
+      if (!shouldAutoSave(adventure, saveSettings, lastTurn)) return;
       try {
         const slot = await saveToGitHub(cloudSettings, saveSettings, adventure, "auto");
-        lastAutoSavedTurnRef.current = adventure.activeState.turn;
+        lastAutoSavedTurnRef.current = { ...lastAutoSavedTurnRef.current, [adventure.id]: adventure.activeState.turn };
         setSaveSlots((current) => [slot, ...current.filter((s) => s.saveId !== slot.saveId)]);
       } catch {
         // auto-save failures are silent — don't surface transient GitHub errors to the user mid-session

@@ -75,6 +75,23 @@ describe("shouldAutoSave", () => {
     adventure.activeState.turn = 100;
     expect(shouldAutoSave(adventure, { ...saveSettings, autoSaveEveryNTurns: 0 }, 0)).toBe(false);
   });
+
+  it("treats each adventure independently — adventure B is not blocked by adventure A's saved turn", () => {
+    const adventureA = makeAdventure();
+    adventureA.activeState.turn = 50;
+    const adventureB = makeAdventure();
+    adventureB.activeState.turn = 5;
+
+    // Simulate per-adventure tracking: A was last saved at turn 50, B at -1
+    const lastSavedByAdventure: Record<string, number> = { [adventureA.id]: 50 };
+    const lastTurnA = lastSavedByAdventure[adventureA.id] ?? -1;
+    const lastTurnB = lastSavedByAdventure[adventureB.id] ?? -1;
+
+    // A just saved at 50, not due again yet
+    expect(shouldAutoSave(adventureA, saveSettings, lastTurnA)).toBe(false);
+    // B has reached threshold from its own baseline of -1
+    expect(shouldAutoSave(adventureB, saveSettings, lastTurnB)).toBe(true);
+  });
 });
 
 describe("saveToGitHub", () => {
