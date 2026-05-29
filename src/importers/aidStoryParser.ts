@@ -135,6 +135,16 @@ function setupFromMetadata(value: unknown): {
   const components: AidSetupComponentDraft[] = [];
 
   const description = stringField(adventure, "description");
+  if (description) {
+    components.push({
+      title: "AI Dungeon Scenario",
+      type: "plotEssentials",
+      content: description,
+      priority: 85,
+      alwaysOn: true,
+      pinned: false,
+    });
+  }
 
   const memory = stringField(adventure, "memory");
   if (memory) {

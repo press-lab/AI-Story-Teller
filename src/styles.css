@@ -1031,6 +1031,11 @@ button.primary-action:hover:not(:disabled),
   gap: 16px;
 }
 
+.editor-header > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
 .editor-header h2 {
   margin: 0 0 4px;
 }
@@ -1044,8 +1049,9 @@ button.primary-action:hover:not(:disabled),
   padding: 0 0 2px;
   margin: 0 0 4px;
   width: 100%;
-  color: var(--text);
   min-width: 0;
+  color: var(--text);
+  display: block;
 }
 
 .editor-title-input:hover {
