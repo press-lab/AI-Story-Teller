@@ -1,9 +1,10 @@
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import type {
   Adventure,
   AdventureThumbnailImage,
   ComponentEntry,
   ComponentType,
+  GitHubSaveSlot,
   NewAdventureSetup,
   StoryCard,
   StoryCardType,
@@ -22,6 +23,10 @@ interface AdventuresPageProps {
   onOpen: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  saveSlots?: GitHubSaveSlot[];
+  savesStatus?: string;
+  onListSaves?: () => void;
+  onLoadSave?: (slot: GitHubSaveSlot) => void;
 }
 
 interface ComponentDraft {
@@ -126,6 +131,10 @@ function storyCardFromDraft(draft: StoryCardDraft): StoryCard | undefined {
   });
 }
 
+function formatUtc(iso: string): string {
+  return iso.replace("T", " ").replace(/\.\d{3}Z$/, " UTC").replace(/Z$/, " UTC");
+}
+
 export function AdventuresPage({
   adventures,
   currentAdventure,
@@ -133,8 +142,18 @@ export function AdventuresPage({
   onOpen,
   onDuplicate,
   onDelete,
+  saveSlots,
+  savesStatus,
+  onListSaves,
+  onLoadSave,
 }: AdventuresPageProps) {
-  const [view, setView] = useState<"list" | "create">("list");
+  const [view, setView] = useState<"list" | "create" | "github">("list");
+
+  useEffect(() => {
+    if (view === "github") onListSaves?.();
+    // intentional: only fire when entering the github view
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   const [title, setTitle] = useState("New Adventure");
   const [openingScene, setOpeningScene] = useState("");
   const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
@@ -465,6 +484,55 @@ export function AdventuresPage({
     );
   }
 
+  if (view === "github") {
+    return (
+      <section className="page">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <button type="button" onClick={() => setView("list")}>← Library</button>
+              <p className="eyebrow">GitHub Save Slots</p>
+              <h3>Load a saved adventure</h3>
+            </div>
+            <div className="toolbar">
+              <button type="button" onClick={() => onListSaves?.()}>Refresh</button>
+              {savesStatus && <span className="status-pill">{savesStatus}</span>}
+            </div>
+          </div>
+
+          {(!saveSlots || saveSlots.length === 0) ? (
+            <p className="muted">{savesStatus?.startsWith("Loading") ? "Loading…" : "No saves found."}</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+              <thead>
+                <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+                  <th style={{ padding: "0.35rem 0.5rem" }}>Adventure</th>
+                  <th style={{ padding: "0.35rem 0.5rem" }}>Type</th>
+                  <th style={{ padding: "0.35rem 0.5rem" }}>Turn</th>
+                  <th style={{ padding: "0.35rem 0.5rem" }}>Saved (UTC)</th>
+                  <th style={{ padding: "0.35rem 0.5rem" }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {saveSlots.map((slot) => (
+                  <tr key={slot.saveId} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
+                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.title}</td>
+                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.saveType}</td>
+                    <td style={{ padding: "0.35rem 0.5rem" }}>{slot.turnCount}</td>
+                    <td style={{ padding: "0.35rem 0.5rem", fontFamily: "monospace" }}>{formatUtc(slot.savedAt)}</td>
+                    <td style={{ padding: "0.35rem 0.5rem" }}>
+                      <button type="button" onClick={() => onLoadSave?.(slot)}>Load</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </article>
+      </section>
+    );
+  }
+
   return (
     <section className="page library-page">
       <header className="library-header">
@@ -473,9 +541,16 @@ export function AdventuresPage({
           <h2>Choose an adventure</h2>
           <p className="muted">Continue a saved story, duplicate a setup, or start a new world.</p>
         </div>
-        <button type="button" className="primary-action" onClick={() => setView("create")}>
-          New Adventure
-        </button>
+        <div className="toolbar">
+          {onListSaves && (
+            <button type="button" onClick={() => setView("github")}>
+              Load from GitHub
+            </button>
+          )}
+          <button type="button" className="primary-action" onClick={() => setView("create")}>
+            New Adventure
+          </button>
+        </div>
       </header>
       <div className="library-grid">
         {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}

@@ -329,6 +329,10 @@ export default function App() {
           onOpen={library.openAdventure}
           onDuplicate={library.duplicateAdventure}
           onDelete={(id) => library.removeAdventure(id, adventure?.id)}
+          saveSlots={gitHubSaves.saveSlots}
+          savesStatus={gitHubSaves.savesStatus}
+          onListSaves={() => void gitHubSaves.listSaves()}
+          onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
         />
       );
     }
