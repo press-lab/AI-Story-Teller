@@ -81,14 +81,17 @@ describe("App adventure tool workspace", () => {
     await user.type(titleInput, "Workspace Test");
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
+    // After creation the app lands on the dashboard — title appears as a heading
     await screen.findByRole("heading", { name: "Workspace Test" });
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
+    // Now in the editor — title is an editable input
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Workspace Test")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
 
+    // Finish returns to dashboard — heading again
     await user.click(screen.getByRole("button", { name: "Finish" }));
     expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
   });

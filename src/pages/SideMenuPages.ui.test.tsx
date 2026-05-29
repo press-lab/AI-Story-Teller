@@ -132,6 +132,6 @@ describe("side menu page smoke coverage", () => {
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <ChroniclePage adventure={adventure} dispatch={dispatch} />);
-    expect(screen.getByDisplayValue("Rain waits outside.")).toBeInTheDocument();
+    expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
   });
 });

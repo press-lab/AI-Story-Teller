@@ -1,43 +1,72 @@
+import { useState } from "react";
 import type { AdventurePageProps } from "./pageTypes";
-import { Field } from "./shared";
+
+const PAGE_SIZE = 100;
 
 export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
+  const [editingId, setEditingId] = useState<string | undefined>();
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  const messages = adventure.messages;
+  const visible = messages.slice(0, limit);
+  const hasMore = messages.length > limit;
+
   return (
     <section className="page">
       <article className="panel">
-        <h3>Adventure Chronicle — {adventure.messages.length} entries</h3>
+        <h3>Adventure Chronicle — {messages.length} entries</h3>
         <p className="muted">
-          The complete local transcript of everything said in this adventure. It is stored persistently and never compressed.
-          The Chronicle is <strong>not</strong> dumped into the model context — only Recent Messages (the most recent turns)
-          and the Rolling Summary reach the model. Use this to review history, edit past entries, or delete mistakes.
+          Complete story transcript stored locally. Not sent to the AI — only Recent Messages and
+          Rolling Summary reach the model. Click any entry to edit.
         </p>
       </article>
 
       <div className="list">
-        {adventure.messages.length === 0 && <p className="muted">No chronicle entries yet.</p>}
-        {adventure.messages.map((message, index) => (
-          <article key={message.id} className="card editor-card">
-            <div className="grid three">
-              <Field label={`Entry ${index + 1} Role`}>
-                <input readOnly value={message.role} />
-              </Field>
-              <Field label="Created At">
-                <input readOnly value={message.createdAt} />
-              </Field>
-              <Field label="Message ID">
-                <input readOnly value={message.id} />
-              </Field>
-            </div>
-            <textarea
-              rows={5}
-              value={message.content}
-              onChange={(event) => dispatch({ type: "UPDATE_MESSAGE", messageId: message.id, content: event.target.value })}
-            />
-            <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}>
-              Delete Entry
-            </button>
-          </article>
-        ))}
+        {messages.length === 0 && <p className="muted">No chronicle entries yet.</p>}
+        {visible.map((message, index) =>
+          editingId === message.id ? (
+            <article key={message.id} className="card chronicle-editing">
+              <div className="toolbar">
+                <span className="eyebrow">
+                  #{index + 1} · {message.role}
+                </span>
+                <button type="button" onClick={() => setEditingId(undefined)}>Done</button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    dispatch({ type: "DELETE_MESSAGE", messageId: message.id });
+                    setEditingId(undefined);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+              <textarea
+                autoFocus
+                rows={Math.max(3, Math.min(20, message.content.split("\n").length + 2))}
+                value={message.content}
+                onChange={(e) =>
+                  dispatch({ type: "UPDATE_MESSAGE", messageId: message.id, content: e.target.value })
+                }
+              />
+            </article>
+          ) : (
+            <article
+              key={message.id}
+              className={`chronicle-entry ${message.role}`}
+              onClick={() => setEditingId(message.id)}
+            >
+              <span className="chronicle-role">{message.role}</span>
+              <p className="chronicle-text">{message.content}</p>
+            </article>
+          ),
+        )}
+        {hasMore && (
+          <button type="button" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
+            Show more ({messages.length - limit} remaining)
+          </button>
+        )}
       </div>
     </section>
   );

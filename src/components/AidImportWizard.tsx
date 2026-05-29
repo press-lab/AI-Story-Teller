@@ -220,6 +220,7 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
 
     const next: Adventure = {
       ...base,
+      openingScene: aidStoryResult?.openingScene ?? base.openingScene,
       components: [...base.components, ...setupComponents],
       storyCards: selectedStoryCards,
       brains: selectedBrains,

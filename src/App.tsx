@@ -423,7 +423,12 @@ export default function App() {
             <header className="editor-header panel">
               <div>
                 <p className="eyebrow">Edit Adventure</p>
-                <h2>{adventure.title}</h2>
+                <input
+                  className="editor-title-input"
+                  value={adventure.title}
+                  onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
+                  placeholder="Adventure title"
+                />
                 <p className="muted">{saveStatus}</p>
               </div>
               <div className="editor-header-actions">

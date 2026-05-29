@@ -24,6 +24,7 @@ export interface AidStoryParseResult {
   sourceKind: AidStorySourceKind;
   detectedTitle?: string;
   rollingSummarySuggestion?: string;
+  openingScene?: string;
   setupComponents: AidSetupComponentDraft[];
 }
 
@@ -123,6 +124,7 @@ function actionsFromJson(value: unknown): unknown[] | undefined {
 function setupFromMetadata(value: unknown): {
   title?: string;
   summary?: string;
+  openingScene?: string;
   components: AidSetupComponentDraft[];
   isMetadata: boolean;
 } {
@@ -133,16 +135,6 @@ function setupFromMetadata(value: unknown): {
   const components: AidSetupComponentDraft[] = [];
 
   const description = stringField(adventure, "description");
-  if (description) {
-    components.push({
-      title: "AI Dungeon Opening",
-      type: "plotEssentials",
-      content: description,
-      priority: 85,
-      alwaysOn: true,
-      pinned: false,
-    });
-  }
 
   const memory = stringField(adventure, "memory");
   if (memory) {
@@ -183,6 +175,7 @@ function setupFromMetadata(value: unknown): {
   return {
     title: stringField(adventure, "title"),
     summary: stringField(state, "storySummary"),
+    openingScene: description,
     components,
     isMetadata: Boolean(adventure || state),
   };
@@ -205,6 +198,7 @@ function parseJsonValue(value: unknown): AidStoryParseResult {
       sourceKind: "actions-json",
       detectedTitle: metadata.title,
       rollingSummarySuggestion: metadata.summary,
+      openingScene: metadata.openingScene,
       setupComponents: metadata.components,
     };
   }
@@ -217,6 +211,7 @@ function parseJsonValue(value: unknown): AidStoryParseResult {
       sourceKind: "metadata-json",
       detectedTitle: metadata.title,
       rollingSummarySuggestion: metadata.summary,
+      openingScene: metadata.openingScene,
       setupComponents: metadata.components,
     };
   }
@@ -347,6 +342,7 @@ export function mergeAidStoryParseResults(results: AidStoryParseResult[]): AidSt
     sourceKind: "mixed",
     detectedTitle: results.find((result) => result.detectedTitle)?.detectedTitle,
     rollingSummarySuggestion: results.find((result) => result.rollingSummarySuggestion)?.rollingSummarySuggestion,
+    openingScene: results.find((result) => result.openingScene)?.openingScene,
     setupComponents: results.flatMap((result) => result.setupComponents),
   };
 }

@@ -438,6 +438,50 @@ pre {
   gap: 12px;
 }
 
+/* Chronicle */
+.chronicle-entry {
+  padding: 8px 12px;
+  border-left: 3px solid var(--border);
+  cursor: pointer;
+  border-radius: 0 4px 4px 0;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.chronicle-entry:hover {
+  background: var(--surface);
+  border-left-color: var(--border-strong);
+}
+
+.chronicle-entry.assistant {
+  border-left-color: var(--accent, #6a9fb5);
+}
+
+.chronicle-entry.user {
+  border-left-color: var(--border);
+}
+
+.chronicle-role {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.chronicle-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: var(--story-font-size, 15px);
+  line-height: 1.6;
+}
+
+.chronicle-editing {
+  display: grid;
+  gap: 8px;
+}
+
 .card,
 .panel {
   border: 1px solid var(--border);
@@ -989,6 +1033,28 @@ button.primary-action:hover:not(:disabled),
 
 .editor-header h2 {
   margin: 0 0 4px;
+}
+
+.editor-title-input {
+  font-size: 1.25rem;
+  font-weight: 700;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 0 0 2px;
+  margin: 0 0 4px;
+  width: 100%;
+  color: var(--text);
+  min-width: 0;
+}
+
+.editor-title-input:hover {
+  border-bottom-color: var(--border);
+}
+
+.editor-title-input:focus {
+  outline: none;
+  border-bottom-color: var(--border-strong);
 }
 
 .editor-tabs {
