@@ -9,7 +9,7 @@ export interface PendingConflict {
 }
 
 export function useGitHubSaveLoad(
-  loadSave: (slot: GitHubSaveSlot) => Promise<Adventure | undefined>,
+  loadSave: (slot: GitHubSaveSlot) => Promise<Adventure>,
   onApply: (adventure: Adventure) => Promise<void>,
 ) {
   const [pendingConflict, setPendingConflict] = useState<PendingConflict | undefined>();
@@ -22,17 +22,12 @@ export function useGitHubSaveLoad(
       setLoadError(undefined);
       try {
         const loaded = await loadSave(slot);
-        if (!loaded) {
-          setLoadingSlotId(undefined);
-          return;
-        }
         const existing = await getAdventure(loaded.id);
+        setLoadingSlotId(undefined);
         if (!existing) {
           await onApply(loaded);
-          setLoadingSlotId(undefined);
           return;
         }
-        setLoadingSlotId(undefined);
         setPendingConflict({ loaded, local: existing, slot });
       } catch (err) {
         setLoadError(err instanceof Error ? err.message : "Load failed.");

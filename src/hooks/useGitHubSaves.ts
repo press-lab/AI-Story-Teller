@@ -35,15 +35,16 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
   );
 
   const loadSave = useCallback(
-    async (slot: GitHubSaveSlot): Promise<Adventure | undefined> => {
+    async (slot: GitHubSaveSlot): Promise<Adventure> => {
       setSavesStatus("Loading save…");
       try {
         const adventure = await loadGitHubSave(cloudSettings, saveSettings, slot);
         setSavesStatus("Save loaded");
         return adventure;
       } catch (error) {
-        setSavesStatus(error instanceof Error ? error.message : "Load failed.");
-        return undefined;
+        const msg = error instanceof Error ? error.message : "Load failed.";
+        setSavesStatus(msg);
+        throw error;
       }
     },
     [cloudSettings, saveSettings],

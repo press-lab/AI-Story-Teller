@@ -615,8 +615,11 @@ export function AdventuresPage({
               <h3>Load a saved adventure</h3>
             </div>
             <div className="toolbar">
-              <button type="button" onClick={() => onListSaves?.()}>Refresh</button>
-              {savesStatus && <span className="status-pill">{savesStatus}</span>}
+              <button type="button" disabled={!!loadingSlotId} onClick={() => onListSaves?.()}>Refresh</button>
+              {loadingSlotId
+                ? <span className="status-pill">Loading save…</span>
+                : savesStatus && <span className="status-pill">{savesStatus}</span>
+              }
             </div>
           </div>
 
