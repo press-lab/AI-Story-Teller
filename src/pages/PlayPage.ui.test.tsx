@@ -11,6 +11,13 @@ import { createDefaultAdventure } from "../state/defaults";
 import type { Adventure, AdventureAction, InputMode } from "../types/adventure";
 import { PlayPage } from "./PlayPage";
 
+// jsdom doesn't implement IntersectionObserver
+global.IntersectionObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof IntersectionObserver;
+
 const timestamp = "2026-01-01T00:00:00.000Z";
 type SubmitTurnHandler = (text: string, mode: InputMode) => Promise<void>;
 type AsyncHandler = () => Promise<void>;

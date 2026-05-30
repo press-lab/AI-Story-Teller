@@ -515,14 +515,17 @@ export default function App() {
                 <p className="muted">{saveStatus}</p>
               </div>
               <div className="editor-header-actions">
-                <AdventureThumbnailPicker
-                  thumbnail={currentThumbnail}
-                  title={adventure.title}
-                  compact
-                  onChange={(thumbnail) =>
-                    dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
-                  }
-                />
+                <details className="thumbnail-picker-details">
+                  <summary>{currentThumbnail ? "Cover" : "Add cover"}</summary>
+                  <AdventureThumbnailPicker
+                    thumbnail={currentThumbnail}
+                    title={adventure.title}
+                    compact
+                    onChange={(thumbnail) =>
+                      dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
+                    }
+                  />
+                </details>
                 <button type="button" onClick={() => setActiveTab("play")}>
                   Play
                 </button>
