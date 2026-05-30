@@ -68,7 +68,7 @@ export function buildSceneStatePayload(adventure: Adventure): SceneStatePayload 
   const existingSceneState = adventure.sceneState?.content?.trim();
 
   const userContent = existingSceneState
-    ? `## Previous Scene State\n${existingSceneState}\n\n## Recent Story Turns\n${recentText}\n\nUpdate the scene state to reflect where we are now.`
+    ? `## Previous Scene State\n${existingSceneState}\n\n## Recent Story Turns\n${recentText}\n\nUpdate the scene state. Carry forward the Active directive and Pending fields unless the story text shows they were explicitly resolved.`
     : `## Recent Story Turns\n${recentText}\n\nCapture the current scene state.`;
 
   return {
@@ -77,11 +77,15 @@ export function buildSceneStatePayload(adventure: Adventure): SceneStatePayload 
         role: "system",
         content:
           "You are a scene-state tracker for an interactive fiction adventure. " +
-          "Write a CURRENT SCENE STATE: a concise snapshot of the immediate present. " +
-          "Include: current location, which characters are present and their immediate mood/posture, " +
-          "the last significant beat that just happened, and any urgent situational facts. " +
-          "Keep it under 120 words. Write in present tense, third person. " +
-          "Do NOT recap story history — only what is true right now.",
+          "Write a CURRENT SCENE STATE using exactly these labeled fields. Keep the total under 150 words.\n\n" +
+          "Location: current physical setting.\n" +
+          "Present: who is here and their immediate mood or posture.\n" +
+          "Last beat: the most recent significant action, revelation, or exchange.\n" +
+          "Active directive: any command, order, appointment, deadline, promise, or threat currently in force. " +
+          "Carry this forward from the previous state unless the story has explicitly resolved it. If none, write None.\n" +
+          "Pending: any open question or decision the player faces right now. If none, write None.\n\n" +
+          "Write present tense, third person. Do not recap history. " +
+          "If a directive or obligation exists, state it explicitly — do not let it be implied by recent messages.",
       },
       { role: "user", content: userContent },
     ],
