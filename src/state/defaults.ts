@@ -162,7 +162,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     modelConfig: defaultModelConfig,
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
     autoCardSettings: defaultAutoCardSettings,
-    memoryAutoApprove: { summaryUpdate: true, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
+    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
   };
 }
 

@@ -164,7 +164,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
     return {
       proposedType: "summaryUpdate",
       title,
-      content: "",
+      content: clean,
       suggestedTriggers,
       confidence: 0.62,
       rationale: "Broad continuity without a narrow durable trigger is better summarized than made into a card.",

@@ -58,7 +58,7 @@ describe("memory architecture smoke path", () => {
       id: "proposal-1",
       proposedType: turnOneClassification.proposedType,
       title: turnOneClassification.title,
-      content: turnOneClassification.content,
+      content: "Margo's private nickname for Seth is 'hedge prince'.",
       suggestedTriggers: turnOneClassification.suggestedTriggers,
       confidence: turnOneClassification.confidence,
       rationale: turnOneClassification.rationale,

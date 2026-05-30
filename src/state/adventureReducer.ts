@@ -243,6 +243,7 @@ function proposalWithEdits(proposal: MemoryProposal, editedProposal?: Partial<Me
 
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
   if (proposal.proposedType === "storyCard") {
+    if (!proposal.content.trim()) return {};
     const existing = state.storyCards.find((card) => card.id === proposal.targetId || card.title === proposal.title);
     const storyCard = existing
       ? touch({
@@ -319,6 +320,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
   }
 
   if (proposal.proposedType === "summaryUpdate") {
+    if (!proposal.content.trim()) return {};
     return { rollingSummary: { content: proposal.content, updatedAt: nowIso() } };
   }
 
