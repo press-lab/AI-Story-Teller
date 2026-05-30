@@ -99,8 +99,10 @@ export function PlayPage({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastUserMsgRef = useRef<HTMLElement | null>(null);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
+  const lastUserMsgId = [...adventure.messages].reverse().find((m) => m.role === "user")?.id;
   const nextTurnNote = adventure.activeState.nextTurnNote;
   const pendingMemoryCount = adventure.activeState.memoryProposals.filter((p) => p.status === "pending").length;
 
@@ -150,7 +152,8 @@ export function PlayPage({
   }
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
+    const target = lastUserMsgRef.current ?? bottomRef.current;
+    target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
   }, [adventure.messages.length]);
 
   useEffect(() => {
@@ -267,7 +270,10 @@ export function PlayPage({
           {adventure.messages.map((message) => (
             <article
               key={message.id}
-              ref={(el) => { if (editingMessageId === message.id) editingArticleRef.current = el; }}
+              ref={(el) => {
+                if (editingMessageId === message.id) editingArticleRef.current = el;
+                if (message.id === lastUserMsgId) lastUserMsgRef.current = el;
+              }}
               className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
             >
               <div className="message-actions">
@@ -424,7 +430,7 @@ export function PlayPage({
                 className="length-cycle-btn"
                 title="Response length — tap to cycle"
                 onClick={() => {
-                  const presets = [75, 100, 150, 200];
+                  const presets = [50, 75, 100, 150, 200];
                   const cur = adventure.activeState.responseLengthHint ?? 150;
                   const idx = presets.indexOf(cur);
                   dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: presets[(idx + 1) % presets.length] });
