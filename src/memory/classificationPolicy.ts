@@ -25,7 +25,7 @@ function titleFromText(text: string): string {
 }
 
 function triggersFromText(text: string): string[] {
-  const quoted = [...text.matchAll(/[“"']([^“"']{2,40})[”"']/g)].map((match) => match[1]);
+  const quoted = [...text.matchAll(/[""']([^""']{2,40})[""']/g)].map((match) => match[1]);
   const names = [...text.matchAll(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g)].map((match) => match[0]);
   return Array.from(new Set([...names, ...quoted])).slice(0, 6);
 }
@@ -96,7 +96,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
       return {
         proposedType: durableFallback ? "storyCard" : "ignore",
         title,
-        content: clean,
+        content: durableFallback ? "" : clean,
         suggestedTriggers,
         confidence: durableFallback ? 0.66 : 0.7,
         rationale: durableFallback
@@ -130,7 +130,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
     containsAny(lower, [
       /\bprivate joke\b/,
       /\bnickname\b/,
-      /\bcalls?\b.*[“"']/,
+      /\bcalls?\b.*[“”']/,
       /\bpromis(?:e|ed|es|ing)\b/,
       /\boath\b/,
       /\bsecret\b/,
@@ -150,7 +150,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
     return {
       proposedType: "storyCard",
       title: target?.title ?? title,
-      content: clean,
+      content: "",
       suggestedTriggers,
       confidence: 0.84,
       rationale: target
@@ -164,7 +164,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
     return {
       proposedType: "summaryUpdate",
       title,
-      content: clean,
+      content: "",
       suggestedTriggers,
       confidence: 0.62,
       rationale: "Broad continuity without a narrow durable trigger is better summarized than made into a card.",

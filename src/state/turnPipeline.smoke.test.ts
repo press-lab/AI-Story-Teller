@@ -207,7 +207,8 @@ describe("full turn smoke path", () => {
       proposedType: "storyCard",
       status: "pending",
     });
-    expect(proposal.content).toContain("hedge prince");
+    expect(proposal.content).toBe("");
+    expect(proposal.sourceText).toContain("hedge prince");
     expect(result.adventure.storyCards.some((card) => card.title === "Hedge Prince Joke")).toBe(false);
     expect(result.postTurnContext.pendingProposals.map((entry) => entry.id)).toContain(proposal.id);
     expect(result.postTurnContext.sections.flatMap((section) => section.items).map((item) => item.id)).not.toContain(
