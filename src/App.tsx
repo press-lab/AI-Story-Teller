@@ -14,7 +14,7 @@ import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
-import type { RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
+import type { ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
 import { defaultUiPreferences } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -129,9 +129,13 @@ export default function App() {
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
-  const [providerSettings, setProviderSettings] = useLocalStorage<RuntimeProviderSettings>(
-    "ai-story-teller-provider-settings",
-    providerInitial,
+  const [providerPresets, setProviderPresets] = useLocalStorage<ProviderPreset[]>(
+    "ai-story-teller-provider-presets",
+    [],
+  );
+  const [activePresetId, setActivePresetId] = useLocalStorage<string>(
+    "ai-story-teller-active-preset-id",
+    "",
   );
   const [uiPreferences, setUiPreferences] = useLocalStorage<UiPreferences>(
     "ai-story-teller-ui-preferences",
@@ -150,6 +154,21 @@ export default function App() {
   useEffect(() => {
     if (uiPreferences.storyFontSize <= 15) {
       setUiPreferences({ ...uiPreferences, storyFontSize: 20 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Migrate single provider settings key to presets array on first load
+  useEffect(() => {
+    if (providerPresets.length === 0) {
+      const stored = localStorage.getItem("ai-story-teller-provider-settings");
+      let base: RuntimeProviderSettings = providerInitial;
+      if (stored) {
+        try { base = { ...providerInitial, ...(JSON.parse(stored) as RuntimeProviderSettings) }; } catch { /* ignore */ }
+      }
+      const migrated: ProviderPreset = { ...base, id: "preset-default", label: "Default" };
+      setProviderPresets([migrated]);
+      setActivePresetId("preset-default");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -230,6 +249,11 @@ export default function App() {
     navigateTo(tabId);
   }
 
+  const activePreset: RuntimeProviderSettings =
+    providerPresets.find((p) => p.id === activePresetId) ??
+    providerPresets[0] ??
+    providerInitial;
+
   const library = useAdventureLibrary(
     setAdventure,
     setContextResult,
@@ -243,7 +267,7 @@ export default function App() {
   const runtime = useAdventureRuntime(
     adventure,
     setAdventure,
-    providerSettings,
+    activePreset,
     setSaveStatus,
     setContextResult,
     openTab,
@@ -340,8 +364,10 @@ export default function App() {
           <SettingsPage
             adventure={adventure}
             dispatch={dispatch}
-            providerSettings={runtime.activeProviderConfig}
-            onProviderSettingsChange={setProviderSettings}
+            providerPresets={providerPresets}
+            activePresetId={activePresetId}
+            onProviderPresetsChange={setProviderPresets}
+            onSelectPreset={setActivePresetId}
             uiPreferences={uiPreferences}
             onUiPreferencesChange={setUiPreferences}
             cloudSyncSettings={cloudSyncSettings}
@@ -450,6 +476,9 @@ export default function App() {
             playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
             playPanelTitle={playPanelTab ? (modalTitles[playPanelTab as TabId] ?? "Tool") : undefined}
             onClosePlayPanel={() => setPlayPanelTab(undefined)}
+            providerPresets={providerPresets}
+            activePresetId={activePresetId}
+            onSelectPreset={setActivePresetId}
           />
         );
       case "dashboard":

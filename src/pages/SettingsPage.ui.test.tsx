@@ -9,13 +9,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure, defaultModelConfig } from "../state/defaults";
 import type { AdventureAction } from "../types/adventure";
 import { SettingsPage } from "./SettingsPage";
-import type { RuntimeProviderSettings, UiPreferences } from "./pageTypes";
+import type { ProviderPreset, UiPreferences } from "./pageTypes";
 import { defaultUiPreferences } from "./pageTypes";
 
-function providerSettings(): RuntimeProviderSettings {
+function makePreset(): ProviderPreset {
   return {
     ...defaultModelConfig,
     apiKey: "test-key",
+    id: "preset-test",
+    label: "Test Model",
   };
 }
 
@@ -26,21 +28,23 @@ describe("SettingsPage API throttle controls", () => {
 
   it("lets the user configure provider request throttling", async () => {
     const user = userEvent.setup();
-    const onProviderSettingsChange = vi.fn();
+    const onProviderPresetsChange = vi.fn();
     const dispatch = vi.fn<(action: AdventureAction) => void>();
     const advancedPrefs: UiPreferences = { ...defaultUiPreferences, showAdvancedSettings: true };
 
     function StatefulSettingsPage() {
-      const [settings, setSettings] = useState(providerSettings());
+      const [presets, setPresets] = useState([makePreset()]);
       return (
         <SettingsPage
           adventure={createDefaultAdventure("Throttle Test")}
           dispatch={dispatch}
-          providerSettings={settings}
-          onProviderSettingsChange={(next) => {
-            setSettings(next);
-            onProviderSettingsChange(next);
+          providerPresets={presets}
+          activePresetId="preset-test"
+          onProviderPresetsChange={(next) => {
+            setPresets(next);
+            onProviderPresetsChange(next);
           }}
+          onSelectPreset={vi.fn()}
           uiPreferences={advancedPrefs}
           onUiPreferencesChange={vi.fn()}
         />
@@ -49,12 +53,16 @@ describe("SettingsPage API throttle controls", () => {
 
     render(<StatefulSettingsPage />);
 
+    // The active preset form starts expanded; throttle section is visible under Advanced
     await user.click(screen.getByLabelText("Enable API request throttle"));
 
-    expect(onProviderSettingsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        requestThrottle: expect.objectContaining({ enabled: true }),
-      }),
+    expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "preset-test",
+          requestThrottle: expect.objectContaining({ enabled: true }),
+        }),
+      ]),
     );
     expect(dispatch).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -68,10 +76,13 @@ describe("SettingsPage API throttle controls", () => {
     await user.clear(screen.getByLabelText("Minimum seconds between API calls"));
     await user.type(screen.getByLabelText("Minimum seconds between API calls"), "7");
 
-    expect(onProviderSettingsChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        requestThrottle: expect.objectContaining({ minSecondsBetweenRequests: 7 }),
-      }),
+    expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "preset-test",
+          requestThrottle: expect.objectContaining({ minSecondsBetweenRequests: 7 }),
+        }),
+      ]),
     );
   });
 });

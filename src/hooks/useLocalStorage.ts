@@ -5,7 +5,12 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T)
     const stored = localStorage.getItem(key);
     if (!stored) return initialValue;
     try {
-      return { ...initialValue, ...JSON.parse(stored) } as T;
+      const parsed = JSON.parse(stored) as T;
+      // Arrays and primitives: use parsed directly; objects: merge with defaults for forward-compat
+      if (Array.isArray(initialValue) || Array.isArray(parsed) || typeof initialValue !== "object" || initialValue === null) {
+        return parsed;
+      }
+      return { ...initialValue, ...parsed } as T;
     } catch {
       return initialValue;
     }

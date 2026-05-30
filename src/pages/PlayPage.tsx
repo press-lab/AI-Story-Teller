@@ -67,6 +67,9 @@ export function PlayPage({
   playPanelTitle,
   onClosePlayPanel,
   onDismissError,
+  providerPresets,
+  activePresetId,
+  onSelectPreset,
 }: PlayRuntimeProps) {
   const [input, setInput] = useState("");
   const [inputMode, setInputMode] = useState<InputMode>("do");
@@ -482,6 +485,18 @@ export function PlayPage({
       >
         <div className="play-status">
           <span className="muted">Turn {adventure.activeState.turn} · {saveStatus}</span>
+          {providerPresets && providerPresets.length > 1 && onSelectPreset && (
+            <select
+              className="preset-select"
+              value={activePresetId ?? ""}
+              onChange={(e) => onSelectPreset(e.target.value)}
+              title="Active model"
+            >
+              {providerPresets.map((p) => (
+                <option key={p.id} value={p.id}>{p.label || p.model}</option>
+              ))}
+            </select>
+          )}
           <div className="token-strip">
             <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
             {totalDropped > 0 && (

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type {
   Adventure,
   AdventureAction,
@@ -8,7 +9,7 @@ import type {
   SemanticEvaluationSettings,
   TokenBudgetSettings,
 } from "../types/adventure";
-import type { RuntimeProviderSettings, UiPreferences } from "./pageTypes";
+import type { ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -40,8 +41,10 @@ const fallbackThrottle: ProviderRequestThrottle = {
 interface SettingsPageProps {
   adventure?: Adventure;
   dispatch: (action: AdventureAction) => void;
-  providerSettings: RuntimeProviderSettings;
-  onProviderSettingsChange: (settings: RuntimeProviderSettings) => void;
+  providerPresets: ProviderPreset[];
+  activePresetId: string;
+  onProviderPresetsChange: (presets: ProviderPreset[]) => void;
+  onSelectPreset: (id: string) => void;
   uiPreferences: UiPreferences;
   onUiPreferencesChange: (prefs: UiPreferences) => void;
   cloudSyncSettings?: CloudSyncSettings;
@@ -55,8 +58,10 @@ interface SettingsPageProps {
 export function SettingsPage({
   adventure,
   dispatch,
-  providerSettings,
-  onProviderSettingsChange,
+  providerPresets,
+  activePresetId,
+  onProviderPresetsChange,
+  onSelectPreset,
   uiPreferences,
   onUiPreferencesChange,
   cloudSyncSettings,
@@ -67,6 +72,9 @@ export function SettingsPage({
   onLoadDevelopmentAdventure,
 }: SettingsPageProps) {
   const advanced = uiPreferences.showAdvancedSettings;
+  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(activePresetId || null);
+
+  const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
 
   function updateUi(patch: Partial<UiPreferences>) {
     onUiPreferencesChange({ ...uiPreferences, ...patch });
@@ -77,15 +85,39 @@ export function SettingsPage({
     onCloudSyncSettingsChange({ ...cloudSyncSettings, ...patch });
   }
 
-  function updateProvider(patch: Partial<RuntimeProviderSettings>) {
-    const next = { ...providerSettings, ...patch };
-    onProviderSettingsChange(next);
-    if (adventure) dispatch({ type: "SET_MODEL_CONFIG", config: next });
+  function updatePreset(id: string, patch: Partial<ProviderPreset>) {
+    const updated = providerPresets.map((p) => (p.id === id ? { ...p, ...patch } : p));
+    onProviderPresetsChange(updated);
+    if (adventure && id === activePresetId) {
+      const next = updated.find((p) => p.id === id)!;
+      dispatch({ type: "SET_MODEL_CONFIG", config: next });
+    }
   }
 
-  function updateThrottle(patch: Partial<ProviderRequestThrottle>) {
-    const current = providerSettings.requestThrottle ?? fallbackThrottle;
-    updateProvider({ requestThrottle: { ...current, ...patch } });
+  function updatePresetApiKey(id: string, apiKey: string) {
+    onProviderPresetsChange(providerPresets.map((p) => (p.id === id ? { ...p, apiKey } : p)));
+  }
+
+  function updateThrottle(id: string, patch: Partial<ProviderRequestThrottle>) {
+    const preset = providerPresets.find((p) => p.id === id);
+    if (!preset) return;
+    const current = preset.requestThrottle ?? fallbackThrottle;
+    updatePreset(id, { requestThrottle: { ...current, ...patch } });
+  }
+
+  function addPreset() {
+    const base = activePreset ?? providerPresets[0];
+    const newId = `preset-${Date.now()}`;
+    const newPreset: ProviderPreset = { ...(base ?? { name: "", baseUrl: "", model: "", apiKey: "", temperature: 1, maxOutputTokens: 2048 }), id: newId, label: "New Model", apiKey: "" };
+    onProviderPresetsChange([...providerPresets, newPreset]);
+    setExpandedPresetId(newId);
+  }
+
+  function deletePreset(id: string) {
+    const remaining = providerPresets.filter((p) => p.id !== id);
+    onProviderPresetsChange(remaining);
+    if (id === activePresetId && remaining.length > 0) onSelectPreset(remaining[0].id);
+    if (expandedPresetId === id) setExpandedPresetId(remaining[0]?.id ?? null);
   }
 
   function updateBudget(patch: Partial<TokenBudgetSettings>) {
@@ -143,64 +175,103 @@ export function SettingsPage({
           />
         </article>
 
-        {/* ── Provider ──────────────────────────────── */}
-        <article className="panel">
-          <h3>Provider</h3>
-          <Field label="Provider Name">
-            <input value={providerSettings.name} onChange={(e) => updateProvider({ name: e.target.value })} />
-          </Field>
-          <Field label="Base URL">
-            <input value={providerSettings.baseUrl} onChange={(e) => updateProvider({ baseUrl: e.target.value })} />
-          </Field>
-          <Field label="Model">
-            <input value={providerSettings.model} onChange={(e) => updateProvider({ model: e.target.value })} />
-          </Field>
-          <Field label="API Key">
-            <input
-              type="password"
-              value={providerSettings.apiKey}
-              onChange={(e) => onProviderSettingsChange({ ...providerSettings, apiKey: e.target.value })}
-              placeholder="Stored only in localStorage"
-            />
-          </Field>
-          <div className="grid two">
-            <Field label="Temperature">
-              <NumberInput value={providerSettings.temperature} onChange={(value) => updateProvider({ temperature: value })} />
-            </Field>
-            <Field label="Max Output Tokens">
-              <NumberInput min={1} value={providerSettings.maxOutputTokens} onChange={(value) => updateProvider({ maxOutputTokens: value })} />
-            </Field>
+        {/* ── Models ────────────────────────────────── */}
+        <article className="panel" style={{ gridColumn: "1 / -1" }}>
+          <div className="preset-list-header">
+            <h3 style={{ margin: 0 }}>Models</h3>
+            <button type="button" onClick={addPreset}>+ Add Model</button>
           </div>
-          {advanced && (
-            <>
-              <h4>API Throttle</h4>
-              <CheckboxField
-                label="Enable API request throttle"
-                checked={providerSettings.requestThrottle?.enabled ?? fallbackThrottle.enabled}
-                onChange={(enabled) => updateThrottle({ enabled })}
-              />
-              <div className="grid two">
-                <Field label="Minimum seconds between API calls">
-                  <NumberInput
-                    min={0}
-                    value={providerSettings.requestThrottle?.minSecondsBetweenRequests ?? fallbackThrottle.minSecondsBetweenRequests}
-                    onChange={(minSecondsBetweenRequests) => updateThrottle({ minSecondsBetweenRequests })}
-                  />
-                </Field>
-                <Field label="Max API calls per minute">
-                  <NumberInput
-                    min={0}
-                    value={providerSettings.requestThrottle?.maxRequestsPerMinute ?? fallbackThrottle.maxRequestsPerMinute}
-                    onChange={(maxRequestsPerMinute) => updateThrottle({ maxRequestsPerMinute })}
-                  />
-                </Field>
+          {providerPresets.map((preset) => {
+            const isActive = preset.id === activePresetId;
+            const isExpanded = expandedPresetId === preset.id;
+            return (
+              <div key={preset.id} className="preset-item">
+                <div className="preset-item-header">
+                  <button
+                    type="button"
+                    className="preset-item-toggle"
+                    onClick={() => setExpandedPresetId(isExpanded ? null : preset.id)}
+                  >
+                    <strong>{preset.label || "(unnamed)"}</strong>
+                    <span className="muted preset-item-model"> · {preset.model || "no model set"}</span>
+                    <span className="preset-item-caret">{isExpanded ? " ▲" : " ▼"}</span>
+                  </button>
+                  <div className="preset-item-actions">
+                    {isActive ? (
+                      <span className="status-pill">Active</span>
+                    ) : (
+                      <button type="button" onClick={() => onSelectPreset(preset.id)}>Use</button>
+                    )}
+                    {providerPresets.length > 1 && (
+                      <button type="button" className="danger" onClick={() => deletePreset(preset.id)}>Delete</button>
+                    )}
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="preset-item-form">
+                    <div className="grid two">
+                      <Field label="Label">
+                        <input value={preset.label} onChange={(e) => updatePreset(preset.id, { label: e.target.value })} />
+                      </Field>
+                      <Field label="Provider Name">
+                        <input value={preset.name} onChange={(e) => updatePreset(preset.id, { name: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field label="Base URL">
+                      <input value={preset.baseUrl} onChange={(e) => updatePreset(preset.id, { baseUrl: e.target.value })} />
+                    </Field>
+                    <Field label="Model">
+                      <input value={preset.model} onChange={(e) => updatePreset(preset.id, { model: e.target.value })} />
+                    </Field>
+                    <Field label="API Key">
+                      <input
+                        type="password"
+                        value={preset.apiKey}
+                        onChange={(e) => updatePresetApiKey(preset.id, e.target.value)}
+                        placeholder="Stored only in localStorage"
+                      />
+                    </Field>
+                    <div className="grid two">
+                      <Field label="Temperature">
+                        <NumberInput value={preset.temperature} onChange={(temperature) => updatePreset(preset.id, { temperature })} />
+                      </Field>
+                      <Field label="Max Output Tokens">
+                        <NumberInput min={1} value={preset.maxOutputTokens} onChange={(maxOutputTokens) => updatePreset(preset.id, { maxOutputTokens })} />
+                      </Field>
+                    </div>
+                    {advanced && (
+                      <>
+                        <h4>API Throttle</h4>
+                        <CheckboxField
+                          label="Enable API request throttle"
+                          checked={preset.requestThrottle?.enabled ?? fallbackThrottle.enabled}
+                          onChange={(enabled) => updateThrottle(preset.id, { enabled })}
+                        />
+                        <div className="grid two">
+                          <Field label="Minimum seconds between API calls">
+                            <NumberInput
+                              min={0}
+                              value={preset.requestThrottle?.minSecondsBetweenRequests ?? fallbackThrottle.minSecondsBetweenRequests}
+                              onChange={(minSecondsBetweenRequests) => updateThrottle(preset.id, { minSecondsBetweenRequests })}
+                            />
+                          </Field>
+                          <Field label="Max API calls per minute">
+                            <NumberInput
+                              min={0}
+                              value={preset.requestThrottle?.maxRequestsPerMinute ?? fallbackThrottle.maxRequestsPerMinute}
+                              onChange={(maxRequestsPerMinute) => updateThrottle(preset.id, { maxRequestsPerMinute })}
+                            />
+                          </Field>
+                        </div>
+                        <p className="muted">Enforced before every provider call. Use 0 for no per-minute cap.</p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
-              <p className="muted">
-                Enforced before every provider call. Use 0 for no per-minute cap.
-              </p>
-            </>
-          )}
-          <p className="muted">API keys are not written to adventure JSON or IndexedDB saves.</p>
+            );
+          })}
+          <p className="muted" style={{ marginTop: "0.5rem" }}>API keys are not written to adventure JSON or IndexedDB saves.</p>
         </article>
 
         {/* ── Context Budget (advanced) ─────────────── */}
@@ -294,7 +365,7 @@ export function SettingsPage({
             <Field label="Evaluation Model Override">
               <input
                 value={adventure.semanticEvaluationSettings.evaluationModel}
-                placeholder={providerSettings.model}
+                placeholder={activePreset?.model ?? ""}
                 onChange={(e) => updateSemanticSettings({ evaluationModel: e.target.value })}
               />
             </Field>

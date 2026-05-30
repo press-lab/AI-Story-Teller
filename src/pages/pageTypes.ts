@@ -28,6 +28,11 @@ export interface RuntimeProviderSettings extends ProviderConfig {
   apiKey: string;
 }
 
+export interface ProviderPreset extends RuntimeProviderSettings {
+  id: string;
+  label: string;
+}
+
 export interface PlayRuntimeProps extends AdventurePageProps {
   contextResult?: ContextBuildResult;
   loading: boolean;
@@ -47,4 +52,7 @@ export interface PlayRuntimeProps extends AdventurePageProps {
   playPanelContent?: ReactNode;
   playPanelTitle?: string;
   onClosePlayPanel?: () => void;
+  providerPresets?: ProviderPreset[];
+  activePresetId?: string;
+  onSelectPreset?: (id: string) => void;
 }
