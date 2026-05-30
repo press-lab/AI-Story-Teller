@@ -2851,13 +2851,8 @@ summary {
     display: none;
   }
 
+  /* Single scrollable row: Take a Turn + all secondary buttons */
   .composer-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .secondary-actions {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
@@ -2869,7 +2864,12 @@ summary {
     padding-bottom: 2px;
   }
 
-  .secondary-actions button {
+  /* secondary-actions is transparent — its buttons flow into the parent row */
+  .secondary-actions {
+    display: contents;
+  }
+
+  .composer-actions button {
     flex: 0 0 auto;
     padding: 8px 14px;
     font-size: 13px;
@@ -2877,14 +2877,23 @@ summary {
     white-space: nowrap;
   }
 
-  /* All action buttons visible in one scrollable row */
   .action-extra {
+    display: none;
+  }
+
+  .secondary-actions.show-overflow .action-extra {
     display: flex;
     align-items: center;
   }
 
   .action-overflow-toggle {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 14px;
+    min-height: 40px;
   }
 
 
