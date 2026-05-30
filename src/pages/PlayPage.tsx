@@ -100,6 +100,15 @@ export function PlayPage({
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const lastUserMsgRef = useRef<HTMLElement | null>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
+  useEffect(() => {
+    const el = bottomRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setShowScrollBottom(!entry.isIntersecting), { threshold: 0 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
   const lastUserMsgId = [...adventure.messages].reverse().find((m) => m.role === "user")?.id;
@@ -326,6 +335,16 @@ export function PlayPage({
           ))}
           <div ref={bottomRef} />
         </div>
+        {showScrollBottom && (
+          <button
+            type="button"
+            className="scroll-to-bottom-btn"
+            onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
+            aria-label="Scroll to bottom"
+          >
+            ↓
+          </button>
+        )}
 
         {/* Compact tool strip — visible on tablet/mobile, hidden on desktop */}
         <nav className="play-tool-row" aria-label="Adventure tools">
