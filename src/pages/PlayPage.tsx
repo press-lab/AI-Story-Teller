@@ -333,9 +333,19 @@ export function PlayPage({
                       </button>
                     )}
                   />
-                  {message.role === "assistant" && message.usage && (
+                  {message.role === "assistant" && (message.usage || (message.id === lastAssistant?.id && pendingMemoryCount > 0)) && (
                     <span className="message-usage muted">
-                      ↑{message.usage.promptTokens} ↓{message.usage.completionTokens} tokens
+                      {message.usage && `↑${message.usage.promptTokens} ↓${message.usage.completionTokens} tokens`}
+                      {message.id === lastAssistant?.id && pendingMemoryCount > 0 && (
+                        <button
+                          type="button"
+                          className="context-drop-warning"
+                          title="Open memory inbox"
+                          onClick={(e) => { e.stopPropagation(); openTool("memoryInbox"); }}
+                        >
+                          {message.usage ? "· " : ""}{pendingMemoryCount} suggestion{pendingMemoryCount !== 1 ? "s" : ""}
+                        </button>
+                      )}
                     </span>
                   )}
                 </div>
