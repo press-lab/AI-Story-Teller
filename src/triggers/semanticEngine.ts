@@ -72,7 +72,17 @@ function preview(text: string): string {
 }
 
 function defaultBrainPrompt(brain: BrainEntry): string {
-  return `You are modeling the internal state of ${brain.characterName}. Based on what just happened, update their mental state. Return ONLY valid JSON with any of these keys: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Only include keys that should change. Every value must be a plain string; do not return nested objects or arrays.`;
+  const existing: string[] = [];
+  if (brain.currentState?.trim()) existing.push(`currentState: ${brain.currentState}`);
+  if (brain.thoughts?.trim()) existing.push(`thoughts: ${brain.thoughts}`);
+  if (brain.relationshipPressure?.trim()) existing.push(`relationshipPressure: ${brain.relationshipPressure}`);
+  if (brain.emotionalInterpretation?.trim()) existing.push(`emotionalInterpretation: ${brain.emotionalInterpretation}`);
+  const stateBlock = existing.length > 0 ? `\n\nCurrent state:\n${existing.join("\n")}` : "";
+  return `You are tracking the inner observations of ${brain.characterName} based on what just happened.${stateBlock}
+
+Return ONLY valid JSON with any of these keys that need updating: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Only include keys that should change. Every value must be a plain string.
+
+For "thoughts": write specific observations that ${brain.characterName} would form from this scene — naming actual characters, citing what was said or done, and noting what it means. Avoid vague emotional labels like "amused" or "guarded." Instead record what ${brain.characterName} concretely noticed: who did what, what it reveals, what it implies. Example: "Nyx is forcing this coldness because Ozai's council rattled her, but she can't hide the tension in her hands."`;
 }
 
 function storyCardPrompt(card: StoryCard): string {
