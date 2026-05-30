@@ -12,11 +12,12 @@ const config: ProviderConfig = {
 };
 
 function mockFetch(status: number, body: unknown) {
+  const text = typeof body === "string" ? body : JSON.stringify(body);
   return vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
     ok: status >= 200 && status < 300,
     status,
-    json: () => Promise.resolve(body),
-  } as Response);
+    text: () => Promise.resolve(text),
+  } as unknown as Response);
 }
 
 afterEach(() => {
@@ -93,21 +94,21 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     mockFetch(500, {});
     await expect(
       sendOpenAICompatibleChatCompletion({ messages: [], config }),
-    ).rejects.toThrow("HTTP 500");
+    ).rejects.toThrow("Provider error 500");
   });
 
   it("throws when response has no message content", async () => {
     mockFetch(200, { choices: [{ message: {} }] });
     await expect(
       sendOpenAICompatibleChatCompletion({ messages: [], config }),
-    ).rejects.toThrow("no message content");
+    ).rejects.toThrow("Provider returned no content");
   });
 
   it("throws when choices array is empty", async () => {
     mockFetch(200, { choices: [] });
     await expect(
       sendOpenAICompatibleChatCompletion({ messages: [], config }),
-    ).rejects.toThrow("no message content");
+    ).rejects.toThrow("Provider returned no content");
   });
 
   it("throttles provider calls by minimum seconds between requests", async () => {
@@ -115,7 +116,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ choices: [{ message: { content: "ok" } }] }),
+      text: () => Promise.resolve(JSON.stringify({ choices: [{ message: { content: "ok" } }] })),
     } as Response);
     const throttledConfig: ProviderConfig = {
       ...config,
@@ -139,7 +140,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       status: 200,
-      json: () => Promise.resolve({ choices: [{ message: { content: "ok" } }] }),
+      text: () => Promise.resolve(JSON.stringify({ choices: [{ message: { content: "ok" } }] })),
     } as Response);
     const throttledConfig: ProviderConfig = {
       ...config,

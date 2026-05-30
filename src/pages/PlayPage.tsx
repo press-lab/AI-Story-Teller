@@ -25,13 +25,13 @@ const MODE_LABELS: Record<InputMode, string> = {
 };
 
 const MODE_TOOLTIPS: Record<InputMode, string> = {
-  do: "Do — describe your character's action. Gets prefixed with 'You ' automatically.",
+  do: "Do — describe your character's action. Type in first or second person, the AI narrates in second person.",
   story: "Story — directly add or guide the next story beat, as the narrator.",
   comms: "Author — out-of-character message to the AI. Use for questions or instructions about the story.",
 };
 
 const MODE_PLACEHOLDERS: Record<InputMode, string> = {
-  do: "What do you do? (prefixed with 'You ')",
+  do: "What does your character do?",
   story: "Guide the next story beat...",
   comms: "Ask the AI a question or give it direction (out of character)...",
 };

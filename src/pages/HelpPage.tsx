@@ -590,8 +590,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
           </dd>
           <dt>Do mode</dt>
           <dd>
-            You speak as your character. Type what your character does or says. The text is automatically prefixed with "You "
-            so you don't need to write it yourself. Good for: "draw your sword", "ask her about the letter", "run".
+            You speak as your character. Type in first person ("I draw my sword") or second person ("draw your sword") — the AI narrates back in second person. Good for actions, dialogue, and reactions.
           </dd>
           <dt>Author mode</dt>
           <dd>

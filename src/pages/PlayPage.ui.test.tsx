@@ -88,7 +88,7 @@ describe("PlayPage AID-style controls", () => {
     render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" })); // open composer
-    await user.type(screen.getByPlaceholderText("What do you do? (prefixed with 'You ')"), "draw your sword");
+    await user.type(screen.getByPlaceholderText("What does your character do?"), "draw your sword");
     await user.keyboard("{Enter}");
 
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
