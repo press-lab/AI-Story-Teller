@@ -415,6 +415,9 @@ async function generatedActionsFor(
     if (triggerAction.type === "updateBrain" || triggerAction.type === "appendBrain") {
       const brain = adventure.brains.find((entry) => entry.id === triggerAction.brainId);
       if (!brain) return { actions: [], error: `Brain not found: ${triggerAction.brainId}` };
+      if (adventure.activeState.memoryProposals.some((p) => p.status === "pending" && p.proposedType === "brainUpdate" && p.targetId === brain.id)) {
+        return { actions: [] };
+      }
       const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain, adventure.activeState.turn), accum);
       const patch = sanitizeBrainPatch(parseJsonResponse<unknown>(raw));
       if (Object.keys(patch).length === 0) return { actions: [], error: `Brain update returned no recognized keys for ${brain.characterName}.` };

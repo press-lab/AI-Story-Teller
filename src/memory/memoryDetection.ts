@@ -82,7 +82,6 @@ export async function detectMemoryFromTurn(
   responseText: string,
   accum?: { promptTokens: number; completionTokens: number },
 ): Promise<Extract<AdventureAction, { type: "ADD_MEMORY_PROPOSAL" }> | undefined> {
-  if (adventure.activeState.memoryProposals.some((p) => p.status === "pending")) return undefined;
   if (!hasNovelSignal(adventure, responseText)) return undefined;
 
   const { generateContent } = adventure.memoryDetectionSettings;
@@ -118,6 +117,8 @@ export async function detectMemoryFromTurn(
   const validTypes = new Set(["storyCard", "brainUpdate", "plotEssentialsUpdate"]);
   if (typeof parsed.proposedType !== "string" || !validTypes.has(parsed.proposedType)) return undefined;
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return undefined;
+
+  if (adventure.activeState.memoryProposals.some((p) => p.status === "pending" && p.proposedType === parsed.proposedType)) return undefined;
 
   const proposal: MemoryProposal = {
     id: createId("proposal"),
