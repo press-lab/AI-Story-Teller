@@ -102,7 +102,7 @@ describe("runSemanticPostTurnEvaluation", () => {
 
   it("evaluates a brain condition and calls a targeted brain-update prompt when fired", async () => {
     const brain = makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], active: true });
-    const adventure = { ...baseAdventure(), brains: [brain] };
+    const adventure = { ...baseAdventure(), brains: [brain], messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }] };
 
     // First call: condition evaluation (returns brain condition fired)
     // Second call: brain update prompt
@@ -221,6 +221,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const adventure = {
       ...baseAdventure(),
       storyCards: [card],
+      messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
     };
 
@@ -261,6 +262,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const adventure = {
       ...baseAdventure(),
       brains: [brain],
+      messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
       semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
     };
@@ -295,6 +297,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const adventure = {
       ...baseAdventure(),
       storyCards: [card],
+      messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo repeats the hedge prince joke.", createdAt: "2026-01-01T00:02:00.000Z" }],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
       semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
     };

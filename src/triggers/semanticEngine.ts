@@ -19,7 +19,7 @@ import type {
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
 import { createId, nowIso } from "../utils/id";
-import { splitList } from "./matching";
+import { matchPatterns, splitList } from "./matching";
 import { isTriggerOnCooldown, triggerActionToAdventureActions } from "./triggerEngine";
 
 const EVALUATION_SYSTEM_PROMPT =
@@ -114,8 +114,15 @@ function activeSemanticRules(adventure: Adventure): SemanticCondition[] {
 }
 
 function brainConditions(adventure: Adventure): SemanticCondition[] {
+  const excerpt = recentExcerpt(adventure);
   return adventure.brains
     .filter((brain) => brain.active)
+    .filter((brain) => {
+      // Pre-filter: skip semantic evaluation entirely if character has no presence in recent text.
+      // Saves one evaluation slot and a generation call when the character wasn't in the scene.
+      const patterns = [brain.characterName, ...brain.aliases, ...brain.triggers].filter(Boolean);
+      return patterns.length === 0 || matchPatterns(excerpt, patterns, "phrase").matched;
+    })
     .map((brain) => ({
       id: `brain:${brain.id}`,
       label: `Brain: ${brain.characterName}`,
@@ -171,9 +178,14 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
+  const excerpt = recentExcerpt(adventure);
   return adventure.storyCards
     .filter((card) => card.active && card.autoUpdate)
     .filter((card) => !isStoryCardOnAutoUpdateCooldown(adventure, card))
+    .filter((card) => {
+      // Pre-filter: skip if none of the card's trigger keywords appear in recent text.
+      return card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched;
+    })
     .map((card) => ({
       id: `storyCard:${card.id}`,
       label: `Story Card: ${card.title}`,
