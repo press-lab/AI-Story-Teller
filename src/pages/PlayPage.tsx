@@ -261,6 +261,7 @@ export function PlayPage({
       )}
 
       <div className="play-main">
+        <div className="transcript-area">
         <div ref={transcriptRef} className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.openingScene && (
             <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
@@ -347,12 +348,13 @@ export function PlayPage({
           <button
             type="button"
             className="scroll-to-bottom-btn"
-            onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })}
+            onClick={() => transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: "smooth" })}
             aria-label="Scroll to bottom"
           >
             ↓
           </button>
         )}
+        </div>
 
         {/* Compact tool strip — visible on tablet/mobile, hidden on desktop */}
         <nav className="play-tool-row" aria-label="Adventure tools">
