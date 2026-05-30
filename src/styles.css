@@ -2877,30 +2877,14 @@ summary {
     white-space: nowrap;
   }
 
-  /* Extra actions hidden until overflow toggled */
+  /* All action buttons visible in one scrollable row */
   .action-extra {
-    display: none;
-  }
-
-  .secondary-actions.show-overflow {
-    flex-wrap: wrap;
-  }
-
-  .secondary-actions.show-overflow .action-extra {
     display: flex;
     align-items: center;
   }
 
-  /* Overflow toggle button */
   .action-overflow-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    letter-spacing: 0.05em;
-    padding: 8px 12px;
-    font-size: 14px;
-    min-height: 40px;
+    display: none;
   }
 
 
