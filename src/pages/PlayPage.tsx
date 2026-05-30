@@ -359,6 +359,12 @@ export function PlayPage({
               />
             </label>
           </div>
+          <div className="mode-cycle-mobile">
+            <button type="button" className="mode-cycle-close" onClick={() => setComposerOpen(false)} title="Close">✕</button>
+            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)}>‹</button>
+            <span className="mode-cycle-label">{MODE_LABELS[inputMode]}</span>
+            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(1)}>›</button>
+          </div>
           <div className="composer-input-row">
             <textarea
               ref={textareaRef}

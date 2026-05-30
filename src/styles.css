@@ -1687,6 +1687,11 @@ button.primary-action:hover:not(:disabled),
   display: none;
 }
 
+/* Mobile cycling mode bar — hidden everywhere except mobile-open state */
+.mode-cycle-mobile {
+  display: none;
+}
+
 
 .composer-actions button {
   font-size: 16px;
@@ -2853,6 +2858,53 @@ summary {
 
   .mode-hint,
   .composer-actions .hint {
+    display: none;
+  }
+
+  /* On mobile, hide the full mode-selector — replaced by cycling bar */
+  .mode-selector {
+    display: none;
+  }
+
+  /* Show cycling bar when composer is open */
+  .composer:not(.composer-input-closed) .mode-cycle-mobile {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 2px 0;
+  }
+
+  .mode-cycle-close {
+    padding: 6px 12px;
+    font-size: 15px;
+    min-height: 36px;
+    border-radius: 6px;
+    border-color: transparent;
+    background: transparent;
+    color: var(--muted);
+    margin-right: 4px;
+  }
+
+  .mode-cycle-arrow {
+    padding: 6px 14px;
+    font-size: 18px;
+    min-height: 36px;
+    border-radius: 6px;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .mode-cycle-label {
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 52px;
+    text-align: center;
+    padding: 0 2px;
+    user-select: none;
+  }
+
+  /* Hide action row while typing; show it when composer is closed */
+  .composer:not(.composer-input-closed) .composer-actions {
     display: none;
   }
 
