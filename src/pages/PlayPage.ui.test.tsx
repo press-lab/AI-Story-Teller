@@ -69,10 +69,10 @@ describe("PlayPage AID-style controls", () => {
     const onRegenerate = vi.fn<AsyncHandler>(async () => undefined);
     render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} onContinue={onContinue} onRegenerate={onRegenerate} />);
 
-    await user.click(screen.getByRole("button", { name: "Do" })); // open mode panel
+    await user.click(screen.getByRole("button", { name: "Take a Turn" })); // open composer
     await user.click(screen.getByRole("button", { name: "Story" }));
     await user.type(screen.getByPlaceholderText("Guide the next story beat..."), "The hallway tilts.");
-    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    await user.keyboard("{Enter}");
     expect(onSubmitTurn).toHaveBeenCalledWith("The hallway tilts.", "story");
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
@@ -87,9 +87,9 @@ describe("PlayPage AID-style controls", () => {
     const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
     render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
 
-    await user.click(screen.getByRole("button", { name: "Do" }));
+    await user.click(screen.getByRole("button", { name: "Take a Turn" })); // open composer
     await user.type(screen.getByPlaceholderText("What do you do? (prefixed with 'You ')"), "draw your sword");
-    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    await user.keyboard("{Enter}");
 
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
   });

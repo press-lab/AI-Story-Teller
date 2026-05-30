@@ -125,6 +125,7 @@ export default function App() {
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
+  const [navForceVisible, setNavForceVisible] = useState(false);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
@@ -145,6 +146,14 @@ export default function App() {
     defaultGitHubSaveSettings,
   );
 
+  // Migrate old default font size (15) to new default (20) for existing users
+  useEffect(() => {
+    if (uiPreferences.storyFontSize <= 15) {
+      setUiPreferences({ ...uiPreferences, storyFontSize: 20 });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark-mode", uiPreferences.darkMode);
@@ -164,6 +173,11 @@ export default function App() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [playPanelTab]);
+
+  // Reset nav visibility each time the user enters the play tab
+  useEffect(() => {
+    if (activeTab !== "play") setNavForceVisible(false);
+  }, [activeTab]);
 
   // Browser back/forward support
   useEffect(() => {
@@ -524,9 +538,15 @@ export default function App() {
   })();
 
   const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
+  const navHidden = activeTab === "play" && !navForceVisible;
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${navHidden ? " nav-hidden" : ""}`}>
+      {navHidden && (
+        <button type="button" className="nav-show-btn" onClick={() => setNavForceVisible(true)} title="Show navigation">
+          ≡ nav
+        </button>
+      )}
       <header className="app-header">
         <div className="app-title">
           <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
@@ -570,6 +590,11 @@ export default function App() {
         </nav>
         <div className="header-meta">
           {adventure && <span className="status-pill">{saveStatus}</span>}
+          {activeTab === "play" && (
+            <button type="button" className="theme-toggle" onClick={() => setNavForceVisible(false)} title="Hide navigation bar">
+              ↑ Hide
+            </button>
+          )}
           <button
             type="button"
             className={activeTopTab === "settings" ? "theme-toggle active" : "theme-toggle"}

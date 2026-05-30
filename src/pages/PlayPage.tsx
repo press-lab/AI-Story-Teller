@@ -73,7 +73,6 @@ export function PlayPage({
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
-  const [showModes, setShowModes] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
@@ -324,38 +323,28 @@ export function PlayPage({
           {toolButtons}
         </nav>
 
-        <div
-          className="composer-resize-handle"
-          onPointerDown={startComposerResize}
-          title="Drag to resize"
-          role="separator"
-          aria-orientation="horizontal"
-        />
-        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={{ height: composerHeight, overflow: "auto" }}>
+        {composerOpen && (
+          <div
+            className="composer-resize-handle"
+            onPointerDown={startComposerResize}
+            title="Drag to resize"
+            role="separator"
+            aria-orientation="horizontal"
+          />
+        )}
+        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={composerOpen ? { height: composerHeight, overflow: "auto" } : {}}>
           <div className="mode-selector">
-            <button
-              type="button"
-              className="mode-chip"
-              title={MODE_TOOLTIPS[inputMode]}
-              onClick={() => setShowModes((v) => !v)}
-            >
-              {MODE_LABELS[inputMode]}
-            </button>
-            {showModes && (
-              <>
-                {(["do", "story", "comms"] as InputMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    title={MODE_TOOLTIPS[mode]}
-                    className={`mode-btn mode-btn-full${inputMode === mode ? " active" : ""}`}
-                    onClick={() => { setInputMode(mode); setShowModes(false); }}
-                  >
-                    {MODE_LABELS[mode]}
-                  </button>
-                ))}
-              </>
-            )}
+            {(["do", "story", "comms"] as InputMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                title={MODE_TOOLTIPS[mode]}
+                className={`mode-btn mode-btn-full${inputMode === mode ? " active" : ""}`}
+                onClick={() => setInputMode(mode)}
+              >
+                {MODE_LABELS[mode]}
+              </button>
+            ))}
             <label className="length-slider-label">
               <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
               <input
@@ -382,9 +371,10 @@ export function PlayPage({
             <button
               type="button"
               className="composer-send-btn"
+              aria-label="Send"
               disabled={loading || !input.trim()}
               onClick={submit}
-              title={loading ? "Generating…" : "Take a Turn"}
+              title={loading ? "Generating…" : "Send"}
             >
               {loading ? "…" : "↑"}
             </button>
@@ -403,17 +393,14 @@ export function PlayPage({
             </div>
           )}
           <div className="composer-actions">
-            <button type="button" className="take-a-turn-full" disabled={loading || !input.trim()} onClick={submit}>
-              {loading ? "Generating..." : "Take a Turn"}
+            <button
+              type="button"
+              className="take-a-turn-full"
+              onClick={() => setComposerOpen((v) => { if (!v) setTimeout(() => textareaRef.current?.focus(), 0); return !v; })}
+            >
+              Take a Turn
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
-              <button
-                type="button"
-                className={`take-a-turn-mobile${input.trim() ? " has-input" : ""}`}
-                onClick={() => setComposerOpen(true)}
-              >
-                {input.trim() ? "↑ Send" : "Take a Turn"}
-              </button>
               <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
               <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button

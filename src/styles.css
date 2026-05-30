@@ -22,7 +22,7 @@
   --comms-bg: #f0f1f9;
   --sidebar-width: 208px;
   --mobile-nav-height: 68px;
-  --story-font-size: 16px;
+  --story-font-size: 20px;
   --content-max-width: 1100px;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -162,6 +162,34 @@ pre {
   grid-template-rows: auto 1fr;
   height: 100vh;
   overflow: hidden;
+}
+
+.app-shell.nav-hidden .app-header {
+  display: none;
+}
+
+.nav-show-btn {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  padding: 3px 18px 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+  letter-spacing: 0.04em;
+}
+
+.nav-show-btn:hover {
+  opacity: 1;
+  background: var(--control-hover);
 }
 
 .app-header {
@@ -1431,9 +1459,6 @@ button.primary-action:hover:not(:disabled),
   position: relative;
   padding: 10px 36px 10px 0; /* right padding reserves space for hover actions */
   border-bottom: 1px solid var(--border);
-  max-width: 76ch;
-  margin-inline: auto;
-  width: 100%;
 }
 
 .message:last-child {
@@ -1529,6 +1554,17 @@ button.primary-action:hover:not(:disabled),
   z-index: 4;
 }
 
+.composer-input-row textarea {
+  font-size: 17px;
+}
+
+/* Composer closed: hide input + mode selector on all screen sizes */
+.composer-input-closed .mode-selector,
+.composer-input-closed .composer-input-row,
+.composer-input-closed .remember-inline-row {
+  display: none;
+}
+
 /* Strip panel chrome — no box, no shadow, just a hairline top border */
 .composer.panel {
   border: none;
@@ -1539,15 +1575,6 @@ button.primary-action:hover:not(:disabled),
   padding: 10px 24px 16px;
 }
 
-/* Align all composer rows with the story text column */
-.composer > .mode-selector,
-.composer > .composer-input-row,
-.composer > .composer-actions,
-.composer > .remember-inline-row {
-  max-width: 76ch;
-  width: 100%;
-  margin-inline: auto;
-}
 
 .mode-selector {
   display: flex;
@@ -1573,7 +1600,7 @@ button.primary-action:hover:not(:disabled),
 }
 
 .mode-btn {
-  font-size: 13px;
+  font-size: 17px;
   padding: 2px 10px;
   min-height: 24px;
   border-radius: 999px;
@@ -1655,9 +1682,9 @@ button.primary-action:hover:not(:disabled),
   display: none;
 }
 
-/* Mobile Take a Turn button (opens composer) — hidden on desktop */
-.take-a-turn-mobile {
-  display: none;
+
+.composer-actions button {
+  font-size: 16px;
 }
 
 .composer-actions button:first-child {
@@ -2810,41 +2837,7 @@ summary {
     display: none;
   }
 
-  /* Mode selector: hide individual pills, show cycling pill */
-  .mode-btn-full {
-    display: none;
-  }
-
-  .mode-cycle {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    flex-shrink: 0;
-  }
-
-  .mode-cycle-arrow {
-    min-height: 36px;
-    padding: 4px 10px;
-    font-size: 16px;
-    border-radius: 6px;
-    border-color: transparent;
-    background: transparent;
-  }
-
-  .mode-cycle-arrow:hover:not(:disabled) {
-    background: var(--control-hover);
-    border-color: var(--border);
-  }
-
-  .mode-cycle-label {
-    font-size: 13px;
-    font-weight: 600;
-    min-width: 44px;
-    text-align: center;
-    color: var(--text);
-    user-select: none;
-  }
-
+  /* Mode selector: scrollable row on mobile */
   .mode-selector {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -2855,11 +2848,6 @@ summary {
 
   .mode-hint,
   .composer-actions .hint {
-    display: none;
-  }
-
-  /* Composer actions: hide Take a Turn (replaced by send btn), show 3-button row */
-  .take-a-turn-full {
     display: none;
   }
 
@@ -2915,27 +2903,6 @@ summary {
     min-height: 40px;
   }
 
-  /* Composer closed: hide input row, mode selector, remember row */
-  .composer-input-closed .mode-selector,
-  .composer-input-closed .composer-input-row,
-  .composer-input-closed .remember-inline-row {
-    display: none;
-  }
-
-  /* Show Take a Turn button only when composer is closed */
-  .composer-input-closed .take-a-turn-mobile {
-    display: flex;
-    align-items: center;
-    flex: 0 0 auto;
-    padding: 8px 14px;
-    font-size: 13px;
-    min-height: 40px;
-    white-space: nowrap;
-    border-color: var(--active-bg);
-    background: var(--active-bg);
-    color: var(--active-text);
-    font-weight: 700;
-  }
 
   .remember-inline-row {
     display: grid;

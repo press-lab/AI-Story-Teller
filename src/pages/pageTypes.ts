@@ -13,7 +13,7 @@ export interface UiPreferences {
 export const defaultUiPreferences: UiPreferences = {
   darkMode: false,
   density: "comfortable",
-  storyFontSize: 15,
+  storyFontSize: 20,
   maxContentWidth: 1100,
   showTokenEstimates: true,
   showAdvancedSettings: false,
