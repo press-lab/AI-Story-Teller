@@ -60,17 +60,16 @@ function buildSystemPrompt(adventure: Adventure, generateContent: boolean): stri
 Existing story cards (already in memory):
 ${cardList || "(none)"}
 
-Existing tracked characters:
+Existing tracked characters (character brains are managed separately — do NOT propose brainUpdate):
 ${brainList || "(none)"}
 
 If there is a new durable fact, respond with ONLY this JSON (no markdown, no prose):
-{"proposedType": "storyCard"|"brainUpdate"|"plotEssentialsUpdate", "title": "...", ${contentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
+{"proposedType": "storyCard"|"plotEssentialsUpdate", "title": "...", ${contentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
 
 If nothing is new: respond with the word null
 
 Rules:
 - storyCard: named entities, relationships, secrets, rules, or recurring facts NOT already in existing cards
-- brainUpdate: emotional/internal state change for a character ALREADY in the tracked list only
 - plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively)
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;
@@ -114,7 +113,7 @@ export async function detectMemoryFromTurn(
     return undefined;
   }
 
-  const validTypes = new Set(["storyCard", "brainUpdate", "plotEssentialsUpdate"]);
+  const validTypes = new Set(["storyCard", "plotEssentialsUpdate"]);
   if (typeof parsed.proposedType !== "string" || !validTypes.has(parsed.proposedType)) return undefined;
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return undefined;
 
