@@ -92,7 +92,20 @@ Return ONLY the bullet-pointed content — no title, no headers, no commentary.`
 }
 
 function componentPrompt(component: ComponentEntry): string {
-  return `You are updating a context component titled '${component.title}'. Current content: '${component.content}'. Based on what just happened, update this component. Return ONLY the new content as a plain string.`;
+  if (component.type === "plotEssentials") {
+    return `You are maintaining a Plot Essentials entry titled "${component.title}". This tracks the CURRENT story beat — active pressures, immediate stakes, and where things are heading right now. It is NOT a history of past events.
+
+Current content:
+${component.content}
+
+Rewrite this entry to reflect what is active and unresolved right now. Focus on:
+- What pressure, obligation, or momentum is currently in play
+- What the player is moving toward or being pushed toward
+- Any immediate threat, deadline, or open tension
+
+Keep it tight — 2 to 5 sentences or bullet points. Drop anything that has been resolved. Return ONLY the updated content as plain text.`;
+  }
+  return `You are updating a context component titled "${component.title}". Current content: "${component.content}". Based on what just happened, update this component. Return ONLY the new content as a plain string.`;
 }
 
 function autoCardPrompt(adventure: Adventure): string {
@@ -184,7 +197,7 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
     .map((component) => ({
       id: `plotEssentials:${component.id}`,
       label: `Plot Essentials: ${component.title}`,
-      condition: `when the story has revealed new plot-essential information, completed significant events, or established new permanent facts that should be recorded in "${component.title}" — ignore minor flavour details, only fire for durable canon changes`,
+      condition: `when the story's current direction, active pressure, or immediate arc has meaningfully shifted and "${component.title}" needs updating — fire when momentum or stakes change, NOT for minor scene details or permanent world facts (those belong in Story Cards)`,
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
     }));
