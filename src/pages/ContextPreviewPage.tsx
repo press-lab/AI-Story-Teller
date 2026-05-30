@@ -84,6 +84,11 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const lastSentTokens = [...messagesWithUsage].reverse()[0]?.usage?.promptTokens;
   const avgSentTokens = hasActualUsage ? Math.round(totalActualIn / messagesWithUsage.length) : undefined;
 
+  const bgUsage = adventure.activeState?.backgroundTokenUsage;
+  const bgIn = bgUsage?.promptTokens ?? 0;
+  const bgOut = bgUsage?.completionTokens ?? 0;
+  const hasBgUsage = bgIn > 0 || bgOut > 0;
+
   const nonEmptySections = result.sections.filter((s) => s.items.length > 0);
   const allItems = result.sections.flatMap((s) => s.items);
 
@@ -175,11 +180,13 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         <span className="muted token-metrics">
           <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} est</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Total prompt tokens sent across all turns">total&nbsp;{hasActualUsage ? totalActualIn.toLocaleString() : "—"}</span>
+          <span title="Total prompt tokens sent to story model across all turns">story&nbsp;{hasActualUsage ? `${totalActualIn.toLocaleString()}↑ ${totalActualOut.toLocaleString()}↓` : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Prompt tokens sent on the last turn">last&nbsp;{lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
+          <span title="Prompt tokens sent on the last story turn">last&nbsp;{lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Average prompt tokens per turn">avg&nbsp;{avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
+          <span title="Average prompt tokens per story turn">avg&nbsp;{avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
+          <span className="token-metrics-sep">·</span>
+          <span title="Total tokens used by background AI calls (brain updates, scene state, summaries, triggers)">{hasBgUsage ? `bg&nbsp;${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "bg&nbsp;—"}</span>
         </span>
         {dedupError && (
           <span className="context-inline-error">

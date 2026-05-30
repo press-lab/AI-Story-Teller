@@ -748,6 +748,16 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         activeState: { ...state.activeState, responseLengthHint: action.hint },
       });
+    case "ACCUMULATE_BACKGROUND_TOKENS":
+      return touchAdventure(state, {
+        activeState: {
+          ...state.activeState,
+          backgroundTokenUsage: {
+            promptTokens: (state.activeState.backgroundTokenUsage?.promptTokens ?? 0) + action.promptTokens,
+            completionTokens: (state.activeState.backgroundTokenUsage?.completionTokens ?? 0) + action.completionTokens,
+          },
+        },
+      });
     case "SET_NEXT_TURN_NOTE": {
       const timestamp = nowIso();
       return touchAdventure(state, {

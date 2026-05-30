@@ -32,6 +32,7 @@ interface SemanticCondition extends EvaluatedCondition {
 export interface SemanticRunResult {
   actions: AdventureAction[];
   logEntry: EvaluationLogEntry;
+  tokenUsage?: { promptTokens: number; completionTokens: number };
 }
 
 function evaluationConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
@@ -267,6 +268,7 @@ async function evaluateConditionIds(
   adventure: Adventure,
   providerConfig: ProviderConfig,
   conditions: SemanticCondition[],
+  accum?: { promptTokens: number; completionTokens: number },
 ): Promise<{ firedIds: string[]; errors: string[] }> {
   if (conditions.length === 0) return { firedIds: [], errors: [] };
   try {
@@ -287,6 +289,10 @@ async function evaluateConditionIds(
         },
       ],
     });
+    if (accum && response.usage) {
+      accum.promptTokens += response.usage.promptTokens ?? 0;
+      accum.completionTokens += response.usage.completionTokens ?? 0;
+    }
     const parsed = parseJsonResponse<unknown>(response.content);
     if (!Array.isArray(parsed)) return { firedIds: [], errors: ["Semantic condition response was not an array."] };
     return { firedIds: parsed.filter((id): id is string => typeof id === "string"), errors: [] };
@@ -317,6 +323,7 @@ async function sendTargetedUpdate(
   adventure: Adventure,
   providerConfig: ProviderConfig,
   prompt: string,
+  accum?: { promptTokens: number; completionTokens: number },
 ): Promise<string> {
   const response = await sendOpenAICompatibleChatCompletion({
     config: evaluationConfig(adventure, providerConfig),
@@ -325,6 +332,10 @@ async function sendTargetedUpdate(
       { role: "user", content: recentExcerpt(adventure) || "No recent history is available." },
     ],
   });
+  if (accum && response.usage) {
+    accum.promptTokens += response.usage.promptTokens ?? 0;
+    accum.completionTokens += response.usage.completionTokens ?? 0;
+  }
   return stripThinkTags(response.content);
 }
 
@@ -406,13 +417,14 @@ async function generatedActionsFor(
   triggerAction: TriggerAction,
   conditionId: string,
   rule?: TriggerRule,
+  accum?: { promptTokens: number; completionTokens: number },
 ): Promise<{ actions: AdventureAction[]; generated?: GeneratedContentPreview; error?: string }> {
   const requireApproval = adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates;
   try {
     if (triggerAction.type === "updateBrain" || triggerAction.type === "appendBrain") {
       const brain = adventure.brains.find((entry) => entry.id === triggerAction.brainId);
       if (!brain) return { actions: [], error: `Brain not found: ${triggerAction.brainId}` };
-      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain));
+      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain), accum);
       const patch = sanitizeBrainPatch(parseJsonResponse<unknown>(raw));
       if (Object.keys(patch).length === 0) return { actions: [], error: `Brain update returned no recognized keys for ${brain.characterName}.` };
       if (requireApproval) {
@@ -435,7 +447,7 @@ async function generatedActionsFor(
         : (patch.recentDevelopments ?? brain.recentDevelopments ?? "");
       const condenseNeeded = (postThoughts.length + postRecent.length) > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
       if (condenseNeeded) {
-        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughts, postRecent));
+        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughts, postRecent), accum);
         const condensed = sanitizeBrainPatch(parseJsonResponse<unknown>(condensedRaw));
         if (Object.keys(condensed).length > 0) {
           const notesEntry = condensed.notes;
@@ -474,7 +486,7 @@ async function generatedActionsFor(
     if (triggerAction.type === "updateStoryCard") {
       const card = adventure.storyCards.find((entry) => entry.id === triggerAction.storyCardId);
       if (!card) return { actions: [], error: `Story card not found: ${triggerAction.storyCardId}` };
-      const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || storyCardPrompt(card));
+      const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || storyCardPrompt(card), accum);
       if (requireApproval) {
         const proposal = makeProposal(
           { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, rationale: `Auto-update for story card "${card.title}".` },
@@ -504,7 +516,7 @@ async function generatedActionsFor(
     if (triggerAction.type === "updateComponent") {
       const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
       if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
-      const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component));
+      const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component), accum);
       if (requireApproval) {
         const proposal = makeProposal(
           { proposedType: "plotEssentialsUpdate", title: component.title, content, targetId: component.id, rationale: `Auto-update for "${component.title}".` },
@@ -526,7 +538,7 @@ async function generatedActionsFor(
     }
 
     if (triggerAction.type === "createAutoCard") {
-      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || autoCardPrompt(adventure));
+      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || autoCardPrompt(adventure), accum);
       const parsed = parseJsonResponse<{ title?: unknown; content?: unknown; keys?: unknown }>(raw);
       if (typeof parsed.title !== "string" || typeof parsed.content !== "string") {
         return { actions: [], error: "Auto-Card generation returned invalid JSON." };
@@ -572,8 +584,9 @@ export async function runSemanticPostTurnEvaluation(
   adventure: Adventure,
   providerConfig: ProviderConfig,
 ): Promise<SemanticRunResult> {
+  const accum = { promptTokens: 0, completionTokens: 0 };
   const conditions = buildConditions(adventure);
-  const { firedIds, errors } = await evaluateConditionIds(adventure, providerConfig, conditions);
+  const { firedIds, errors } = await evaluateConditionIds(adventure, providerConfig, conditions, accum);
   const fired = conditions.filter((condition) => firedIds.includes(condition.id));
   const actions: AdventureAction[] = [];
   const generatedContent: GeneratedContentPreview[] = [];
@@ -589,7 +602,7 @@ export async function runSemanticPostTurnEvaluation(
     const triggerActions = condition.actionFactory(adventure);
     for (const triggerAction of triggerActions) {
       if (isGeneratedAction(triggerAction)) {
-        generationTasks.push(() => generatedActionsFor(adventure, providerConfig, triggerAction, condition.id, sourceRule));
+        generationTasks.push(() => generatedActionsFor(adventure, providerConfig, triggerAction, condition.id, sourceRule, accum));
         actionsExecuted.push(`${condition.label}: ${triggerAction.type} (generated)`);
       } else {
         const mapped = immediateActionsFor(adventure, triggerAction);
@@ -618,7 +631,7 @@ export async function runSemanticPostTurnEvaluation(
     errors,
   };
 
-  return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry, tokenUsage: accum };
 }
 
 export async function runManualBrainUpdate(

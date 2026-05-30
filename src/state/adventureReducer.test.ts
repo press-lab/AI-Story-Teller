@@ -93,6 +93,7 @@ const testedActionTypes = [
   "QUEUE_PENDING_UPDATE",
   "FLUSH_PENDING_UPDATES",
   "RESET_RUNTIME_STATE",
+  "ACCUMULATE_BACKGROUND_TOKENS",
 ] as const satisfies AdventureAction["type"][];
 
 type MissingActionCoverage = Exclude<AdventureAction["type"], (typeof testedActionTypes)[number]>;
@@ -170,6 +171,7 @@ function baseAdventure(): Adventure {
       rawImports: [],
       stateFlags: {},
       responseLengthHint: 150,
+      backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
     },
     rollingSummary: { content: "summary", updatedAt: "2026-01-01T00:00:00.000Z" },
   };

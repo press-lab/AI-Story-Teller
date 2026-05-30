@@ -117,11 +117,15 @@ export function useAdventureRuntime(
       snapshot,
       mergeProviderConfig(snapshot, providerSettingsRef.current),
     );
+    const tokenAction: AdventureAction | undefined = result.tokenUsage
+      ? { type: "ACCUMULATE_BACKGROUND_TOKENS", promptTokens: result.tokenUsage.promptTokens, completionTokens: result.tokenUsage.completionTokens }
+      : undefined;
+    const allActions = tokenAction ? [...result.actions, tokenAction] : result.actions;
     if (isSubmittingRef.current) {
-      queuePendingUpdate(result.actions, "semanticEvaluation");
+      queuePendingUpdate(allActions, "semanticEvaluation");
       return;
     }
-    applyActionsAndPersist(result.actions);
+    applyActionsAndPersist(allActions);
   }
 
   async function startAutoSceneState(adventureState: Adventure) {
@@ -132,11 +136,15 @@ export function useAdventureRuntime(
         messages: sceneMessages,
       });
       const content = stripThinkTags(response.content);
+      const actions: AdventureAction[] = [
+        { type: "UPDATE_SCENE_STATE", content },
+        ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
+      ];
       if (isSubmittingRef.current) {
-        queuePendingUpdate([{ type: "UPDATE_SCENE_STATE", content }], "autoSceneState");
+        queuePendingUpdate(actions, "autoSceneState");
         return;
       }
-      applyActionsAndPersist([{ type: "UPDATE_SCENE_STATE", content }]);
+      applyActionsAndPersist(actions);
     } catch {
       // silent — auto scene state is best-effort
     }
@@ -150,16 +158,15 @@ export function useAdventureRuntime(
         messages: summaryMessages,
       });
       const content = stripThinkTags(response.content);
+      const actions: AdventureAction[] = [
+        { type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex },
+        ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
+      ];
       if (isSubmittingRef.current) {
-        queuePendingUpdate(
-          [{ type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex }],
-          "autoSummary",
-        );
+        queuePendingUpdate(actions, "autoSummary");
         return;
       }
-      applyActionsAndPersist([
-        { type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex },
-      ]);
+      applyActionsAndPersist(actions);
     } catch {
       // silent — auto-summary is best-effort
     }

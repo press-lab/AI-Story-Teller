@@ -156,6 +156,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       rawImports: [],
       stateFlags: {},
       responseLengthHint: 150,
+      backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
     },
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
@@ -344,6 +345,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         : adventure.activeState?.responseLengthHint === "short" ? 75
         : adventure.activeState?.responseLengthHint === "long" ? 175
         : 150,
+      backgroundTokenUsage: adventure.activeState?.backgroundTokenUsage ?? { promptTokens: 0, completionTokens: 0 },
     },
     rollingSummary: {
       ...baseline.rollingSummary,

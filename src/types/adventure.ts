@@ -417,6 +417,8 @@ export interface ActiveState {
   stateFlags: Record<string, string | number | boolean>;
   /** Per-adventure response length preference — injected as a length instruction into every turn. */
   responseLengthHint: ResponseLengthHint;
+  /** Cumulative token usage for background calls (brain updates, evaluation, summary, scene state). */
+  backgroundTokenUsage: { promptTokens: number; completionTokens: number };
 }
 
 export interface Adventure {
@@ -663,6 +665,7 @@ export type AdventureAction =
   | { type: "SET_MEMORY_AUTO_APPROVE"; settings: MemoryAutoApproveSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
   | { type: "SET_RESPONSE_LENGTH_HINT"; hint: number }
+  | { type: "ACCUMULATE_BACKGROUND_TOKENS"; promptTokens: number; completionTokens: number }
   | { type: "SET_NEXT_TURN_NOTE"; note: Partial<NextTurnNote> }
   | { type: "CLEAR_NEXT_TURN_NOTE" }
   | { type: "CONSUME_NEXT_TURN_NOTE" }
