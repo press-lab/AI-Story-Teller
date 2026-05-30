@@ -33,6 +33,13 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
 }
 
+function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
+  const base = mergeProviderConfig(adventure, settings);
+  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
+  if (!bg?.baseUrl) return base;
+  return { ...base, baseUrl: bg.baseUrl, apiKey: bg.apiKey ?? base.apiKey, model: bg.model || base.model };
+}
+
 export function useAdventureRuntime(
   adventure: Adventure | undefined,
   setAdventure: Dispatch<SetStateAction<Adventure | undefined>>,
@@ -117,7 +124,7 @@ export function useAdventureRuntime(
     try {
       const { messages: sceneMessages } = buildSceneStatePayload(adventureState);
       const response = await sendOpenAICompatibleChatCompletion({
-        config: mergeProviderConfig(adventureState, providerSettingsRef.current),
+        config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
         messages: sceneMessages,
       });
       if (isSubmittingRef.current) {
@@ -134,7 +141,7 @@ export function useAdventureRuntime(
     try {
       const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventureState);
       const response = await sendOpenAICompatibleChatCompletion({
-        config: mergeProviderConfig(adventureState, providerSettingsRef.current),
+        config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
         messages: summaryMessages,
       });
       if (isSubmittingRef.current) {

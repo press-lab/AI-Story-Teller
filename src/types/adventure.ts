@@ -247,6 +247,12 @@ export interface ProviderUsage {
   totalTokens: number;
 }
 
+export interface BackgroundProviderConfig {
+  baseUrl: string;
+  apiKey?: string;
+  model: string;
+}
+
 export interface SemanticEvaluationSettings {
   evaluationModel: string;
   messagesIncluded: number;
@@ -255,6 +261,8 @@ export interface SemanticEvaluationSettings {
   maxParallelUpdateCalls: number;
   /** When true, all LLM-generated memory updates go to the inbox for approval instead of applying directly. */
   requireApprovalForAutoUpdates: boolean;
+  /** When set, all background LLM calls (eval, brain updates, scene state) use this provider instead of the active preset. */
+  backgroundProviderConfig?: BackgroundProviderConfig;
 }
 
 export interface AutoCardSettings {

@@ -35,6 +35,15 @@ export interface SemanticRunResult {
 }
 
 function evaluationConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
+  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
+  if (bg?.baseUrl) {
+    return {
+      ...providerConfig,
+      baseUrl: bg.baseUrl,
+      apiKey: bg.apiKey ?? providerConfig.apiKey,
+      model: bg.model || providerConfig.model,
+    };
+  }
   return {
     ...providerConfig,
     model: adventure.semanticEvaluationSettings.evaluationModel || providerConfig.model,

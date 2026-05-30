@@ -401,6 +401,58 @@ export function SettingsPage({
             <p className="muted">
               When on, all LLM-generated updates go to Memory Suggestions for your review instead of applying directly.
             </p>
+            <h4>Background Provider</h4>
+            <p className="muted">
+              Route background tasks (evaluation, brain updates, scene state, summary) through a
+              separate provider. Leave blank to use the active preset for all tasks.
+            </p>
+            <Field label="Base URL">
+              <input
+                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? ""}
+                placeholder="https://api.groq.com/openai/v1"
+                onChange={(e) =>
+                  updateSemanticSettings({
+                    backgroundProviderConfig: {
+                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: e.target.value,
+                      model: adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="API Key">
+              <input
+                type="password"
+                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.apiKey ?? ""}
+                placeholder="gsk_..."
+                onChange={(e) =>
+                  updateSemanticSettings({
+                    backgroundProviderConfig: {
+                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      model: adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                      apiKey: e.target.value,
+                    },
+                  })
+                }
+              />
+            </Field>
+            <Field label="Model">
+              <input
+                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? ""}
+                placeholder="llama-3.3-70b-versatile"
+                onChange={(e) =>
+                  updateSemanticSettings({
+                    backgroundProviderConfig: {
+                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      model: e.target.value,
+                    },
+                  })
+                }
+              />
+            </Field>
           </article>
         )}
 
