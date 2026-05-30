@@ -582,6 +582,7 @@ export default function App() {
             <span className="app-brand">AI Story Teller</span>
             {adventure && activeTab === "play" && <span className="muted">{adventure.title}</span>}
           </button>
+          <span className="app-version muted">{__COMMIT_HASH__}</span>
         </div>
         <nav className="app-nav" aria-label="Primary">
           <button
