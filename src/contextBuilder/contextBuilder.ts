@@ -66,7 +66,9 @@ function item(
 }
 
 function section(id: ContextSectionKind, label: string, order: number, items: ContextItem[]): ContextSection {
-  const content = items.map((entry) => `## ${entry.title}\n${entry.content}`).join("\n\n");
+  const content = items.length === 1
+    ? items[0].content
+    : items.map((entry) => `## ${entry.title}\n${entry.content}`).join("\n\n");
   return {
     id,
     label,
@@ -415,10 +417,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : undefined;
   const recentMessages = selectedRecentMessages(adventure, openingSeed);
 
-  // Protect the newest message (index 0 — current player input or last scene) and the opening scene.
-  // Protecting index 0 ensures the most-recently-added message survives a tight budget.
-  const openingSceneIndex = recentMessages.findIndex((m) => m.id === "opening-scene");
-
+  // Protect only the newest message (index 0 — current player input or last scene).
+  // Opening scene is treated as ordinary oldest assistant output and can be dropped under budget pressure.
   const recentMessageItems = recentMessages.map((message, index) =>
     item(
       message.id,
@@ -426,7 +426,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       message.id === "opening-scene" ? "Opening Scene" : `${message.role} message ${index + 1}`,
       message.content,
       recentMessages.length - index,
-      index === 0 || (openingSceneIndex >= 0 && index === openingSceneIndex),
+      index === 0,
       false,
       true,
       "always",
@@ -436,7 +436,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   recentMessageItems.forEach((entry, index) =>
     pushIncluded(
       entry,
-      `Recent message included newest-first; recencyPriority=${recentMessages.length - index}${index === 0 ? "; protected=newest" : openingSceneIndex >= 0 && index === openingSceneIndex ? "; protected=opening-scene" : ""}.`,
+      `Recent message included newest-first; recencyPriority=${recentMessages.length - index}${index === 0 ? "; protected=newest" : ""}.`,
     ),
   );
 

@@ -628,7 +628,7 @@ describe("buildContext", () => {
     expect(adventure.messages).toHaveLength(50);
   });
 
-  it("opening scene appears as first assistant message in payload, is protected in section J, and never budget-cut", () => {
+  it("opening scene appears as first assistant message in payload and is treated as ordinary droppable content", () => {
     const opening = "The storm broke at midnight. Rain lashed the glass.";
     const adventure = {
       ...adventureForContext(),
@@ -648,18 +648,17 @@ describe("buildContext", () => {
     expect(result.messages[2].content).toBe("I look around.");
     expect(result.messages[3].content).toBe("Shadows gather.");
 
-    // Opening scene item appears in section J as protected
+    // Opening scene is not protected — it's ordinary oldest assistant output
     const recentSection = result.sections.find((s) => s.id === "recentMessages");
     const openingItem = recentSection?.items.find((i) => i.id === "opening-scene");
     expect(openingItem).toBeDefined();
-    expect(openingItem?.protected).toBe(true);
+    expect(openingItem?.protected).toBe(false);
     expect(openingItem?.content).toBe(opening);
 
-    // Opening scene survives an extremely tight budget — it is protected
+    // Opening scene is dropped first under a tight budget (oldest, lowest recency priority, unprotected)
     const tightAdventure = { ...adventure, tokenBudgetSettings: budget({ maxContextTokens: 1, maxRecentMessages: 4, recentMessageWindow: 4, sectionBudgets: {} }) };
     const tightResult = buildContext(tightAdventure);
-    expect(tightResult.messages[1]).toEqual({ role: "assistant", content: opening });
-    expect(tightResult.sections.find((s) => s.id === "recentMessages")?.items.find((i) => i.id === "opening-scene")).toBeDefined();
+    expect(tightResult.sections.find((s) => s.id === "recentMessages")?.items.find((i) => i.id === "opening-scene")).toBeUndefined();
   });
 
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
@@ -726,7 +725,7 @@ describe("buildContext", () => {
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# F. Story Cards");
     expect(result.messages[0].content).toContain("## Hedge Prince Joke");
-    expect(result.messages[0].content).toContain("## Rolling Summary");
+    expect(result.messages[0].content).toContain("# I. Rolling Summary");
     expect(result.messages.slice(1).map((message) => message.content)).toEqual([
       "Rain tapped against the glass.",
       "I ask Margo about the ward.",
@@ -737,7 +736,8 @@ describe("buildContext", () => {
     ]);
 
     // E. Components is present because the golden adventure has a pinned weather component
+    // Single-item sections render content directly under the section header (no ## sub-header)
     expect(result.messages[0].content).toContain("# E. Components");
-    expect(result.messages[0].content).toContain("## Pinned Weather");
+    expect(result.messages[0].content).toContain("Rain makes the city smell like iron.");
   });
 });
