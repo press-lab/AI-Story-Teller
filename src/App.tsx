@@ -432,8 +432,10 @@ export default function App() {
         <SettingsPage
           adventure={adventure}
           dispatch={dispatch}
-          providerSettings={runtime.activeProviderConfig}
-          onProviderSettingsChange={setProviderSettings}
+          providerPresets={providerPresets}
+          activePresetId={activePresetId}
+          onProviderPresetsChange={setProviderPresets}
+          onSelectPreset={setActivePresetId}
           uiPreferences={uiPreferences}
           onUiPreferencesChange={setUiPreferences}
           cloudSyncSettings={cloudSyncSettings}

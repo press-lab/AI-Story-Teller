@@ -507,6 +507,7 @@ export interface ContextItem {
     | "autoCard"
     | "quest"
     | "summary"
+    | "sceneState"
     | "nextTurnNote"
     | "message";
   title: string;
