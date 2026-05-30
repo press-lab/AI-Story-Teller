@@ -90,7 +90,7 @@ Return ONLY valid JSON. Only include keys that actually changed.
 For "thoughts": return an object where each key is a snake_case label and each value is "${turn} → first-person observation". Add ONE new thought entry. Optionally set one stale entry to null to delete it. Write in ${brain.characterName}'s own first-person voice from their specific vantage point — not a generic participant. Name actual people, cite what was said or done, say what it privately means. Never use generic labels ("excited", "focused", "intense").
 Example: { "thoughts": { "azula_evaluates_setu_power": "${turn} → Setu matched her escalation without flinching. That's either confidence or recklessness — I need to know which before I point him at something." } }
 
-Other updatable fields (plain strings): currentState, relationshipPressure, emotionalInterpretation, recentDevelopments.`;
+Other updatable fields — all in first person from ${brain.characterName}'s voice (e.g. currentState: "I'm holding ground but watching for the moment Azula shifts"): currentState, relationshipPressure, emotionalInterpretation, recentDevelopments.`;
 }
 
 const BRAIN_CONDENSE_THRESHOLD = 1600;

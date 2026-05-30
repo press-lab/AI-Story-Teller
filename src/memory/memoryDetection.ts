@@ -28,6 +28,9 @@ function hasNovelSignal(adventure: Adventure, text: string): boolean {
     ...adventure.storyCards.flatMap((c) => c.keys.map((k) => k.toLowerCase())),
     ...adventure.brains.map((b) => b.characterName.toLowerCase()),
     ...adventure.brains.flatMap((b) => b.aliases.map((a) => a.toLowerCase())),
+    ...adventure.activeState.memoryProposals
+      .filter((p) => p.status === "rejected" || p.status === "ignored")
+      .map((p) => p.title.toLowerCase()),
   ]);
 
   const properNouns = [...text.matchAll(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g)]
@@ -79,6 +82,7 @@ export async function detectMemoryFromTurn(
   responseText: string,
   accum?: { promptTokens: number; completionTokens: number },
 ): Promise<Extract<AdventureAction, { type: "ADD_MEMORY_PROPOSAL" }> | undefined> {
+  if (adventure.activeState.memoryProposals.some((p) => p.status === "pending")) return undefined;
   if (!hasNovelSignal(adventure, responseText)) return undefined;
 
   const { generateContent } = adventure.memoryDetectionSettings;
