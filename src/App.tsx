@@ -592,7 +592,7 @@ export default function App() {
             type="button"
             className={activeTopTab === "edit" ? "active" : ""}
             disabled={!adventure}
-            onClick={() => openEditor(editorTab)}
+            onClick={() => openEditor(activeTab === "edit" ? "storyCards" : editorTab)}
           >
             Edit
             {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
