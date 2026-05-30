@@ -33,6 +33,10 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
 }
 
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
 function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const base = mergeProviderConfig(adventure, settings);
   const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
@@ -127,11 +131,12 @@ export function useAdventureRuntime(
         config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
         messages: sceneMessages,
       });
+      const content = stripThinkTags(response.content);
       if (isSubmittingRef.current) {
-        queuePendingUpdate([{ type: "UPDATE_SCENE_STATE", content: response.content }], "autoSceneState");
+        queuePendingUpdate([{ type: "UPDATE_SCENE_STATE", content }], "autoSceneState");
         return;
       }
-      applyActionsAndPersist([{ type: "UPDATE_SCENE_STATE", content: response.content }]);
+      applyActionsAndPersist([{ type: "UPDATE_SCENE_STATE", content }]);
     } catch {
       // silent — auto scene state is best-effort
     }
@@ -144,15 +149,16 @@ export function useAdventureRuntime(
         config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
         messages: summaryMessages,
       });
+      const content = stripThinkTags(response.content);
       if (isSubmittingRef.current) {
         queuePendingUpdate(
-          [{ type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex }],
+          [{ type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex }],
           "autoSummary",
         );
         return;
       }
       applyActionsAndPersist([
-        { type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex },
+        { type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex },
       ]);
     } catch {
       // silent — auto-summary is best-effort

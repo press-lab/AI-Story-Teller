@@ -57,8 +57,12 @@ function recentExcerpt(adventure: Adventure): string {
     .join("\n\n");
 }
 
+function stripThinkTags(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
 function parseJsonResponse<T>(text: string): T {
-  const trimmed = text.trim();
+  const trimmed = stripThinkTags(text);
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
   return JSON.parse(fenced ?? trimmed) as T;
 }
@@ -278,7 +282,7 @@ async function sendTargetedUpdate(
       { role: "user", content: recentExcerpt(adventure) || "No recent history is available." },
     ],
   });
-  return response.content.trim();
+  return stripThinkTags(response.content);
 }
 
 function sanitizeBrainPatch(value: unknown): Partial<Record<BrainStateField, string>> {
