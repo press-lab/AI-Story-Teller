@@ -97,15 +97,17 @@ function applyBrainUpdate(
 ): BrainEntry {
   const timestamp = nowIso();
   if (mode === "append") {
-    const appended = Object.entries(patch)
-      .map(([key, value]) => `${key}: ${value}`)
-      .join("\n");
+    const perField: Partial<Record<BrainStateField, string>> = {};
+    for (const [key, value] of Object.entries(patch) as [BrainStateField, string][]) {
+      const existing = brain[key];
+      perField[key] = existing ? `${existing}\n${value}` : value;
+    }
     return touch({
       ...brain,
-      recentDevelopments: [brain.recentDevelopments, appended].filter(Boolean).join("\n"),
+      ...perField,
       lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
       lastUpdatedAt: timestamp,
-      lastGeneratedUpdatePreview: preview ?? appended.slice(0, 500),
+      lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),
     });
   }
 
@@ -287,7 +289,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       // Not JSON — fall through to plain-string append
     }
     const brain = parsedPatch
-      ? applyBrainUpdate(existing, parsedPatch, "replace", state.activeState.turn, proposal.content.slice(0, 500))
+      ? applyBrainUpdate(existing, parsedPatch, "append", state.activeState.turn, proposal.content.slice(0, 500))
       : touch({
           ...existing,
           recentDevelopments: [existing.recentDevelopments, proposal.content].filter(Boolean).join("\n"),

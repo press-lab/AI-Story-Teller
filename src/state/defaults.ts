@@ -227,6 +227,7 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
     relationshipPressure: overrides.relationshipPressure ?? "",
     emotionalInterpretation: overrides.emotionalInterpretation ?? "",
     recentDevelopments: overrides.recentDevelopments ?? "",
+    notes: overrides.notes ?? "",
     active: overrides.active ?? true,
     pinned: overrides.pinned ?? false,
     protected: overrides.protected ?? false,

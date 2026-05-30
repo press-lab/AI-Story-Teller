@@ -85,6 +85,26 @@ Return ONLY valid JSON with any of these keys that need updating: currentState, 
 For "thoughts": write specific observations that ${brain.characterName} would form from this scene — naming actual characters, citing what was said or done, and noting what it means. Avoid vague emotional labels like "amused" or "guarded." Instead record what ${brain.characterName} concretely noticed: who did what, what it reveals, what it implies. Example: "Nyx is forcing this coldness because Ozai's council rattled her, but she can't hide the tension in her hands."`;
 }
 
+const BRAIN_CONDENSE_THRESHOLD = 1600;
+
+function condenseBrainPrompt(brain: BrainEntry, fullThoughts: string, fullRecent: string): string {
+  return `You are condensing ${brain.characterName}'s tracked observations because they have grown too long.
+
+Full thoughts to condense:
+${fullThoughts}
+${fullRecent ? `\nFull recent developments to condense:\n${fullRecent}` : ""}
+${brain.notes ? `\nExisting notes log (do NOT modify, just reference):\n${brain.notes}` : ""}
+
+Return ONLY valid JSON:
+{
+  "thoughts": "condensed to 3-5 specific, named observations — keep exact character names and concrete details, drop resolved or repeated items",
+  "recentDevelopments": "condensed to 1-3 items if applicable, otherwise omit this key",
+  "notes": "one short line summarizing what was compressed, e.g. \\"Compressed turns 40-80: garden walk, cellar tension, council aftermath\\""
+}
+
+The notes value gets appended to the permanent notes log. Keep it as a brief reference, not full content.`;
+}
+
 function storyCardPrompt(card: StoryCard): string {
   return `You are updating a persistent world fact card titled '${card.title}'.
 
@@ -316,6 +336,7 @@ function sanitizeBrainPatch(value: unknown): Partial<Record<BrainStateField, str
     "relationshipPressure",
     "emotionalInterpretation",
     "recentDevelopments",
+    "notes",
   ];
 
   function stringifyValue(item: unknown): string | undefined {
@@ -404,12 +425,41 @@ async function generatedActionsFor(
           generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: preview(raw) },
         };
       }
+      const updateMode = triggerAction.type === "appendBrain" ? "append" : brain.updateMode;
+      // Simulate post-update state to check condense threshold
+      const postThoughts = updateMode === "append"
+        ? [brain.thoughts, patch.thoughts].filter(Boolean).join("\n")
+        : (patch.thoughts ?? brain.thoughts ?? "");
+      const postRecent = updateMode === "append"
+        ? [brain.recentDevelopments, patch.recentDevelopments].filter(Boolean).join("\n")
+        : (patch.recentDevelopments ?? brain.recentDevelopments ?? "");
+      const condenseNeeded = (postThoughts.length + postRecent.length) > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
+      if (condenseNeeded) {
+        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughts, postRecent));
+        const condensed = sanitizeBrainPatch(parseJsonResponse<unknown>(condensedRaw));
+        if (Object.keys(condensed).length > 0) {
+          const notesEntry = condensed.notes;
+          const finalPatch: Partial<Record<BrainStateField, string>> = {
+            ...condensed,
+            notes: [brain.notes, notesEntry].filter(Boolean).join("\n") || undefined,
+          };
+          const condenseUpdate = applyAIMemoryUpdate(adventure, [{
+            type: "brainPatch", brainId: brain.id, patch: finalPatch, mode: "replace",
+            turn: adventure.activeState.turn, preview: `[condensed] ${preview(condensedRaw)}`,
+          }]);
+          return {
+            actions: condenseUpdate.actions,
+            generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: `[condensed] ${preview(condensedRaw)}` },
+            error: condenseUpdate.rejectedUpdates[0]?.reason,
+          };
+        }
+      }
       const memoryUpdate = applyAIMemoryUpdate(adventure, [
         {
           type: "brainPatch",
           brainId: brain.id,
           patch,
-          mode: triggerAction.type === "appendBrain" ? "append" : brain.updateMode,
+          mode: updateMode,
           turn: adventure.activeState.turn,
           preview: preview(raw),
         },

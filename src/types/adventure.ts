@@ -76,6 +76,8 @@ export interface BrainEntry {
   relationshipPressure: string;
   emotionalInterpretation: string;
   recentDevelopments: string;
+  notes: string;
+  condenseThreshold?: number;
   active: boolean;
   pinned: boolean;
   protected: boolean;
@@ -575,7 +577,8 @@ export type BrainStateField =
   | "thoughts"
   | "relationshipPressure"
   | "emotionalInterpretation"
-  | "recentDevelopments";
+  | "recentDevelopments"
+  | "notes";
 
 export type AdventureAction =
   | { type: "SET_TITLE"; title: string }
