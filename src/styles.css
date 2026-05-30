@@ -1634,6 +1634,22 @@ button.primary-action:hover:not(:disabled),
   z-index: 4;
 }
 
+/* When open: flex column so mode-selector and actions are always visible;
+   only the textarea area stretches to fill the remaining height. */
+.composer:not(.composer-input-closed) {
+  display: flex;
+  flex-direction: column;
+}
+.composer:not(.composer-input-closed) .composer-input-row {
+  flex: 1;
+  min-height: 60px;
+  overflow: hidden;
+}
+.composer:not(.composer-input-closed) .composer-input-row textarea {
+  height: 100%;
+  resize: none;
+}
+
 .composer-input-row textarea {
   font-size: 17px;
 }

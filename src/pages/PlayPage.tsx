@@ -360,7 +360,7 @@ export function PlayPage({
             aria-orientation="horizontal"
           />
         )}
-        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={composerOpen ? { height: composerHeight, overflow: "auto" } : {}}>
+        <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={composerOpen ? { height: composerHeight } : {}}>
           <div className="mode-selector">
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
               <button
