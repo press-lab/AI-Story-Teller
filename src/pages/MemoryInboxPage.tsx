@@ -8,7 +8,9 @@ import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./s
 const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "summaryUpdate", "ignore"];
 
 export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
-  const proposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const pending = allProposals.filter((p) => p.status === "pending");
+  const resolved = allProposals.filter((p) => p.status !== "pending");
   const [sourceText, setSourceText] = useState("");
 
   function updateProposal(proposal: MemoryProposal, patch: Partial<MemoryProposal>) {
@@ -84,103 +86,129 @@ export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
       </details>
 
       <div className="list">
-        {proposals.length === 0 && <p className="muted">No memory suggestions yet.</p>}
-        {proposals.map((proposal) => (
-          <article key={proposal.id} className="card">
-            <div className="panel-heading">
-              <div className="suggestion-meta">
-                <p className="eyebrow">
-                  {proposal.proposedType}
-                  {proposal.status !== "pending" ? ` · ${proposal.status}` : ""}
-                </p>
-                <input
-                  value={proposal.title}
-                  onChange={(event) => updateProposal(proposal, { title: event.target.value })}
-                />
-              </div>
-              <div className="row">
-                <button
-                  type="button"
-                  disabled={proposal.status !== "pending"}
-                  onClick={() => dispatch({ type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id })}
-                >
-                  Approve
-                </button>
-                <button
-                  type="button"
-                  disabled={proposal.status !== "pending"}
-                  onClick={() => dispatch({ type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id })}
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  disabled={proposal.status !== "pending"}
-                  onClick={() => dispatch({ type: "IGNORE_MEMORY_PROPOSAL", proposalId: proposal.id })}
-                >
-                  Ignore
-                </button>
-              </div>
-            </div>
-
-            <textarea
-              rows={5}
-              value={proposal.content}
-              onChange={(event) => updateProposal(proposal, { content: event.target.value })}
-              placeholder="Proposed content..."
-            />
-
-            <details>
-              <summary>Source &amp; Details</summary>
-              <div className="grid two">
-                <Field label="Source">
-                  <textarea
-                    rows={2}
-                    value={proposal.sourceText}
-                    onChange={(event) => updateProposal(proposal, { sourceText: event.target.value })}
-                  />
-                </Field>
-                <Field label="Rationale">
-                  <textarea
-                    rows={2}
-                    value={proposal.rationale}
-                    onChange={(event) => updateProposal(proposal, { rationale: event.target.value })}
-                  />
-                </Field>
-              </div>
-              <div className="grid three">
-                <Field label="Type">
-                  <select
-                    value={proposal.proposedType}
-                    onChange={(event) => updateProposal(proposal, { proposedType: event.target.value as MemoryProposalType })}
-                    disabled={proposal.status !== "pending"}
-                  >
-                    {proposalTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Triggers">
-                  <input
-                    value={commaList(proposal.suggestedTriggers)}
-                    onChange={(event) => updateProposal(proposal, { suggestedTriggers: fromCommaList(event.target.value) })}
-                  />
-                </Field>
-                <Field label="Confidence">
-                  <NumberInput
-                    value={proposal.confidence}
-                    min={0}
-                    onChange={(value) => updateProposal(proposal, { confidence: Math.max(0, Math.min(1, value)) })}
-                  />
-                </Field>
-              </div>
-            </details>
-          </article>
+        {pending.length === 0 && <p className="muted">No pending memory suggestions.</p>}
+        {pending.map((proposal) => (
+          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} />
         ))}
       </div>
+
+      {resolved.length > 0 && (
+        <details className="panel memory-history-panel">
+          <summary>History ({resolved.length})</summary>
+          <div className="list" style={{ marginTop: "0.75rem" }}>
+            {resolved.map((proposal) => (
+              <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} />
+            ))}
+          </div>
+        </details>
+      )}
     </section>
+  );
+}
+
+interface ProposalCardProps {
+  proposal: MemoryProposal;
+  dispatch: AdventurePageProps["dispatch"];
+  onUpdate: (proposal: MemoryProposal, patch: Partial<MemoryProposal>) => void;
+}
+
+function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
+  const isPending = proposal.status === "pending";
+  return (
+    <article key={proposal.id} className="card">
+      <div className="panel-heading">
+        <div className="suggestion-meta">
+          <p className="eyebrow">
+            {proposal.proposedType}
+            {proposal.status !== "pending" ? ` · ${proposal.status}` : ""}
+          </p>
+          <input
+            value={proposal.title}
+            onChange={(event) => onUpdate(proposal, { title: event.target.value })}
+            disabled={!isPending}
+          />
+        </div>
+        <div className="row">
+          <button
+            type="button"
+            disabled={!isPending}
+            onClick={() => dispatch({ type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id })}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            disabled={!isPending}
+            onClick={() => dispatch({ type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id })}
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            className="danger"
+            disabled={!isPending}
+            onClick={() => dispatch({ type: "IGNORE_MEMORY_PROPOSAL", proposalId: proposal.id })}
+          >
+            Ignore
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        rows={5}
+        value={proposal.content}
+        onChange={(event) => onUpdate(proposal, { content: event.target.value })}
+        placeholder="Proposed content..."
+        disabled={!isPending}
+      />
+
+      <details>
+        <summary>Source &amp; Details</summary>
+        <div className="grid two">
+          <Field label="Source">
+            <textarea
+              rows={2}
+              value={proposal.sourceText}
+              onChange={(event) => onUpdate(proposal, { sourceText: event.target.value })}
+            />
+          </Field>
+          <Field label="Rationale">
+            <textarea
+              rows={2}
+              value={proposal.rationale}
+              onChange={(event) => onUpdate(proposal, { rationale: event.target.value })}
+            />
+          </Field>
+        </div>
+        <div className="grid three">
+          <Field label="Type">
+            <select
+              value={proposal.proposedType}
+              onChange={(event) => onUpdate(proposal, { proposedType: event.target.value as MemoryProposalType })}
+              disabled={!isPending}
+            >
+              {proposalTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Triggers">
+            <input
+              value={commaList(proposal.suggestedTriggers)}
+              onChange={(event) => onUpdate(proposal, { suggestedTriggers: fromCommaList(event.target.value) })}
+            />
+          </Field>
+          <Field label="Confidence">
+            <NumberInput
+              value={proposal.confidence}
+              min={0}
+              onChange={(value) => onUpdate(proposal, { confidence: Math.max(0, Math.min(1, value)) })}
+            />
+          </Field>
+        </div>
+      </details>
+    </article>
   );
 }

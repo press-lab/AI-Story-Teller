@@ -63,7 +63,19 @@ function defaultBrainPrompt(brain: BrainEntry): string {
 }
 
 function storyCardPrompt(card: StoryCard): string {
-  return `You are updating a persistent world fact card titled '${card.title}'. Current content: '${card.content}'. Based on what just happened, rewrite or extend this card. Return ONLY the new card content as a plain string. Be concise.`;
+  return `You are updating a persistent world fact card titled '${card.title}'.
+
+Current content:
+${card.content}
+
+Based on what just happened, rewrite or extend this card. Format the content as concise bullet points, one per line, using the • character. Each bullet should be a single self-contained fact, trait, or rule. Preserve all existing facts that are still true; update or remove only what has changed.
+
+Example format:
+• Fact or trait about the entity.
+• Another fact or current status.
+• Rule or constraint the story should respect.
+
+Return ONLY the bullet-pointed content — no title, no headers, no commentary.`;
 }
 
 function componentPrompt(component: ComponentEntry): string {
@@ -690,11 +702,13 @@ Examine the fact against existing story cards and characters:
 Respond ONLY with valid JSON:
 {
   "proposals": [
-    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "content": "Full updated card content", "keys": ["keyword1"] },
-    { "action": "create", "title": "New Card Title", "content": "New card content", "keys": ["keyword1", "keyword2"] }
+    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1"] },
+    { "action": "create", "title": "New Card Title", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1", "keyword2"] }
   ],
   "rationale": "Brief explanation of choices"
-}`;
+}
+
+The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.`;
 
   const userPrompt = `Fact to record: "${fact}"\n\nExisting Story Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
 
