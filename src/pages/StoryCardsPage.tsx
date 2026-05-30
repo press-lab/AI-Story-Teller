@@ -75,7 +75,7 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
   const searchLower = search.toLowerCase().trim();
   function cardMatchesSearch(card: StoryCard): boolean {
     if (!searchLower) return true;
-    return card.title.toLowerCase().includes(searchLower) || card.keys.some((k) => k.toLowerCase().includes(searchLower));
+    return card.title.toLowerCase().includes(searchLower) || card.keys.some((k) => k.toLowerCase().includes(searchLower)) || card.content.toLowerCase().includes(searchLower);
   }
 
   // Group cards by type, only include types that have at least one card

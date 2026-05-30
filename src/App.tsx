@@ -592,7 +592,14 @@ export default function App() {
             type="button"
             className={activeTopTab === "edit" ? "active" : ""}
             disabled={!adventure}
-            onClick={() => openEditor(activeTab === "edit" ? "storyCards" : editorTab)}
+            onClick={() => {
+              if (activeTab === "edit") {
+                document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              } else {
+                openEditor(editorTab);
+              }
+            }}
           >
             Edit
             {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}

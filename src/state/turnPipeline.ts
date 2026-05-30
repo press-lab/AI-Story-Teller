@@ -86,7 +86,7 @@ export async function runTurnPipeline({
     type: "ADD_MESSAGE",
     role: "assistant",
     content: response.content,
-    inputMode: mode === "comms" ? "comms" : undefined,
+    inputMode: undefined,
     id: assistantMessageId,
     createdAt,
     usage: response.usage,

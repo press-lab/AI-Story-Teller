@@ -71,7 +71,12 @@ export function PlayPage({
   activePresetId,
   onSelectPreset,
 }: PlayRuntimeProps) {
-  const [input, setInput] = useState("");
+  const draftKey = `play-input-draft-${adventure.id}`;
+  const [input, setInput] = useState(() => { try { return localStorage.getItem(draftKey) ?? ""; } catch { return ""; } });
+  function updateInput(value: string) {
+    setInput(value);
+    try { if (value) { localStorage.setItem(draftKey, value); } else { localStorage.removeItem(draftKey); } } catch { /* ignore */ }
+  }
   const [inputMode, setInputMode] = useState<InputMode>("do");
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
@@ -203,7 +208,7 @@ export function PlayPage({
   async function submit() {
     const text = input.trim();
     if (!text || loading) return;
-    setInput("");
+    updateInput("");
     setComposerOpen(false);
     await onSubmitTurn(transformInput(text, inputMode), inputMode);
   }
@@ -418,7 +423,7 @@ export function PlayPage({
               ref={textareaRef}
               rows={4}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => updateInput(event.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={MODE_PLACEHOLDERS[inputMode]}
             />
