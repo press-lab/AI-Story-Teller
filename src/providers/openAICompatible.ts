@@ -109,33 +109,42 @@ async function sendOpenAIRequest(
   config: ProviderConfig,
   signal?: AbortSignal,
 ): Promise<ProviderResponse> {
-  const response = await fetch(endpoint, {
-    method: "POST",
-    signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      temperature: config.temperature,
-      max_tokens: config.maxOutputTokens,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages,
+        temperature: config.temperature,
+        max_tokens: config.maxOutputTokens,
+      }),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Network error (${endpoint}): ${msg}. If using a local server, check CORS headers and that the server is reachable.`);
+  }
 
-  const raw = (await response.json().catch(() => ({}))) as {
-    error?: { message?: string };
-    choices?: Array<{ message?: { content?: string } }>;
-    usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
-  };
+  const rawText = await response.text().catch(() => "");
+  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+  try {
+    raw = JSON.parse(rawText) as typeof raw;
+  } catch {
+    raw = {};
+  }
 
   if (!response.ok) {
-    throw new Error(raw.error?.message || `Provider request failed with HTTP ${response.status} (${endpoint}).`);
+    const detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
+    throw new Error(`Provider error ${response.status} (${endpoint}): ${detail}`);
   }
 
   const content = raw.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Provider returned no message content.");
+  if (content == null) throw new Error(`Provider returned no content. Body: ${rawText.slice(0, 300)}`);
 
   const usage: ProviderUsage | undefined = raw.usage
     ? {
@@ -157,35 +166,44 @@ async function sendAnthropicRequest(
   const systemParts = messages.filter((m) => m.role === "system").map((m) => m.content);
   const chatMessages = messages.filter((m) => m.role !== "system");
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    signal,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: config.model,
-      ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
-      messages: chatMessages,
-      temperature: config.temperature,
-      max_tokens: config.maxOutputTokens,
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(endpoint, {
+      method: "POST",
+      signal,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
+        messages: chatMessages,
+        temperature: config.temperature,
+        max_tokens: config.maxOutputTokens,
+      }),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Network error (${endpoint}): ${msg}.`);
+  }
 
-  const raw = (await response.json().catch(() => ({}))) as {
-    error?: { message?: string };
-    content?: Array<{ type: string; text?: string }>;
-    usage?: { input_tokens?: number; output_tokens?: number };
-  };
+  const rawText = await response.text().catch(() => "");
+  let raw: { error?: { message?: string }; content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
+  try {
+    raw = JSON.parse(rawText) as typeof raw;
+  } catch {
+    raw = {};
+  }
 
   if (!response.ok) {
-    throw new Error(raw.error?.message || `Provider request failed with HTTP ${response.status} (${endpoint}).`);
+    const detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
+    throw new Error(`Provider error ${response.status} (${endpoint}): ${detail}`);
   }
 
   const content = raw.content?.find((c) => c.type === "text")?.text;
-  if (!content) throw new Error("Provider returned no message content.");
+  if (content == null) throw new Error(`Provider returned no content. Body: ${rawText.slice(0, 300)}`);
 
   const usage: ProviderUsage | undefined = raw.usage
     ? {
