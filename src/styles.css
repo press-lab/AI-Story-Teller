@@ -232,6 +232,14 @@ pre {
   font-size: 13px;
 }
 
+.app-version {
+  font-size: 10px;
+  opacity: 0.4;
+  letter-spacing: 0.05em;
+  font-family: monospace;
+  align-self: center;
+}
+
 .app-nav {
   display: flex;
   align-items: center;
