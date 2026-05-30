@@ -12,7 +12,6 @@ import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
 import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
 import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
-import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
 import type { ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
 import { defaultUiPreferences } from "./pages/pageTypes";
@@ -32,7 +31,6 @@ import { MemoryInboxPage } from "./pages/MemoryInboxPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
-import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
 
 type TabId =
@@ -396,7 +394,6 @@ export default function App() {
   }
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
-  const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
 
   const page = (() => {
     if (activeTab === "adventures") {
@@ -504,35 +501,13 @@ export default function App() {
         return (
           <section className="page editor-workspace">
             <header className="editor-header panel">
-              <div>
-                <p className="eyebrow">Edit Adventure</p>
-                <input
-                  className="editor-title-input"
-                  value={adventure.title}
-                  onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
-                  placeholder="Adventure title"
-                />
-                <p className="muted">{saveStatus}</p>
-              </div>
-              <div className="editor-header-actions">
-                <details className="thumbnail-picker-details">
-                  <summary>{currentThumbnail ? "Cover" : "Add cover"}</summary>
-                  <AdventureThumbnailPicker
-                    thumbnail={currentThumbnail}
-                    title={adventure.title}
-                    compact
-                    onChange={(thumbnail) =>
-                      dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
-                    }
-                  />
-                </details>
-                <button type="button" onClick={() => setActiveTab("play")}>
-                  Play
-                </button>
-                <button type="button" className="primary-action" onClick={() => setActiveTab("dashboard")}>
-                  Finish
-                </button>
-              </div>
+              <input
+                className="editor-title-input"
+                value={adventure.title}
+                onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
+                placeholder="Adventure title"
+              />
+              <p className="muted editor-save-status">{saveStatus}</p>
             </header>
             <nav className="editor-tabs" aria-label="Adventure editor">
               {editorTabs.map((tab) => {

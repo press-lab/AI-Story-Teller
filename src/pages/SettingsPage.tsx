@@ -16,6 +16,8 @@ import {
   defaultTokenBudgetSettings,
   heavyTokenBudgetPreset,
 } from "../state/defaults";
+import { AdventureThumbnailPicker } from "../components/AdventureThumbnail";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
 import {
   createDevelopmentAdventureJson,
   createDevelopmentStoryCardsJson,
@@ -138,8 +140,26 @@ export function SettingsPage({
     dispatch({ type: "SET_AUTO_CARD_SETTINGS", settings: { ...adventure.autoCardSettings, ...patch } });
   }
 
+  const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
+
   return (
     <section className="page">
+
+      {/* ── Adventure Cover ───────────────────────── */}
+      {adventure && (
+        <article className="panel">
+          <h3>Adventure Cover</h3>
+          <AdventureThumbnailPicker
+            thumbnail={currentThumbnail}
+            title={adventure.title}
+            compact
+            onChange={(thumbnail) =>
+              dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
+            }
+          />
+        </article>
+      )}
+
       <div className="grid two">
 
         {/* ── Interface ─────────────────────────────── */}

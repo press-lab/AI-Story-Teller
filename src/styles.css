@@ -1133,18 +1133,16 @@ button.primary-action:hover:not(:disabled),
 
 .editor-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: baseline;
+  gap: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
-.editor-header > div:first-child {
-  flex: 1;
-  min-width: 0;
-}
-
-.editor-header h2 {
-  margin: 0 0 4px;
+.editor-save-status {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  margin: 0;
 }
 
 .editor-title-input {
@@ -1154,11 +1152,10 @@ button.primary-action:hover:not(:disabled),
   border-bottom: 2px solid transparent;
   background: transparent;
   padding: 0 0 2px;
-  margin: 0 0 4px;
-  width: 100%;
+  margin: 0;
+  flex: 1;
   min-width: 0;
   color: var(--text);
-  display: block;
 }
 
 .editor-title-input:hover {
@@ -2563,8 +2560,7 @@ summary {
     grid-template-columns: 1fr;
   }
 
-  .adventure-hero-body,
-  .editor-header {
+  .adventure-hero-body {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -2842,7 +2838,6 @@ summary {
   }
 
   .adventure-hero-actions,
-  .editor-header-actions,
   .quick-edit-strip {
     display: grid;
     grid-template-columns: 1fr;

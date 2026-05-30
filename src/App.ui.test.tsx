@@ -91,8 +91,8 @@ describe("App adventure tool workspace", () => {
     expect(screen.getByDisplayValue("Workspace Test")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
 
-    // Finish returns to dashboard — heading again
-    await user.click(screen.getByRole("button", { name: "Finish" }));
+    // Adventure tab returns to dashboard — heading again
+    await user.click(screen.getByRole("button", { name: "Adventure" }));
     expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
   });
 });
