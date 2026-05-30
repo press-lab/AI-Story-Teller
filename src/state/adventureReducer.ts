@@ -241,20 +241,64 @@ function proposalWithEdits(proposal: MemoryProposal, editedProposal?: Partial<Me
   return editedProposal ? updateMemoryProposal(proposal, editedProposal) : proposal;
 }
 
+function stripThink(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
+function stripLeadingCardTitle(title: string, content: string): string {
+  if (!title || !content) return content;
+  const escaped = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return content.replace(new RegExp(`^(?:#{1,3}\\s*|\\*{1,2})?${escaped}\\*{0,2}\\s*\\n?`, "i"), "").trimStart();
+}
+
+function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
+  const rawContent = stripThink(proposal.content ?? "").trim();
+  const title = stripThink(proposal.title ?? "").trim();
+  const content = proposal.proposedType === "storyCard" ? stripLeadingCardTitle(title, rawContent) : rawContent;
+
+  // summaryUpdate with blank content would immediately overwrite the real summary — hard drop
+  if (proposal.proposedType === "summaryUpdate" && !content) return null;
+
+  // brainUpdate: if the content looks like JSON, validate it has at least one recognised field
+  if (proposal.proposedType === "brainUpdate" && content.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      const brainFields = new Set(["currentState", "thoughts", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"]);
+      const valid = Object.entries(parsed).some(([k, v]) => brainFields.has(k) && typeof v === "string" && (v as string).trim());
+      if (!valid) return null;
+    } catch {
+      // Not JSON — allow as plain-text append (falls into recentDevelopments on apply)
+    }
+  }
+
+  // Fall back title to first 60 chars of content when both are present
+  const safeTitle = title || (content ? content.slice(0, 60) : "");
+
+  return {
+    ...proposal,
+    content,
+    title: safeTitle,
+    suggestedTriggers: proposal.suggestedTriggers ?? [],
+  };
+}
+
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
   if (proposal.proposedType === "storyCard") {
     if (!proposal.content.trim()) return {};
+    const cardTitle = proposal.title || "Memory Proposal";
+    const safeContent = stripLeadingCardTitle(cardTitle, proposal.content);
+    if (!safeContent.trim()) return {};
     const existing = state.storyCards.find((card) => card.id === proposal.targetId || card.title === proposal.title);
     const storyCard = existing
       ? touch({
           ...existing,
-          content: proposal.content,
+          content: safeContent,
           keys: proposal.suggestedTriggers,
           state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
         })
       : makeStoryCard({
-          title: proposal.title || "Memory Proposal",
-          content: proposal.content,
+          title: cardTitle,
+          content: safeContent,
           keys: proposal.suggestedTriggers,
           type: "custom",
           active: true,
@@ -302,6 +346,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
   }
 
   if (proposal.proposedType === "plotEssentialsUpdate") {
+    if (!proposal.content.trim()) return {};
     const target =
       state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
       state.components.find((component) => component.type === "plotEssentials");
@@ -462,7 +507,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       });
     case "APPLY_STORY_CARD_UPDATE":
       return touchAdventure(state, {
-        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, content: action.content })),
+        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, content: stripLeadingCardTitle(item.title, action.content) })),
       });
     case "MARK_STORY_CARD_UPDATED":
       return touchAdventure(state, {
@@ -659,9 +704,11 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         },
       });
     case "ADD_MEMORY_PROPOSAL": {
-      const autoApprove = state.memoryAutoApprove?.[action.proposal.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
+      const clean = sanitizeProposal(action.proposal);
+      if (!clean) return state;
+      const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {
-        const approved = updateMemoryProposal(action.proposal, { status: "approved" });
+        const approved = updateMemoryProposal(clean, { status: "approved" });
         return touchAdventure(state, {
           ...applyApprovedMemoryProposal(state, approved),
           activeState: {
@@ -673,7 +720,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         activeState: {
           ...state.activeState,
-          memoryProposals: [action.proposal, ...state.activeState.memoryProposals],
+          memoryProposals: [clean, ...state.activeState.memoryProposals],
         },
       });
     }

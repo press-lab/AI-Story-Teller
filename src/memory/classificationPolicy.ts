@@ -24,9 +24,13 @@ function titleFromText(text: string): string {
   return named?.[1] ?? text.slice(0, 48);
 }
 
+const STOP_WORDS = new Set(["The", "A", "An", "He", "She", "They", "It", "We", "You", "Your", "His", "Her", "Their", "This", "That", "These", "Those", "My", "Our", "Its", "I"]);
+
 function triggersFromText(text: string): string[] {
   const quoted = [...text.matchAll(/[""']([^""']{2,40})[""']/g)].map((match) => match[1]);
-  const names = [...text.matchAll(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g)].map((match) => match[0]);
+  const names = [...text.matchAll(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g)]
+    .map((match) => match[0])
+    .filter((word) => !STOP_WORDS.has(word));
   return Array.from(new Set([...names, ...quoted])).slice(0, 6);
 }
 
@@ -157,17 +161,6 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
         ? "Durable character fact routed to an existing Story Card."
         : "Durable recurring facts, relationship facts, rules, promises, secrets, nicknames, and important named objects belong in Story Cards.",
       targetId: target?.id,
-    };
-  }
-
-  if (clean.length > 240) {
-    return {
-      proposedType: "summaryUpdate",
-      title,
-      content: clean,
-      suggestedTriggers,
-      confidence: 0.62,
-      rationale: "Broad continuity without a narrow durable trigger is better summarized than made into a card.",
     };
   }
 

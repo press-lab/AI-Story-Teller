@@ -416,7 +416,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       ...(adventure.autoCardSettings ?? {}),
     },
     memoryAutoApprove: {
-      ...{ summaryUpdate: true, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
+      ...{ summaryUpdate: false, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
       ...(adventure.memoryAutoApprove ?? {}),
     },
     tokenBudgetSettings: {
