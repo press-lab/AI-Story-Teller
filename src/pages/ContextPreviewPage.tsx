@@ -44,6 +44,7 @@ function sectionShortLabel(sectionId: string): string {
     brains: "Chars",
     questState: "Quests",
     rollingSummary: "Summary",
+    sceneState: "Scene",
     nextTurnNote: "Bias",
     recentMessages: "Messages",
   };

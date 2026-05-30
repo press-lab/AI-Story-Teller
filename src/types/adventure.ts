@@ -424,6 +424,7 @@ export interface Adventure {
   quests: Quest[];
   questState: JsonObject;
   rollingSummary: RollingSummary;
+  sceneState?: RollingSummary;
   messages: Message[];
   activeState: ActiveState;
   tokenBudgetSettings: TokenBudgetSettings;
@@ -489,9 +490,10 @@ export type ContextSectionKind =
   | "storyCards"      // F. Story Cards + Auto-Cards (triggered / pinned)
   | "brains"          // G. Brain entries
   | "questState"      // H. Active quest state
-  | "rollingSummary"  // I. Rolling Summary
+  | "rollingSummary"  // I. Rolling Summary — durable canon
   | "nextTurnNote"    // J. Next Output Bias
-  | "recentMessages"; // K. Recent Messages
+  | "recentMessages"  // K. Recent Messages
+  | "sceneState";     // L. Scene State — current location, characters, situation
 
 export type ExcludedReason = "budget_exceeded" | "inactive" | "cooldown" | "not_triggered";
 
@@ -641,6 +643,7 @@ export type AdventureAction =
   | { type: "REJECT_MEMORY_PROPOSAL"; proposalId: string }
   | { type: "IGNORE_MEMORY_PROPOSAL"; proposalId: string }
   | { type: "UPDATE_ROLLING_SUMMARY"; content: string; lastSummarizedMessageIndex?: number }
+  | { type: "UPDATE_SCENE_STATE"; content: string }
   | { type: "SET_TOKEN_BUDGET_SETTINGS"; settings: TokenBudgetSettings }
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }

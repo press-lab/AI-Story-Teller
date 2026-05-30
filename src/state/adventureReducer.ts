@@ -721,6 +721,10 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           lastSummarizedMessageIndex: action.lastSummarizedMessageIndex ?? state.rollingSummary.lastSummarizedMessageIndex,
         },
       });
+    case "UPDATE_SCENE_STATE":
+      return touchAdventure(state, {
+        sceneState: { content: action.content, updatedAt: nowIso() },
+      });
     case "SET_TOKEN_BUDGET_SETTINGS":
       return touchAdventure(state, { tokenBudgetSettings: action.settings });
     case "SET_MODEL_CONFIG":

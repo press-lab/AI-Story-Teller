@@ -117,10 +117,11 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
 }
 
 describe("buildContext", () => {
-  it("assembles sections in the required deterministic order (A–K)", () => {
+  it("assembles sections in the required deterministic order (A–L)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 11 sections must exist in the correct order
+    // All 12 sections must exist in the correct order
     // Author's Note is placed just before recent messages (AID-style) for maximum recency influence
+    // Scene State follows Author's Note to ground the model in the current moment
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
@@ -131,6 +132,7 @@ describe("buildContext", () => {
       "questState",
       "rollingSummary",
       "authorNote",
+      "sceneState",
       "nextTurnNote",
       "recentMessages",
     ]);
@@ -144,6 +146,7 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
     expect(itemTitles(adventureForContext(), "questState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
+    expect(itemTitles(adventureForContext(), "sceneState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "nextTurnNote")).toEqual([]);
     expect(itemTitles(adventureForContext(), "recentMessages")).toEqual(["assistant message 1", "user message 2"]);
   });
@@ -271,7 +274,7 @@ describe("buildContext", () => {
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       // Budget sized to fit system-shell + high-priority card only
-      tokenBudgetSettings: budget({ maxContextTokens: 420, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
+      tokenBudgetSettings: budget({ maxContextTokens: 460, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure, { currentInput: "signal" });
@@ -660,10 +663,10 @@ describe("buildContext", () => {
   });
 
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
-    // adventureForContext has no aiInstructions/plotEssentials/authorNote components
+    // adventureForContext has no aiInstructions/plotEssentials/authorNote/sceneState content
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 11 section IDs always present in result.sections
-    expect(result.sections.map((s) => s.id)).toHaveLength(11);
+    // All 12 section IDs always present in result.sections
+    expect(result.sections.map((s) => s.id)).toHaveLength(12);
     // Empty typed sections do not appear in the system payload
     const payload = result.messages[0].content;
     expect(payload).not.toContain("# B. AI Instructions");
@@ -680,7 +683,7 @@ describe("buildContext", () => {
       latestModelOutput: "The Beast howls at the ward.",
     });
 
-    // Author's Note placed after rolling summary (AID-style)
+    // Author's Note placed after rolling summary (AID-style); Scene State follows for current grounding
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
@@ -691,6 +694,7 @@ describe("buildContext", () => {
       "questState",
       "rollingSummary",
       "authorNote",
+      "sceneState",
       "nextTurnNote",
       "recentMessages",
     ]);

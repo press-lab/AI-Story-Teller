@@ -6,6 +6,10 @@ export interface RollingSummaryPayload {
   fromIndex: number;
 }
 
+export interface SceneStatePayload {
+  messages: { role: "system" | "user"; content: string }[];
+}
+
 export function clampedSummaryStartIndex(adventure: Adventure): number {
   const rawIndex = adventure.rollingSummary.lastSummarizedMessageIndex ?? 0;
   if (!Number.isFinite(rawIndex)) return 0;
@@ -13,9 +17,9 @@ export function clampedSummaryStartIndex(adventure: Adventure): number {
 }
 
 /**
- * Build the LLM payload for an incremental summary update.
- * Sends the current summary plus only messages not yet captured in it.
- * The start index is clamped so story erases/undo never skip unseen transcript.
+ * Build the LLM payload for an incremental durable-summary update.
+ * Captures only story-level canon — arc state, permanent changes, relationships,
+ * open plot threads. Does NOT recap recent actions already in Recent Messages.
  */
 export function buildRollingSummaryPayload(adventure: Adventure): RollingSummaryPayload {
   const allMessages = adventure.messages;
@@ -29,8 +33,8 @@ export function buildRollingSummaryPayload(adventure: Adventure): RollingSummary
     : "No new events.";
 
   const userContent = currentSummary
-    ? `## Current Rolling Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nUpdate the rolling summary to incorporate these new events.`
-    : `## Story So Far\n${newEventsText}\n\nCreate a concise rolling summary of these events.`;
+    ? `## Current Durable Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nUpdate the durable summary to incorporate any lasting changes from these events.`
+    : `## Story Events\n${newEventsText}\n\nCreate a durable summary of these events.`;
 
   return {
     messages: [
@@ -38,13 +42,48 @@ export function buildRollingSummaryPayload(adventure: Adventure): RollingSummary
         role: "system",
         content:
           "You are a continuity keeper for an interactive fiction adventure. " +
-          "Update the rolling summary to incorporate new story events. " +
-          "Preserve all important facts: character states, relationships, world details, open plot threads, completed events. " +
-          "Keep it focused and under 900 words. Write in past tense, third person.",
+          "Maintain a DURABLE STORY SUMMARY: the permanent record of story-level canon. " +
+          "Include: completed arc beats, established world facts, permanent character changes, important relationships, open plot threads, major consequences. " +
+          "Exclude: moment-to-moment actions, scene descriptions, recent turns still visible in Recent Messages, and ephemeral details that don't affect future scenes. " +
+          "If a recent event changes something permanent (a character dies, an alliance forms, a secret is revealed), record it. Otherwise omit it. " +
+          "Keep it under 600 words. Write in past tense, third person.",
       },
       { role: "user", content: userContent },
     ],
     lastIndex,
     fromIndex,
+  };
+}
+
+/**
+ * Build the LLM payload for a scene-state snapshot.
+ * Captures only the immediate present: location, characters, situation, last beat.
+ */
+export function buildSceneStatePayload(adventure: Adventure): SceneStatePayload {
+  const recentMessages = adventure.messages.slice(-12);
+  const recentText = recentMessages.length
+    ? recentMessages.map((m) => `${m.role === "assistant" ? "Story" : "Player"}: ${m.content}`).join("\n\n")
+    : "No recent story turns.";
+
+  const existingSceneState = adventure.sceneState?.content?.trim();
+
+  const userContent = existingSceneState
+    ? `## Previous Scene State\n${existingSceneState}\n\n## Recent Story Turns\n${recentText}\n\nUpdate the scene state to reflect where we are now.`
+    : `## Recent Story Turns\n${recentText}\n\nCapture the current scene state.`;
+
+  return {
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a scene-state tracker for an interactive fiction adventure. " +
+          "Write a CURRENT SCENE STATE: a concise snapshot of the immediate present. " +
+          "Include: current location, which characters are present and their immediate mood/posture, " +
+          "the last significant beat that just happened, and any urgent situational facts. " +
+          "Keep it under 120 words. Write in present tense, third person. " +
+          "Do NOT recap story history — only what is true right now.",
+      },
+      { role: "user", content: userContent },
+    ],
   };
 }

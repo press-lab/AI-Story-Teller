@@ -36,7 +36,7 @@ describe("development adventure seed", () => {
     });
 
     const sectionIds = result.sections.map((section) => section.id);
-    // Author's Note appears after rolling summary (AID-style placement for maximum recency influence)
+    // Author's Note appears after rolling summary (AID-style); Scene State follows for current grounding
     expect(sectionIds).toEqual([
       "system",
       "aiInstructions",
@@ -47,6 +47,7 @@ describe("development adventure seed", () => {
       "questState",
       "rollingSummary",
       "authorNote",
+      "sceneState",
       "nextTurnNote",
       "recentMessages",
     ]);

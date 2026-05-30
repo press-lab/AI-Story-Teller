@@ -3,7 +3,7 @@ import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
-import { buildRollingSummaryPayload } from "../state/rollingSummary";
+import { buildRollingSummaryPayload, buildSceneStatePayload } from "../state/rollingSummary";
 import {
   applyRuntimeEngines,
   createMemoryProposalAction,
@@ -346,26 +346,24 @@ export function useAdventureRuntime(
     }
   }
 
-  async function generateSummary() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventure);
-      const response = await sendOpenAICompatibleChatCompletion({
-        config: activeProviderConfig,
-        messages: summaryMessages,
-      });
-      setAdventure((current) =>
-        current
-          ? adventureReducer(current, { type: "UPDATE_ROLLING_SUMMARY", content: response.content, lastSummarizedMessageIndex: lastIndex })
-          : current,
-      );
-    } catch (summaryError) {
-      setError(summaryError instanceof Error ? summaryError.message : "Summary generation failed.");
-    } finally {
-      setLoading(false);
-    }
+  async function generateDurableSummary(): Promise<string> {
+    if (!adventure) throw new Error("No adventure loaded.");
+    const { messages: summaryMessages } = buildRollingSummaryPayload(adventure);
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: activeProviderConfig,
+      messages: summaryMessages,
+    });
+    return response.content;
+  }
+
+  async function generateSceneState(): Promise<string> {
+    if (!adventure) throw new Error("No adventure loaded.");
+    const { messages: sceneMessages } = buildSceneStatePayload(adventure);
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: activeProviderConfig,
+      messages: sceneMessages,
+    });
+    return response.content;
   }
 
   return {
@@ -382,7 +380,8 @@ export function useAdventureRuntime(
     generateAutoCardNow,
     suggestPlotUpdates,
     suggestCardUpdates,
-    generateSummary,
+    generateDurableSummary,
+    generateSceneState,
     applyActionsAndPersist,
   };
 }

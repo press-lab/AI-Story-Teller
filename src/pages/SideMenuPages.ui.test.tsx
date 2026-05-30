@@ -93,7 +93,6 @@ describe("side menu page smoke coverage", () => {
   it("covers Inspector pages and Chronicle/Summary entry points", async () => {
     const user = userEvent.setup();
     const onBuildContext = vi.fn();
-    const onGenerateSummary = vi.fn(async () => undefined);
     const onImportAdventure = vi.fn(async () => undefined);
     const onCreateAdventureFromImport = vi.fn(async () => undefined);
     const onOpenImportedAdventure = vi.fn();
@@ -124,11 +123,14 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
     cleanup();
 
+    const onGenerateDurableSummary = vi.fn(async () => "Generated durable summary.");
+    const onGenerateSceneState = vi.fn(async () => "Generated scene state.");
     renderWithAdventure((adventure, dispatch) => (
-      <SummaryPage adventure={adventure} dispatch={dispatch} loading={false} onGenerateSummary={onGenerateSummary} />
+      <SummaryPage adventure={adventure} dispatch={dispatch} onGenerateDurableSummary={onGenerateDurableSummary} onGenerateSceneState={onGenerateSceneState} />
     ));
-    await user.click(screen.getByRole("button", { name: "Generate Summary From History" }));
-    expect(onGenerateSummary).toHaveBeenCalledTimes(1);
+    const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate" });
+    await user.click(regenerateButtons[0]);
+    expect(onGenerateDurableSummary).toHaveBeenCalledTimes(1);
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <ChroniclePage adventure={adventure} dispatch={dispatch} />);

@@ -23,6 +23,7 @@ CONTEXT SECTIONS (read all, honour their order):
   G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
   I. Rolling Summary — compressed history of earlier turns. Treat as canon.
   D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
+  L. Scene State — current location, present characters, immediate situation, last story beat. Treat as ground truth for what is happening right now.
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
   K. Recent Messages — the most recent story turns in chronological order.
 
@@ -370,6 +371,15 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : [];
   summaryItems.forEach((entry) => pushIncluded(entry, `Rolling summary included${summaryCap ? `; pre-capped to ${summaryCap} tokens` : ""}.`));
 
+  // L. Scene State — pre-cap to sectionBudgets.sceneState before assembly
+  const sceneStateCap = budgetSettings.sectionBudgets.sceneState;
+  const rawSceneStateContent = adventure.sceneState?.content;
+  const sceneStateContent = sceneStateCap && rawSceneStateContent ? truncateFromFront(rawSceneStateContent, sceneStateCap) : rawSceneStateContent;
+  const sceneStateItems = sceneStateContent
+    ? [item("scene-state", "sceneState", "Scene State", sceneStateContent, 0, false, false, true, "always", "ai")]
+    : [];
+  sceneStateItems.forEach((entry) => pushIncluded(entry, `Scene state included${sceneStateCap ? `; pre-capped to ${sceneStateCap} tokens` : ""}.`));
+
   // J. Next Output Bias (+ response length hint)
   const nextTurnNote = adventure.activeState.nextTurnNote;
   if (nextTurnNote?.content.trim() && !nextTurnNote.active) {
@@ -441,8 +451,10 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     section("rollingSummary", "I. Rolling Summary", 7, summaryItems),
     // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     section("authorNote", "D. Author's Note", 8, authorNoteItems),
-    section("nextTurnNote", "J. Next Output Bias", 9, nextTurnNoteItems),
-    section("recentMessages", "K. Recent Messages", 10, recentMessageItems),
+    // L. Scene State is placed after Author's Note so the model sees current grounding just before recent messages
+    section("sceneState", "L. Scene State", 9, sceneStateItems),
+    section("nextTurnNote", "J. Next Output Bias", 10, nextTurnNoteItems),
+    section("recentMessages", "K. Recent Messages", 11, recentMessageItems),
   ]);
 
   const budget = budgetSettings.maxContextTokens;

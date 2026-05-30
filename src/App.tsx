@@ -339,7 +339,7 @@ export default function App() {
       case "quests":
         return <QuestsPage {...common} />;
       case "summary":
-        return <SummaryPage {...common} loading={runtime.loading} onGenerateSummary={runtime.generateSummary} />;
+        return <SummaryPage {...common} onGenerateDurableSummary={runtime.generateDurableSummary} onGenerateSceneState={runtime.generateSceneState} />;
       case "memoryInbox":
         return <MemoryInboxPage {...common} />;
       case "cloudSaves":

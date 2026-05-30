@@ -25,6 +25,7 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   recentMessageWindow: 12,
   sectionBudgets: {
     rollingSummary: 1800,
+    sceneState: 400,
     recentMessages: 6000,
   },
   autoSummarize: true,
@@ -139,6 +140,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     quests: [],
     questState: {},
     rollingSummary: { content: "", updatedAt: timestamp },
+    sceneState: { content: "", updatedAt: timestamp },
     messages: [],
     activeState: {
       turn: 0,
@@ -350,6 +352,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         (adventure.messages ?? []).length,
       ),
     },
+    sceneState: adventure.sceneState ?? { content: "", updatedAt: nowIso() },
     brains: (adventure.brains ?? []).map((brain) => ({
       ...brain,
       source: brain.source ?? "manual",
