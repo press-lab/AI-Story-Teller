@@ -99,6 +99,7 @@ export function PlayPage({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const transcriptRef = useRef<HTMLDivElement>(null);
   const lastUserMsgRef = useRef<HTMLElement | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
@@ -167,6 +168,13 @@ export function PlayPage({
 
   useEffect(() => {
     if (composerOpen) textareaRef.current?.focus();
+  }, [composerOpen]);
+
+  useEffect(() => {
+    if (!composerOpen) return;
+    transcriptRef.current?.scrollBy({ top: composerHeight, behavior: "smooth" });
+  // composerHeight intentionally omitted: only compensate when composer first opens
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [composerOpen]);
 
   useEffect(() => {
@@ -253,7 +261,7 @@ export function PlayPage({
       )}
 
       <div className="play-main">
-        <div className="transcript" onClick={() => setComposerOpen(false)}>
+        <div ref={transcriptRef} className="transcript" onClick={() => setComposerOpen(false)}>
           {adventure.openingScene && (
             <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
               <div className="message-actions">
