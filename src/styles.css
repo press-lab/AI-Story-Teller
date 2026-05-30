@@ -2358,7 +2358,7 @@ summary {
 .context-preview-page .context-preview-toolbar {
   flex-wrap: wrap;
 }
-.token-metrics { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
+.token-metrics { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; font-size: 0.85rem; }
 .token-metrics-sep { opacity: 0.4; }
 .context-inline-error {
   color: var(--color-error, #c0392b);
@@ -2801,6 +2801,18 @@ summary {
 
   .toolbar input {
     max-width: none;
+  }
+
+  .context-preview-toolbar {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .context-preview-toolbar button {
+    flex: 0 0 auto;
+    width: auto;
   }
 
   .dashboard-page,

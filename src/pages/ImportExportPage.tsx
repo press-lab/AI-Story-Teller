@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { exportAdventureJson } from "../utils/json";
 import type { Adventure } from "../types/adventure";
 import type { AdventurePageProps } from "./pageTypes";
@@ -28,12 +28,16 @@ export function ImportExportPage({
   onCreateAdventureFromImport,
   onOpenImportedAdventure,
 }: ImportExportPageProps) {
-  const exportText = useMemo(() => exportAdventureJson(adventure), [adventure]);
   const [importText, setImportText] = useState("");
 
   async function importAdventure() {
     await onImportAdventure(importText);
     setImportText("");
+  }
+
+  function handleExport() {
+    const text = exportAdventureJson(adventure);
+    download(`${adventure.title.replace(/\W+/g, "-") || "adventure"}.json`, text);
   }
 
   return (
@@ -51,19 +55,16 @@ export function ImportExportPage({
       <div className="grid two">
         <article className="panel">
           <h3>Export Adventure</h3>
-          <textarea rows={14} readOnly value={exportText} />
-          <button
-            type="button"
-            onClick={() => download(`${adventure.title.replace(/\W+/g, "-") || "adventure"}.json`, exportText)}
-          >
+          <p className="muted">Downloads the full adventure as a JSON file.</p>
+          <button type="button" onClick={handleExport}>
             Download JSON
           </button>
         </article>
 
         <article className="panel">
           <h3>Import Adventure JSON</h3>
-          <textarea rows={14} value={importText} onChange={(event) => setImportText(event.target.value)} />
-          <button type="button" onClick={importAdventure}>
+          <textarea rows={8} value={importText} onChange={(event) => setImportText(event.target.value)} placeholder="Paste exported JSON here…" />
+          <button type="button" onClick={importAdventure} disabled={!importText.trim()}>
             Import Adventure
           </button>
           <button type="button" className="danger" onClick={() => dispatch({ type: "RESET_RUNTIME_STATE" })}>

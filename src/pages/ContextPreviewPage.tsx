@@ -180,13 +180,13 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         <span className="muted token-metrics">
           <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} est</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Total prompt tokens sent to story model across all turns">story&nbsp;{hasActualUsage ? `${totalActualIn.toLocaleString()}↑ ${totalActualOut.toLocaleString()}↓` : "—"}</span>
+          <span title="Total prompt tokens sent to story model across all turns">story {hasActualUsage ? `${totalActualIn.toLocaleString()}↑ ${totalActualOut.toLocaleString()}↓` : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Prompt tokens sent on the last story turn">last&nbsp;{lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
+          <span title="Prompt tokens sent on the last story turn">last {lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Average prompt tokens per story turn">avg&nbsp;{avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
+          <span title="Average prompt tokens per story turn">avg {avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Total tokens used by background AI calls (brain updates, scene state, summaries, triggers)">{hasBgUsage ? `bg&nbsp;${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "bg&nbsp;—"}</span>
+          <span title="Total tokens used by background AI calls (brain updates, scene state, summaries, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
         </span>
         {dedupError && (
           <span className="context-inline-error">
