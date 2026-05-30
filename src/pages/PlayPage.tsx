@@ -412,6 +412,19 @@ export function PlayPage({
               </button>
               <button
                 type="button"
+                className="length-cycle-btn"
+                title="Response length — tap to cycle"
+                onClick={() => {
+                  const presets = [75, 100, 150, 200];
+                  const cur = adventure.activeState.responseLengthHint ?? 150;
+                  const idx = presets.indexOf(cur);
+                  dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: presets[(idx + 1) % presets.length] });
+                }}
+              >
+                {adventure.activeState.responseLengthHint ?? 150}w
+              </button>
+              <button
+                type="button"
                 className="action-extra"
                 disabled={loading || adventure.activeState.storyUndoStack.length === 0}
                 onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}

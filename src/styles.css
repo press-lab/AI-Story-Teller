@@ -1682,6 +1682,11 @@ button.primary-action:hover:not(:disabled),
   display: none;
 }
 
+/* Length cycle button — hidden on desktop (slider in mode-selector handles it) */
+.length-cycle-btn {
+  display: none;
+}
+
 
 .composer-actions button {
   font-size: 16px;
@@ -2894,6 +2899,17 @@ summary {
     padding: 8px 12px;
     font-size: 14px;
     min-height: 40px;
+  }
+
+  .length-cycle-btn {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+    min-height: 40px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
   }
 
 
