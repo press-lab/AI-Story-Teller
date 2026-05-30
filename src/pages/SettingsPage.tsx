@@ -4,6 +4,8 @@ import type {
   AdventureAction,
   AutoCardSettings,
   CloudSyncSettings,
+  MemoryAutoApproveSettings,
+  MemoryDetectionSettings,
   MemoryPriorityMode,
   ProviderRequestThrottle,
   SemanticEvaluationSettings,
@@ -138,6 +140,16 @@ export function SettingsPage({
   function updateAutoCardSettings(patch: Partial<AutoCardSettings>) {
     if (!adventure) return;
     dispatch({ type: "SET_AUTO_CARD_SETTINGS", settings: { ...adventure.autoCardSettings, ...patch } });
+  }
+
+  function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
+    if (!adventure) return;
+    dispatch({ type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...adventure.memoryDetectionSettings, ...patch } });
+  }
+
+  function updateMemoryAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
+    if (!adventure) return;
+    dispatch({ type: "SET_MEMORY_AUTO_APPROVE", settings: { ...adventure.memoryAutoApprove, ...patch } });
   }
 
   const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
@@ -502,6 +514,44 @@ export function SettingsPage({
                 onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
               />
             </Field>
+          </article>
+        )}
+
+        {/* ── Memory Detection (advanced) ───────────── */}
+        {advanced && adventure && (
+          <article className="panel">
+            <h3>Memory Detection</h3>
+            <p className="muted">
+              After each turn, use the evaluation model to detect new durable facts worth storing as memory proposals.
+              The pre-filter skips the call when nothing novel is detected.
+            </p>
+            <CheckboxField
+              label="Enable AI memory detection"
+              checked={adventure.memoryDetectionSettings.enabled}
+              onChange={(enabled) => updateMemoryDetection({ enabled })}
+            />
+            {adventure.memoryDetectionSettings.enabled && (
+              <>
+                <CheckboxField
+                  label="Generate card content"
+                  checked={adventure.memoryDetectionSettings.generateContent}
+                  onChange={(generateContent) => updateMemoryDetection({ generateContent })}
+                />
+                <p className="muted">
+                  When on, the AI writes the proposal body in the same call — more useful but costs more tokens.
+                  When off, proposals arrive with blank content for you to fill in.
+                </p>
+                <CheckboxField
+                  label="Auto-approve brain state updates"
+                  checked={adventure.memoryAutoApprove.brainUpdate}
+                  onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}
+                />
+                <p className="muted">
+                  Brain state updates from the semantic engine apply immediately without review.
+                  Only affects characters already in your Brains list.
+                </p>
+              </>
+            )}
           </article>
         )}
 

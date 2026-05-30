@@ -3,6 +3,7 @@ import type {
   AutoCard,
   BrainEntry,
   ComponentEntry,
+  MemoryDetectionSettings,
   NextTurnNote,
   ProviderConfig,
   Quest,
@@ -70,6 +71,11 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
   showLog: true,
   maxParallelUpdateCalls: 3,
   requireApprovalForAutoUpdates: false,
+};
+
+export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
+  enabled: false,
+  generateContent: true,
 };
 
 export const defaultAutoCardSettings: AutoCardSettings = {
@@ -163,6 +169,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
     autoCardSettings: defaultAutoCardSettings,
     memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
+    memoryDetectionSettings: defaultMemoryDetectionSettings,
   };
 }
 
@@ -418,6 +425,10 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     memoryAutoApprove: {
       ...{ summaryUpdate: false, plotEssentialsUpdate: false, storyCard: false, brainUpdate: false },
       ...(adventure.memoryAutoApprove ?? {}),
+    },
+    memoryDetectionSettings: {
+      ...defaultMemoryDetectionSettings,
+      ...(adventure.memoryDetectionSettings ?? {}),
     },
     tokenBudgetSettings: {
       ...defaultTokenBudgetSettings,

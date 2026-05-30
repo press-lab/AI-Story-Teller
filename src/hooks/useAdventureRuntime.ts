@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
+import { detectMemoryFromTurn } from "../memory/memoryDetection";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
 import { buildRollingSummaryPayload, buildSceneStatePayload } from "../state/rollingSummary";
 import {
   applyRuntimeEngines,
-  createMemoryProposalAction,
   latestAssistantOutput,
   reduceActions,
   runTurnPipeline,
@@ -106,9 +106,16 @@ export function useAdventureRuntime(
     return adventureReducer(mergeQueuedUpdates(adventureState), { type: "FLUSH_PENDING_UPDATES" });
   }
 
-  function applyMemoryProposalFromOutput(snapshot: Adventure, text: string): Adventure {
-    const action = createMemoryProposalAction(snapshot, text);
-    return action ? adventureReducer(snapshot, action) : snapshot;
+  async function applyMemoryDetectionFromOutput(snapshot: Adventure, text: string): Promise<Adventure> {
+    if (!snapshot.memoryDetectionSettings.enabled) return snapshot;
+    const pc = mergeProviderConfig(snapshot, providerSettingsRef.current);
+    const accum = { promptTokens: 0, completionTokens: 0 };
+    const action = await detectMemoryFromTurn(snapshot, pc, text, accum);
+    let next = action ? adventureReducer(snapshot, action) : snapshot;
+    if (accum.promptTokens > 0 || accum.completionTokens > 0) {
+      next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...accum });
+    }
+    return next;
   }
 
   async function startSemanticEvaluation(snapshot: Adventure) {
@@ -198,6 +205,7 @@ export function useAdventureRuntime(
         adventure: base,
         text,
         mode,
+        providerConfig: mergeProviderConfig(base, providerSettings),
         sendChatCompletion: async (messages, snapshot, context) => {
           snapshotWithUserMsg = snapshot;
           setAdventure(snapshot);
@@ -250,7 +258,7 @@ export function useAdventureRuntime(
       });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = applyMemoryProposalFromOutput(next, response.content);
+      next = await applyMemoryDetectionFromOutput(next, response.content);
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
       next = adventureReducer(next, { type: "INCREMENT_TURN" });
@@ -293,7 +301,7 @@ export function useAdventureRuntime(
       });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = applyMemoryProposalFromOutput(next, response.content);
+      next = await applyMemoryDetectionFromOutput(next, response.content);
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
       next = mergeQueuedUpdates(next);

@@ -275,6 +275,11 @@ export interface AutoCardSettings {
   lastGeneratedTurn?: number;
 }
 
+export interface MemoryDetectionSettings {
+  enabled: boolean;
+  generateContent: boolean;
+}
+
 export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "autoCard" | "quest";
 
 export interface ForceIncludeEntry {
@@ -444,6 +449,7 @@ export interface Adventure {
   semanticEvaluationSettings: SemanticEvaluationSettings;
   autoCardSettings: AutoCardSettings;
   memoryAutoApprove: MemoryAutoApproveSettings;
+  memoryDetectionSettings: MemoryDetectionSettings;
 }
 
 export interface MemoryAutoApproveSettings {
@@ -663,6 +669,7 @@ export type AdventureAction =
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
   | { type: "SET_MEMORY_AUTO_APPROVE"; settings: MemoryAutoApproveSettings }
+  | { type: "SET_MEMORY_DETECTION_SETTINGS"; settings: MemoryDetectionSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }
   | { type: "SET_RESPONSE_LENGTH_HINT"; hint: number }
   | { type: "ACCUMULATE_BACKGROUND_TOKENS"; promptTokens: number; completionTokens: number }

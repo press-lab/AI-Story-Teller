@@ -786,6 +786,8 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, { autoCardSettings: action.settings });
     case "SET_MEMORY_AUTO_APPROVE":
       return touchAdventure(state, { memoryAutoApprove: action.settings });
+    case "SET_MEMORY_DETECTION_SETTINGS":
+      return touchAdventure(state, { memoryDetectionSettings: action.settings });
     case "SET_STATE_FLAG":
       return touchAdventure(state, {
         activeState: {

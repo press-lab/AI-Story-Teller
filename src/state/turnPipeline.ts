@@ -1,5 +1,5 @@
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { classifyMemory } from "../memory/classificationPolicy";
+import { detectMemoryFromTurn } from "../memory/memoryDetection";
 import { evaluateTriggerRules, type TriggerEvaluationEvent } from "../triggers/triggerEngine";
 import type {
   Adventure,
@@ -7,7 +7,7 @@ import type {
   ChatMessage,
   ContextBuildResult,
   InputMode,
-  MemoryProposal,
+  ProviderConfig,
   ProviderUsage,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
@@ -27,6 +27,7 @@ export interface RunTurnPipelineOptions {
     adventureSnapshot: Adventure,
     context: ContextBuildResult,
   ) => Promise<MockableProviderResponse>;
+  providerConfig?: ProviderConfig;
   userMessageId?: string;
   assistantMessageId?: string;
   createdAt?: string;
@@ -38,6 +39,7 @@ export interface RunTurnPipelineResult {
   postTurnContext: ContextBuildResult;
   providerPayload: ChatMessage[];
   responseContent: string;
+  detectionTokenUsage?: { promptTokens: number; completionTokens: number };
 }
 
 export function reduceActions(adventure: Adventure, actions: AdventureAction[]): Adventure {
@@ -53,40 +55,12 @@ export function latestAssistantOutput(adventure: Adventure): string | undefined 
   return [...adventure.messages].reverse().find((message) => message.role === "assistant")?.content;
 }
 
-export function createMemoryProposalAction(
-  snapshot: Adventure,
-  text: string,
-): Extract<AdventureAction, { type: "ADD_MEMORY_PROPOSAL" }> | undefined {
-  const classification = classifyMemory(text, {
-    existingBrainNames: snapshot.brains.map((brain) => brain.characterName),
-    existingStoryCards: snapshot.storyCards.map((card) => ({ id: card.id, title: card.title, keys: card.keys })),
-  });
-  if (classification.proposedType === "ignore") return undefined;
-
-  const proposal: MemoryProposal = {
-    id: createId("proposal"),
-    sourceTurnId: String(snapshot.activeState.turn),
-    sourceText: text.slice(0, 500),
-    proposedType: classification.proposedType,
-    title: classification.title,
-    content: classification.content,
-    suggestedTriggers: classification.suggestedTriggers,
-    confidence: classification.confidence,
-    rationale: classification.rationale,
-    status: "pending",
-    targetId: classification.targetId,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-  };
-
-  return { type: "ADD_MEMORY_PROPOSAL", proposal };
-}
-
 export async function runTurnPipeline({
   adventure,
   text,
   mode = "story",
   sendChatCompletion,
+  providerConfig,
   userMessageId,
   assistantMessageId,
   createdAt,
@@ -119,9 +93,15 @@ export async function runTurnPipeline({
   });
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
-  if (mode !== "comms") {
-    const proposalAction = createMemoryProposalAction(next, response.content);
+  let detectionTokenUsage: { promptTokens: number; completionTokens: number } | undefined;
+  if (mode !== "comms" && next.memoryDetectionSettings.enabled && providerConfig) {
+    const accum = { promptTokens: 0, completionTokens: 0 };
+    const proposalAction = await detectMemoryFromTurn(next, providerConfig, response.content, accum);
     if (proposalAction) next = adventureReducer(next, proposalAction);
+    if (accum.promptTokens > 0 || accum.completionTokens > 0) {
+      detectionTokenUsage = accum;
+      next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...accum });
+    }
   }
 
   next = applyRuntimeEngines(next, { source: "output", text: response.content });
@@ -133,5 +113,6 @@ export async function runTurnPipeline({
     postTurnContext: buildContext(next, { latestModelOutput: response.content }),
     providerPayload,
     responseContent: response.content,
+    detectionTokenUsage,
   };
 }

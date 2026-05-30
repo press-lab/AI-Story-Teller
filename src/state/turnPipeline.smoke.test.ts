@@ -3,6 +3,7 @@ import { buildContext } from "../contextBuilder/contextBuilder";
 import { adventureReducer } from "./adventureReducer";
 import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard, makeTriggerRule } from "./defaults";
 import type { Adventure, AdventureAction, ChatMessage, ContextBuildResult } from "../types/adventure";
+import { makeMemoryProposal } from "../test/goldenAdventure";
 import { runTurnPipeline } from "./turnPipeline";
 
 const timestamp = "2026-01-01T00:00:00.000Z";
@@ -202,20 +203,27 @@ describe("full turn smoke path", () => {
     expect(sectionItemIds(result.preProviderContext, "storyCards")).toContain("card-ward-law");
     expect(sectionItemIds(result.preProviderContext, "brains")).toContain("brain-margo");
 
-    const proposal = result.adventure.activeState.memoryProposals[0];
-    expect(proposal).toMatchObject({
-      proposedType: "storyCard",
-      status: "pending",
-    });
-    expect(proposal.content).toBe("");
-    expect(proposal.sourceText).toContain("hedge prince");
-    expect(result.adventure.storyCards.some((card) => card.title === "Hedge Prince Joke")).toBe(false);
-    expect(result.postTurnContext.pendingProposals.map((entry) => entry.id)).toContain(proposal.id);
-    expect(result.postTurnContext.sections.flatMap((section) => section.items).map((item) => item.id)).not.toContain(
-      proposal.id,
-    );
+    // No heuristic proposals from the turn pipeline — detection is off by default.
+    expect(result.adventure.activeState.memoryProposals).toHaveLength(0);
 
-    const approved = dispatch(result.adventure, {
+    // Seed a proposal as detection or the user would have produced one.
+    const seededProposal = makeMemoryProposal({
+      id: "smoke-proposal-1",
+      proposedType: "storyCard",
+      title: "Margo",
+      content: "",
+      status: "pending",
+      suggestedTriggers: ["hedge prince"],
+    });
+    const withProposal = dispatch(result.adventure, { type: "ADD_MEMORY_PROPOSAL", proposal: seededProposal });
+    const proposal = withProposal.activeState.memoryProposals[0];
+    expect(proposal).toMatchObject({ proposedType: "storyCard", status: "pending" });
+    expect(result.adventure.storyCards.some((card) => card.title === "Hedge Prince Joke")).toBe(false);
+    const postWithProposal = buildContext(withProposal, { latestModelOutput: result.responseContent });
+    expect(postWithProposal.pendingProposals.map((entry) => entry.id)).toContain(proposal.id);
+    expect(postWithProposal.sections.flatMap((section) => section.items).map((item) => item.id)).not.toContain(proposal.id);
+
+    const approved = dispatch(withProposal, {
       type: "APPROVE_MEMORY_PROPOSAL",
       proposalId: proposal.id,
       editedProposal: {
@@ -325,15 +333,22 @@ describe("full turn smoke path", () => {
       return result;
     };
 
-    const turnOne = await playTurn(
-      "I ask Margo if Seth has a nickname.",
-      'Margo calls Seth "hedge prince" as a private joke.',
-      1,
-    );
-    const jokeProposal = turnOne.adventure.activeState.memoryProposals[0];
+    // Turn 1: play the turn, then seed a storyCard proposal (as AI detection would produce).
+    await playTurn("I ask Margo if Seth has a nickname.", 'Margo calls Seth "hedge prince" as a private joke.', 1);
+    adventure = dispatch(adventure, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "long-proposal-joke",
+        proposedType: "storyCard",
+        title: "Margo",
+        content: "",
+        status: "pending",
+        suggestedTriggers: ["hedge prince"],
+      }),
+    });
+    const jokeProposal = adventure.activeState.memoryProposals[0];
     expect(jokeProposal).toMatchObject({ proposedType: "storyCard", status: "pending" });
     expect(adventure.storyCards.some((card) => card.title === "Hedge Prince Joke")).toBe(false);
-    expect(turnOne.postTurnContext.pendingProposals.map((proposal) => proposal.id)).toContain(jokeProposal.id);
 
     adventure = dispatch(adventure, {
       type: "APPROVE_MEMORY_PROPOSAL",
@@ -350,12 +365,20 @@ describe("full turn smoke path", () => {
     const turnTwo = await playTurn("Margo says hedge prince again before Seth answers.", "Margo smiles despite herself.", 2);
     expect(sectionItemIds(turnTwo.preProviderContext, "storyCards")).toContain(jokeCard?.id);
 
-    const turnThree = await playTurn(
-      "Seth steps too close to danger.",
-      "Margo feels jealous but hides it because Seth smiled at the merchant.",
-      3,
-    );
-    const brainProposal = turnThree.adventure.activeState.memoryProposals.find(
+    // Turn 3: play, then seed a brainUpdate proposal for Margo.
+    await playTurn("Seth steps too close to danger.", "Margo feels jealous but hides it because Seth smiled at the merchant.", 3);
+    adventure = dispatch(adventure, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "long-proposal-brain",
+        proposedType: "brainUpdate",
+        title: "Margo",
+        content: "Margo feels jealous but hides it because Seth smiled at the merchant.",
+        status: "pending",
+        targetId: "brain-margo",
+      }),
+    });
+    const brainProposal = adventure.activeState.memoryProposals.find(
       (proposal) => proposal.status === "pending" && proposal.proposedType === "brainUpdate",
     );
     expect(brainProposal).toBeDefined();
@@ -367,6 +390,7 @@ describe("full turn smoke path", () => {
     expect(sectionItemIds(brainContext, "brains")).toContain("brain-margo");
     expectContextPreviewMatchesProviderPayload(brainContext);
 
+    // Turn 4: ephemeral room detail produces no proposal (detection is off).
     const proposalCountBeforeRoomDetail = adventure.activeState.memoryProposals.length;
     await playTurn("I scan the room.", "The couch is against the west wall.", 4);
     expect(adventure.activeState.memoryProposals).toHaveLength(proposalCountBeforeRoomDetail);
