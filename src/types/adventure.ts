@@ -72,7 +72,7 @@ export interface BrainEntry {
   triggers: string[];
   source?: "manual" | "imported" | "generated";
   currentState: string;
-  thoughts: string;
+  thoughts: Record<string, string>;
   relationshipPressure: string;
   emotionalInterpretation: string;
   recentDevelopments: string;
@@ -588,6 +588,16 @@ export type BrainStateField =
   | "recentDevelopments"
   | "notes";
 
+/** Patch produced by AI brain updates. thoughts is a Record where null values delete that key. */
+export type BrainPatch = {
+  currentState?: string;
+  relationshipPressure?: string;
+  emotionalInterpretation?: string;
+  recentDevelopments?: string;
+  notes?: string;
+  thoughts?: Record<string, string | null>;
+};
+
 export type AdventureAction =
   | { type: "SET_TITLE"; title: string }
   | { type: "SET_OPENING_SCENE"; content: string }
@@ -628,7 +638,7 @@ export type AdventureAction =
   | { type: "UPDATE_BRAIN"; brainId: string; patch: Partial<BrainEntry> }
   | { type: "APPEND_BRAIN_STATE"; brainId: string; field?: BrainStateField; text: string }
   | { type: "REPLACE_BRAIN_STATE"; brainId: string; field?: BrainStateField; text: string }
-  | { type: "APPLY_BRAIN_UPDATE"; brainId: string; patch: Partial<Record<BrainStateField, string>>; mode?: "replace" | "append"; turn?: number; preview?: string }
+  | { type: "APPLY_BRAIN_UPDATE"; brainId: string; patch: BrainPatch; mode?: "replace" | "append"; turn?: number; preview?: string }
   | { type: "UPSERT_AUTO_CARD"; autoCard: AutoCard }
   | { type: "DELETE_AUTO_CARD"; autoCardId: string }
   | { type: "ACTIVATE_AUTO_CARD"; autoCardId: string }

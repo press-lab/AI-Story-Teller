@@ -146,11 +146,22 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                   />
                 </Field>
               </div>
-              <Field label="Thoughts (AI-written — what this character is thinking privately)">
+              <Field label="Thoughts (AI-managed — key: turnN → first-person observation, one per line)">
                 <textarea
-                  rows={3}
-                  value={brain.thoughts}
-                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: event.target.value } })}
+                  rows={4}
+                  value={Object.entries(brain.thoughts).map(([k, v]) => `${k}: ${v}`).join("\n")}
+                  onChange={(event) => {
+                    const record: Record<string, string> = {};
+                    for (const line of event.target.value.split("\n")) {
+                      const idx = line.indexOf(":");
+                      if (idx > 0) {
+                        const key = line.slice(0, idx).trim().replace(/\s+/g, "_");
+                        const val = line.slice(idx + 1).trim();
+                        if (key && val) record[key] = val;
+                      }
+                    }
+                    dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: record } });
+                  }}
                 />
               </Field>
               <Field label="Relationship Pressure (AI-written — tensions or pulls toward specific people)">

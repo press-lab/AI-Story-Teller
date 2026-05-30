@@ -389,12 +389,12 @@ describe("runManualBrainUpdate", () => {
     expect(result.logEntry.errors[0]).toMatch(/no recognized keys/i);
   });
 
-  it("flattens nested brain update values into readable strings instead of dropping them", async () => {
+  it("accepts thoughts as a Record and ignores non-string values for other fields", async () => {
     const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
     const adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({
       content:
-        '{"relationshipPressure":{"Azula":"bound by public command","Nyx":"jealous"},"thoughts":["watch the court","do not flinch"]}',
+        '{"relationshipPressure":"bound by command","thoughts":{"seth_watches_court":"5 → Watch the court. Do not flinch."}}',
       raw: {},
     });
 
@@ -404,8 +404,8 @@ describe("runManualBrainUpdate", () => {
       { type: "APPLY_BRAIN_UPDATE" }
     >;
 
-    expect(action.patch.relationshipPressure).toBe("Azula: bound by public command; Nyx: jealous");
-    expect(action.patch.thoughts).toBe("watch the court; do not flinch");
+    expect(action.patch.relationshipPressure).toBe("bound by command");
+    expect(action.patch.thoughts).toEqual({ seth_watches_court: "5 → Watch the court. Do not flinch." });
     expect(result.logEntry.errors).toEqual([]);
   });
 });

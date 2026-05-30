@@ -1,7 +1,7 @@
 import type {
   Adventure,
   AdventureAction,
-  BrainStateField,
+  BrainPatch,
   ComponentEntry,
   StoryCard,
 } from "../types/adventure";
@@ -10,7 +10,7 @@ export type AIMemoryUpdate =
   | {
       type: "brainPatch";
       brainId: string;
-      patch: Partial<Record<BrainStateField, string>>;
+      patch: BrainPatch;
       mode?: "replace" | "append";
       turn?: number;
       preview?: string;

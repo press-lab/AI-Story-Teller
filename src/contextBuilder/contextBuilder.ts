@@ -347,7 +347,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     }
     const content = [
       brain.currentState && `Current state: ${brain.currentState}`,
-      brain.thoughts && `Thoughts: ${brain.thoughts}`,
+      Object.keys(brain.thoughts).length > 0 && `Thoughts:\n${Object.entries(brain.thoughts).map(([k, v]) => `  ${k}: ${v}`).join("\n")}`,
       brain.relationshipPressure && `Relationship pressure: ${brain.relationshipPressure}`,
       brain.emotionalInterpretation && `Emotional interpretation: ${brain.emotionalInterpretation}`,
       brain.recentDevelopments && `Recent developments: ${brain.recentDevelopments}`,

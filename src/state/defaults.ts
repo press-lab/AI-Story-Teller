@@ -231,7 +231,7 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
     triggers: overrides.triggers ?? [],
     source: overrides.source ?? "manual",
     currentState: overrides.currentState ?? "",
-    thoughts: overrides.thoughts ?? "",
+    thoughts: overrides.thoughts ?? {},
     relationshipPressure: overrides.relationshipPressure ?? "",
     emotionalInterpretation: overrides.emotionalInterpretation ?? "",
     recentDevelopments: overrides.recentDevelopments ?? "",
@@ -322,6 +322,13 @@ export function makeQuest(overrides: Partial<Quest> & Pick<Quest, "title">): Que
   };
 }
 
+function migrateThoughts(raw: unknown): Record<string, string> {
+  if (!raw) return {};
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw as Record<string, string>;
+  if (typeof raw === "string" && raw.trim()) return { legacy: raw.trim() };
+  return {};
+}
+
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   return {
@@ -372,6 +379,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         brain.updateCondition || `when ${brain.characterName} appears in the scene or is meaningfully referenced`,
       updatePrompt: brain.updatePrompt ?? "",
       updateMode: brain.updateMode ?? "replace",
+      thoughts: migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),
     })),
     storyCards: (adventure.storyCards ?? []).map((card) => ({
       ...card,

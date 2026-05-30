@@ -785,8 +785,10 @@ export function createDevelopmentAdventure(): Adventure {
       triggers: ["Setu", "Renzan", "demon fire"],
       priority: 60,
       currentState: "Guarded, disciplined, and alert under royal scrutiny.",
-      thoughts:
-        "Setu wants to prove House Renzan still matters without becoming a decorative weapon for Ozai's court.",
+      thoughts: {
+        renzan_worth:
+          "turn0 → I want to prove House Renzan still matters without becoming a decorative weapon for Ozai's court.",
+      },
       relationshipPressure:
         "He respects Azula's command, navigates Nyxa's volatility, and notices how Mai and Ty Lee read what he tries to hide.",
       emotionalInterpretation:
@@ -803,7 +805,9 @@ export function createDevelopmentAdventure(): Adventure {
       triggers: ["Azula", "blue fire"],
       priority: 58,
       currentState: "In command, testing every person in the room.",
-      thoughts: "Setu's power is useful, but useful things become dangerous when other people admire them.",
+      thoughts: {
+        setu_assessment: "turn0 → Setu's power is useful, but useful things become dangerous when other people admire them.",
+      },
       relationshipPressure: "She expects obedience from Mai and Ty Lee and rivalry from Nyxa.",
       emotionalInterpretation: "Control is safety. Curiosity appears as challenge.",
       recentDevelopments: "Watching the dueling court from the gallery. Evaluating.",
@@ -818,7 +822,9 @@ export function createDevelopmentAdventure(): Adventure {
       triggers: ["Nyxa", "Nyx", "Ozai's second daughter"],
       priority: 56,
       currentState: "Restless, sharp, and hungry to be seen as more than Azula's spare shadow.",
-      thoughts: "If Setu is the court's new blade, Nyxa wants to know whether he cuts for her, Azula, or himself.",
+      thoughts: {
+        setu_loyalty: "turn0 → If Setu is the court's new blade, I want to know whether he cuts for me, Azula, or himself.",
+      },
       relationshipPressure: "Her rivalry with Azula turns every interaction with Setu into a test.",
       emotionalInterpretation: "Pride, loneliness, and ambition move too close together.",
       recentDevelopments: "Just called for another round in the dueling court. Enjoying the audience.",
@@ -833,7 +839,9 @@ export function createDevelopmentAdventure(): Adventure {
       triggers: ["Mai", "knives"],
       priority: 40,
       currentState: "Outwardly bored, privately attentive.",
-      thoughts: "Court drama is tedious until someone reaches for a knife without moving their hand.",
+      thoughts: {
+        court_tension: "turn0 → Court drama is tedious until someone reaches for a knife without moving their hand.",
+      },
       relationshipPressure: "Mai is loyal to the circle but skeptical of being used as scenery in royal games.",
       emotionalInterpretation: "Flat affect conceals exact judgment.",
       recentDevelopments: "Watching Setu, Azula, and Nyxa from a pillar in the dueling court.",
@@ -846,7 +854,9 @@ export function createDevelopmentAdventure(): Adventure {
       triggers: ["Ty Lee", "chi blocking"],
       priority: 40,
       currentState: "Warm, alert, and physically relaxed in a way that makes danger look harmless.",
-      thoughts: "People reveal themselves through breath before words.",
+      thoughts: {
+        breath_read: "turn0 → People reveal themselves through breath before words.",
+      },
       relationshipPressure: "Ty Lee balances friendship, survival, and the emotional weather around Azula.",
       emotionalInterpretation: "Brightness can be camouflage and kindness at the same time.",
       recentDevelopments: "Sitting cross-legged beside Mai, reading the dueling court's tension.",

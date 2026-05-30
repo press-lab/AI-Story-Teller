@@ -4,6 +4,7 @@ import type {
   AutoCard,
   AutoCardReviewItem,
   BrainEntry,
+  BrainPatch,
   BrainStateField,
   ComponentEntry,
   MemoryProposal,
@@ -83,28 +84,48 @@ function mergePatch<T extends { updatedAt: string }>(item: T, patch: Partial<T>)
 
 function updateBrainField(brain: BrainEntry, field: BrainStateField | undefined, text: string, mode: "append" | "replace"): BrainEntry {
   const targetField = field ?? "currentState";
-  const current = brain[targetField];
+  if (targetField === "thoughts") return brain; // thoughts is a Record — use APPLY_BRAIN_UPDATE instead
+  const current = brain[targetField] as string;
   const nextValue = mode === "append" ? [current, text].filter(Boolean).join("\n") : text;
   return touch({ ...brain, [targetField]: nextValue });
 }
 
+function mergeThoughts(existing: Record<string, string>, patch: Record<string, string | null>): Record<string, string> {
+  const next = { ...existing };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) { delete next[key]; } else { next[key] = value; }
+  }
+  return next;
+}
+
 function applyBrainUpdate(
   brain: BrainEntry,
-  patch: Partial<Record<BrainStateField, string>>,
+  patch: BrainPatch,
   mode: "replace" | "append" = "replace",
   turn?: number,
   preview?: string,
 ): BrainEntry {
   const timestamp = nowIso();
+  const { thoughts: thoughtsPatch, ...stringPatch } = patch;
+
+  const nextThoughts: Record<string, string> = thoughtsPatch
+    ? mode === "replace"
+      ? mergeThoughts({}, thoughtsPatch)
+      : mergeThoughts(brain.thoughts, thoughtsPatch)
+    : brain.thoughts;
+
   if (mode === "append") {
-    const perField: Partial<Record<BrainStateField, string>> = {};
-    for (const [key, value] of Object.entries(patch) as [BrainStateField, string][]) {
-      const existing = brain[key];
-      perField[key] = existing ? `${existing}\n${value}` : value;
+    const perField: Partial<Record<Exclude<BrainStateField, "thoughts">, string>> = {};
+    for (const [key, value] of Object.entries(stringPatch) as [Exclude<BrainStateField, "thoughts">, string][]) {
+      if (typeof value === "string") {
+        const existing = brain[key] as string;
+        perField[key] = existing ? `${existing}\n${value}` : value;
+      }
     }
     return touch({
       ...brain,
       ...perField,
+      thoughts: nextThoughts,
       lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
       lastUpdatedAt: timestamp,
       lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),
@@ -113,7 +134,8 @@ function applyBrainUpdate(
 
   return touch({
     ...brain,
-    ...patch,
+    ...stringPatch,
+    thoughts: nextThoughts,
     lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
     lastUpdatedAt: timestamp,
     lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),
@@ -263,9 +285,10 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   if (proposal.proposedType === "brainUpdate" && content.startsWith("{")) {
     try {
       const parsed = JSON.parse(content) as Record<string, unknown>;
-      const brainFields = new Set(["currentState", "thoughts", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"]);
-      const valid = Object.entries(parsed).some(([k, v]) => brainFields.has(k) && typeof v === "string" && (v as string).trim());
-      if (!valid) return null;
+      const stringFields = new Set(["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"]);
+      const hasString = Object.entries(parsed).some(([k, v]) => stringFields.has(k) && typeof v === "string" && (v as string).trim());
+      const hasThoughts = parsed.thoughts && typeof parsed.thoughts === "object" && !Array.isArray(parsed.thoughts) && Object.keys(parsed.thoughts as object).length > 0;
+      if (!hasString && !hasThoughts) return null;
     } catch {
       // Not JSON — allow as plain-text append (falls into recentDevelopments on apply)
     }
@@ -322,13 +345,18 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       return { storyCards: upsertById(state.storyCards, storyCard) };
     }
     // Content may be a JSON patch (from auto-update flow) or a plain string (from Remember This)
-    let parsedPatch: Partial<Record<BrainStateField, string>> | null = null;
+    let parsedPatch: BrainPatch | null = null;
     try {
       const parsed: unknown = JSON.parse(proposal.content);
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        const allowed: BrainStateField[] = ["currentState", "thoughts", "relationshipPressure", "emotionalInterpretation", "recentDevelopments"];
-        const entries = Object.entries(parsed as Record<string, unknown>).filter(([k, v]) => allowed.includes(k as BrainStateField) && typeof v === "string");
-        if (entries.length > 0) parsedPatch = Object.fromEntries(entries) as Partial<Record<BrainStateField, string>>;
+        const raw = parsed as Record<string, unknown>;
+        const patch: BrainPatch = {};
+        const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = ["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"];
+        for (const f of stringFields) { if (typeof raw[f] === "string") patch[f] = raw[f] as string; }
+        if (raw.thoughts && typeof raw.thoughts === "object" && !Array.isArray(raw.thoughts)) {
+          patch.thoughts = raw.thoughts as Record<string, string | null>;
+        }
+        if (Object.keys(patch).length > 0) parsedPatch = patch;
       }
     } catch {
       // Not JSON — fall through to plain-string append

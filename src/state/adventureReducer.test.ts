@@ -395,22 +395,23 @@ describe("adventureReducer", () => {
     expect(state.brains.find((entry) => entry.id === brain.id)?.pinned).toBe(true);
     state = reduce(state, { type: "UNPIN_BRAIN", brainId: brain.id });
     expect(state.brains.find((entry) => entry.id === brain.id)?.pinned).toBe(false);
-    state = reduce(state, { type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: "thinking" } });
-    expect(state.brains.find((entry) => entry.id === brain.id)?.thoughts).toBe("thinking");
+    state = reduce(state, { type: "UPDATE_BRAIN", brainId: brain.id, patch: { thoughts: { seed: "1 → thinking" } } });
+    expect(state.brains.find((entry) => entry.id === brain.id)?.thoughts).toEqual({ seed: "1 → thinking" });
+    // APPEND_BRAIN_STATE with field "thoughts" is a no-op (thoughts is a Record, not appendable by string)
     state = reduce(state, { type: "APPEND_BRAIN_STATE", brainId: brain.id, field: "thoughts", text: "more" });
-    expect(state.brains.find((entry) => entry.id === brain.id)?.thoughts).toBe("thinking\nmore");
+    expect(state.brains.find((entry) => entry.id === brain.id)?.thoughts).toEqual({ seed: "1 → thinking" });
     state = reduce(state, { type: "REPLACE_BRAIN_STATE", brainId: brain.id, field: "currentState", text: "steady" });
     expect(state.brains.find((entry) => entry.id === brain.id)?.currentState).toBe("steady");
     state = reduce(state, {
       type: "APPLY_BRAIN_UPDATE",
       brainId: brain.id,
-      patch: { thoughts: "generated" },
+      patch: { thoughts: { generated: "12 → generated thought" } },
       mode: "replace",
       turn: 12,
       preview: "preview",
     });
     expect(state.brains.find((entry) => entry.id === brain.id)).toMatchObject({
-      thoughts: "generated",
+      thoughts: { generated: "12 → generated thought" },
       lastUpdatedTurn: 12,
       lastGeneratedUpdatePreview: "preview",
     });

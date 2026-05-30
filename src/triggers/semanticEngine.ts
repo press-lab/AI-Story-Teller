@@ -2,7 +2,7 @@ import type {
   Adventure,
   AdventureAction,
   BrainEntry,
-  BrainStateField,
+  BrainPatch,
   ChatMessage,
   ComponentEntry,
   EvaluatedCondition,
@@ -72,38 +72,46 @@ function preview(text: string): string {
   return text.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 
-function defaultBrainPrompt(brain: BrainEntry): string {
+function defaultBrainPrompt(brain: BrainEntry, turn: number): string {
   const existing: string[] = [];
   if (brain.currentState?.trim()) existing.push(`currentState: ${brain.currentState}`);
-  if (brain.thoughts?.trim()) existing.push(`thoughts: ${brain.thoughts}`);
+  const thoughtEntries = Object.entries(brain.thoughts);
+  if (thoughtEntries.length > 0) {
+    existing.push(`thoughts (existing — do NOT repeat these):\n${thoughtEntries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`);
+  }
   if (brain.relationshipPressure?.trim()) existing.push(`relationshipPressure: ${brain.relationshipPressure}`);
   if (brain.emotionalInterpretation?.trim()) existing.push(`emotionalInterpretation: ${brain.emotionalInterpretation}`);
-  const stateBlock = existing.length > 0 ? `\n\nCurrent state:\n${existing.join("\n")}` : "";
-  return `You are tracking the inner observations of ${brain.characterName} based on what just happened.${stateBlock}
+  if (brain.recentDevelopments?.trim()) existing.push(`recentDevelopments: ${brain.recentDevelopments}`);
+  const stateBlock = existing.length > 0 ? `\n\nEstablished state — maintain this voice and psychology:\n${existing.join("\n")}` : "";
+  return `You are adding one new inner observation for ${brain.characterName} based on what just happened in the scene. Current turn: ${turn}.${stateBlock}
 
-Return ONLY valid JSON with any of these keys that need updating: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Only include keys that should change. Every value must be a plain string.
+Return ONLY valid JSON. Only include keys that actually changed.
 
-For "thoughts": write specific observations that ${brain.characterName} would form from this scene — naming actual characters, citing what was said or done, and noting what it means. Avoid vague emotional labels like "amused" or "guarded." Instead record what ${brain.characterName} concretely noticed: who did what, what it reveals, what it implies. Example: "Nyx is forcing this coldness because Ozai's council rattled her, but she can't hide the tension in her hands."`;
+For "thoughts": return an object where each key is a snake_case label and each value is "${turn} → first-person observation". Add ONE new thought entry. Optionally set one stale entry to null to delete it. Write in ${brain.characterName}'s own first-person voice from their specific vantage point — not a generic participant. Name actual people, cite what was said or done, say what it privately means. Never use generic labels ("excited", "focused", "intense").
+Example: { "thoughts": { "azula_evaluates_setu_power": "${turn} → Setu matched her escalation without flinching. That's either confidence or recklessness — I need to know which before I point him at something." } }
+
+Other updatable fields (plain strings): currentState, relationshipPressure, emotionalInterpretation, recentDevelopments.`;
 }
 
 const BRAIN_CONDENSE_THRESHOLD = 1600;
 
-function condenseBrainPrompt(brain: BrainEntry, fullThoughts: string, fullRecent: string): string {
-  return `You are condensing ${brain.characterName}'s tracked observations because they have grown too long.
+function condenseBrainPrompt(brain: BrainEntry, fullThoughts: Record<string, string>, fullRecent: string): string {
+  const thoughtsFormatted = Object.entries(fullThoughts).map(([k, v]) => `  ${k}: ${v}`).join("\n");
+  return `You are pruning ${brain.characterName}'s thought log because it has grown too long. Keep the 3-5 most important and still-relevant entries. Delete the rest by setting them to null.
+${brain.notes ? `\nExisting notes log (do NOT modify):\n${brain.notes}` : ""}
 
-Full thoughts to condense:
-${fullThoughts}
-${fullRecent ? `\nFull recent developments to condense:\n${fullRecent}` : ""}
-${brain.notes ? `\nExisting notes log (do NOT modify, just reference):\n${brain.notes}` : ""}
+Current thought entries:
+${thoughtsFormatted}
+${fullRecent ? `\nRecent developments to condense:\n${fullRecent}` : ""}
 
 Return ONLY valid JSON:
 {
-  "thoughts": "condensed to 3-5 specific, named observations — keep exact character names and concrete details, drop resolved or repeated items",
+  "thoughts": { "key_to_keep": "${brain.lastUpdatedTurn ?? 0} → text unchanged", "key_to_delete": null },
   "recentDevelopments": "condensed to 1-3 items if applicable, otherwise omit this key",
   "notes": "one short line summarizing what was compressed, e.g. \\"Compressed turns 40-80: garden walk, cellar tension, council aftermath\\""
 }
 
-The notes value gets appended to the permanent notes log. Keep it as a brief reference, not full content.`;
+Keep all values in first-person voice. The notes value gets appended to the permanent log.`;
 }
 
 function storyCardPrompt(card: StoryCard): string {
@@ -339,47 +347,30 @@ async function sendTargetedUpdate(
   return stripThinkTags(response.content);
 }
 
-function sanitizeBrainPatch(value: unknown): Partial<Record<BrainStateField, string>> {
-  if (!value || typeof value !== "object") return {};
-  const allowed: BrainStateField[] = [
-    "currentState",
-    "thoughts",
-    "relationshipPressure",
-    "emotionalInterpretation",
-    "recentDevelopments",
-    "notes",
-  ];
+function sanitizeBrainPatch(value: unknown): BrainPatch {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const result: BrainPatch = {};
 
-  function stringifyValue(item: unknown): string | undefined {
-    if (typeof item === "string") return item.trim() || undefined;
-    if (typeof item === "number" || typeof item === "boolean") return String(item);
-    if (Array.isArray(item)) {
-      const text = item
-        .map((entry) => stringifyValue(entry))
-        .filter(Boolean)
-        .join("; ");
-      return text || undefined;
-    }
-    if (item && typeof item === "object") {
-      const text = Object.entries(item as Record<string, unknown>)
-        .map(([key, entry]) => {
-          const valueText = stringifyValue(entry);
-          return valueText ? `${key}: ${valueText}` : undefined;
-        })
-        .filter(Boolean)
-        .join("; ");
-      return text || undefined;
-    }
-    return undefined;
+  const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = [
+    "currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes",
+  ];
+  for (const field of stringFields) {
+    const item = raw[field];
+    if (typeof item === "string" && item.trim()) result[field] = item.trim();
   }
 
-  return Object.fromEntries(
-    allowed.flatMap((key) => {
-      const item = (value as Record<string, unknown>)[key];
-      const text = stringifyValue(item);
-      return text ? [[key, text]] : [];
-    }),
-  ) as Partial<Record<BrainStateField, string>>;
+  const thoughtsRaw = raw["thoughts"];
+  if (thoughtsRaw && typeof thoughtsRaw === "object" && !Array.isArray(thoughtsRaw)) {
+    const thoughtsPatch: Record<string, string | null> = {};
+    for (const [k, v] of Object.entries(thoughtsRaw as Record<string, unknown>)) {
+      if (v === null) { thoughtsPatch[k] = null; }
+      else if (typeof v === "string" && v.trim()) { thoughtsPatch[k] = v.trim(); }
+    }
+    if (Object.keys(thoughtsPatch).length > 0) result.thoughts = thoughtsPatch;
+  }
+
+  return result;
 }
 
 function makeProposal(
@@ -424,7 +415,7 @@ async function generatedActionsFor(
     if (triggerAction.type === "updateBrain" || triggerAction.type === "appendBrain") {
       const brain = adventure.brains.find((entry) => entry.id === triggerAction.brainId);
       if (!brain) return { actions: [], error: `Brain not found: ${triggerAction.brainId}` };
-      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain), accum);
+      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain, adventure.activeState.turn), accum);
       const patch = sanitizeBrainPatch(parseJsonResponse<unknown>(raw));
       if (Object.keys(patch).length === 0) return { actions: [], error: `Brain update returned no recognized keys for ${brain.characterName}.` };
       if (requireApproval) {
@@ -439,19 +430,20 @@ async function generatedActionsFor(
       }
       const updateMode = triggerAction.type === "appendBrain" ? "append" : brain.updateMode;
       // Simulate post-update state to check condense threshold
-      const postThoughts = updateMode === "append"
-        ? [brain.thoughts, patch.thoughts].filter(Boolean).join("\n")
-        : (patch.thoughts ?? brain.thoughts ?? "");
+      const postThoughtsRecord: Record<string, string> = updateMode === "append"
+        ? Object.fromEntries([...Object.entries(brain.thoughts), ...Object.entries(patch.thoughts ?? {}).filter(([, v]) => v !== null)] as [string, string][])
+        : Object.fromEntries(Object.entries(patch.thoughts ?? brain.thoughts).filter(([, v]) => v !== null) as [string, string][]);
       const postRecent = updateMode === "append"
         ? [brain.recentDevelopments, patch.recentDevelopments].filter(Boolean).join("\n")
         : (patch.recentDevelopments ?? brain.recentDevelopments ?? "");
-      const condenseNeeded = (postThoughts.length + postRecent.length) > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
+      const postThoughtsText = Object.values(postThoughtsRecord).join("\n");
+      const condenseNeeded = (postThoughtsText.length + postRecent.length) > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
       if (condenseNeeded) {
-        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughts, postRecent), accum);
+        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughtsRecord, postRecent), accum);
         const condensed = sanitizeBrainPatch(parseJsonResponse<unknown>(condensedRaw));
         if (Object.keys(condensed).length > 0) {
           const notesEntry = condensed.notes;
-          const finalPatch: Partial<Record<BrainStateField, string>> = {
+          const finalPatch: BrainPatch = {
             ...condensed,
             notes: [brain.notes, notesEntry].filter(Boolean).join("\n") || undefined,
           };
