@@ -307,9 +307,10 @@ export function SettingsPage({
         </article>
 
         {/* ── Context Budget (advanced) ─────────────── */}
-        {advanced && adventure && (
+        {advanced && (
           <article className="panel" style={{ gridColumn: "1 / -1" }}>
             <h3>Context Budget</h3>
+            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
               <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
               <button type="button" title="16k tokens, 40 messages — balanced default" onClick={() => updateBudget(defaultTokenBudgetSettings)}>Normal</button>
@@ -387,13 +388,15 @@ export function SettingsPage({
                 </Field>
               </div>
             </div>
+            </>}
           </article>
         )}
 
         {/* ── LLM Evaluation (advanced) ─────────────── */}
-        {advanced && adventure && (
+        {advanced && (
           <article className="panel">
             <h3>LLM Evaluation</h3>
+            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <Field label="Evaluation Model Override">
               <input
                 value={adventure.semanticEvaluationSettings.evaluationModel}
@@ -485,13 +488,15 @@ export function SettingsPage({
                 }
               />
             </Field>
+            </>}
           </article>
         )}
 
         {/* ── Auto-Cards (advanced) ─────────────────── */}
-        {advanced && adventure && (
+        {advanced && (
           <article className="panel">
             <h3>Auto-Cards</h3>
+            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <CheckboxField label="Enable Auto-Cards" checked={adventure.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
             <Field label="Detection Condition">
               <textarea
@@ -514,13 +519,15 @@ export function SettingsPage({
                 onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
               />
             </Field>
+            </>}
           </article>
         )}
 
         {/* ── Memory Detection (advanced) ───────────── */}
-        {advanced && adventure && (
+        {advanced && (
           <article className="panel">
             <h3>Memory Detection</h3>
+            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <p className="muted">
               After each turn, use the evaluation model to detect new durable facts worth storing as memory proposals.
               The pre-filter skips the call when nothing novel is detected.
@@ -552,6 +559,7 @@ export function SettingsPage({
                 </p>
               </>
             )}
+            </>}
           </article>
         )}
 
