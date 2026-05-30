@@ -113,6 +113,23 @@ export function useAdventureRuntime(
     applyActionsAndPersist(result.actions);
   }
 
+  async function startAutoSceneState(adventureState: Adventure) {
+    try {
+      const { messages: sceneMessages } = buildSceneStatePayload(adventureState);
+      const response = await sendOpenAICompatibleChatCompletion({
+        config: mergeProviderConfig(adventureState, providerSettingsRef.current),
+        messages: sceneMessages,
+      });
+      if (isSubmittingRef.current) {
+        queuePendingUpdate([{ type: "UPDATE_SCENE_STATE", content: response.content }], "autoSceneState");
+        return;
+      }
+      applyActionsAndPersist([{ type: "UPDATE_SCENE_STATE", content: response.content }]);
+    } catch {
+      // silent — auto scene state is best-effort
+    }
+  }
+
   async function startAutoSummary(adventureState: Adventure) {
     try {
       const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventureState);
@@ -180,6 +197,7 @@ export function useAdventureRuntime(
       isSubmittingRef.current = false;
       if (mode !== "comms") {
         void startSemanticEvaluation(next);
+        void startAutoSceneState(next);
         checkAutoSummary(next);
       }
     } catch (providerError) {
@@ -223,6 +241,7 @@ export function useAdventureRuntime(
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
+      void startAutoSceneState(next);
       checkAutoSummary(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
@@ -264,6 +283,7 @@ export function useAdventureRuntime(
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
+      void startAutoSceneState(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Regeneration failed.");
       setAdventure(next);

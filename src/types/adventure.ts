@@ -363,7 +363,7 @@ export interface EvaluationLogEntry {
 export interface PendingAdventureUpdate {
   id: string;
   createdAt: ISODateString;
-  source: "semanticEvaluation" | "autoSummary" | "manual";
+  source: "semanticEvaluation" | "autoSummary" | "autoSceneState" | "manual";
   actions: AdventureAction[];
 }
 
