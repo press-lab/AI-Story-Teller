@@ -83,7 +83,7 @@ export const defaultAutoCardSettings: AutoCardSettings = {
   detectionCondition:
     "when a new named character, location, organization, or significant object is introduced that doesn't already have a story card",
   generationPrompt:
-    'Based on the story, a new entity or fact worth remembering has appeared. Write a concise story card for it. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
+    'A new entity worth remembering has appeared in the story. Write a story card for it. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary or scene-specific observations, imitate the story\'s writing style and tone. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
   cooldownTurns: 3,
 };
 

@@ -1012,7 +1012,7 @@ export function createDevelopmentAdventure(): Adventure {
       detectionCondition:
         "when a new named adult character, location, organization, military unit, faction, or significant object is introduced that does not already have a Story Card",
       generationPrompt:
-        'Based on the story, a new durable entity or fact worth remembering has appeared. Write a concise Story Card for it. Return ONLY valid JSON: {"title": string, "content": string, "keys": string}.',
+        'A new entity worth remembering has appeared in the story. Write a Story Card for it in Avatar: The Last Airbender AU voice — adult Fire Nation tone, specific and grounded. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary scene observations, imitate the story\'s writing style. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
       cooldownTurns: 3,
     },
     tokenBudgetSettings: {
