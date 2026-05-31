@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
-import { detectMemoryFromTurn } from "../memory/memoryDetection";
+import { detectMemoryFromTurn, regenerateProposalContent } from "../memory/memoryDetection";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -433,6 +433,15 @@ export function useAdventureRuntime(
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
   }
 
+  async function regenerateMemoryProposal(proposalId: string): Promise<void> {
+    if (!adventure) return;
+    const proposal = adventure.activeState.memoryProposals.find((p) => p.id === proposalId);
+    if (!proposal) return;
+    const newContent = await regenerateProposalContent(proposal, adventure, activeProviderConfig);
+    if (!newContent) return;
+    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, updatedAt: new Date().toISOString() } }]);
+  }
+
   async function generateDurableSummary(): Promise<string> {
     if (!adventure) throw new Error("No adventure loaded.");
     const { messages: summaryMessages } = buildRollingSummaryPayload(adventure);
@@ -470,6 +479,7 @@ export function useAdventureRuntime(
     suggestPlotUpdates,
     suggestCardUpdates,
     auditStoryCards,
+    regenerateMemoryProposal,
     generateDurableSummary,
     generateSceneState,
     applyActionsAndPersist,

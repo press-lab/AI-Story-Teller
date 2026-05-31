@@ -346,7 +346,7 @@ export default function App() {
       case "summary":
         return <SummaryPage {...common} onGenerateDurableSummary={runtime.generateDurableSummary} onGenerateSceneState={runtime.generateSceneState} />;
       case "memoryInbox":
-        return <MemoryInboxPage {...common} />;
+        return <MemoryInboxPage {...common} onRegenerateProposal={runtime.regenerateMemoryProposal} />;
       case "cloudSaves":
         return (
           <CloudSavesPage

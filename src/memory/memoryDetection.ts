@@ -140,3 +140,23 @@ export async function detectMemoryFromTurn(
 
   return { type: "ADD_MEMORY_PROPOSAL", proposal };
 }
+
+export async function regenerateProposalContent(
+  proposal: MemoryProposal,
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+): Promise<string> {
+  const systemPrompt = `You are a world-memory assistant for an interactive fiction game.
+The user has a memory suggestion they want better content for.
+Write improved content for the suggestion titled "${proposal.title}" (type: ${proposal.proposedType}).
+Source text from the story: ${proposal.sourceText}
+${proposal.proposedType === "storyCard" ? 'Format: bullet points using the • character, one per line, no title in the body.' : 'Format: the full replacement text for the plot essentials block.'}
+Respond with ONLY the content — no JSON, no preamble, no labels.`;
+
+  const response = await sendOpenAICompatibleChatCompletion({
+    config: resolvedProviderConfig(adventure, providerConfig),
+    messages: [{ role: "user", content: systemPrompt }],
+  });
+
+  return response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}

@@ -7,7 +7,11 @@ import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./s
 
 const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "summaryUpdate", "ignore"];
 
-export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
+interface MemoryInboxPageProps extends AdventurePageProps {
+  onRegenerateProposal?: (proposalId: string) => Promise<void>;
+}
+
+export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: MemoryInboxPageProps) {
   const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const pending = allProposals.filter((p) => p.status === "pending");
   const resolved = allProposals.filter((p) => p.status !== "pending");
@@ -88,7 +92,7 @@ export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
       <div className="list">
         {pending.length === 0 && <p className="muted">No pending memory suggestions.</p>}
         {pending.map((proposal) => (
-          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} />
+          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
         ))}
       </div>
 
@@ -97,7 +101,7 @@ export function MemoryInboxPage({ adventure, dispatch }: AdventurePageProps) {
           <summary>History ({resolved.length})</summary>
           <div className="list" style={{ marginTop: "0.75rem" }}>
             {resolved.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} />
+              <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
             ))}
           </div>
         </details>
@@ -110,10 +114,19 @@ interface ProposalCardProps {
   proposal: MemoryProposal;
   dispatch: AdventurePageProps["dispatch"];
   onUpdate: (proposal: MemoryProposal, patch: Partial<MemoryProposal>) => void;
+  onRegenerate?: (proposalId: string) => Promise<void>;
 }
 
-function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
+function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCardProps) {
   const isPending = proposal.status === "pending";
+  const [regenerating, setRegenerating] = useState(false);
+
+  async function handleRegenerate() {
+    if (!onRegenerate || regenerating) return;
+    setRegenerating(true);
+    try { await onRegenerate(proposal.id); } finally { setRegenerating(false); }
+  }
+
   return (
     <article key={proposal.id} className={`card proposal-card proposal-${proposal.status}`}>
       <div className="panel-heading">
@@ -137,6 +150,11 @@ function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
           </button>
           {isPending && (
             <>
+              {onRegenerate && (
+                <button type="button" disabled={regenerating} onClick={handleRegenerate}>
+                  {regenerating ? "…" : "Regenerate"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => dispatch({ type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id })}
