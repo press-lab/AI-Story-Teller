@@ -370,6 +370,11 @@ export function PlayPage({
             ↓
           </button>
         )}
+        {loading && (
+          <div className="transcript-typing-indicator" aria-label="Generating…">
+            <span /><span /><span />
+          </div>
+        )}
         </div>
 
         {/* Compact tool strip — visible on tablet/mobile, hidden on desktop */}
