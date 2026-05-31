@@ -46,11 +46,26 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
 interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
-  onRegeneratePlotEssentials?: (componentId: string) => Promise<void>;
+  onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
 }
 
 export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
+  const [pePreview, setPePreview] = useState<Record<string, string>>({});
+  const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
+
+  async function handleRegeneratePE(componentId: string) {
+    if (!onRegeneratePlotEssentials || peRegenerating) return;
+    setPeRegenerating(componentId);
+    try {
+      const result = await onRegeneratePlotEssentials(componentId);
+      setPePreview((prev) => ({ ...prev, [componentId]: result }));
+    } catch {
+      // silent — user can retry
+    } finally {
+      setPeRegenerating(null);
+    }
+  }
   const existingTypes = new Set(adventure.components.map((c) => c.type));
   const hasActivePlotEssentials = adventure.components.some((c) => c.type === "plotEssentials" && c.active);
 
@@ -141,6 +156,15 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: event.target.value } })}
                 />
               </Field>
+              {pePreview[component.id] !== undefined && (
+                <Field label="Regenerated (review before applying)">
+                  <textarea
+                    rows={6}
+                    value={pePreview[component.id]}
+                    onChange={(event) => setPePreview((prev) => ({ ...prev, [component.id]: event.target.value }))}
+                  />
+                </Field>
+              )}
               <div className="grid four">
                 <Field label="Priority (higher loads first)">
                   <NumberInput
@@ -212,12 +236,31 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
                   <button
                     type="button"
-                    disabled={loading}
-                    onClick={() => onRegeneratePlotEssentials(component.id)}
+                    disabled={!!peRegenerating}
+                    onClick={() => handleRegeneratePE(component.id)}
                     title="Ask the AI to consolidate and rewrite Plot Essentials, removing resolved events and keeping active state."
                   >
-                    {loading ? "Generating…" : "Regenerate"}
+                    {peRegenerating === component.id ? "Generating…" : "Regenerate"}
                   </button>
+                )}
+                {pePreview[component.id] !== undefined && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: pePreview[component.id] } });
+                        setPePreview((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== component.id)));
+                      }}
+                    >
+                      Apply
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPePreview((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== component.id)))}
+                    >
+                      Discard
+                    </button>
+                  </>
                 )}
                 <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
                   Delete

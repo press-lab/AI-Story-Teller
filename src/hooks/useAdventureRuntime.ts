@@ -442,10 +442,10 @@ export function useAdventureRuntime(
     applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, updatedAt: new Date().toISOString() } }]);
   }
 
-  async function regeneratePlotEssentials(componentId: string): Promise<void> {
-    if (!adventure) return;
+  async function regeneratePlotEssentials(componentId: string): Promise<string> {
+    if (!adventure) throw new Error("No adventure loaded.");
     const component = adventure.components.find((c) => c.id === componentId && c.type === "plotEssentials");
-    if (!component) return;
+    if (!component) throw new Error("Plot Essentials component not found.");
     const recentTurns = adventure.messages.slice(-20).map((m) => `${m.role}: ${m.content}`).join("\n");
     const systemPrompt = `You are maintaining plot essentials for an interactive fiction game.
 Current plot essentials:
@@ -463,9 +463,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
       config: activeProviderConfig,
       messages: [{ role: "user", content: systemPrompt }],
     });
-    const newContent = response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-    if (!newContent) return;
-    applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: { content: newContent } }]);
+    return response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   }
 
   async function generateDurableSummary(): Promise<string> {
