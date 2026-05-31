@@ -29,7 +29,7 @@ function hasNovelSignal(adventure: Adventure, text: string): boolean {
     ...adventure.brains.map((b) => b.characterName.toLowerCase()),
     ...adventure.brains.flatMap((b) => b.aliases.map((a) => a.toLowerCase())),
     ...adventure.activeState.memoryProposals
-      .filter((p) => p.status === "rejected" || p.status === "ignored")
+      .filter((p) => p.status === "rejected")
       .map((p) => p.title.toLowerCase()),
   ]);
 

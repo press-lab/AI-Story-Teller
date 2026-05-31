@@ -115,7 +115,7 @@ interface ProposalCardProps {
 function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
   const isPending = proposal.status === "pending";
   return (
-    <article key={proposal.id} className="card">
+    <article key={proposal.id} className={`card proposal-card proposal-${proposal.status}`}>
       <div className="panel-heading">
         <div className="suggestion-meta">
           <p className="eyebrow">
@@ -131,26 +131,27 @@ function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
         <div className="row">
           <button
             type="button"
-            disabled={!isPending}
             onClick={() => dispatch({ type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id })}
           >
             Approve
           </button>
-          <button
-            type="button"
-            disabled={!isPending}
-            onClick={() => dispatch({ type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id })}
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            className="danger"
-            disabled={!isPending}
-            onClick={() => dispatch({ type: "IGNORE_MEMORY_PROPOSAL", proposalId: proposal.id })}
-          >
-            Ignore
-          </button>
+          {isPending && (
+            <>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "REJECT_MEMORY_PROPOSAL", proposalId: proposal.id })}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className="danger"
+                onClick={() => dispatch({ type: "IGNORE_MEMORY_PROPOSAL", proposalId: proposal.id })}
+              >
+                Ignore
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -159,7 +160,7 @@ function ProposalCard({ proposal, dispatch, onUpdate }: ProposalCardProps) {
         value={proposal.content}
         onChange={(event) => onUpdate(proposal, { content: event.target.value })}
         placeholder="Proposed content..."
-        disabled={!isPending}
+        disabled={proposal.status === "approved"}
       />
 
       <details>

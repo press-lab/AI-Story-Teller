@@ -559,6 +559,14 @@ pre {
   margin: 0 0 6px;
 }
 
+.proposal-approved { border-left: 3px solid #4ade80; }
+.proposal-rejected { border-left: 3px solid #f87171; }
+.proposal-ignored  { border-left: 3px solid var(--border); opacity: 0.7; }
+.proposal-pending  { border-left: 3px solid transparent; }
+
+:root.dark-mode .proposal-approved { border-left-color: #16a34a; }
+:root.dark-mode .proposal-rejected { border-left-color: #b91c1c; }
+
 .panel-heading h3 {
   margin: 0;
 }
