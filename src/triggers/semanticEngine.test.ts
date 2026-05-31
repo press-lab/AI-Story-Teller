@@ -356,7 +356,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(proposal).toMatchObject({ proposedType: "plotEssentialsUpdate", status: "pending", targetId: "component-plot" });
 
     reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.components[0].content).toBe("The Fire Nation court now expects a public duel.");
+    expect(reduced.components[0].content).toBe("Old premise.\nThe Fire Nation court now expects a public duel.");
   });
 });
 
