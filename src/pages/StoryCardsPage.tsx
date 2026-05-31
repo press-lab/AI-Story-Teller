@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ContextInclusionPolicy, StoryCard, StoryCardType, TriggerMatchType } from "../types/adventure";
+import type { AuditRecommendation } from "../memory/storyCardAudit";
 import { makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, commaList, contentSnippet, fromCommaList } from "./shared";
@@ -52,14 +53,71 @@ function sortCards(cards: StoryCard[], mode: SortMode): StoryCard[] {
 interface StoryCardsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestCardUpdates?: () => Promise<void>;
+  onAuditStoryCards?: (nTurns: number) => Promise<AuditRecommendation[]>;
 }
 
-export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpdates }: StoryCardsPageProps) {
+type AuditState = {
+  status: "running" | "done" | "error";
+  recommendations: AuditRecommendation[];
+  errorMessage?: string;
+};
+
+export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpdates, onAuditStoryCards }: StoryCardsPageProps) {
   const [importText, setImportText] = useState("");
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [search, setSearch] = useState("");
+  const [auditTurns, setAuditTurns] = useState(20);
+  const [audit, setAudit] = useState<AuditState | null>(null);
   const newCardRef = useRef<HTMLDetailsElement | null>(null);
+
+  function updateRec(id: string, patch: Partial<AuditRecommendation>) {
+    setAudit((prev) => prev && {
+      ...prev,
+      recommendations: prev.recommendations.map((r) => r.id === id ? { ...r, ...patch } : r),
+    });
+  }
+
+  function approveRec(rec: AuditRecommendation) {
+    if (rec.action === "delete" && rec.cardId) {
+      dispatch({ type: "DELETE_STORY_CARD", storyCardId: rec.cardId });
+    } else if (rec.action === "edit" && rec.cardId) {
+      dispatch({
+        type: "UPDATE_STORY_CARD",
+        storyCardId: rec.cardId,
+        patch: {
+          content: rec.editedContent,
+          keys: rec.editedKeys.split(",").map((k) => k.trim()).filter(Boolean),
+        },
+      });
+    } else if (rec.action === "create") {
+      const validTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
+      const type: StoryCardType = validTypes.has(rec.suggestedType as StoryCardType)
+        ? (rec.suggestedType as StoryCardType)
+        : "custom";
+      dispatch({
+        type: "UPSERT_STORY_CARD",
+        storyCard: makeStoryCard({
+          title: rec.title,
+          content: rec.editedContent,
+          keys: rec.editedKeys.split(",").map((k) => k.trim()).filter(Boolean),
+          type,
+        }),
+      });
+    }
+    updateRec(rec.id, { decision: "approved" });
+  }
+
+  async function runAudit() {
+    if (!onAuditStoryCards) return;
+    setAudit({ status: "running", recommendations: [] });
+    try {
+      const recs = await onAuditStoryCards(auditTurns);
+      setAudit({ status: "done", recommendations: recs });
+    } catch (err) {
+      setAudit({ status: "error", recommendations: [], errorMessage: err instanceof Error ? err.message : "Audit failed." });
+    }
+  }
 
   useEffect(() => {
     if (!newCardId || !newCardRef.current) return;
@@ -127,6 +185,30 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
             {loading ? "Generating…" : "Suggest Updates"}
           </button>
         )}
+        {onAuditStoryCards && (
+          <span className="audit-trigger">
+            <button
+              type="button"
+              disabled={loading || audit?.status === "running"}
+              onClick={runAudit}
+              title="Review all story cards and get AI recommendations to edit, delete, or create cards."
+            >
+              {audit?.status === "running" ? "Auditing…" : "Audit Cards"}
+            </button>
+            <span className="audit-turns-wrap">
+              last
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={auditTurns}
+                onChange={(e) => setAuditTurns(Math.max(1, Number(e.target.value)))}
+                className="audit-turns-input"
+              />
+              turns
+            </span>
+          </span>
+        )}
         <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
           Copy Story Cards JSON
         </button>
@@ -157,6 +239,70 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
       </details>
 
       {groups.length === 0 && <p className="muted">No story cards yet.</p>}
+
+      {audit && audit.status !== "running" && (
+        <div className="audit-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setAudit(null); }}>
+          <div className="audit-modal">
+            <div className="audit-modal-header">
+              <h3>Story Card Audit</h3>
+              <button type="button" className="audit-modal-close" onClick={() => setAudit(null)}>✕</button>
+            </div>
+
+            {audit.status === "error" && (
+              <p className="audit-error">{audit.errorMessage}</p>
+            )}
+
+            {audit.status === "done" && audit.recommendations.length === 0 && (
+              <p className="muted">No changes recommended — your story cards look good.</p>
+            )}
+
+            {audit.recommendations.map((rec) => (
+              <div key={rec.id} className={`audit-rec ${rec.decision !== "pending" ? `audit-rec-${rec.decision}` : ""}`}>
+                <div className="audit-rec-header">
+                  <span className={`audit-badge audit-badge-${rec.action}`}>{rec.action.toUpperCase()}</span>
+                  <span className="audit-rec-title">{rec.title}</span>
+                  {rec.decision !== "pending" && (
+                    <span className={`audit-badge audit-badge-decision-${rec.decision}`}>{rec.decision}</span>
+                  )}
+                </div>
+                <p className="audit-rec-rationale">{rec.rationale}</p>
+
+                {rec.action !== "delete" && rec.decision === "pending" && (
+                  <div className="audit-rec-fields">
+                    <label className="field">
+                      <span>Content</span>
+                      <textarea
+                        rows={5}
+                        value={rec.editedContent}
+                        onChange={(e) => updateRec(rec.id, { editedContent: e.target.value })}
+                        spellCheck={false}
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Keys (comma-separated)</span>
+                      <input
+                        value={rec.editedKeys}
+                        onChange={(e) => updateRec(rec.id, { editedKeys: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {rec.decision === "pending" && (
+                  <div className="audit-rec-actions">
+                    <button type="button" onClick={() => approveRec(rec)}>Approve</button>
+                    <button type="button" className="danger" onClick={() => updateRec(rec.id, { decision: "rejected" })}>Reject</button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="audit-modal-footer">
+              <button type="button" onClick={() => setAudit(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {groups.map(({ type, cards }) => (
         <div key={type} className="card-group">

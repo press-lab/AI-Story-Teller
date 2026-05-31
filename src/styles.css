@@ -2073,6 +2073,208 @@ mark.search-highlight {
   line-height: 1.4;
 }
 
+/* ── Audit trigger (button + turns inline) ───────────── */
+
+.audit-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.audit-turns-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.audit-turns-input {
+  width: 3.5rem;
+  text-align: center;
+  padding: 2px 4px;
+}
+
+/* ── Audit modal ─────────────────────────────────────── */
+
+.audit-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px 24px;
+  overflow-y: auto;
+}
+
+.audit-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.audit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.audit-modal-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.audit-modal-close:hover {
+  background: var(--surface-soft);
+  color: var(--label);
+}
+
+.audit-modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.audit-error {
+  padding: 12px 20px;
+  color: var(--danger, #c0392b);
+  font-size: 13px;
+}
+
+.audit-rec {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.audit-rec:last-of-type {
+  border-bottom: none;
+}
+
+.audit-rec-approved {
+  opacity: 0.6;
+}
+
+.audit-rec-rejected {
+  opacity: 0.45;
+}
+
+.audit-rec-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+
+.audit-rec-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.audit-badge {
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.audit-badge-edit {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+.audit-badge-delete {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.audit-badge-create {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.audit-badge-decision-approved {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.audit-badge-decision-rejected {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.audit-rec-rationale {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.audit-rec-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.audit-rec-actions {
+  display: flex;
+  gap: 8px;
+}
+
+:root.dark-mode .audit-badge-edit {
+  background: #1e3a5f;
+  color: #93c5fd;
+  border-color: #1d4ed8;
+}
+
+:root.dark-mode .audit-badge-delete {
+  background: #4c1515;
+  color: #fca5a5;
+  border-color: #b91c1c;
+}
+
+:root.dark-mode .audit-badge-create {
+  background: #14381f;
+  color: #86efac;
+  border-color: #15803d;
+}
+
+:root.dark-mode .audit-badge-decision-approved {
+  background: #14381f;
+  color: #86efac;
+  border-color: #15803d;
+}
+
 /* ── Component type hint ─────────────────────────────── */
 
 .component-type-hint {

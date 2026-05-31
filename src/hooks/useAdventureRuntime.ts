@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { detectMemoryFromTurn } from "../memory/memoryDetection";
+import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
 import { buildRollingSummaryPayload, buildSceneStatePayload } from "../state/rollingSummary";
@@ -427,6 +428,11 @@ export function useAdventureRuntime(
     }
   }
 
+  async function auditStoryCards(nTurns: number): Promise<AuditRecommendation[]> {
+    if (!adventure) return [];
+    return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
+  }
+
   async function generateDurableSummary(): Promise<string> {
     if (!adventure) throw new Error("No adventure loaded.");
     const { messages: summaryMessages } = buildRollingSummaryPayload(adventure);
@@ -463,6 +469,7 @@ export function useAdventureRuntime(
     generateAutoCardNow,
     suggestPlotUpdates,
     suggestCardUpdates,
+    auditStoryCards,
     generateDurableSummary,
     generateSceneState,
     applyActionsAndPersist,
