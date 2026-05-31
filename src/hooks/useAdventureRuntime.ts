@@ -62,7 +62,7 @@ export function useAdventureRuntime(
   const queuedUpdatesRef = useRef<PendingAdventureUpdate[]>([]);
   const wasHiddenRef = useRef(false);
   const pendingRetryRef = useRef(false);
-  const continueTurnRef = useRef<() => Promise<void>>();
+  const continueTurnRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   useEffect(() => { adventureRef.current = adventure; }, [adventure]);
   useEffect(() => { providerSettingsRef.current = providerSettings; }, [providerSettings]);
