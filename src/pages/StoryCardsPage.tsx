@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ContextInclusionPolicy, StoryCard, StoryCardType, TriggerMatchType } from "../types/adventure";
 import { makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, commaList, contentSnippet, fromCommaList } from "./shared";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
@@ -18,11 +18,12 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 
 type SortMode = "alpha" | "recent";
 
-function CardSummary({ card }: { card: StoryCard }) {
-  const keyPreview = card.keys.slice(0, 4).join(", ");
+function CardSummary({ card, query }: { card: StoryCard; query: string }) {
+  const keyPreview = card.keys.slice(0, 4);
+  const snippet = contentSnippet(card.content, query);
   return (
     <span className="story-card-summary">
-      <span className="story-card-title">{card.title}</span>
+      <span className="story-card-title"><Highlight text={card.title} query={query} /></span>
       <span className="story-card-badges">
         <span className="badge badge-type">{TYPE_LABELS[card.type]}</span>
         {!card.active && <span className="badge badge-inactive">Inactive</span>}
@@ -30,7 +31,13 @@ function CardSummary({ card }: { card: StoryCard }) {
         {card.protected && <span className="badge badge-protected">Protected</span>}
         {card.priority > 0 && <span className="badge badge-priority">p{card.priority}</span>}
       </span>
-      {keyPreview && <span className="story-card-keys muted">{keyPreview}{card.keys.length > 4 ? "…" : ""}</span>}
+      {keyPreview.length > 0 && (
+        <span className="story-card-keys muted">
+          {keyPreview.map((k, i) => <span key={k}>{i > 0 && ", "}<Highlight text={k} query={query} /></span>)}
+          {card.keys.length > 4 ? "…" : ""}
+        </span>
+      )}
+      {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>
   );
 }
@@ -157,7 +164,7 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
           <div className="list">
             {cards.map((card) => (
               <details key={card.id} ref={card.id === newCardId ? newCardRef : null} className="card story-card-item">
-                <summary><CardSummary card={card} /></summary>
+                <summary><CardSummary card={card} query={searchLower} /></summary>
 
                 <div className="editor-card">
                   <div className="grid two">

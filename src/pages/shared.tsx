@@ -76,6 +76,28 @@ export function JsonTextarea<T>({
   return <textarea rows={rows} defaultValue={JSON.stringify(value, null, 2)} onBlur={handleBlur} spellCheck={false} />;
 }
 
+export function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? <mark key={i} className="search-highlight">{part}</mark> : part,
+      )}
+    </>
+  );
+}
+
+export function contentSnippet(content: string, query: string, context = 60): string {
+  if (!query) return "";
+  const idx = content.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return "";
+  const start = Math.max(0, idx - context);
+  const end = Math.min(content.length, idx + query.length + context);
+  return (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");
+}
+
 export function commaList(value: string[]): string {
   return value.join(", ");
 }

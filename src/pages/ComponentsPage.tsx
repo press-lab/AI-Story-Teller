@@ -1,7 +1,8 @@
+import { useState } from "react";
 import type { ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
 import { makeComponent } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, NumberInput } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, contentSnippet } from "./shared";
 
 const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "authorNote"]);
 
@@ -26,16 +27,18 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
 
-function ComponentSummary({ component }: { component: ComponentEntry }) {
+function ComponentSummary({ component, query }: { component: ComponentEntry; query: string }) {
+  const snippet = contentSnippet(component.content, query);
   return (
     <span className="story-card-summary">
-      <span className="story-card-title">{TYPE_LABELS[component.type]}</span>
+      <span className="story-card-title"><Highlight text={TYPE_LABELS[component.type]} query={query} /></span>
       <span className="story-card-badges">
         {!component.active && <span className="badge badge-inactive">Inactive</span>}
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
         {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
       </span>
+      {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>
   );
 }
@@ -46,12 +49,21 @@ interface ComponentsPageProps extends AdventurePageProps {
 }
 
 export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates }: ComponentsPageProps) {
+  const [search, setSearch] = useState("");
   const existingTypes = new Set(adventure.components.map((c) => c.type));
   const hasActivePlotEssentials = adventure.components.some((c) => c.type === "plotEssentials" && c.active);
 
   const availableTypes = activeComponentTypes.filter(
     (t) => !SINGLETON_TYPES.has(t) || !existingTypes.has(t),
   );
+
+  const searchLower = search.toLowerCase().trim();
+  const visibleComponents = [...adventure.components]
+    .sort((a, b) => b.priority - a.priority)
+    .filter((c) => !searchLower ||
+      TYPE_LABELS[c.type].toLowerCase().includes(searchLower) ||
+      c.content.toLowerCase().includes(searchLower)
+    );
 
   return (
     <section className="page">
@@ -63,6 +75,13 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </p>
 
       <div className="toolbar">
+        <input
+          type="search"
+          placeholder="Search blocks…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          style={{ flex: 1, minWidth: "8rem", maxWidth: "20rem" }}
+        />
         {availableTypes.filter((t) => SINGLETON_TYPES.has(t)).map((type) => (
           <button
             key={type}
@@ -91,9 +110,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </div>
 
       <div className="list">
-        {[...adventure.components].sort((a, b) => b.priority - a.priority).map((component) => (
+        {visibleComponents.map((component) => (
           <details key={component.id} className="card story-card-item">
-            <summary><ComponentSummary component={component} /></summary>
+            <summary><ComponentSummary component={component} query={searchLower} /></summary>
 
             <div className="editor-card">
               <div className="grid two">
