@@ -51,7 +51,7 @@ function buildSystemPrompt(adventure: Adventure, generateContent: boolean): stri
     .map((b) => `${b.characterName}: ${b.currentState.slice(0, 80)}`)
     .join("\n");
 
-  const contentField = generateContent
+  const storyCardContentField = generateContent
     ? `"content": "bullet points using • character, one per line, no title in the body",`
     : "";
 
@@ -64,13 +64,14 @@ Existing tracked characters (character brains are managed separately — do NOT 
 ${brainList || "(none)"}
 
 If there is a new durable fact, respond with ONLY this JSON (no markdown, no prose):
-{"proposedType": "storyCard"|"plotEssentialsUpdate", "title": "...", ${contentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
+- For a story card: {"proposedType": "storyCard", "title": "...", ${storyCardContentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
+- For a plot update: {"proposedType": "plotEssentialsUpdate", "title": "...", "content": "the full updated plot essentials text", "suggestedTriggers": [], "rationale": "one line"}
 
 If nothing is new: respond with the word null
 
 Rules:
 - storyCard: named entities, relationships, secrets, rules, or recurring facts NOT already in existing cards
-- plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively)
+- plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — content must be the complete replacement text for the plot essentials block
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;
 }
@@ -116,6 +117,7 @@ export async function detectMemoryFromTurn(
   const validTypes = new Set(["storyCard", "plotEssentialsUpdate"]);
   if (typeof parsed.proposedType !== "string" || !validTypes.has(parsed.proposedType)) return undefined;
   if (typeof parsed.title !== "string" || !parsed.title.trim()) return undefined;
+  if (parsed.proposedType === "plotEssentialsUpdate" && (typeof parsed.content !== "string" || !parsed.content.trim())) return undefined;
 
   if (adventure.activeState.memoryProposals.some((p) => p.status === "pending" && p.proposedType === parsed.proposedType)) return undefined;
 
