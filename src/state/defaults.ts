@@ -375,8 +375,13 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       source: brain.source ?? "manual",
       protected: brain.protected ?? false,
       inclusionPolicy: brain.inclusionPolicy ?? "triggered",
-      updateCondition:
-        brain.updateCondition || `when ${brain.characterName} appears in the scene or is meaningfully referenced`,
+      updateCondition: (() => {
+        const old = brain.updateCondition?.trim();
+        if (!old || /^when \S.* appears in the scene or is meaningfully referenced$/.test(old)) {
+          return `when something in this scene causes a genuine shift for ${brain.characterName}: a new realization, emotional pivot, changed read on another character, or meaningful reaction to events — do NOT fire just because they appear or speak`;
+        }
+        return old;
+      })(),
       updatePrompt: brain.updatePrompt ?? "",
       updateMode: brain.updateMode ?? "replace",
       thoughts: migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),

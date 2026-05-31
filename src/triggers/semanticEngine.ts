@@ -191,7 +191,7 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
     .map((brain) => ({
       id: `brain:${brain.id}`,
       label: `Brain: ${brain.characterName}`,
-      condition: brain.updateCondition || `when ${brain.characterName} appears in the scene or is meaningfully referenced`,
+      condition: brain.updateCondition || `when something in this scene causes a genuine shift for ${brain.characterName}: a new realization, emotional pivot, changed read on another character, or meaningful reaction to events — do NOT fire just because they appear or speak`,
       sourceType: "brain" as const,
       actionFactory: () => [{ type: brain.updateMode === "append" ? "appendBrain" : "updateBrain", brainId: brain.id }],
     }));
