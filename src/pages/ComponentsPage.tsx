@@ -46,9 +46,10 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
 interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
+  onRegeneratePlotEssentials?: (componentId: string) => Promise<void>;
 }
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const existingTypes = new Set(adventure.components.map((c) => c.type));
   const hasActivePlotEssentials = adventure.components.some((c) => c.type === "plotEssentials" && c.active);
@@ -208,6 +209,16 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
                   Move Down
                 </button>
+                {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onRegeneratePlotEssentials(component.id)}
+                    title="Ask the AI to consolidate and rewrite Plot Essentials, removing resolved events and keeping active state."
+                  >
+                    {loading ? "Generating…" : "Regenerate"}
+                  </button>
+                )}
                 <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
                   Delete
                 </button>

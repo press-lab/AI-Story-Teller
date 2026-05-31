@@ -379,7 +379,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
       state.components.find((component) => component.type === "plotEssentials");
     const component = target
-      ? touch({ ...target, content: proposal.content })
+      ? touch({ ...target, content: target.content.trim() ? `${target.content.trim()}\n${proposal.content}` : proposal.content })
       : makeComponent({
           title: proposal.title || "Plot Essentials",
           type: "plotEssentials",

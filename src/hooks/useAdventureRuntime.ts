@@ -442,6 +442,32 @@ export function useAdventureRuntime(
     applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, updatedAt: new Date().toISOString() } }]);
   }
 
+  async function regeneratePlotEssentials(componentId: string): Promise<void> {
+    if (!adventure) return;
+    const component = adventure.components.find((c) => c.id === componentId && c.type === "plotEssentials");
+    if (!component) return;
+    const recentTurns = adventure.messages.slice(-20).map((m) => `${m.role}: ${m.content}`).join("\n");
+    const systemPrompt = `You are maintaining plot essentials for an interactive fiction game.
+Current plot essentials:
+${component.content}
+
+Recent story turns:
+${recentTurns}
+${adventure.rollingSummary.content ? `\nRolling summary:\n${adventure.rollingSummary.content.slice(0, 400)}` : ""}
+
+Rewrite the plot essentials as a clean, current, non-redundant block.
+Remove resolved events and outdated constraints. Keep active pressures, open tensions, and immediate momentum.
+Write as tight bullet points with bold headers like **Active pressure:**, **Immediate momentum:**, **Open tension:**.
+Respond with ONLY the new content — no preamble, no labels, no explanation.`;
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: activeProviderConfig,
+      messages: [{ role: "user", content: systemPrompt }],
+    });
+    const newContent = response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    if (!newContent) return;
+    applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: { content: newContent } }]);
+  }
+
   async function generateDurableSummary(): Promise<string> {
     if (!adventure) throw new Error("No adventure loaded.");
     const { messages: summaryMessages } = buildRollingSummaryPayload(adventure);
@@ -480,6 +506,7 @@ export function useAdventureRuntime(
     suggestCardUpdates,
     auditStoryCards,
     regenerateMemoryProposal,
+    regeneratePlotEssentials,
     generateDurableSummary,
     generateSceneState,
     applyActionsAndPersist,

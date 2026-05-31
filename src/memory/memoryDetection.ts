@@ -65,13 +65,13 @@ ${brainList || "(none)"}
 
 If there is a new durable fact, respond with ONLY this JSON (no markdown, no prose):
 - For a story card: {"proposedType": "storyCard", "title": "...", ${storyCardContentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
-- For a plot update: {"proposedType": "plotEssentialsUpdate", "title": "...", "content": "the full updated plot essentials text", "suggestedTriggers": [], "rationale": "one line"}
+- For a plot update: {"proposedType": "plotEssentialsUpdate", "title": "...", "content": "1–2 bullet points capturing only the NEW constraint or development to append", "suggestedTriggers": [], "rationale": "one line"}
 
 If nothing is new: respond with the word null
 
 Rules:
 - storyCard: named entities, relationships, secrets, rules, or recurring facts NOT already in existing cards
-- plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — content must be the complete replacement text for the plot essentials block
+- plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — write only the new addition as 1–2 bullets, not a full rewrite
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;
 }
