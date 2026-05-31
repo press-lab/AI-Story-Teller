@@ -59,9 +59,27 @@ export function useAdventureRuntime(
   const providerSettingsRef = useRef(providerSettings);
   const isSubmittingRef = useRef(false);
   const queuedUpdatesRef = useRef<PendingAdventureUpdate[]>([]);
+  const wasHiddenRef = useRef(false);
+  const pendingRetryRef = useRef(false);
+  const continueTurnRef = useRef<() => Promise<void>>();
 
   useEffect(() => { adventureRef.current = adventure; }, [adventure]);
   useEffect(() => { providerSettingsRef.current = providerSettings; }, [providerSettings]);
+
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "hidden") {
+        wasHiddenRef.current = true;
+      } else if (pendingRetryRef.current) {
+        pendingRetryRef.current = false;
+        wasHiddenRef.current = false;
+        setError(undefined);
+        void continueTurnRef.current?.();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, []);
 
   const activeProviderConfig = useMemo(
     () => adventure ? mergeProviderConfig(adventure, providerSettings) : providerSettings,
@@ -229,7 +247,22 @@ export function useAdventureRuntime(
         checkAutoSummary(next);
       }
     } catch (providerError) {
-      setError(providerError instanceof Error ? providerError.message : "Provider request failed.");
+      const errMsg = providerError instanceof Error ? providerError.message : "Provider request failed.";
+      const isNetworkError = errMsg.startsWith("Network error");
+      if (isNetworkError && wasHiddenRef.current) {
+        pendingRetryRef.current = true;
+        if (document.visibilityState === "visible") {
+          pendingRetryRef.current = false;
+          wasHiddenRef.current = false;
+          setError(undefined);
+          setTimeout(() => void continueTurnRef.current?.(), 0);
+        } else {
+          setError("Connection lost — will retry automatically when you return.");
+        }
+      } else {
+        wasHiddenRef.current = false;
+        setError(errMsg);
+      }
       const errorState = snapshotWithUserMsg ?? base;
       setAdventure(errorState);
       await saveAdventure(errorState);
@@ -413,6 +446,8 @@ export function useAdventureRuntime(
     });
     return response.content;
   }
+
+  continueTurnRef.current = continueTurn;
 
   return {
     loading,
