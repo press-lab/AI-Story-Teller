@@ -310,6 +310,13 @@ export default function App() {
 
   const gitHubSaveLoad = useGitHubSaveLoad(gitHubSaves.loadSave, applyGitHubSave);
 
+  const handlePullLatest = useCallback(async () => {
+    if (!adventure) return;
+    const loaded = await gitHubSaves.pullLatestForAdventure(adventure.id);
+    if (loaded) await applyGitHubSave(loaded);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adventure?.id, gitHubSaves.pullLatestForAdventure, applyGitHubSave]);
+
   useEffect(() => {
     gitHubSaveLoad.clearLoadError();
   // clear error whenever the user navigates away from any GitHub saves screen
@@ -470,6 +477,7 @@ export default function App() {
             onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
             onRememberThis={runtime.rememberThis}
+            onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
             playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
@@ -494,6 +502,7 @@ export default function App() {
             onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
             onRememberThis={runtime.rememberThis}
+            onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
           />
         );

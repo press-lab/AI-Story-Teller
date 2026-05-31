@@ -63,6 +63,7 @@ export function PlayPage({
   onRememberThis,
   onOpenTab,
   onOpenPlayTool,
+  onPullLatest,
   playPanelContent,
   playPanelTitle,
   onClosePlayPanel,
@@ -461,6 +462,7 @@ export function PlayPage({
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
               <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
+              {onPullLatest && <button type="button" disabled={loading} onClick={onPullLatest}>Update</button>}
               <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button
                 type="button"

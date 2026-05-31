@@ -116,6 +116,43 @@ export async function listGitHubSaves(
   return [...index.slots].sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
+const MAX_SAVES_PER_ADVENTURE = 3;
+
+async function pruneSavesForAdventure(
+  cloudSettings: CloudSyncSettings,
+  saveSettings: GitHubSaveSettings,
+  owner: string,
+  adventureId: string,
+  slots: GitHubSaveSlot[],
+): Promise<GitHubSaveSlot[]> {
+  const forThis = slots
+    .filter((s) => s.adventureId === adventureId)
+    .sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+  const toDelete = forThis.slice(MAX_SAVES_PER_ADVENTURE);
+  if (toDelete.length === 0) return slots;
+
+  for (const slot of toDelete) {
+    try {
+      const path = saveFilePath(cloudSettings, saveSettings, owner, slot.adventureId, slot.saveId);
+      const meta = await githubRequest<{ sha: string }>(cloudSettings, `${path}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`);
+      await githubRequest(cloudSettings, path, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: `Prune old save "${slot.title}" (turn ${slot.turnCount})`,
+          sha: meta.sha,
+          branch: cloudSettings.branch.trim(),
+        }),
+      });
+    } catch {
+      // prune failure is non-fatal — old file stays, index will still be updated
+    }
+  }
+
+  const deleteIds = new Set(toDelete.map((s) => s.saveId));
+  return slots.filter((s) => !deleteIds.has(s.saveId));
+}
+
 export async function saveToGitHub(
   cloudSettings: CloudSyncSettings,
   saveSettings: GitHubSaveSettings,
@@ -151,12 +188,9 @@ export async function saveToGitHub(
   };
 
   const { index, sha } = await fetchIndex(cloudSettings, saveSettings, owner);
-  const updatedIndex: GitHubSaveIndex = {
-    ...index,
-    updatedAt: savedAt,
-    slots: [slot, ...index.slots.filter((s) => s.saveId !== slot.saveId)],
-  };
-  await writeIndex(cloudSettings, saveSettings, owner, updatedIndex, sha);
+  const allSlots = [slot, ...index.slots.filter((s) => s.saveId !== slot.saveId)];
+  const prunedSlots = await pruneSavesForAdventure(cloudSettings, saveSettings, owner, adventure.id, allSlots);
+  await writeIndex(cloudSettings, saveSettings, owner, { ...index, updatedAt: savedAt, slots: prunedSlots }, sha);
 
   return slot;
 }

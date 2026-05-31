@@ -79,5 +79,29 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
     [cloudSettings, saveSettings],
   );
 
-  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, deleteSave, autoSaveIfDue };
+  const pullLatestForAdventure = useCallback(
+    async (adventureId: string): Promise<Adventure | undefined> => {
+      setSavesStatus("Checking for latest save…");
+      try {
+        const slots = await listGitHubSaves(cloudSettings, saveSettings);
+        const latest = slots
+          .filter((s) => s.adventureId === adventureId)
+          .sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0];
+        if (!latest) {
+          setSavesStatus("No saves found for this adventure.");
+          return undefined;
+        }
+        const adventure = await loadGitHubSave(cloudSettings, saveSettings, latest);
+        setSavesStatus("Pulled latest save");
+        return adventure;
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Pull failed.";
+        setSavesStatus(msg);
+        throw error;
+      }
+    },
+    [cloudSettings, saveSettings],
+  );
+
+  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, deleteSave, autoSaveIfDue, pullLatestForAdventure };
 }

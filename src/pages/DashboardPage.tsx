@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { getCurrentQuestObjective } from "../quests/questEngine";
@@ -24,7 +24,15 @@ export function DashboardPage({
   onBuildContext,
   onOpenContext,
   onOpenTab,
+  onPullLatest,
 }: PlayRuntimeProps) {
+  const [pulling, setPulling] = useState(false);
+
+  async function handlePull() {
+    if (!onPullLatest) return;
+    setPulling(true);
+    try { await onPullLatest(); } finally { setPulling(false); }
+  }
   const computedContext = useMemo(() => contextResult ?? buildContext(adventure), [adventure, contextResult]);
   const objective = getCurrentQuestObjective(adventure.quests);
   const pendingProposals = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending");
@@ -48,6 +56,11 @@ export function DashboardPage({
             <button type="button" className="primary-action" onClick={() => onOpenTab?.("play")}>
               Continue
             </button>
+            {onPullLatest && (
+              <button type="button" disabled={pulling} onClick={handlePull}>
+                {pulling ? "Updating…" : "Update"}
+              </button>
+            )}
             <button type="button" onClick={() => onOpenTab?.("edit")}>
               Edit
             </button>
