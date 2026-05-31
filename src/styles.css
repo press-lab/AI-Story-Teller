@@ -2220,6 +2220,13 @@ mark.search-highlight {
   border: 1px solid #86efac;
 }
 
+.audit-badge-det {
+  background: var(--surface-soft);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+
 .audit-badge-decision-approved {
   background: #dcfce7;
   color: #15803d;

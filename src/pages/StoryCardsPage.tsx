@@ -260,6 +260,7 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
               <div key={rec.id} className={`audit-rec ${rec.decision !== "pending" ? `audit-rec-${rec.decision}` : ""}`}>
                 <div className="audit-rec-header">
                   <span className={`audit-badge audit-badge-${rec.action}`}>{rec.action.toUpperCase()}</span>
+                  {rec.source === "deterministic" && <span className="audit-badge audit-badge-det">DETECTED</span>}
                   <span className="audit-rec-title">{rec.title}</span>
                   {rec.decision !== "pending" && (
                     <span className={`audit-badge audit-badge-decision-${rec.decision}`}>{rec.decision}</span>
