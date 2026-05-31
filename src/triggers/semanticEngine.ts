@@ -219,11 +219,15 @@ function questStepConditions(adventure: Adventure): SemanticCondition[] {
 
 function autoCardConditions(adventure: Adventure): SemanticCondition[] {
   if (!adventure.autoCardSettings.enabled || isAutoCardsOnCooldown(adventure)) return [];
+  const queued = adventure.activeState.autoCardReviewQueue.map((item) => item.title);
+  const knownCards = adventure.storyCards.map((c) => c.title);
+  const knownAll = [...new Set([...queued, ...knownCards])];
+  const alreadyKnown = knownAll.length > 0 ? ` Do NOT fire for any of these already-known entities: ${knownAll.join(", ")}.` : "";
   return [
     {
       id: "autoCards:global",
       label: "Auto-Cards global detector",
-      condition: adventure.autoCardSettings.detectionCondition,
+      condition: `${adventure.autoCardSettings.detectionCondition}${alreadyKnown}`,
       sourceType: "autoCards" as const,
       actionFactory: () => [{ type: "createAutoCard" }],
     },
