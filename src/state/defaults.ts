@@ -83,7 +83,7 @@ export const defaultAutoCardSettings: AutoCardSettings = {
   detectionCondition:
     "when a new named character, location, organization, or significant object is introduced that doesn't already have a story card",
   generationPrompt:
-    'A new entity worth remembering has appeared in the story. Write a story card for it. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary or scene-specific observations, imitate the story\'s writing style and tone. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
+    'A new entity worth remembering has appeared in the story. Write a story card for it. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary or scene-specific observations, imitate the story\'s writing style and tone. Do NOT include current location, who is currently present in a scene, active mission status, or any "currently X" state — these are temporary and belong in Scene State, not a Story Card. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
   cooldownTurns: 3,
 };
 
@@ -163,6 +163,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       stateFlags: {},
       responseLengthHint: 150,
       backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
+      challengeMode: false,
     },
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
@@ -360,6 +361,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         : adventure.activeState?.responseLengthHint === "long" ? 175
         : 150,
       backgroundTokenUsage: adventure.activeState?.backgroundTokenUsage ?? { promptTokens: 0, completionTokens: 0 },
+      challengeMode: adventure.activeState?.challengeMode ?? false,
     },
     rollingSummary: {
       ...baseline.rollingSummary,

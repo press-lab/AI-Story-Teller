@@ -493,7 +493,12 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           forceIncludeNextTurn: state.activeState.forceIncludeNextTurn.filter(
             (entry) => entry.expiresTurn > state.activeState.turn + 1,
           ),
+          challengeMode: false,
         },
+      });
+    case "SET_CHALLENGE_MODE":
+      return touchAdventure(state, {
+        activeState: { ...state.activeState, challengeMode: true },
       });
     case "UPSERT_COMPONENT":
       return touchAdventure(state, { components: upsertById(state.components, touch(action.component)) });
@@ -913,6 +918,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           storyRedoStack: [],
           nextTurnNote: defaultNextTurnNote(),
           stateFlags: {},
+          challengeMode: false,
         },
         autoCards: state.autoCards.map((card) => touch({ ...card, lastUpdatedTurn: undefined })),
         triggerRules: state.triggerRules.map((rule) => touch({ ...rule, lastFiredTurn: undefined })),

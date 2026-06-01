@@ -38,6 +38,16 @@ function stripThinkTags(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
 
+const CHALLENGE_PHRASES = [
+  /i don'?t remember that/i,
+  /that didn'?t happen/i,
+  /\bcontinuity\b/i,
+  /that'?s not (right|correct|what happened)/i,
+  /you'?re making that up/i,
+  /that was never (said|established|agreed)/i,
+  /where did (you|that) come from/i,
+];
+
 function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const base = mergeProviderConfig(adventure, settings);
   const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
@@ -216,7 +226,10 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
 
-    const base = flushPendingBeforeContext(adventure);
+    let base = flushPendingBeforeContext(adventure);
+    if (mode !== "comms" && CHALLENGE_PHRASES.some((re) => re.test(text))) {
+      base = adventureReducer(base, { type: "SET_CHALLENGE_MODE" });
+    }
     let snapshotWithUserMsg: typeof adventure | undefined;
 
     try {

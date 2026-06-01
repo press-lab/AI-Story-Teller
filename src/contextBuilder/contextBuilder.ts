@@ -411,6 +411,18 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     ),
   );
 
+  // M. Continuity Challenge — one-turn verification instruction, protected, consumes no budget when inactive
+  const CHALLENGE_INSTRUCTION =
+    "[CONTINUITY CHALLENGE]\n" +
+    "The player has disputed a recent claim. Before continuing the story, verify the disputed claim against the recent transcript. " +
+    "If the claim is not explicitly supported by the story text, retract or soften it in your response. " +
+    "Do not fabricate supporting quotes or paraphrase past dialogue to support it. " +
+    "Acknowledge the inconsistency naturally within the narrative.";
+  const challengeItems: ContextItem[] = adventure.activeState.challengeMode
+    ? [item("challenge-mode", "system", "Continuity Challenge", CHALLENGE_INSTRUCTION, 1000, true, false, true, "always", "system")]
+    : [];
+  challengeItems.forEach((entry) => pushIncluded(entry, "Continuity challenge mode active; verification instruction injected."));
+
   // K. Recent Messages — opening scene is a virtual oldest message, subject to normal budget management
   const openingSeed: Message | undefined = adventure.openingScene
     ? { id: "opening-scene", role: "assistant" as const, content: adventure.openingScene, createdAt: adventure.createdAt }
@@ -454,6 +466,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     // L. Scene State is placed after Author's Note so the model sees current grounding just before recent messages
     section("sceneState", "L. Scene State", 9, sceneStateItems),
     section("nextTurnNote", "J. Next Output Bias", 10, nextTurnNoteItems),
+    section("challengeMode", "M. Continuity Challenge", 10.5, challengeItems),
     section("recentMessages", "K. Recent Messages", 11, recentMessageItems),
   ]);
 

@@ -1,4 +1,5 @@
 import { buildContext } from "../contextBuilder/contextBuilder";
+import { runContinuityCheck, scanForRiskyClaims } from "../continuityLint";
 import { detectMemoryFromTurn } from "../memory/memoryDetection";
 import { evaluateTriggerRules, type TriggerEvaluationEvent } from "../triggers/triggerEngine";
 import type {
@@ -40,6 +41,7 @@ export interface RunTurnPipelineResult {
   providerPayload: ChatMessage[];
   responseContent: string;
   detectionTokenUsage?: { promptTokens: number; completionTokens: number };
+  continuityCorrected?: boolean;
 }
 
 export function reduceActions(adventure: Adventure, actions: AdventureAction[]): Adventure {
@@ -82,10 +84,26 @@ export async function runTurnPipeline({
   const providerPayload = preProviderContext.messages;
   const response = await sendChatCompletion(providerPayload, next, preProviderContext);
 
+  // Continuity lint: scan for risky claims and, if found, run a targeted LLM check.
+  // Uses only the last 8 messages as context to keep tokens low.
+  let finalContent = response.content;
+  let continuityCorrected = false;
+  if (mode !== "comms" && providerConfig && scanForRiskyClaims(response.content)) {
+    const lintAccum = { promptTokens: 0, completionTokens: 0 };
+    const lintResult = await runContinuityCheck(next, providerConfig, response.content, lintAccum);
+    if (lintResult.correctedText) {
+      finalContent = lintResult.correctedText;
+      continuityCorrected = true;
+    }
+    if (lintAccum.promptTokens > 0 || lintAccum.completionTokens > 0) {
+      next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...lintAccum });
+    }
+  }
+
   next = adventureReducer(next, {
     type: "ADD_MESSAGE",
     role: "assistant",
-    content: response.content,
+    content: finalContent,
     inputMode: undefined,
     id: assistantMessageId,
     createdAt,
@@ -94,7 +112,7 @@ export async function runTurnPipeline({
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
   let detectionTokenUsage: { promptTokens: number; completionTokens: number } | undefined;
-  if (mode !== "comms" && next.memoryDetectionSettings.enabled && providerConfig) {
+  if (mode !== "comms" && !next.activeState.challengeMode && next.memoryDetectionSettings.enabled && providerConfig) {
     const accum = { promptTokens: 0, completionTokens: 0 };
     const proposalAction = await detectMemoryFromTurn(next, providerConfig, response.content, accum);
     if (proposalAction) next = adventureReducer(next, proposalAction);
@@ -110,9 +128,10 @@ export async function runTurnPipeline({
   return {
     adventure: next,
     preProviderContext,
-    postTurnContext: buildContext(next, { latestModelOutput: response.content }),
+    postTurnContext: buildContext(next, { latestModelOutput: finalContent }),
     providerPayload,
-    responseContent: response.content,
+    responseContent: finalContent,
     detectionTokenUsage,
+    continuityCorrected,
   };
 }

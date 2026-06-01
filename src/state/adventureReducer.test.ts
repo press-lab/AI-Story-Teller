@@ -93,6 +93,7 @@ const testedActionTypes = [
   "CONSUME_NEXT_TURN_NOTE",
   "QUEUE_PENDING_UPDATE",
   "FLUSH_PENDING_UPDATES",
+  "SET_CHALLENGE_MODE",
   "RESET_RUNTIME_STATE",
   "ACCUMULATE_BACKGROUND_TOKENS",
 ] as const satisfies AdventureAction["type"][];
@@ -173,6 +174,7 @@ function baseAdventure(): Adventure {
       stateFlags: {},
       responseLengthHint: 150,
       backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
+      challengeMode: false,
     },
     rollingSummary: { content: "summary", updatedAt: "2026-01-01T00:00:00.000Z" },
   };
@@ -219,9 +221,13 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "FORCE_INCLUDE_NEXT_TURN", targetType: "storyCard", targetId: state.storyCards[0].id });
     expect(state.activeState.forceIncludeNextTurn).toHaveLength(1);
 
+    state = reduce(state, { type: "SET_CHALLENGE_MODE" });
+    expect(state.activeState.challengeMode).toBe(true);
+
     state = reduce(state, { type: "INCREMENT_TURN" });
     expect(state.activeState.turn).toBe(4);
     expect(state.activeState.forceIncludeNextTurn).toHaveLength(0);
+    expect(state.activeState.challengeMode).toBe(false);
 
     state = reduce(state, { type: "UPDATE_ROLLING_SUMMARY", content: "new summary" });
     expect(state.rollingSummary.content).toBe("new summary");

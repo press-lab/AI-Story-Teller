@@ -117,11 +117,12 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
 }
 
 describe("buildContext", () => {
-  it("assembles sections in the required deterministic order (A–L)", () => {
+  it("assembles sections in the required deterministic order (A–M)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 12 sections must exist in the correct order
+    // All 13 sections must exist in the correct order
     // Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     // Scene State follows Author's Note to ground the model in the current moment
+    // Continuity Challenge (M) sits between Next Output Bias and Recent Messages when active
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
@@ -134,6 +135,7 @@ describe("buildContext", () => {
       "authorNote",
       "sceneState",
       "nextTurnNote",
+      "challengeMode",
       "recentMessages",
     ]);
     expect(result.messages[0].role).toBe("system");
@@ -485,7 +487,7 @@ describe("buildContext", () => {
     const result = buildContext(adventure, { currentInput: "lantern" });
     const noteSection = result.sections.find((section) => section.id === "nextTurnNote");
 
-    expect(result.sections.map((section) => section.id).slice(-2)).toEqual(["nextTurnNote", "recentMessages"]);
+    expect(result.sections.map((section) => section.id).slice(-3)).toEqual(["nextTurnNote", "challengeMode", "recentMessages"]);
     expect(noteSection?.label).toBe("J. Next Output Bias");
     expect(noteSection?.items).toHaveLength(1);
     expect(noteSection?.items[0]).toMatchObject({
@@ -664,8 +666,8 @@ describe("buildContext", () => {
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
     // adventureForContext has no aiInstructions/plotEssentials/authorNote/sceneState content
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 12 section IDs always present in result.sections
-    expect(result.sections.map((s) => s.id)).toHaveLength(12);
+    // All 13 section IDs always present in result.sections
+    expect(result.sections.map((s) => s.id)).toHaveLength(13);
     // Empty typed sections do not appear in the system payload
     const payload = result.messages[0].content;
     expect(payload).not.toContain("# B. AI Instructions");
@@ -695,6 +697,7 @@ describe("buildContext", () => {
       "authorNote",
       "sceneState",
       "nextTurnNote",
+      "challengeMode",
       "recentMessages",
     ]);
     expect(result.sections.find((section) => section.id === "aiInstructions")?.items.map((item) => item.id)).toEqual(["component-ai"]);

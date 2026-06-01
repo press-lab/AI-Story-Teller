@@ -148,7 +148,8 @@ Keep it tight — 2 to 5 sentences or bullet points. Drop anything that has been
 }
 
 function autoCardPrompt(adventure: Adventure): string {
-  return adventure.autoCardSettings.generationPrompt;
+  const base = adventure.autoCardSettings.generationPrompt;
+  return `${base}\n\nAdditional exclusions: Do NOT include "currently aboard [ship/location]", "currently assigned to [mission]", "is now present in [location]", or any other "currently X" facts. If the only noteworthy detail is scene presence or current location, do not create a card — that belongs in Scene State.`;
 }
 
 function isAutoCardsOnCooldown(adventure: Adventure): boolean {
@@ -517,23 +518,14 @@ async function generatedActionsFor(
       const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
       if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component), accum);
-      if (requireApproval) {
-        const proposal = makeProposal(
-          { proposedType: "plotEssentialsUpdate", title: component.title, content, targetId: component.id, rationale: `Auto-update for "${component.title}".` },
-          adventure,
-        );
-        return {
-          actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
-          generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
-        };
-      }
-      const memoryUpdate = applyAIMemoryUpdate(adventure, [
-        { type: "componentUpdate", componentId: component.id, content },
-      ]);
+      // Plot Essentials always requires approval — never applied directly regardless of requireApprovalForAutoUpdates.
+      const proposal = makeProposal(
+        { proposedType: "plotEssentialsUpdate", title: component.title, content, targetId: component.id, rationale: `Auto-update for "${component.title}".` },
+        adventure,
+      );
       return {
-        actions: memoryUpdate.actions,
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
         generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
-        error: memoryUpdate.rejectedUpdates[0]?.reason,
       };
     }
 

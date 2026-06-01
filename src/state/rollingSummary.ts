@@ -78,14 +78,16 @@ export function buildSceneStatePayload(adventure: Adventure): SceneStatePayload 
         content:
           "You are a scene-state tracker for an interactive fiction adventure. " +
           "Write a CURRENT SCENE STATE using exactly these labeled fields. Keep the total under 150 words.\n\n" +
+          "IMPORTANT: Never record a claim as fact unless it is explicitly stated in the story text. Do not infer from tone, implication, or narrative logic.\n\n" +
           "Location: current physical setting.\n" +
           "Present: who is here and their immediate mood or posture.\n" +
           "Last beat: the most recent significant action, revelation, or exchange.\n" +
-          "Active directive: any command, order, appointment, deadline, promise, or threat currently in force. " +
-          "Carry this forward from the previous state unless the story has explicitly resolved it. If none, write None.\n" +
+          "Active directive: Record ONLY if the exact text establishing it appears in the recent messages or previous state. " +
+          "Required format: [description] (established: \"[exact quote or paraphrase with turn context]\"). " +
+          "Never infer promises, agreements, obligations, or deadlines from context — if it was not said explicitly, write None. " +
+          "Carry a directive forward only when it is still unresolved and was explicitly established.\n" +
           "Pending: any open question or decision the player faces right now. If none, write None.\n\n" +
-          "Write present tense, third person. Do not recap history. " +
-          "If a directive or obligation exists, state it explicitly — do not let it be implied by recent messages.",
+          "Write present tense, third person. Do not recap history. Do not fabricate obligations.",
       },
       { role: "user", content: userContent },
     ],

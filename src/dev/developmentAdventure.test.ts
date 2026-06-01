@@ -49,6 +49,7 @@ describe("development adventure seed", () => {
       "authorNote",
       "sceneState",
       "nextTurnNote",
+      "challengeMode",
       "recentMessages",
     ]);
 

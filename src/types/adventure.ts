@@ -425,6 +425,8 @@ export interface ActiveState {
   responseLengthHint: ResponseLengthHint;
   /** Cumulative token usage for background calls (brain updates, evaluation, summary, scene state). */
   backgroundTokenUsage: { promptTokens: number; completionTokens: number };
+  /** Set when the player's input matches a continuity challenge phrase. Consumed after one turn. */
+  challengeMode: boolean;
 }
 
 export interface Adventure {
@@ -512,7 +514,8 @@ export type ContextSectionKind =
   | "rollingSummary"  // I. Rolling Summary — durable canon
   | "nextTurnNote"    // J. Next Output Bias
   | "recentMessages"  // K. Recent Messages
-  | "sceneState";     // L. Scene State — current location, characters, situation
+  | "sceneState"      // L. Scene State — current location, characters, situation
+  | "challengeMode";  // M. Continuity Challenge — one-turn verification instruction
 
 export type ExcludedReason = "budget_exceeded" | "inactive" | "cooldown" | "not_triggered";
 
@@ -689,4 +692,5 @@ export type AdventureAction =
   | { type: "CONSUME_NEXT_TURN_NOTE" }
   | { type: "QUEUE_PENDING_UPDATE"; update: PendingAdventureUpdate }
   | { type: "FLUSH_PENDING_UPDATES" }
+  | { type: "SET_CHALLENGE_MODE" }
   | { type: "RESET_RUNTIME_STATE" };
