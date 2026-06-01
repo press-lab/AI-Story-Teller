@@ -163,12 +163,17 @@ function plotMomentumPrompt(component: ComponentEntry): string {
   const current = extractPeZone(component.content, "momentum");
   return `You are updating the Immediate Momentum section of a Plot Essentials entry titled "${component.title}".
 
-Immediate Momentum captures what the player is currently being pulled toward or pushed by in this scene — the direction of the story right now. It should be replaced when the scene shifts.
+Immediate Momentum describes the concrete next move or decision the story is driving toward — what action, confrontation, or choice is immediately in front of the player character. It is a direction, not a mood.
+
+GOOD: "Setu needs to answer Kael's challenge before they reach the gate."
+GOOD: "The group is moving toward the war room to deliver the report."
+BAD: "The tension between them lingers, pulling toward connection." (mood, not direction)
+BAD: "Unspoken feelings hang in the air." (subtext, not a next move)
 
 Current Immediate Momentum:
 ${current || "(none)"}
 
-Write 1–2 sentences describing the immediate momentum. Return ONLY the new content as plain text.`;
+Write 1–2 sentences stating what concrete action or decision is immediately ahead. Return ONLY the new content as plain text.`;
 }
 
 function autoCardPrompt(adventure: Adventure): string {
