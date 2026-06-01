@@ -19,6 +19,7 @@ import type {
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
 import { createId, nowIso } from "../utils/id";
+import { extractPeZone } from "../utils/peZones";
 import { matchPatterns, splitList } from "./matching";
 import { isTriggerOnCooldown, triggerActionToAdventureActions } from "./triggerEngine";
 
@@ -131,20 +132,43 @@ Return ONLY the bullet-pointed content — no title, no headers, no commentary.`
 }
 
 function componentPrompt(component: ComponentEntry): string {
-  if (component.type === "plotEssentials") {
-    return `You are maintaining a Plot Essentials entry titled "${component.title}". This tracks the CURRENT story beat — active pressures, immediate stakes, and where things are heading right now. It is NOT a history of past events.
-
-Current content:
-${component.content}
-
-Rewrite this entry to reflect what is active and unresolved right now. Focus on:
-- What pressure, obligation, or momentum is currently in play
-- What the player is moving toward or being pushed toward
-- Any immediate threat, deadline, or open tension
-
-Keep it tight — 2 to 5 sentences or bullet points. Drop anything that has been resolved. Return ONLY the updated content as plain text.`;
-  }
   return `You are updating a context component titled "${component.title}". Current content: "${component.content}". Based on what just happened, update this component. Return ONLY the new content as a plain string.`;
+}
+
+function plotArcPrompt(component: ComponentEntry): string {
+  const arcContent = extractPeZone(component.content, "arc");
+  return `You are appending to the Arc section of a Plot Essentials entry titled "${component.title}".
+
+The Arc records the story's durable shape: core conflict, major forces, what the story is fundamentally about. It is NOT a scene log — only add something if it represents a lasting shift in the story's direction or nature.
+
+Current Arc content:
+${arcContent || "(empty)"}
+
+Write 1–2 sentences to append to the Arc that capture the durable new development. Do NOT restate what is already there. Do NOT include scene-level or temporary details. Return ONLY the new sentences as plain text.`;
+}
+
+function plotPressurePrompt(component: ComponentEntry): string {
+  const current = extractPeZone(component.content, "pressure");
+  return `You are updating the Active Pressure section of a Plot Essentials entry titled "${component.title}".
+
+Active Pressure is the current threat, obligation, or force bearing on the player character at the arc level — what is pushing or threatening them right now. It should be replaced entirely when it changes.
+
+Current Active Pressure:
+${current || "(none)"}
+
+Write 1–3 sentences describing the current active pressure. Return ONLY the new content as plain text.`;
+}
+
+function plotMomentumPrompt(component: ComponentEntry): string {
+  const current = extractPeZone(component.content, "momentum");
+  return `You are updating the Immediate Momentum section of a Plot Essentials entry titled "${component.title}".
+
+Immediate Momentum captures what the player is currently being pulled toward or pushed by in this scene — the direction of the story right now. It should be replaced when the scene shifts.
+
+Current Immediate Momentum:
+${current || "(none)"}
+
+Write 1–2 sentences describing the immediate momentum. Return ONLY the new content as plain text.`;
 }
 
 function autoCardPrompt(adventure: Adventure): string {
@@ -238,13 +262,29 @@ function autoCardConditions(adventure: Adventure): SemanticCondition[] {
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
   return adventure.components
     .filter((c) => c.type === "plotEssentials" && c.active)
-    .map((component) => ({
-      id: `plotEssentials:${component.id}`,
-      label: `Plot Essentials: ${component.title}`,
-      condition: `when the story's current direction, active pressure, or immediate arc has meaningfully shifted and "${component.title}" needs updating — fire when momentum or stakes change, NOT for minor scene details or permanent world facts (those belong in Story Cards)`,
-      sourceType: "component" as const,
-      actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
-    }));
+    .flatMap((component) => [
+      {
+        id: `plotEssentialsArc:${component.id}`,
+        label: `Plot Essentials Arc: ${component.title}`,
+        condition: `when the story's overall direction, core conflict, or major arc has fundamentally and durably shifted — major revelations, turning points, permanent changes to what the story is about, or new forces entering the narrative. Do NOT fire for scene-level events or temporary states.`,
+        sourceType: "component" as const,
+        actionFactory: () => [{ type: "updateComponentArc" as const, componentId: component.id }],
+      },
+      {
+        id: `plotEssentialsPressure:${component.id}`,
+        label: `Plot Essentials Pressure: ${component.title}`,
+        condition: `when the active threat, obligation, or force bearing on the player character has meaningfully changed — a new danger has emerged, stakes have shifted, or a pressure has been resolved or replaced by another. Do NOT fire for minor scene details.`,
+        sourceType: "component" as const,
+        actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
+      },
+      {
+        id: `plotEssentialsMomentum:${component.id}`,
+        label: `Plot Essentials Momentum: ${component.title}`,
+        condition: `when the immediate direction of the scene has changed — what the player is currently being pulled toward or pushed by in this moment has shifted. Fires more freely than arc or pressure updates.`,
+        sourceType: "component" as const,
+        actionFactory: () => [{ type: "updateComponentMomentum" as const, componentId: component.id }],
+      },
+    ]);
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
@@ -328,6 +368,9 @@ function isGeneratedAction(action: TriggerAction): boolean {
     action.type === "appendBrain" ||
     action.type === "updateStoryCard" ||
     action.type === "updateComponent" ||
+    action.type === "updateComponentArc" ||
+    action.type === "updateComponentPressure" ||
+    action.type === "updateComponentMomentum" ||
     action.type === "createAutoCard"
   );
 }
@@ -402,7 +445,7 @@ function makeProposal(
     rationale: fields.rationale ?? "Auto-generated by semantic evaluation.",
     status: "pending",
     targetId: fields.targetId,
-    appendContent: fields.proposedType === "plotEssentialsUpdate",
+    appendContent: fields.proposedType === "plotEssentialsUpdate" || fields.proposedType === "plotArcAppend",
     createdAt: now,
     updatedAt: now,
   };
@@ -518,9 +561,50 @@ async function generatedActionsFor(
       const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
       if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component), accum);
-      // Plot Essentials always requires approval — never applied directly regardless of requireApprovalForAutoUpdates.
       const proposal = makeProposal(
         { proposedType: "plotEssentialsUpdate", title: component.title, content, targetId: component.id, rationale: `Auto-update for "${component.title}".` },
+        adventure,
+      );
+      return {
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
+      };
+    }
+
+    if (triggerAction.type === "updateComponentArc") {
+      const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
+      if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
+      const content = await sendTargetedUpdate(adventure, providerConfig, plotArcPrompt(component), accum);
+      const proposal = makeProposal(
+        { proposedType: "plotArcAppend", title: `${component.title} — Arc`, content, targetId: component.id, rationale: `Arc update for "${component.title}".` },
+        adventure,
+      );
+      return {
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
+      };
+    }
+
+    if (triggerAction.type === "updateComponentPressure") {
+      const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
+      if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
+      const content = await sendTargetedUpdate(adventure, providerConfig, plotPressurePrompt(component), accum);
+      const proposal = makeProposal(
+        { proposedType: "plotPressureUpdate", title: `${component.title} — Active Pressure`, content, targetId: component.id, rationale: `Pressure update for "${component.title}".` },
+        adventure,
+      );
+      return {
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
+      };
+    }
+
+    if (triggerAction.type === "updateComponentMomentum") {
+      const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
+      if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
+      const content = await sendTargetedUpdate(adventure, providerConfig, plotMomentumPrompt(component), accum);
+      const proposal = makeProposal(
+        { proposedType: "plotMomentumUpdate", title: `${component.title} — Immediate Momentum`, content, targetId: component.id, rationale: `Momentum update for "${component.title}".` },
         adventure,
       );
       return {

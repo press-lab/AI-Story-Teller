@@ -20,6 +20,7 @@ import type {
 import { completeQuest, failQuest, progressQuest, startQuest } from "../quests/questEngine";
 import { defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
+import { applyPeZone } from "../utils/peZones";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
@@ -389,6 +390,29 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           pinned: false,
           priority: 250,
         });
+    return { components: upsertById(state.components, component) };
+  }
+
+  if (proposal.proposedType === "plotArcAppend" || proposal.proposedType === "plotPressureUpdate" || proposal.proposedType === "plotMomentumUpdate") {
+    if (!proposal.content.trim()) return {};
+    const target =
+      state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
+      state.components.find((component) => component.type === "plotEssentials");
+    const zone = proposal.proposedType === "plotArcAppend" ? "arc" : proposal.proposedType === "plotPressureUpdate" ? "pressure" : "momentum";
+    if (target) {
+      const newContent = applyPeZone(target.content, zone, proposal.content);
+      return { components: upsertById(state.components, touch({ ...target, content: newContent })) };
+    }
+    // No PE component yet — create one with the appropriate zone
+    const component = makeComponent({
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: applyPeZone("", zone, proposal.content),
+      active: true,
+      alwaysOn: false,
+      pinned: false,
+      priority: 250,
+    });
     return { components: upsertById(state.components, component) };
   }
 

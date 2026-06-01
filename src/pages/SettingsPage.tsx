@@ -538,6 +538,24 @@ export function SettingsPage({
                   When off, proposals arrive with blank content for you to fill in.
                 </p>
                 <CheckboxField
+                  label="Auto-approve Plot Essentials arc additions"
+                  checked={globalAdventureSettings.memoryAutoApprove.plotArcAppend}
+                  onChange={(plotArcAppend) => updateMemoryAutoApprove({ plotArcAppend })}
+                />
+                <p className="muted">New arc-level developments append to the overall arc section without review.</p>
+                <CheckboxField
+                  label="Auto-approve Active Pressure updates"
+                  checked={globalAdventureSettings.memoryAutoApprove.plotPressureUpdate}
+                  onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })}
+                />
+                <p className="muted">Active Pressure section is replaced automatically when stakes shift.</p>
+                <CheckboxField
+                  label="Auto-approve Immediate Momentum updates"
+                  checked={globalAdventureSettings.memoryAutoApprove.plotMomentumUpdate}
+                  onChange={(plotMomentumUpdate) => updateMemoryAutoApprove({ plotMomentumUpdate })}
+                />
+                <p className="muted">Immediate Momentum section is replaced automatically when scene direction shifts.</p>
+                <CheckboxField
                   label="Auto-approve brain state updates"
                   checked={globalAdventureSettings.memoryAutoApprove.brainUpdate}
                   onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}

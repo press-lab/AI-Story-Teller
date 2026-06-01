@@ -326,7 +326,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(reduced.storyCards[0].content).toBe("Margo calls Seth hedge prince only when scared.");
   });
 
-  it("routes Plot Essentials updates to Memory Inbox when auto-update approval is required", async () => {
+  it("routes Plot Essentials pressure updates to Memory Inbox", async () => {
     const component = makeComponent({
       id: "component-plot",
       title: "Plot Essentials",
@@ -338,11 +338,10 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       components: [component],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
-      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
     };
 
     mockProvider
-      .mockResolvedValueOnce({ content: '["plotEssentials:component-plot"]', raw: {} })
+      .mockResolvedValueOnce({ content: '["plotEssentialsPressure:component-plot"]', raw: {} })
       .mockResolvedValueOnce({ content: "The Fire Nation court now expects a public duel.", raw: {} });
 
     const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
@@ -353,10 +352,11 @@ describe("runSemanticPostTurnEvaluation", () => {
     let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
     expect(reduced.components[0].content).toBe("Old premise.");
     const proposal = reduced.activeState.memoryProposals[0];
-    expect(proposal).toMatchObject({ proposedType: "plotEssentialsUpdate", status: "pending", targetId: "component-plot" });
+    expect(proposal).toMatchObject({ proposedType: "plotPressureUpdate", status: "pending", targetId: "component-plot" });
 
     reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.components[0].content).toBe("Old premise.\nThe Fire Nation court now expects a public duel.");
+    expect(reduced.components[0].content).toContain("The Fire Nation court now expects a public duel.");
+    expect(reduced.components[0].content).toContain("## Active Pressure");
   });
 });
 

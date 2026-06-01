@@ -152,6 +152,9 @@ export function triggerActionToAdventureActions(
     case "createMilestoneCard":
       return [{ type: "CREATE_MILESTONE_CARD", questId: triggerAction.questId, title: triggerAction.title, content: triggerAction.content }];
     case "createAutoCard":
+    case "updateComponentArc":
+    case "updateComponentPressure":
+    case "updateComponentMomentum":
       return [];
     case "forceIncludeNextTurn":
       return [{ type: "FORCE_INCLUDE_NEXT_TURN", targetType: triggerAction.targetType, targetId: triggerAction.targetId }];
