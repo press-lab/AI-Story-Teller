@@ -134,6 +134,7 @@ export async function detectMemoryFromTurn(
     confidence: 0.8,
     rationale: typeof parsed.rationale === "string" ? parsed.rationale : "AI-detected durable fact.",
     status: "pending",
+    appendContent: parsed.proposedType === "plotEssentialsUpdate",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
@@ -150,7 +151,7 @@ export async function regenerateProposalContent(
 The user has a memory suggestion they want better content for.
 Write improved content for the suggestion titled "${proposal.title}" (type: ${proposal.proposedType}).
 Source text from the story: ${proposal.sourceText}
-${proposal.proposedType === "storyCard" ? 'Format: bullet points using the • character, one per line, no title in the body.' : 'Format: the full replacement text for the plot essentials block.'}
+${proposal.proposedType === "storyCard" ? 'Format: bullet points using the • character, one per line, no title in the body.' : 'Format: 1–2 bullet points capturing only the NEW constraint or development to append. Do not rewrite the full block.'}
 Respond with ONLY the content — no JSON, no preamble, no labels.`;
 
   const response = await sendOpenAICompatibleChatCompletion({

@@ -439,7 +439,7 @@ export function useAdventureRuntime(
     if (!proposal) return;
     const newContent = await regenerateProposalContent(proposal, adventure, activeProviderConfig);
     if (!newContent) return;
-    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, updatedAt: new Date().toISOString() } }]);
+    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent: proposal.proposedType === "plotEssentialsUpdate", updatedAt: new Date().toISOString() } }]);
   }
 
   async function regeneratePlotEssentials(componentId: string): Promise<string> {

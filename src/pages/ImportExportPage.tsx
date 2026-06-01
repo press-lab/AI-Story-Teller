@@ -35,9 +35,23 @@ export function ImportExportPage({
     setImportText("");
   }
 
+  function slug() {
+    return adventure.title.replace(/\W+/g, "-") || "adventure";
+  }
+
   function handleExport() {
     const text = exportAdventureJson(adventure);
-    download(`${adventure.title.replace(/\W+/g, "-") || "adventure"}.json`, text);
+    download(`${slug()}.json`, text);
+  }
+
+  function handleExportStoryCards() {
+    const text = JSON.stringify({ storyCards: adventure.storyCards }, null, 2);
+    download(`${slug()}-story-cards.json`, text);
+  }
+
+  function handleExportComponents() {
+    const text = JSON.stringify({ components: adventure.components }, null, 2);
+    download(`${slug()}-components.json`, text);
   }
 
   return (
@@ -58,6 +72,12 @@ export function ImportExportPage({
           <p className="muted">Downloads the full adventure as a JSON file.</p>
           <button type="button" onClick={handleExport}>
             Download JSON
+          </button>
+          <button type="button" onClick={handleExportStoryCards}>
+            Export Story Cards
+          </button>
+          <button type="button" onClick={handleExportComponents}>
+            Export Plot Components
           </button>
         </article>
 

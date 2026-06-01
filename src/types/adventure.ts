@@ -333,6 +333,7 @@ export interface MemoryProposal {
   rationale: string;
   status: MemoryProposalStatus;
   targetId?: string;
+  appendContent?: boolean;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
