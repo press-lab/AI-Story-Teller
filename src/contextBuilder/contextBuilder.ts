@@ -255,9 +255,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // C. Plot Essentials — all active components with type === "plotEssentials"
+  // C. Plot Essentials + Active Pressure + Immediate Momentum
   const plotEssentialItems = prioritySort(adventure.components).flatMap((component) => {
-    if (component.type !== "plotEssentials") return [];
+    if (component.type !== "plotEssentials" && component.type !== "activePressure" && component.type !== "immediateMomentum") return [];
     if (!component.active) {
       logExcludedOnce(component.id, component.title, "inactive");
       return [];
@@ -281,7 +281,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   // E. Components — general always-on or pinned components (not a special typed section above)
   const generalComponentItems = prioritySort(adventure.components).flatMap((component) => {
-    if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote") return [];
+    if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "authorNote") return [];
     if (!component.active) {
       logExcludedOnce(component.id, component.title, "inactive");
       return [];

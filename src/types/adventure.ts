@@ -19,6 +19,8 @@ export type ComponentType =
   | "narrationRules"
   | "aiInstructions"
   | "plotEssentials"
+  | "activePressure"
+  | "immediateMomentum"
   | "authorNote"
   | "memory"
   | "custom";
@@ -134,7 +136,6 @@ export type TriggerAction =
   | { type: "pinComponent"; componentId: string }
   | { type: "unpinComponent"; componentId: string }
   | { type: "updateComponent"; componentId: string; patch?: Partial<ComponentEntry> }
-  | { type: "updateComponentArc"; componentId: string }
   | { type: "updateComponentPressure"; componentId: string }
   | { type: "updateComponentMomentum"; componentId: string }
   | { type: "activateStoryCard"; storyCardId: string }
@@ -319,7 +320,6 @@ export type MemoryProposalType =
   | "storyCard"
   | "brainUpdate"
   | "plotEssentialsUpdate"
-  | "plotArcAppend"
   | "plotPressureUpdate"
   | "plotMomentumUpdate"
   | "summaryUpdate"
@@ -464,7 +464,6 @@ export interface Adventure {
 export interface MemoryAutoApproveSettings {
   summaryUpdate: boolean;
   plotEssentialsUpdate: boolean;
-  plotArcAppend: boolean;
   plotPressureUpdate: boolean;
   plotMomentumUpdate: boolean;
   storyCard: boolean;

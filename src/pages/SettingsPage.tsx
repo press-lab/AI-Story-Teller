@@ -538,12 +538,6 @@ export function SettingsPage({
                   When off, proposals arrive with blank content for you to fill in.
                 </p>
                 <CheckboxField
-                  label="Auto-approve Plot Essentials arc additions"
-                  checked={globalAdventureSettings.memoryAutoApprove.plotArcAppend}
-                  onChange={(plotArcAppend) => updateMemoryAutoApprove({ plotArcAppend })}
-                />
-                <p className="muted">New arc-level developments append to the overall arc section without review.</p>
-                <CheckboxField
                   label="Auto-approve Active Pressure updates"
                   checked={globalAdventureSettings.memoryAutoApprove.plotPressureUpdate}
                   onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })}

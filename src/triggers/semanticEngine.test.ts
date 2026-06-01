@@ -352,11 +352,12 @@ describe("runSemanticPostTurnEvaluation", () => {
     let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
     expect(reduced.components[0].content).toBe("Old premise.");
     const proposal = reduced.activeState.memoryProposals[0];
-    expect(proposal).toMatchObject({ proposedType: "plotPressureUpdate", status: "pending", targetId: "component-plot" });
+    expect(proposal).toMatchObject({ proposedType: "plotPressureUpdate", status: "pending" });
 
     reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.components[0].content).toContain("The Fire Nation court now expects a public duel.");
-    expect(reduced.components[0].content).toContain("## Active Pressure");
+    expect(reduced.components[0].content).toBe("Old premise."); // PE unchanged
+    const pressureComp = reduced.components.find((c) => c.type === "activePressure");
+    expect(pressureComp?.content).toContain("The Fire Nation court now expects a public duel.");
   });
 });
 

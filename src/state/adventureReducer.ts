@@ -20,7 +20,6 @@ import type {
 import { completeQuest, failQuest, progressQuest, startQuest } from "../quests/questEngine";
 import { defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
-import { applyPeZone } from "../utils/peZones";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
@@ -393,25 +392,25 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     return { components: upsertById(state.components, component) };
   }
 
-  if (proposal.proposedType === "plotArcAppend" || proposal.proposedType === "plotPressureUpdate" || proposal.proposedType === "plotMomentumUpdate") {
+  if (proposal.proposedType === "plotPressureUpdate" || proposal.proposedType === "plotMomentumUpdate") {
     if (!proposal.content.trim()) return {};
-    const target =
-      state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
-      state.components.find((component) => component.type === "plotEssentials");
-    const zone = proposal.proposedType === "plotArcAppend" ? "arc" : proposal.proposedType === "plotPressureUpdate" ? "pressure" : "momentum";
-    if (target) {
-      const newContent = applyPeZone(target.content, zone, proposal.content);
-      return { components: upsertById(state.components, touch({ ...target, content: newContent })) };
+    const componentType = proposal.proposedType === "plotPressureUpdate" ? "activePressure" : "immediateMomentum";
+    const defaultTitle = proposal.proposedType === "plotPressureUpdate" ? "Active Pressure" : "Immediate Momentum";
+    const defaultPriority = proposal.proposedType === "plotPressureUpdate" ? 245 : 240;
+    const existing =
+      state.components.find((c) => c.id === proposal.targetId && c.type === componentType) ??
+      state.components.find((c) => c.type === componentType);
+    if (existing) {
+      return { components: upsertById(state.components, touch({ ...existing, content: proposal.content })) };
     }
-    // No PE component yet — create one with the appropriate zone
     const component = makeComponent({
-      title: "Plot Essentials",
-      type: "plotEssentials",
-      content: applyPeZone("", zone, proposal.content),
+      title: defaultTitle,
+      type: componentType,
+      content: proposal.content,
       active: true,
       alwaysOn: false,
       pinned: false,
-      priority: 250,
+      priority: defaultPriority,
     });
     return { components: upsertById(state.components, component) };
   }
