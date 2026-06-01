@@ -11,7 +11,7 @@ import type {
   SemanticEvaluationSettings,
   TokenBudgetSettings,
 } from "../types/adventure";
-import type { ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pageTypes";
+import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -51,6 +51,8 @@ interface SettingsPageProps {
   onSelectPreset: (id: string) => void;
   uiPreferences: UiPreferences;
   onUiPreferencesChange: (prefs: UiPreferences) => void;
+  globalAdventureSettings: GlobalAdventureSettings;
+  onGlobalAdventureSettingsChange: (settings: GlobalAdventureSettings) => void;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -68,6 +70,8 @@ export function SettingsPage({
   onSelectPreset,
   uiPreferences,
   onUiPreferencesChange,
+  globalAdventureSettings,
+  onGlobalAdventureSettingsChange,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -125,31 +129,23 @@ export function SettingsPage({
   }
 
   function updateBudget(patch: Partial<TokenBudgetSettings>) {
-    if (!adventure) return;
-    dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, ...patch } });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, tokenBudgetSettings: { ...globalAdventureSettings.tokenBudgetSettings, ...patch } });
   }
 
   function updateSemanticSettings(patch: Partial<SemanticEvaluationSettings>) {
-    if (!adventure) return;
-    dispatch({
-      type: "SET_SEMANTIC_EVALUATION_SETTINGS",
-      settings: { ...adventure.semanticEvaluationSettings, ...patch },
-    });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, semanticEvaluationSettings: { ...globalAdventureSettings.semanticEvaluationSettings, ...patch } });
   }
 
   function updateAutoCardSettings(patch: Partial<AutoCardSettings>) {
-    if (!adventure) return;
-    dispatch({ type: "SET_AUTO_CARD_SETTINGS", settings: { ...adventure.autoCardSettings, ...patch } });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, autoCardSettings: { ...globalAdventureSettings.autoCardSettings, ...patch } });
   }
 
   function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
-    if (!adventure) return;
-    dispatch({ type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...adventure.memoryDetectionSettings, ...patch } });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
   }
 
   function updateMemoryAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
-    if (!adventure) return;
-    dispatch({ type: "SET_MEMORY_AUTO_APPROVE", settings: { ...adventure.memoryAutoApprove, ...patch } });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryAutoApprove: { ...globalAdventureSettings.memoryAutoApprove, ...patch } });
   }
 
   const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
@@ -310,7 +306,6 @@ export function SettingsPage({
         {advanced && (
           <article className="panel" style={{ gridColumn: "1 / -1" }}>
             <h3>Context Budget</h3>
-            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
               <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
               <button type="button" title="16k tokens, 40 messages — balanced default" onClick={() => updateBudget(defaultTokenBudgetSettings)}>Normal</button>
@@ -320,20 +315,20 @@ export function SettingsPage({
               <Field label="Max Context Tokens">
                 <NumberInput
                   min={512}
-                  value={adventure.tokenBudgetSettings.maxContextTokens}
+                  value={globalAdventureSettings.tokenBudgetSettings.maxContextTokens}
                   onChange={(value) => updateBudget({ maxContextTokens: value })}
                 />
               </Field>
               <Field label="Max Recent Messages">
                 <NumberInput
                   min={0}
-                  value={adventure.tokenBudgetSettings.maxRecentMessages}
+                  value={globalAdventureSettings.tokenBudgetSettings.maxRecentMessages}
                   onChange={(value) => updateBudget({ maxRecentMessages: value })}
                 />
               </Field>
               <Field label="Memory Priority Mode">
                 <select
-                  value={adventure.tokenBudgetSettings.memoryPriorityMode}
+                  value={globalAdventureSettings.tokenBudgetSettings.memoryPriorityMode}
                   onChange={(e) => updateBudget({ memoryPriorityMode: e.target.value as MemoryPriorityMode })}
                 >
                   <option value="userLocked">userLocked</option>
@@ -344,7 +339,7 @@ export function SettingsPage({
               <Field label="Trigger Recent Message Window">
                 <NumberInput
                   min={0}
-                  value={adventure.tokenBudgetSettings.recentMessageWindow}
+                  value={globalAdventureSettings.tokenBudgetSettings.recentMessageWindow}
                   onChange={(value) => updateBudget({ recentMessageWindow: value })}
                 />
               </Field>
@@ -353,42 +348,41 @@ export function SettingsPage({
               <div>
                 <CheckboxField
                   label="Allow system to prioritize memory"
-                  checked={adventure.tokenBudgetSettings.allowSystemToPrioritizeMemory}
+                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToPrioritizeMemory}
                   onChange={(allowSystemToPrioritizeMemory) => updateBudget({ allowSystemToPrioritizeMemory })}
                 />
                 <CheckboxField
                   label="Allow system to drop unpinned triggered cards"
-                  checked={adventure.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
+                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
                   onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
                 />
                 <CheckboxField
                   label="Allow system to truncate rolling summary"
-                  checked={adventure.tokenBudgetSettings.allowSystemToTruncateSummary}
+                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToTruncateSummary}
                   onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
                 />
               </div>
               <div>
                 <CheckboxField
                   label="Auto-summarize in background"
-                  checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
+                  checked={globalAdventureSettings.tokenBudgetSettings.autoSummarize ?? true}
                   onChange={(autoSummarize) => updateBudget({ autoSummarize })}
                 />
                 <Field label="Auto-summarize every N turns">
                   <NumberInput
                     min={5}
-                    value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
+                    value={globalAdventureSettings.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
                     onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
                   />
                 </Field>
                 <Field label="Section Budgets JSON">
                   <JsonTextarea
-                    value={adventure.tokenBudgetSettings.sectionBudgets}
+                    value={globalAdventureSettings.tokenBudgetSettings.sectionBudgets}
                     onValidChange={(sectionBudgets) => updateBudget({ sectionBudgets })}
                   />
                 </Field>
               </div>
             </div>
-            </>}
           </article>
         )}
 
@@ -396,10 +390,9 @@ export function SettingsPage({
         {advanced && (
           <article className="panel">
             <h3>LLM Evaluation</h3>
-            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <Field label="Evaluation Model Override">
               <input
-                value={adventure.semanticEvaluationSettings.evaluationModel}
+                value={globalAdventureSettings.semanticEvaluationSettings.evaluationModel}
                 placeholder={activePreset?.model ?? ""}
                 onChange={(e) => updateSemanticSettings({ evaluationModel: e.target.value })}
               />
@@ -407,30 +400,30 @@ export function SettingsPage({
             <Field label="Messages Included In Evaluation">
               <NumberInput
                 min={1}
-                value={adventure.semanticEvaluationSettings.messagesIncluded}
+                value={globalAdventureSettings.semanticEvaluationSettings.messagesIncluded}
                 onChange={(messagesIncluded) => updateSemanticSettings({ messagesIncluded })}
               />
             </Field>
             <CheckboxField
               label="Enable semantic triggers"
-              checked={adventure.semanticEvaluationSettings.enabled}
+              checked={globalAdventureSettings.semanticEvaluationSettings.enabled}
               onChange={(enabled) => updateSemanticSettings({ enabled })}
             />
             <CheckboxField
               label="Show evaluation log on Automations page"
-              checked={adventure.semanticEvaluationSettings.showLog}
+              checked={globalAdventureSettings.semanticEvaluationSettings.showLog}
               onChange={(showLog) => updateSemanticSettings({ showLog })}
             />
             <Field label="Max Parallel Update Calls">
               <NumberInput
                 min={1}
-                value={adventure.semanticEvaluationSettings.maxParallelUpdateCalls}
+                value={globalAdventureSettings.semanticEvaluationSettings.maxParallelUpdateCalls}
                 onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
               />
             </Field>
             <CheckboxField
               label="Require approval before applying auto-updates"
-              checked={adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
+              checked={globalAdventureSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
               onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
             />
             <p className="muted">
@@ -443,14 +436,14 @@ export function SettingsPage({
             </p>
             <Field label="Base URL">
               <input
-                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? ""}
+                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? ""}
                 placeholder="https://api.groq.com/openai/v1"
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
+                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
                       baseUrl: e.target.value,
-                      model: adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                      model: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
                     },
                   })
                 }
@@ -459,14 +452,14 @@ export function SettingsPage({
             <Field label="API Key">
               <input
                 type="password"
-                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.apiKey ?? ""}
+                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.apiKey ?? ""}
                 placeholder="gsk_..."
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
-                      baseUrl: adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
-                      model: adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      model: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
                       apiKey: e.target.value,
                     },
                   })
@@ -475,20 +468,19 @@ export function SettingsPage({
             </Field>
             <Field label="Model">
               <input
-                value={adventure.semanticEvaluationSettings.backgroundProviderConfig?.model ?? ""}
+                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? ""}
                 placeholder="llama-3.3-70b-versatile"
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...adventure.semanticEvaluationSettings.backgroundProviderConfig,
-                      baseUrl: adventure.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
                       model: e.target.value,
                     },
                   })
                 }
               />
             </Field>
-            </>}
           </article>
         )}
 
@@ -496,30 +488,28 @@ export function SettingsPage({
         {advanced && (
           <article className="panel">
             <h3>Auto-Cards</h3>
-            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
-            <CheckboxField label="Enable Auto-Cards" checked={adventure.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
+            <CheckboxField label="Enable Auto-Cards" checked={globalAdventureSettings.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
             <Field label="Detection Condition">
               <textarea
                 rows={3}
-                value={adventure.autoCardSettings.detectionCondition}
+                value={globalAdventureSettings.autoCardSettings.detectionCondition}
                 onChange={(e) => updateAutoCardSettings({ detectionCondition: e.target.value })}
               />
             </Field>
             <Field label="Generation Prompt">
               <textarea
                 rows={5}
-                value={adventure.autoCardSettings.generationPrompt}
+                value={globalAdventureSettings.autoCardSettings.generationPrompt}
                 onChange={(e) => updateAutoCardSettings({ generationPrompt: e.target.value })}
               />
             </Field>
             <Field label="Cooldown Between Generations (turns)">
               <NumberInput
                 min={0}
-                value={adventure.autoCardSettings.cooldownTurns}
+                value={globalAdventureSettings.autoCardSettings.cooldownTurns}
                 onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
               />
             </Field>
-            </>}
           </article>
         )}
 
@@ -527,21 +517,20 @@ export function SettingsPage({
         {advanced && (
           <article className="panel">
             <h3>Memory Detection</h3>
-            {!adventure ? <p className="muted">Open an adventure to configure these settings.</p> : <>
             <p className="muted">
               After each turn, use the evaluation model to detect new durable facts worth storing as memory proposals.
               The pre-filter skips the call when nothing novel is detected.
             </p>
             <CheckboxField
               label="Enable AI memory detection"
-              checked={adventure.memoryDetectionSettings.enabled}
+              checked={globalAdventureSettings.memoryDetectionSettings.enabled}
               onChange={(enabled) => updateMemoryDetection({ enabled })}
             />
-            {adventure.memoryDetectionSettings.enabled && (
+            {globalAdventureSettings.memoryDetectionSettings.enabled && (
               <>
                 <CheckboxField
                   label="Generate card content"
-                  checked={adventure.memoryDetectionSettings.generateContent}
+                  checked={globalAdventureSettings.memoryDetectionSettings.generateContent}
                   onChange={(generateContent) => updateMemoryDetection({ generateContent })}
                 />
                 <p className="muted">
@@ -550,7 +539,7 @@ export function SettingsPage({
                 </p>
                 <CheckboxField
                   label="Auto-approve brain state updates"
-                  checked={adventure.memoryAutoApprove.brainUpdate}
+                  checked={globalAdventureSettings.memoryAutoApprove.brainUpdate}
                   onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}
                 />
                 <p className="muted">
@@ -559,7 +548,6 @@ export function SettingsPage({
                 </p>
               </>
             )}
-            </>}
           </article>
         )}
 

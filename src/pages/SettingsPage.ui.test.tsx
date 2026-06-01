@@ -10,7 +10,7 @@ import { createDefaultAdventure, defaultModelConfig } from "../state/defaults";
 import type { AdventureAction } from "../types/adventure";
 import { SettingsPage } from "./SettingsPage";
 import type { ProviderPreset, UiPreferences } from "./pageTypes";
-import { defaultUiPreferences } from "./pageTypes";
+import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pageTypes";
 
 function makePreset(): ProviderPreset {
   return {
@@ -47,6 +47,8 @@ describe("SettingsPage API throttle controls", () => {
           onSelectPreset={vi.fn()}
           uiPreferences={advancedPrefs}
           onUiPreferencesChange={vi.fn()}
+          globalAdventureSettings={defaultGlobalAdventureSettings}
+          onGlobalAdventureSettingsChange={vi.fn()}
         />
       );
     }

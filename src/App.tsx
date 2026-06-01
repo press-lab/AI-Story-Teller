@@ -13,8 +13,8 @@ import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
 import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
-import type { ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
-import { defaultUiPreferences } from "./pages/pageTypes";
+import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
+import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
@@ -147,6 +147,10 @@ export default function App() {
     "ai-story-teller-github-save-settings",
     defaultGitHubSaveSettings,
   );
+  const [globalAdventureSettings, setGlobalAdventureSettings] = useLocalStorage<GlobalAdventureSettings>(
+    "ai-story-teller-adventure-settings",
+    defaultGlobalAdventureSettings,
+  );
 
   // Migrate old default font size (15) to new default (20) for existing users
   useEffect(() => {
@@ -211,6 +215,23 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Apply global adventure settings to the open adventure whenever settings change or a different adventure is loaded.
+  useEffect(() => {
+    if (!adventure) return;
+    setAdventure((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        tokenBudgetSettings: globalAdventureSettings.tokenBudgetSettings,
+        semanticEvaluationSettings: globalAdventureSettings.semanticEvaluationSettings,
+        autoCardSettings: globalAdventureSettings.autoCardSettings,
+        memoryDetectionSettings: globalAdventureSettings.memoryDetectionSettings,
+        memoryAutoApprove: globalAdventureSettings.memoryAutoApprove,
+      };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adventure?.id, globalAdventureSettings]);
 
   function navigateTo(tabId: TabId) {
     setActiveTab(tabId);
@@ -375,6 +396,8 @@ export default function App() {
             onSelectPreset={setActivePresetId}
             uiPreferences={uiPreferences}
             onUiPreferencesChange={setUiPreferences}
+            globalAdventureSettings={globalAdventureSettings}
+            onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -442,6 +465,8 @@ export default function App() {
           onSelectPreset={setActivePresetId}
           uiPreferences={uiPreferences}
           onUiPreferencesChange={setUiPreferences}
+          globalAdventureSettings={globalAdventureSettings}
+          onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}
