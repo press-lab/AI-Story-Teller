@@ -508,7 +508,7 @@ export function PlayPage({
               <button
                 type="button"
                 className={`action-extra${showRemember ? " active-tool" : ""}`}
-                onClick={() => setShowRemember((v) => !v)}
+                onClick={() => { setShowRemember((v) => !v); setComposerOpen(true); }}
               >
                 Remember
               </button>
