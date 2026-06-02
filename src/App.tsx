@@ -216,22 +216,6 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Apply global adventure settings to the open adventure whenever settings change or a different adventure is loaded.
-  useEffect(() => {
-    if (!adventure) return;
-    setAdventure((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        tokenBudgetSettings: globalAdventureSettings.tokenBudgetSettings,
-        semanticEvaluationSettings: globalAdventureSettings.semanticEvaluationSettings,
-        autoCardSettings: globalAdventureSettings.autoCardSettings,
-        memoryDetectionSettings: globalAdventureSettings.memoryDetectionSettings,
-        memoryAutoApprove: globalAdventureSettings.memoryAutoApprove,
-      };
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adventure?.id, globalAdventureSettings]);
 
   function navigateTo(tabId: TabId) {
     setActiveTab(tabId);

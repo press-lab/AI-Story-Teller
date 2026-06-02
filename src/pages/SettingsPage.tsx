@@ -129,24 +129,37 @@ export function SettingsPage({
   }
 
   function updateBudget(patch: Partial<TokenBudgetSettings>) {
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, tokenBudgetSettings: { ...globalAdventureSettings.tokenBudgetSettings, ...patch } });
+    if (adventure) { dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, ...patch } }); return; }
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, tokenBudgetSettings: { ...activeSettings.tokenBudgetSettings, ...patch } });
   }
 
   function updateSemanticSettings(patch: Partial<SemanticEvaluationSettings>) {
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, semanticEvaluationSettings: { ...globalAdventureSettings.semanticEvaluationSettings, ...patch } });
+    if (adventure) { dispatch({ type: "SET_SEMANTIC_EVALUATION_SETTINGS", settings: { ...adventure.semanticEvaluationSettings, ...patch } }); return; }
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, semanticEvaluationSettings: { ...activeSettings.semanticEvaluationSettings, ...patch } });
   }
 
   function updateAutoCardSettings(patch: Partial<AutoCardSettings>) {
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, autoCardSettings: { ...globalAdventureSettings.autoCardSettings, ...patch } });
+    if (adventure) { dispatch({ type: "SET_AUTO_CARD_SETTINGS", settings: { ...adventure.autoCardSettings, ...patch } }); return; }
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, autoCardSettings: { ...activeSettings.autoCardSettings, ...patch } });
   }
 
   function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
+    if (adventure) { dispatch({ type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...adventure.memoryDetectionSettings, ...patch } }); return; }
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...activeSettings.memoryDetectionSettings, ...patch } });
   }
 
   function updateMemoryAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryAutoApprove: { ...globalAdventureSettings.memoryAutoApprove, ...patch } });
+    if (adventure) { dispatch({ type: "SET_MEMORY_AUTO_APPROVE", settings: { ...adventure.memoryAutoApprove, ...patch } }); return; }
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryAutoApprove: { ...activeSettings.memoryAutoApprove, ...patch } });
   }
+
+  const activeSettings: GlobalAdventureSettings = adventure ? {
+    tokenBudgetSettings: adventure.tokenBudgetSettings,
+    semanticEvaluationSettings: adventure.semanticEvaluationSettings,
+    autoCardSettings: adventure.autoCardSettings,
+    memoryDetectionSettings: adventure.memoryDetectionSettings,
+    memoryAutoApprove: adventure.memoryAutoApprove,
+  } : globalAdventureSettings;
 
   const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
 
@@ -315,20 +328,20 @@ export function SettingsPage({
               <Field label="Max Context Tokens">
                 <NumberInput
                   min={512}
-                  value={globalAdventureSettings.tokenBudgetSettings.maxContextTokens}
+                  value={activeSettings.tokenBudgetSettings.maxContextTokens}
                   onChange={(value) => updateBudget({ maxContextTokens: value })}
                 />
               </Field>
               <Field label="Max Recent Messages">
                 <NumberInput
                   min={0}
-                  value={globalAdventureSettings.tokenBudgetSettings.maxRecentMessages}
+                  value={activeSettings.tokenBudgetSettings.maxRecentMessages}
                   onChange={(value) => updateBudget({ maxRecentMessages: value })}
                 />
               </Field>
               <Field label="Memory Priority Mode">
                 <select
-                  value={globalAdventureSettings.tokenBudgetSettings.memoryPriorityMode}
+                  value={activeSettings.tokenBudgetSettings.memoryPriorityMode}
                   onChange={(e) => updateBudget({ memoryPriorityMode: e.target.value as MemoryPriorityMode })}
                 >
                   <option value="userLocked">userLocked</option>
@@ -339,7 +352,7 @@ export function SettingsPage({
               <Field label="Trigger Recent Message Window">
                 <NumberInput
                   min={0}
-                  value={globalAdventureSettings.tokenBudgetSettings.recentMessageWindow}
+                  value={activeSettings.tokenBudgetSettings.recentMessageWindow}
                   onChange={(value) => updateBudget({ recentMessageWindow: value })}
                 />
               </Field>
@@ -348,36 +361,36 @@ export function SettingsPage({
               <div>
                 <CheckboxField
                   label="Allow system to prioritize memory"
-                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToPrioritizeMemory}
+                  checked={activeSettings.tokenBudgetSettings.allowSystemToPrioritizeMemory}
                   onChange={(allowSystemToPrioritizeMemory) => updateBudget({ allowSystemToPrioritizeMemory })}
                 />
                 <CheckboxField
                   label="Allow system to drop unpinned triggered cards"
-                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
+                  checked={activeSettings.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
                   onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
                 />
                 <CheckboxField
                   label="Allow system to truncate rolling summary"
-                  checked={globalAdventureSettings.tokenBudgetSettings.allowSystemToTruncateSummary}
+                  checked={activeSettings.tokenBudgetSettings.allowSystemToTruncateSummary}
                   onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
                 />
               </div>
               <div>
                 <CheckboxField
                   label="Auto-summarize in background"
-                  checked={globalAdventureSettings.tokenBudgetSettings.autoSummarize ?? true}
+                  checked={activeSettings.tokenBudgetSettings.autoSummarize ?? true}
                   onChange={(autoSummarize) => updateBudget({ autoSummarize })}
                 />
                 <Field label="Auto-summarize every N turns">
                   <NumberInput
                     min={5}
-                    value={globalAdventureSettings.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
+                    value={activeSettings.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
                     onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
                   />
                 </Field>
                 <Field label="Section Budgets JSON">
                   <JsonTextarea
-                    value={globalAdventureSettings.tokenBudgetSettings.sectionBudgets}
+                    value={activeSettings.tokenBudgetSettings.sectionBudgets}
                     onValidChange={(sectionBudgets) => updateBudget({ sectionBudgets })}
                   />
                 </Field>
@@ -392,7 +405,7 @@ export function SettingsPage({
             <h3>LLM Evaluation</h3>
             <Field label="Evaluation Model Override">
               <input
-                value={globalAdventureSettings.semanticEvaluationSettings.evaluationModel}
+                value={activeSettings.semanticEvaluationSettings.evaluationModel}
                 placeholder={activePreset?.model ?? ""}
                 onChange={(e) => updateSemanticSettings({ evaluationModel: e.target.value })}
               />
@@ -400,30 +413,30 @@ export function SettingsPage({
             <Field label="Messages Included In Evaluation">
               <NumberInput
                 min={1}
-                value={globalAdventureSettings.semanticEvaluationSettings.messagesIncluded}
+                value={activeSettings.semanticEvaluationSettings.messagesIncluded}
                 onChange={(messagesIncluded) => updateSemanticSettings({ messagesIncluded })}
               />
             </Field>
             <CheckboxField
               label="Enable semantic triggers"
-              checked={globalAdventureSettings.semanticEvaluationSettings.enabled}
+              checked={activeSettings.semanticEvaluationSettings.enabled}
               onChange={(enabled) => updateSemanticSettings({ enabled })}
             />
             <CheckboxField
               label="Show evaluation log on Automations page"
-              checked={globalAdventureSettings.semanticEvaluationSettings.showLog}
+              checked={activeSettings.semanticEvaluationSettings.showLog}
               onChange={(showLog) => updateSemanticSettings({ showLog })}
             />
             <Field label="Max Parallel Update Calls">
               <NumberInput
                 min={1}
-                value={globalAdventureSettings.semanticEvaluationSettings.maxParallelUpdateCalls}
+                value={activeSettings.semanticEvaluationSettings.maxParallelUpdateCalls}
                 onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
               />
             </Field>
             <CheckboxField
               label="Require approval before applying auto-updates"
-              checked={globalAdventureSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
+              checked={activeSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
               onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
             />
             <p className="muted">
@@ -436,14 +449,14 @@ export function SettingsPage({
             </p>
             <Field label="Base URL">
               <input
-                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? ""}
+                value={activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? ""}
                 placeholder="https://api.groq.com/openai/v1"
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
+                      ...activeSettings.semanticEvaluationSettings.backgroundProviderConfig,
                       baseUrl: e.target.value,
-                      model: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                      model: activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
                     },
                   })
                 }
@@ -452,14 +465,14 @@ export function SettingsPage({
             <Field label="API Key">
               <input
                 type="password"
-                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.apiKey ?? ""}
+                value={activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.apiKey ?? ""}
                 placeholder="gsk_..."
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
-                      baseUrl: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
-                      model: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
+                      ...activeSettings.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      model: activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? "",
                       apiKey: e.target.value,
                     },
                   })
@@ -468,13 +481,13 @@ export function SettingsPage({
             </Field>
             <Field label="Model">
               <input
-                value={globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? ""}
+                value={activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.model ?? ""}
                 placeholder="llama-3.3-70b-versatile"
                 onChange={(e) =>
                   updateSemanticSettings({
                     backgroundProviderConfig: {
-                      ...globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig,
-                      baseUrl: globalAdventureSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
+                      ...activeSettings.semanticEvaluationSettings.backgroundProviderConfig,
+                      baseUrl: activeSettings.semanticEvaluationSettings.backgroundProviderConfig?.baseUrl ?? "",
                       model: e.target.value,
                     },
                   })
@@ -488,25 +501,25 @@ export function SettingsPage({
         {advanced && (
           <article className="panel">
             <h3>Auto-Cards</h3>
-            <CheckboxField label="Enable Auto-Cards" checked={globalAdventureSettings.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
+            <CheckboxField label="Enable Auto-Cards" checked={activeSettings.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
             <Field label="Detection Condition">
               <textarea
                 rows={3}
-                value={globalAdventureSettings.autoCardSettings.detectionCondition}
+                value={activeSettings.autoCardSettings.detectionCondition}
                 onChange={(e) => updateAutoCardSettings({ detectionCondition: e.target.value })}
               />
             </Field>
             <Field label="Generation Prompt">
               <textarea
                 rows={5}
-                value={globalAdventureSettings.autoCardSettings.generationPrompt}
+                value={activeSettings.autoCardSettings.generationPrompt}
                 onChange={(e) => updateAutoCardSettings({ generationPrompt: e.target.value })}
               />
             </Field>
             <Field label="Cooldown Between Generations (turns)">
               <NumberInput
                 min={0}
-                value={globalAdventureSettings.autoCardSettings.cooldownTurns}
+                value={activeSettings.autoCardSettings.cooldownTurns}
                 onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
               />
             </Field>
@@ -523,21 +536,21 @@ export function SettingsPage({
             </p>
             <CheckboxField
               label="Enable AI memory detection"
-              checked={globalAdventureSettings.memoryDetectionSettings.enabled}
+              checked={activeSettings.memoryDetectionSettings.enabled}
               onChange={(enabled) => updateMemoryDetection({ enabled })}
             />
-            {globalAdventureSettings.memoryDetectionSettings.enabled && (
+            {activeSettings.memoryDetectionSettings.enabled && (
               <>
                 <Field label="Run every N turns (1 = every turn)">
                   <NumberInput
                     min={1}
-                    value={globalAdventureSettings.memoryDetectionSettings.everyNTurns}
+                    value={activeSettings.memoryDetectionSettings.everyNTurns}
                     onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })}
                   />
                 </Field>
                 <CheckboxField
                   label="Generate card content"
-                  checked={globalAdventureSettings.memoryDetectionSettings.generateContent}
+                  checked={activeSettings.memoryDetectionSettings.generateContent}
                   onChange={(generateContent) => updateMemoryDetection({ generateContent })}
                 />
                 <p className="muted">
@@ -546,19 +559,19 @@ export function SettingsPage({
                 </p>
                 <CheckboxField
                   label="Auto-approve Active Pressure updates"
-                  checked={globalAdventureSettings.memoryAutoApprove.plotPressureUpdate}
+                  checked={activeSettings.memoryAutoApprove.plotPressureUpdate}
                   onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })}
                 />
                 <p className="muted">Active Pressure section is replaced automatically when stakes shift.</p>
                 <CheckboxField
                   label="Auto-approve Immediate Momentum updates"
-                  checked={globalAdventureSettings.memoryAutoApprove.plotMomentumUpdate}
+                  checked={activeSettings.memoryAutoApprove.plotMomentumUpdate}
                   onChange={(plotMomentumUpdate) => updateMemoryAutoApprove({ plotMomentumUpdate })}
                 />
                 <p className="muted">Immediate Momentum section is replaced automatically when scene direction shifts.</p>
                 <CheckboxField
                   label="Auto-approve brain state updates"
-                  checked={globalAdventureSettings.memoryAutoApprove.brainUpdate}
+                  checked={activeSettings.memoryAutoApprove.brainUpdate}
                   onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}
                 />
                 <p className="muted">
