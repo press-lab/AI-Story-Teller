@@ -31,6 +31,7 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   },
   autoSummarize: true,
   autoSummarizeEveryNTurns: 20,
+  autoSceneStateEveryNTurns: 1,
 };
 
 export const lightTokenBudgetPreset: Partial<TokenBudgetSettings> = {
@@ -71,6 +72,7 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
   showLog: true,
   maxParallelUpdateCalls: 3,
   requireApprovalForAutoUpdates: true,
+  semanticEvalEveryNTurns: 1,
 };
 
 export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
@@ -375,6 +377,8 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       backgroundTokenUsage: adventure.activeState?.backgroundTokenUsage ?? { promptTokens: 0, completionTokens: 0 },
       challengeMode: adventure.activeState?.challengeMode ?? false,
       lastMemoryCycleTurn: adventure.activeState?.lastMemoryCycleTurn,
+      lastSemanticEvalTurn: adventure.activeState?.lastSemanticEvalTurn,
+      lastSceneStateTurn: adventure.activeState?.lastSceneStateTurn,
     },
     rollingSummary: {
       ...baseline.rollingSummary,
@@ -455,6 +459,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     semanticEvaluationSettings: {
       ...defaultSemanticEvaluationSettings,
       ...(adventure.semanticEvaluationSettings ?? {}),
+      semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
     },
     autoCardSettings: {
       ...defaultAutoCardSettings,
@@ -474,6 +479,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       // Ensure new fields always present even on old saves
       autoSummarize: adventure.tokenBudgetSettings?.autoSummarize ?? true,
       autoSummarizeEveryNTurns: adventure.tokenBudgetSettings?.autoSummarizeEveryNTurns ?? 20,
+      autoSceneStateEveryNTurns: adventure.tokenBudgetSettings?.autoSceneStateEveryNTurns ?? 1,
     },
     modelConfig: {
       ...defaultModelConfig,

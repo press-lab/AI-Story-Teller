@@ -34,6 +34,7 @@ function baseAdventure(): Adventure {
       showLog: true,
       maxParallelUpdateCalls: 2,
       requireApprovalForAutoUpdates: false,
+      semanticEvalEveryNTurns: 1,
     },
     messages: [
       { id: "m1", role: "user", content: "I enter the tavern.", createdAt: "2026-01-01T00:00:00.000Z" },

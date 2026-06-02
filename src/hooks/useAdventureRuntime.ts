@@ -37,6 +37,12 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
 }
 
+function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number): RuntimeProviderSettings {
+  const words = Math.max(50, Math.min(200, hint));
+  const maxTokens = Math.round(words * 1.5);
+  return { ...config, maxOutputTokens: Math.min(config.maxOutputTokens ?? 2048, Math.max(maxTokens, 64)) };
+}
+
 function stripThinkTags(text: string): string {
   return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }
@@ -165,14 +171,19 @@ export function useAdventureRuntime(
 
   async function startSemanticEvaluation(snapshot: Adventure) {
     if (!snapshot.semanticEvaluationSettings.enabled) return;
+    const everyN = snapshot.semanticEvaluationSettings.semanticEvalEveryNTurns ?? 1;
+    if (everyN === 0) return;
+    const last = snapshot.activeState.lastSemanticEvalTurn;
+    if (last !== undefined && snapshot.activeState.turn - last < everyN) return;
     const result = await runSemanticPostTurnEvaluation(
       snapshot,
       mergeProviderConfig(snapshot, providerSettingsRef.current),
     );
+    const stampAction: AdventureAction = { type: "SET_LAST_SEMANTIC_EVAL_TURN", turn: snapshot.activeState.turn };
     const tokenAction: AdventureAction | undefined = result.tokenUsage
       ? { type: "ACCUMULATE_BACKGROUND_TOKENS", promptTokens: result.tokenUsage.promptTokens, completionTokens: result.tokenUsage.completionTokens }
       : undefined;
-    const allActions = tokenAction ? [...result.actions, tokenAction] : result.actions;
+    const allActions = [...result.actions, stampAction, ...(tokenAction ? [tokenAction] : [])];
     if (isSubmittingRef.current) {
       queuePendingUpdate(allActions, "semanticEvaluation");
       return;
@@ -181,6 +192,10 @@ export function useAdventureRuntime(
   }
 
   async function startAutoSceneState(adventureState: Adventure) {
+    const everyN = adventureState.tokenBudgetSettings.autoSceneStateEveryNTurns ?? 1;
+    if (everyN === 0) return;
+    const last = adventureState.activeState.lastSceneStateTurn;
+    if (last !== undefined && adventureState.activeState.turn - last < everyN) return;
     try {
       const { messages: sceneMessages } = buildSceneStatePayload(adventureState);
       const response = await sendOpenAICompatibleChatCompletion({
@@ -190,6 +205,7 @@ export function useAdventureRuntime(
       const content = stripThinkTags(response.content);
       const actions: AdventureAction[] = [
         { type: "UPDATE_SCENE_STATE", content },
+        { type: "SET_LAST_SCENE_STATE_TURN", turn: adventureState.activeState.turn },
         ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
       ];
       if (isSubmittingRef.current) {
@@ -229,10 +245,8 @@ export function useAdventureRuntime(
           snapshotWithUserMsg = snapshot;
           setAdventure(snapshot);
           setContextResult(context);
-          return sendOpenAICompatibleChatCompletion({
-            messages,
-            config: mergeProviderConfig(snapshot, providerSettings),
-          });
+          const storyConfig = applyResponseLengthHint(mergeProviderConfig(snapshot, providerSettings), snapshot.activeState.responseLengthHint);
+          return sendOpenAICompatibleChatCompletion({ messages, config: storyConfig });
         },
       });
 
@@ -286,10 +300,8 @@ export function useAdventureRuntime(
     setAdventure(next);
 
     try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: mergeProviderConfig(next, providerSettings),
-      });
+      const continueConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
+      const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: continueConfig });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       void 0; // memory cycle runs post-turn via checkMemoryCycle
@@ -329,10 +341,8 @@ export function useAdventureRuntime(
     setContextResult(context);
 
     try {
-      const response = await sendOpenAICompatibleChatCompletion({
-        messages: context.messages,
-        config: mergeProviderConfig(next, providerSettings),
-      });
+      const regenConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
+      const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: regenConfig });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       void 0; // memory cycle runs post-turn via checkMemoryCycle

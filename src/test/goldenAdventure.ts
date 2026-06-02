@@ -168,6 +168,7 @@ export function goldenAdventure(): Adventure {
       sectionBudgets: {},
       autoSummarize: false,
       autoSummarizeEveryNTurns: 20,
+      autoSceneStateEveryNTurns: 1,
     },
   };
 }

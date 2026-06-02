@@ -531,6 +531,14 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         activeState: { ...state.activeState, lastMemoryCycleTurn: action.turn },
       });
+    case "SET_LAST_SEMANTIC_EVAL_TURN":
+      return touchAdventure(state, {
+        activeState: { ...state.activeState, lastSemanticEvalTurn: action.turn },
+      });
+    case "SET_LAST_SCENE_STATE_TURN":
+      return touchAdventure(state, {
+        activeState: { ...state.activeState, lastSceneStateTurn: action.turn },
+      });
     case "UPSERT_COMPONENT":
       return touchAdventure(state, { components: upsertById(state.components, touch(action.component)) });
     case "DELETE_COMPONENT":

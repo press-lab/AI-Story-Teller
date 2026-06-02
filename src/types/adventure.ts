@@ -231,6 +231,8 @@ export interface TokenBudgetSettings {
   /** Automatically regenerate the rolling summary in the background every N turns. */
   autoSummarize: boolean;
   autoSummarizeEveryNTurns: number;
+  /** How often to regenerate scene state in the background. 0 = manual only, 1 = every turn. Default 1. */
+  autoSceneStateEveryNTurns: number;
 }
 
 export interface ProviderConfig {
@@ -276,6 +278,8 @@ export interface SemanticEvaluationSettings {
   backgroundProviderConfig?: BackgroundProviderConfig;
   /** Global cooldown: skip story-card update conditions if any card was updated within this many turns. 0 or undefined = no global limit. */
   storyCardCooldownTurns?: number;
+  /** How often to run semantic evaluation (quests, triggers, auto-cards). 0 = disabled, 1 = every turn. Default 1. */
+  semanticEvalEveryNTurns: number;
 }
 
 export interface AutoCardSettings {
@@ -443,6 +447,10 @@ export interface ActiveState {
   challengeMode: boolean;
   /** Turn number when the memory cycle last ran for this adventure. */
   lastMemoryCycleTurn?: number;
+  /** Turn number when semantic evaluation last ran. */
+  lastSemanticEvalTurn?: number;
+  /** Turn number when scene state last ran. */
+  lastSceneStateTurn?: number;
 }
 
 export interface Adventure {
@@ -712,5 +720,7 @@ export type AdventureAction =
   | { type: "FLUSH_PENDING_UPDATES" }
   | { type: "SET_CHALLENGE_MODE" }
   | { type: "SET_LAST_MEMORY_CYCLE_TURN"; turn: number }
+  | { type: "SET_LAST_SEMANTIC_EVAL_TURN"; turn: number }
+  | { type: "SET_LAST_SCENE_STATE_TURN"; turn: number }
   | { type: "RESET_RUNTIME_STATE" }
   | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number };

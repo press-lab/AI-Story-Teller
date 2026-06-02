@@ -95,6 +95,8 @@ const testedActionTypes = [
   "FLUSH_PENDING_UPDATES",
   "SET_CHALLENGE_MODE",
   "SET_LAST_MEMORY_CYCLE_TURN",
+  "SET_LAST_SEMANTIC_EVAL_TURN",
+  "SET_LAST_SCENE_STATE_TURN",
   "RESET_RUNTIME_STATE",
   "ACCUMULATE_BACKGROUND_TOKENS",
   "SET_AUTO_SAVE_SETTINGS",
@@ -263,7 +265,7 @@ describe("adventureReducer", () => {
 
     state = reduce(state, {
       type: "SET_SEMANTIC_EVALUATION_SETTINGS",
-      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2, requireApprovalForAutoUpdates: false },
+      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2, requireApprovalForAutoUpdates: false, semanticEvalEveryNTurns: 1 },
     });
     expect(state.semanticEvaluationSettings.evaluationModel).toBe("eval-model");
 

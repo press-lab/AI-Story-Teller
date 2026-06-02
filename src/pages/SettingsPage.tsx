@@ -314,6 +314,36 @@ export function SettingsPage({
           <p className="muted" style={{ marginTop: "0.5rem" }}>API keys are not written to adventure JSON or IndexedDB saves.</p>
         </article>
 
+        {/* ── Background Cost Mode ──────────────────── */}
+        {adventure && (
+          <article className="panel" style={{ gridColumn: "1 / -1" }}>
+            <h3>Background Cost</h3>
+            <p className="muted">Presets for how aggressively background systems run. Each turn can fire semantic eval, scene state, and memory cycle — set all at once here, or tune individually in Context Budget and LLM Evaluation.</p>
+            <div className="toolbar">
+              <button type="button" title="Disable all background AI calls. Play-only." onClick={() => {
+                updateSemanticSettings({ enabled: false, semanticEvalEveryNTurns: 1 });
+                updateBudget({ autoSceneStateEveryNTurns: 0 });
+                updateMemoryDetection({ enabled: false });
+              }}>Off</button>
+              <button type="button" title="One background call every 5 turns. Low spend." onClick={() => {
+                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 5 });
+                updateBudget({ autoSceneStateEveryNTurns: 5 });
+                updateMemoryDetection({ enabled: true, everyNTurns: 5 });
+              }}>Light</button>
+              <button type="button" title="Background calls every 2–3 turns. Balanced." onClick={() => {
+                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 2 });
+                updateBudget({ autoSceneStateEveryNTurns: 2 });
+                updateMemoryDetection({ enabled: true, everyNTurns: 3 });
+              }}>Normal</button>
+              <button type="button" title="Background calls every turn. Maximum tracking." onClick={() => {
+                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 1 });
+                updateBudget({ autoSceneStateEveryNTurns: 1 });
+                updateMemoryDetection({ enabled: true, everyNTurns: 1 });
+              }}>Heavy</button>
+            </div>
+          </article>
+        )}
+
         {/* ── Context Budget (advanced) ─────────────── */}
         {advanced && (
           <article className="panel" style={{ gridColumn: "1 / -1" }}>
@@ -387,6 +417,13 @@ export function SettingsPage({
                     onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
                   />
                 </Field>
+                <Field label="Scene state every N turns (0 = manual only)">
+                  <NumberInput
+                    min={0}
+                    value={activeSettings.tokenBudgetSettings.autoSceneStateEveryNTurns ?? 1}
+                    onChange={(autoSceneStateEveryNTurns) => updateBudget({ autoSceneStateEveryNTurns })}
+                  />
+                </Field>
                 <Field label="Section Budgets JSON">
                   <JsonTextarea
                     value={activeSettings.tokenBudgetSettings.sectionBudgets}
@@ -414,6 +451,13 @@ export function SettingsPage({
                 min={1}
                 value={activeSettings.semanticEvaluationSettings.messagesIncluded}
                 onChange={(messagesIncluded) => updateSemanticSettings({ messagesIncluded })}
+              />
+            </Field>
+            <Field label="Semantic eval every N turns (0 = disabled, 1 = every turn)">
+              <NumberInput
+                min={0}
+                value={activeSettings.semanticEvaluationSettings.semanticEvalEveryNTurns ?? 1}
+                onChange={(semanticEvalEveryNTurns) => updateSemanticSettings({ semanticEvalEveryNTurns })}
               />
             </Field>
             <CheckboxField

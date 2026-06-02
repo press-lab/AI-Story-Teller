@@ -346,7 +346,16 @@ export function PlayPage({
                   />
                   {message.role === "assistant" && (message.usage || (message.id === lastAssistant?.id && pendingMemoryCount > 0)) && (
                     <span className="message-usage muted">
-                      {message.usage && `↑${message.usage.promptTokens} ↓${message.usage.completionTokens} tokens`}
+                      {message.usage && (
+                        <span title={`Prompt: ${message.usage.promptTokens} · Completion: ${message.usage.completionTokens} · Total: ${message.usage.promptTokens + message.usage.completionTokens}`}>
+                          {message.usage.promptTokens + message.usage.completionTokens} tokens
+                        </span>
+                      )}
+                      {message.id === lastAssistant?.id && adventure.activeState.backgroundTokenUsage.promptTokens > 0 && (
+                        <span title={`Background (cumulative): ${adventure.activeState.backgroundTokenUsage.promptTokens} prompt + ${adventure.activeState.backgroundTokenUsage.completionTokens} completion`}>
+                          {" · "}bg {adventure.activeState.backgroundTokenUsage.promptTokens + adventure.activeState.backgroundTokenUsage.completionTokens}
+                        </span>
+                      )}
                       {message.id === lastAssistant?.id && pendingMemoryCount > 0 && (
                         <button
                           type="button"
@@ -354,7 +363,7 @@ export function PlayPage({
                           title="Open memory inbox"
                           onClick={(e) => { e.stopPropagation(); openTool("memoryInbox"); }}
                         >
-                          {message.usage ? "· " : ""}{pendingMemoryCount} suggestion{pendingMemoryCount !== 1 ? "s" : ""}
+                          {" · "}{pendingMemoryCount} suggestion{pendingMemoryCount !== 1 ? "s" : ""}
                         </button>
                       )}
                     </span>
