@@ -435,8 +435,8 @@ export function SettingsPage({
               />
             </Field>
             <CheckboxField
-              label="Require approval before applying auto-updates"
-              checked={activeSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? false}
+              label="Route all auto-updates to Memory Inbox (disable to auto-apply without review)"
+              checked={activeSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? true}
               onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
             />
             <p className="muted">

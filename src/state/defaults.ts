@@ -70,7 +70,7 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
   enabled: true,
   showLog: true,
   maxParallelUpdateCalls: 3,
-  requireApprovalForAutoUpdates: false,
+  requireApprovalForAutoUpdates: true,
 };
 
 export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
