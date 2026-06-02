@@ -20,7 +20,6 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 type SortMode = "alpha" | "recent";
 
 function CardSummary({ card, query }: { card: StoryCard; query: string }) {
-  const keyPreview = card.keys.slice(0, 4);
   const snippet = contentSnippet(card.content, query);
   return (
     <span className="story-card-summary">
@@ -32,12 +31,6 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
         {card.protected && <span className="badge badge-protected">Protected</span>}
         {card.priority > 0 && <span className="badge badge-priority">p{card.priority}</span>}
       </span>
-      {keyPreview.length > 0 && (
-        <span className="story-card-keys muted">
-          {keyPreview.map((k, i) => <span key={k}>{i > 0 && ", "}<Highlight text={k} query={query} /></span>)}
-          {card.keys.length > 4 ? "…" : ""}
-        </span>
-      )}
       {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>
   );
@@ -151,7 +144,7 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
   return (
     <section className="page">
       <p className="muted" style={{ margin: 0 }}>
-        Story Cards are <strong>triggered memory</strong> — they only enter the model context when their trigger keys match
+        Story Cards are <strong>triggered memory</strong> — they only enter the model context when their title matches
         the current input or recent story. Use them for characters, places, relationships, secrets, rules, and recurring facts
         that are only relevant some of the time.
         For always-on world lore that should load every turn regardless, use a <strong>World Block</strong>.
@@ -402,12 +395,6 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
                     </Field>
                   </div>
                   <div className="grid two">
-                    <Field label="Trigger Keys (comma-separated words or phrases that activate this card)">
-                      <input
-                        value={commaList(card.keys)}
-                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { keys: fromCommaList(event.target.value) } })}
-                      />
-                    </Field>
                     <Field label="Trigger Match Type">
                       <select
                         value={card.matchType ?? "phrase"}
