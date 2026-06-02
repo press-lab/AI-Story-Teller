@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { buildContext } from "../contextBuilder/contextBuilder";
+import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
@@ -303,7 +303,8 @@ export function useAdventureRuntime(
     try {
       const continueConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
       const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: continueConfig });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
+      const { cleanContent: continueClean } = extractInlineThoughts(response.content);
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: continueClean, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       void 0; // memory cycle runs post-turn via checkMemoryCycle
       setAdventure(next);
@@ -344,7 +345,8 @@ export function useAdventureRuntime(
     try {
       const regenConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
       const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: regenConfig });
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
+      const { cleanContent: regenClean } = extractInlineThoughts(response.content);
+      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: regenClean, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
       void 0; // memory cycle runs post-turn via checkMemoryCycle
       setAdventure(next);
