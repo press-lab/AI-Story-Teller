@@ -200,7 +200,9 @@ export function useAdventureRuntime(
         config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
         messages: summaryMessages,
       });
-      const content = stripThinkTags(response.content);
+      const additions = stripThinkTags(response.content).trim();
+      const existing = adventureState.rollingSummary.content.trim();
+      const content = additions ? (existing ? `${existing}\n\n${additions}` : additions) : existing;
       const actions: AdventureAction[] = [
         { type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex },
         ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
@@ -508,7 +510,9 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
       config: activeProviderConfig,
       messages: summaryMessages,
     });
-    return response.content;
+    const additions = stripThinkTags(response.content).trim();
+    const existing = adventure.rollingSummary.content.trim();
+    return additions ? (existing ? `${existing}\n\n${additions}` : additions) : existing;
   }
 
   async function generateSceneState(): Promise<string> {

@@ -186,14 +186,17 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 />
               </Field>
               <div className="grid two">
-                <Field label="Last Updated">
+                <Field label="Auto-update cooldown (turns, 0 = no limit)">
+                  <NumberInput
+                    value={brain.autoUpdateCooldownTurns ?? 0}
+                    min={0}
+                    onChange={(value) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { autoUpdateCooldownTurns: value || undefined } })}
+                  />
+                </Field>
+                <Field label="Last Updated (turn)">
                   <input
                     readOnly
-                    value={
-                      brain.lastUpdatedTurn === undefined
-                        ? "Never"
-                        : `Turn ${brain.lastUpdatedTurn}${brain.lastUpdatedAt ? ` at ${new Date(brain.lastUpdatedAt).toLocaleString()}` : ""}`
-                    }
+                    value={brain.lastUpdatedTurn ?? "Never"}
                   />
                 </Field>
                 <Field label="Last Generated Update Preview">

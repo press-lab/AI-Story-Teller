@@ -131,6 +131,17 @@ Return ONLY the bullet-pointed content — no title, no headers, no commentary.`
 }
 
 function componentPrompt(component: ComponentEntry): string {
+  if (component.type === "plotEssentials") {
+    const current = component.content?.trim();
+    return `You are contributing to a Plot Essentials arc document for an interactive fiction story.
+
+Current arc:
+${current || "(empty)"}
+
+Based on the most recent story events, write ONLY new permanent developments to append — completed arc beats, sealed consequences, major relationship shifts, or revealed plot truths. Do NOT repeat anything already captured above. If nothing new and permanent happened, respond with an empty string.
+
+Write as tight bullet points (• one per line). Return ONLY the new additions.`;
+  }
   return `You are updating a context component titled "${component.title}". Current content: "${component.content}". Based on what just happened, update this component. Return ONLY the new content as a plain string.`;
 }
 
@@ -180,6 +191,20 @@ function isStoryCardOnAutoUpdateCooldown(adventure: Adventure, card: StoryCard):
   return adventure.activeState.turn - last < (card.autoUpdateCooldownTurns ?? 3);
 }
 
+function isStoryCardSystemOnCooldown(adventure: Adventure): boolean {
+  const cooldown = adventure.semanticEvaluationSettings.storyCardCooldownTurns;
+  if (!cooldown) return false;
+  const lastUpdate = Math.max(-1, ...adventure.storyCards.map((c) => c.lastAutoUpdateTurn ?? -1));
+  if (lastUpdate < 0) return false;
+  return adventure.activeState.turn - lastUpdate < cooldown;
+}
+
+function isBrainOnCooldown(adventure: Adventure, brain: BrainEntry): boolean {
+  if (!brain.autoUpdateCooldownTurns) return false;
+  if (brain.lastUpdatedTurn === undefined) return false;
+  return adventure.activeState.turn - brain.lastUpdatedTurn < brain.autoUpdateCooldownTurns;
+}
+
 function isPEComponentOnCooldown(adventure: Adventure, component: ComponentEntry): boolean {
   const last = component.lastAutoUpdateTurn;
   if (last === undefined) return false;
@@ -205,6 +230,7 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
   const excerpt = recentExcerpt(adventure);
   return adventure.brains
     .filter((brain) => brain.active)
+    .filter((brain) => !isBrainOnCooldown(adventure, brain))
     .filter((brain) => {
       // Pre-filter: skip semantic evaluation entirely if character has no presence in recent text.
       // Saves one evaluation slot and a generation call when the character wasn't in the scene.
@@ -258,6 +284,15 @@ function autoCardConditions(adventure: Adventure): SemanticCondition[] {
 }
 
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
+  const arc = adventure.components
+    .filter((c) => c.type === "plotEssentials" && c.active && !isPEComponentOnCooldown(adventure, c))
+    .map((component) => ({
+      id: `plotEssentialsArc:${component.id}`,
+      label: `Plot Arc: ${component.title}`,
+      condition: `when a significant, permanent story development has occurred — a major arc beat completed, key relationship sealed, permanent consequence established, or plot truth revealed. Do NOT fire for minor scene events or details already established.`,
+      sourceType: "component" as const,
+      actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
+    }));
   const pressure = adventure.components
     .filter((c) => c.type === "activePressure" && c.active && !isPEComponentOnCooldown(adventure, c))
     .map((component) => ({
@@ -276,10 +311,11 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponentMomentum" as const, componentId: component.id }],
     }));
-  return [...pressure, ...momentum];
+  return [...arc, ...pressure, ...momentum];
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
+  if (isStoryCardSystemOnCooldown(adventure)) return [];
   const excerpt = recentExcerpt(adventure);
   return adventure.storyCards
     .filter((card) => card.active && card.autoUpdate)
@@ -959,14 +995,16 @@ export async function runManualPEComponentUpdate(
     errors: [],
   };
 
-  if (!component || (component.type !== "activePressure" && component.type !== "immediateMomentum")) {
+  if (!component || (component.type !== "plotEssentials" && component.type !== "activePressure" && component.type !== "immediateMomentum")) {
     const errorLog = { ...emptyLog, errors: [`Component not found or wrong type: ${componentId}`] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: errorLog }], logEntry: errorLog };
   }
 
   const triggerAction = component.type === "activePressure"
     ? { type: "updateComponentPressure" as const, componentId }
-    : { type: "updateComponentMomentum" as const, componentId };
+    : component.type === "immediateMomentum"
+    ? { type: "updateComponentMomentum" as const, componentId }
+    : { type: "updateComponent" as const, componentId };
 
   const forcePropose = {
     ...adventure,

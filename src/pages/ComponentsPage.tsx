@@ -170,7 +170,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   />
                 </Field>
               )}
-              {(component.type === "activePressure" || component.type === "immediateMomentum") && (
+              {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum") && (
                 <div className="grid two">
                   <Field label="Auto-update cooldown (turns)">
                     <NumberInput
@@ -252,7 +252,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
                   Move Down
                 </button>
-                {(component.type === "activePressure" || component.type === "immediateMomentum") && onUpdatePEComponentNow && (
+                {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum") && onUpdatePEComponentNow && (
                   <button
                     type="button"
                     disabled={loading}

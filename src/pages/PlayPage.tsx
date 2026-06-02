@@ -215,6 +215,7 @@ export function PlayPage({
     if (!text || loading) return;
     updateInput("");
     setComposerOpen(false);
+    setInputMode("do");
     await onSubmitTurn(transformInput(text, inputMode), inputMode);
   }
 

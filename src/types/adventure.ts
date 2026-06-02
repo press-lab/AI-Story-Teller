@@ -91,6 +91,7 @@ export interface BrainEntry {
   updateCondition: string;
   updatePrompt: string;
   updateMode: "replace" | "append";
+  autoUpdateCooldownTurns?: number;
   lastUpdatedTurn?: number;
   lastUpdatedAt?: ISODateString;
   lastGeneratedUpdatePreview?: string;
@@ -271,6 +272,8 @@ export interface SemanticEvaluationSettings {
   requireApprovalForAutoUpdates: boolean;
   /** When set, all background LLM calls (eval, brain updates, scene state) use this provider instead of the active preset. */
   backgroundProviderConfig?: BackgroundProviderConfig;
+  /** Global cooldown: skip story-card update conditions if any card was updated within this many turns. 0 or undefined = no global limit. */
+  storyCardCooldownTurns?: number;
 }
 
 export interface AutoCardSettings {

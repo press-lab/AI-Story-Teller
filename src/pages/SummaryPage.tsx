@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { AdventurePageProps } from "./pageTypes";
+import { CheckboxField, Field, NumberInput } from "./shared";
 
 interface SummaryPageProps extends AdventurePageProps {
   onGenerateDurableSummary: () => Promise<string>;
@@ -51,8 +52,22 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
         <h3>Durable Story Summary</h3>
         <p className="muted">
           Long-term canon — arc beats, permanent changes, relationships, open plot threads.
-          Sent every turn so older history stays alive. Auto-generated every {adventure.tokenBudgetSettings.autoSummarizeEveryNTurns} turns.
+          Sent every turn so older history stays alive. New facts are appended automatically.
         </p>
+        <div className="grid two">
+          <CheckboxField
+            label="Auto-summarize"
+            checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
+            onChange={(autoSummarize) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, autoSummarize } })}
+          />
+          <Field label="Every N turns">
+            <NumberInput
+              min={1}
+              value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
+              onChange={(autoSummarizeEveryNTurns) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, autoSummarizeEveryNTurns } })}
+            />
+          </Field>
+        </div>
       </article>
 
       <div className="toolbar">

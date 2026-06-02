@@ -255,6 +255,7 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
       `when ${overrides.characterName} appears in the scene or is meaningfully referenced`,
     updatePrompt: overrides.updatePrompt ?? "",
     updateMode: overrides.updateMode ?? "replace",
+    autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
     lastUpdatedTurn: overrides.lastUpdatedTurn,
     lastUpdatedAt: overrides.lastUpdatedAt,
     lastGeneratedUpdatePreview: overrides.lastGeneratedUpdatePreview,

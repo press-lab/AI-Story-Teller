@@ -33,8 +33,8 @@ export function buildRollingSummaryPayload(adventure: Adventure): RollingSummary
     : "No new events.";
 
   const userContent = currentSummary
-    ? `## Current Durable Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nUpdate the durable summary to incorporate any lasting changes from these events.`
-    : `## Story Events\n${newEventsText}\n\nCreate a durable summary of these events.`;
+    ? `## Current Durable Summary\n${currentSummary}\n\n## New Story Events\n${newEventsText}\n\nList only the new permanent facts to append. Do NOT repeat anything already in the summary above.`
+    : `## Story Events\n${newEventsText}\n\nWrite a brief durable summary of the permanent facts established in these events.`;
 
   return {
     messages: [
@@ -42,11 +42,12 @@ export function buildRollingSummaryPayload(adventure: Adventure): RollingSummary
         role: "system",
         content:
           "You are a continuity keeper for an interactive fiction adventure. " +
-          "Maintain a DURABLE STORY SUMMARY: the permanent record of story-level canon. " +
-          "Include: completed arc beats, established world facts, permanent character changes, important relationships, open plot threads, major consequences. " +
-          "Exclude: moment-to-moment actions, scene descriptions, recent turns still visible in Recent Messages, and ephemeral details that don't affect future scenes. " +
-          "If a recent event changes something permanent (a character dies, an alliance forms, a secret is revealed), record it. Otherwise omit it. " +
-          "Keep it under 600 words. Write in past tense, third person.",
+          "Review recent story events and identify NEW PERMANENT facts not already captured in the current summary. " +
+          "Write ONLY the new additions as concise bullet points (• one fact per line). " +
+          "Include: completed arc beats, sealed consequences, permanent character changes, revealed secrets, key relationship shifts. " +
+          "Exclude: anything already in the current summary, ephemeral scene details, moment-to-moment actions. " +
+          "If nothing new and permanent happened, respond with an empty string. " +
+          "Write in past tense, third person. Return ONLY the new bullet points — no preamble, no headers.",
       },
       { role: "user", content: userContent },
     ],

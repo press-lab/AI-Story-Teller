@@ -175,6 +175,22 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
         >
           Create Story Card
         </button>
+        <span className="audit-trigger">
+          <span className="audit-turns-wrap">
+            Update cards every
+            <input
+              type="number"
+              min={0}
+              value={adventure.semanticEvaluationSettings.storyCardCooldownTurns ?? 0}
+              onChange={(e) => {
+                const v = Math.max(0, Number(e.target.value));
+                dispatch({ type: "SET_SEMANTIC_EVALUATION_SETTINGS", settings: { ...adventure.semanticEvaluationSettings, storyCardCooldownTurns: v || undefined } });
+              }}
+              className="audit-turns-input"
+            />
+            turns (0 = per-card)
+          </span>
+        </span>
         {onSuggestCardUpdates && (
           <button
             type="button"
