@@ -64,6 +64,9 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
           you use <strong>Remember This</strong>. Review each proposal and <strong>Approve</strong> to apply it,
           <strong> Reject</strong> to dismiss it cleanly, or <strong>Ignore</strong> to remove it from view without applying.
           You can edit the content before approving.
+          {" "}<strong>Every approved proposal becomes permanent context</strong> — the model reads it every turn and writes toward it.
+          Be especially careful with Character Self and Summary updates: approving emotional escalation or relationship milestones
+          unchecked is how characters drift. Edit proposals before approving, or reject ones that pull the story somewhere you don't want.
         </p>
         <div className="auto-approve-toggles">
           <span className="auto-approve-label muted">Auto-approve:</span>

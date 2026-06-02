@@ -53,6 +53,7 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
         <p className="muted">
           Long-term canon — arc beats, permanent changes, relationships, open plot threads.
           Sent every turn so older history stays alive. New facts are appended automatically.
+          {" "}<strong>The summary defines what the story is "about" to the model.</strong> If it fills with relationship milestones and emotional beats, the model writes a relationship story. Keep at least one external arc, unresolved problem, or active threat visible here alongside any personal developments.
         </p>
         <div className="grid two">
           <CheckboxField

@@ -19,6 +19,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
         <strong> Current State</strong> is the primary summary sent to the model.
         <strong> Thoughts, Relationship Pressure, Emotional Interpretation,</strong> and <strong>Recent Developments</strong> are
         supplemental lenses the AI uses when regenerating the character's state.
+        {" "}<strong>Warning:</strong> the model writes toward whatever the brain says a character is. Unchecked auto-updates on emotional or relational content can lock in character drift — a cautious character becomes fragile, a chaotic one becomes needy. Use <strong>Append</strong> mode and a high cooldown to slow drift. Disable auto-approve for brains and review updates before they become permanent context.
       </p>
 
       <div className="toolbar">

@@ -87,7 +87,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getAllByDisplayValue("Margo calls Seth hedge prince as a private joke.")[0]).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Approve" }));
-    expect(screen.getByText(/approved/i)).toBeInTheDocument();
+    expect(screen.getByText(/· approved/i)).toBeInTheDocument();
   });
 
   it("covers Inspector pages and Chronicle/Summary entry points", async () => {
