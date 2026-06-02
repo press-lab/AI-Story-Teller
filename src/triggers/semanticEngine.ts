@@ -174,10 +174,32 @@ Do not describe character emotional states or desires. Describe only the concret
 Write 1–2 sentences stating what concrete action or decision is immediately ahead. Return ONLY the new content as plain text.`;
 }
 
-function autoCardPrompt(adventure: Adventure): string {
+function buildAutoCardGenerationPrompt(adventure: Adventure, entityTitle?: string): string {
+  const titleHint = entityTitle ? ` The entity is: "${entityTitle}".` : "";
   const base = adventure.autoCardSettings.generationPrompt;
-  return `${base}\n\nAdditional exclusions: Do NOT include "currently aboard [ship/location]", "currently assigned to [mission]", "is now present in [location]", or any other "currently X" facts. If the only noteworthy detail is scene presence or current location, do not create a card — that belongs in Scene State.`;
+  if (base && base !== defaultAutoCardGenerationPrompt) {
+    // User has customised the prompt — append the title hint only
+    return entityTitle ? `${base}\n\nEntity to create a card for: "${entityTitle}"` : base;
+  }
+  // Default: LewdLeah-style focused prompt
+  return `Write a brief story card entry for the named entity that just appeared in the story.${titleHint}
+
+Rules:
+- Third-person prose only; complete sentences; correct punctuation
+- Mention the entity by name in every sentence
+- Focus only on durable, plot-significant details — NOT temporary scene details, current location, or who is present
+- Do not invent backstory that contradicts the story; infer from context and imitate the story's tone
+- Be concise: the content must fit in ~600 characters
+- Avoid "currently X", "is now aboard", "is present in [location]" — these are temporary
+
+Return ONLY valid JSON — no markdown, no prose outside the JSON:
+{"title": string, "content": string, "keys": string}
+
+"keys" is a comma-separated list of 2–5 trigger words/phrases that would naturally appear in the story when this entity is relevant.`;
 }
+
+// Exported so defaults.ts can use it as the sentinel value
+export const defaultAutoCardGenerationPrompt = "__default__";
 
 function isAutoCardsOnCooldown(adventure: Adventure): boolean {
   const last = adventure.autoCardSettings.lastGeneratedTurn;
@@ -264,21 +286,76 @@ function questStepConditions(adventure: Adventure): SemanticCondition[] {
   });
 }
 
-function autoCardConditions(adventure: Adventure): SemanticCondition[] {
+// Deterministic proper-noun extraction — no LLM needed for detection.
+// Matches sequences of 1–4 capitalized words (Title Case), filters out known
+// entities, banned common words, and very short single-word generics.
+const BANNED_ENTITY_WORDS = new Set([
+  // directions / compass
+  "North","South","East","West","Northeast","Northwest","Southeast","Southwest",
+  // time
+  "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday",
+  "January","February","March","April","May","June","July","August",
+  "September","October","November","December","Morning","Evening","Afternoon","Night",
+  // titles / honorifics that appear alone
+  "Lord","Lady","Prince","Princess","King","Queen","Emperor","Empress",
+  "General","Captain","Lieutenant","Commander","Admiral","Sergeant","Officer","Doctor",
+  "Sir","Dame","Master","Mistress",
+  // generic story words that capitalise at sentence-start
+  "The","A","An","He","She","They","It","We","You","His","Her","Their","Its",
+  "This","That","These","Those","There","Here","Now","Then","When","Where","What",
+  "How","Why","Who","Which","Some","Any","All","Each","Every","Both","Other",
+  "My","Your","Our","Your","One","Two","Three",
+  // Avatar / Fire-Nation specific common nouns that aren't entities
+  "Fire","Water","Earth","Air","Avatar","Nation","Kingdom","Empire","Republic",
+  "Firebending","Waterbending","Earthbending","Airbending","Bending",
+  "Palace","Court","Capital","City","Town","Village","Camp","Base","Ship",
+  "Mission","Council","Guard","Army","Navy","Military","Training","Yard",
+  "Royal","Imperial","Noble","Clan","House","Family","Blood",
+  // generic
+  "Yes","No","True","False","Done","Ready","Okay","Also","Just","Still",
+]);
+
+function extractNewEntities(adventure: Adventure): string[] {
   if (!adventure.autoCardSettings.enabled || isAutoCardsOnCooldown(adventure)) return [];
-  const queued = adventure.activeState.autoCardReviewQueue.map((item) => item.title);
-  const knownCards = adventure.storyCards.map((c) => c.title);
-  const knownAll = [...new Set([...queued, ...knownCards])];
-  const alreadyKnown = knownAll.length > 0 ? ` Do NOT fire for any of these already-known entities: ${knownAll.join(", ")}.` : "";
-  return [
-    {
-      id: "autoCards:global",
-      label: "Auto-Cards global detector",
-      condition: `${adventure.autoCardSettings.detectionCondition}${alreadyKnown}`,
-      sourceType: "autoCards" as const,
-      actionFactory: () => [{ type: "createAutoCard" }],
-    },
-  ];
+
+  // Only scan the most recent assistant message
+  const messages = adventure.messages;
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+  if (!lastAssistant) return [];
+
+  // Regex: sequences of 1–4 Title-Case words (each word starts uppercase, rest any case)
+  const titleCaseSeq = /\b([A-Z][a-zA-Z''-]{1,}(?:\s+[A-Z][a-zA-Z''-]{1,}){0,3})\b/g;
+  const candidates = new Map<string, number>(); // title -> occurrence count
+  let match: RegExpExecArray | null;
+  while ((match = titleCaseSeq.exec(lastAssistant.content)) !== null) {
+    const raw = match[1].trim();
+    // Split into words and check each against banned list
+    const words = raw.split(/\s+/);
+    if (words.every((w) => BANNED_ENTITY_WORDS.has(w))) continue;
+    if (words.length === 1 && BANNED_ENTITY_WORDS.has(words[0])) continue;
+    candidates.set(raw, (candidates.get(raw) ?? 0) + 1);
+  }
+
+  // Filter: must appear ≥2 times (reduces sentence-start false positives for single words)
+  // Multi-word sequences only need to appear once
+  const knownTitles = new Set([
+    ...adventure.storyCards.map((c) => c.title.toLowerCase()),
+    ...adventure.storyCards.flatMap((c) => c.keys.map((k) => k.toLowerCase())),
+    ...adventure.activeState.autoCardReviewQueue.map((q) => q.title.toLowerCase()),
+    ...adventure.brains.map((b) => b.characterName.toLowerCase()),
+  ]);
+
+  const novel: string[] = [];
+  for (const [title, count] of candidates) {
+    const words = title.split(/\s+/);
+    const minCount = words.length === 1 ? 2 : 1;
+    if (count < minCount) continue;
+    if (knownTitles.has(title.toLowerCase())) continue;
+    novel.push(title);
+  }
+
+  // Cap at 2 new entities per turn to avoid flooding
+  return novel.slice(0, 2);
 }
 
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
@@ -354,7 +431,7 @@ function buildConditions(adventure: Adventure): SemanticCondition[] {
   if (!adventure.semanticEvaluationSettings.enabled) return [];
   return [
     ...activeSemanticRules(adventure),
-    ...autoCardConditions(adventure),
+    // Auto-card detection is now deterministic (regex) — handled separately in runSemanticPostTurnEvaluation
   ];
 }
 
@@ -668,7 +745,8 @@ async function generatedActionsFor(
     }
 
     if (triggerAction.type === "createAutoCard") {
-      const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || autoCardPrompt(adventure), accum);
+      const prompt = rule?.updatePrompt || buildAutoCardGenerationPrompt(adventure, triggerAction.entityTitle);
+      const raw = await sendTargetedUpdate(adventure, providerConfig, prompt, accum);
       const parsed = parseJsonResponse<{ title?: unknown; content?: unknown; keys?: unknown }>(raw);
       if (typeof parsed.title !== "string" || typeof parsed.content !== "string") {
         return { actions: [], error: "Auto-Card generation returned invalid JSON." };
@@ -732,6 +810,16 @@ export async function runSemanticPostTurnEvaluation(
   const actionsExecuted: string[] = [];
 
   const generationTasks: Array<() => Promise<{ actions: AdventureAction[]; generated?: GeneratedContentPreview; error?: string }>> = [];
+
+  // Deterministic auto-card detection — regex-extracted proper nouns, no LLM evaluation cost
+  if (adventure.semanticEvaluationSettings.enabled) {
+    const newEntities = extractNewEntities(adventure);
+    for (const entityTitle of newEntities) {
+      const condId = `autoCards:${entityTitle}`;
+      actionsExecuted.push(`Auto-Cards detector: createAutoCard for "${entityTitle}" (deterministic)`);
+      generationTasks.push(() => generatedActionsFor(adventure, providerConfig, { type: "createAutoCard", entityTitle }, condId, undefined, accum));
+    }
+  }
 
   for (const condition of fired) {
     const sourceRule =

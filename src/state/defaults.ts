@@ -86,8 +86,7 @@ export const defaultAutoCardSettings: AutoCardSettings = {
   enabled: true,
   detectionCondition:
     "when a new named character, location, organization, or significant object is introduced that doesn't already have a story card",
-  generationPrompt:
-    'A new entity worth remembering has appeared in the story. Write a story card for it. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary or scene-specific observations, imitate the story\'s writing style and tone. Do NOT include current location, who is currently present in a scene, active mission status, or any "currently X" state — these are temporary and belong in Scene State, not a Story Card. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
+  generationPrompt: "__default__", // sentinel: use buildAutoCardGenerationPrompt() in semanticEngine
   cooldownTurns: 3,
 };
 

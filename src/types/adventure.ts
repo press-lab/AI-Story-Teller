@@ -160,7 +160,7 @@ export type TriggerAction =
   | { type: "completeQuest"; questId: string }
   | { type: "activateQuestCard"; questId: string; storyCardId?: string }
   | { type: "createMilestoneCard"; questId?: string; title: string; content: string }
-  | { type: "createAutoCard"; questId?: string }
+  | { type: "createAutoCard"; questId?: string; entityTitle?: string }
   | { type: "forceIncludeNextTurn"; targetType: ForceIncludeTargetType; targetId: string };
 
 export interface TriggerRule {
