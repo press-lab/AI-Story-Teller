@@ -116,34 +116,6 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(result.logEntry.conditionsFired).toContain("brain:brain-margo");
   });
 
-  it("evaluates a quest step completion condition and advances the quest when fired", async () => {
-    const quest = makeQuest({
-      id: "quest-ward",
-      title: "Seal the Ward",
-      status: "active",
-      currentStepId: "step-1",
-      steps: [
-        {
-          id: "step-1",
-          title: "Reach Threshold",
-          objective: "Reach the threshold",
-          status: "active",
-          completionCondition: "when the player reaches the threshold",
-          triggerConditions: [],
-          onStartActions: [],
-          onCompleteActions: [],
-          contextText: "",
-        },
-      ],
-    });
-    const adventure = { ...baseAdventure(), quests: [quest] };
-    mockProvider.mockResolvedValueOnce({ content: '["questStep:quest-ward:step-1"]', raw: {} });
-
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
-
-    expect(result.actions.some((a) => a.type === "COMPLETE_QUEST_STEP")).toBe(true);
-    expect(result.logEntry.conditionsFired).toContain("questStep:quest-ward:step-1");
-  });
 
   it("fires an auto-card condition, calls the generation prompt, and queues a CREATE_AUTO_CARD action", async () => {
     const adventure = {

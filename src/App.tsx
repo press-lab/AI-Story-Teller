@@ -25,7 +25,6 @@ import { StoryCardsPage } from "./pages/StoryCardsPage";
 import { BrainsPage } from "./pages/BrainsPage";
 import { AutoCardsPage } from "./pages/AutoCardsPage";
 import { TriggersPage } from "./pages/TriggersPage";
-import { QuestsPage } from "./pages/QuestsPage";
 import { SummaryPage } from "./pages/SummaryPage";
 import { MemoryInboxPage } from "./pages/MemoryInboxPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -45,7 +44,6 @@ type TabId =
   | "brains"
   | "autoCards"
   | "triggers"
-  | "quests"
   | "summary"
   | "memoryInbox"
   | "cloudSaves"
@@ -90,7 +88,6 @@ const modalTabs = new Set<TabId>([
   "brains",
   "autoCards",
   "triggers",
-  "quests",
   "summary",
   "memoryInbox",
   "settings",
@@ -105,7 +102,6 @@ const modalTitles: Partial<Record<TabId, string>> = {
   brains: "Character Selves",
   autoCards: "Auto-Cards",
   triggers: "Automations",
-  quests: "Quests",
   summary: "Story Summary",
   memoryInbox: "Memory Suggestions",
   cloudSaves: "GitHub Saves",
@@ -347,8 +343,6 @@ export default function App() {
         return <AutoCardsPage {...common} loading={runtime.loading} onGenerateAutoCardNow={runtime.generateAutoCardNow} />;
       case "triggers":
         return <TriggersPage {...common} />;
-      case "quests":
-        return <QuestsPage {...common} />;
       case "summary":
         return <SummaryPage {...common} onGenerateDurableSummary={runtime.generateDurableSummary} onGenerateSceneState={runtime.generateSceneState} />;
       case "memoryInbox":
@@ -556,7 +550,6 @@ export default function App() {
       case "brains":
       case "autoCards":
       case "triggers":
-      case "quests":
       case "summary":
       case "memoryInbox":
       case "importExport":

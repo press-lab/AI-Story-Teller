@@ -356,7 +356,6 @@ function buildConditions(adventure: Adventure): SemanticCondition[] {
   if (!adventure.semanticEvaluationSettings.enabled) return [];
   return [
     ...activeSemanticRules(adventure),
-    ...questStepConditions(adventure),
     ...autoCardConditions(adventure),
   ];
 }
