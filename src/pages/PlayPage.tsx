@@ -168,8 +168,12 @@ export function PlayPage({
   }
 
   useEffect(() => {
-    const target = lastUserMsgRef.current ?? bottomRef.current;
-    target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    if (adventure.messages.at(-1)?.role === "user") {
+      const target = lastUserMsgRef.current ?? bottomRef.current;
+      target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    } else {
+      bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
+    }
   }, [adventure.messages.length]);
 
   useEffect(() => {
