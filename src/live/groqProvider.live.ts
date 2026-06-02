@@ -3,7 +3,7 @@ import { loadEnv } from "vite";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { createDevelopmentAdventure } from "../dev/developmentAdventure";
-import { runManualAutoCardGeneration, runManualBrainUpdate, runRememberThis, runSemanticPostTurnEvaluation } from "../triggers/semanticEngine";
+import { runManualBrainUpdate, runRememberThis, runSemanticPostTurnEvaluation } from "../triggers/semanticEngine";
 import { adventureReducer } from "../state/adventureReducer";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import type { Adventure, ProviderConfig } from "../types/adventure";
@@ -42,14 +42,6 @@ function baseAdventure(): Adventure {
         active: false,
       }),
     ],
-    autoCardSettings: {
-      enabled: true,
-      detectionCondition: "when the story excerpt contains the exact phrase LIVE_AUTOCARD_FIRE",
-      generationPrompt:
-        'Return ONLY valid JSON exactly like this: {"title":"Live Clocktower","content":"The Live Clocktower is a recurring landmark introduced in the test transcript.","keys":"Live Clocktower, clocktower"}',
-      cooldownTurns: 0,
-      lastGeneratedTurn: undefined,
-    },
     semanticEvaluationSettings: {
       evaluationModel: "",
       messagesIncluded: 8,
@@ -142,31 +134,6 @@ describe("live Groq provider integration", () => {
     expect(adventure.brains.find((brain) => brain.id === "brain-live-margo")?.currentState).toContain(
       "openly worried about Seth",
     );
-  });
-
-  it("runs live Auto-Card generation into the review queue, not active context", async () => {
-    let adventure: Adventure = {
-      ...baseAdventure(),
-      messages: [
-        {
-          id: "live-msg-autocard",
-          role: "assistant" as const,
-          content: "The party arrives at the Live Clocktower. LIVE_AUTOCARD_FIRE.",
-          createdAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-    };
-
-    const result = await runManualAutoCardGeneration(adventure, liveGroqConfig());
-    expect(result.logEntry.errors).toEqual([]);
-    expect(result.actions.some((action) => action.type === "CREATE_AUTO_CARD")).toBe(true);
-
-    adventure = reduceAll(adventure, result.actions);
-    expect(adventure.activeState.autoCardReviewQueue[0]).toMatchObject({
-      title: "Live Clocktower",
-      source: "generated",
-    });
-    expect(adventure.storyCards.some((card) => card.title === "Live Clocktower")).toBe(false);
   });
 
   it("runs live Remember This and creates reviewable Memory Inbox proposals", async () => {

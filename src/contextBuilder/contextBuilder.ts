@@ -127,7 +127,6 @@ function isForced(adventure: Adventure, sourceType: ContextItem["sourceType"], i
       entry.targetId === id &&
       entry.expiresTurn >= turn &&
       ((entry.targetType === "storyCard" && sourceType === "storyCard") ||
-        (entry.targetType === "autoCard" && sourceType === "autoCard") ||
         (entry.targetType === "brain" && sourceType === "brain") ||
         (entry.targetType === "component" && sourceType === "component") ||
         (entry.targetType === "quest" && sourceType === "quest")),
@@ -366,28 +365,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     }
   }
 
-  for (const card of prioritySort(adventure.autoCards)) {
-    const forced = isForced(adventure, "autoCard", card.id);
-    if (!card.active && !forced) {
-      pushExcluded("autoCard", card.id, card.title, "inactive");
-      continue;
-    }
-    if (card.lastUpdatedTurn !== undefined && card.cooldownTurns > 0 && adventure.activeState.turn - card.lastUpdatedTurn < card.cooldownTurns) {
-      pushExcluded("autoCard", card.id, card.title, "cooldown");
-      continue;
-    }
-    const patterns = card.triggers.length ? card.triggers : [card.detectedEntity, card.title];
-    const match = matchPatterns(triggerText, patterns, "phrase");
-    const matched = card.inclusionPolicy === "always" || card.pinned || forced || (card.inclusionPolicy !== "manual" && match.matched);
-    if (matched) {
-      const next = item(card.id, "autoCard", card.title, card.content, card.priority, card.protected, card.pinned, card.active, card.inclusionPolicy, sourceToGeneratedBy(card.source));
-      pushIncluded(next, `Auto-Card included by ${card.pinned ? "pin" : forced ? "manual force" : card.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${card.priority}; protected=${card.protected}.`);
-      storyCardItems.push(next);
-    } else {
-      pushExcluded("autoCard", card.id, card.title, "not_triggered", "No Auto-Card trigger matched current input, output, or recent history.");
-    }
-  }
-
   // G. Brains
   const brainItems = prioritySort(adventure.brains).flatMap((brain) => {
     const forced = isForced(adventure, "brain", brain.id);
@@ -528,7 +505,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     if (
       sectionId === "storyCards" &&
       !entry.pinned &&
-      (entry.sourceType === "storyCard" || entry.sourceType === "autoCard") &&
+      entry.sourceType === "storyCard" &&
       !budgetSettings.allowSystemToDropUnpinnedTriggeredCards
     ) {
       return false;

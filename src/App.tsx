@@ -23,7 +23,7 @@ import { ContextPreviewPage } from "./pages/ContextPreviewPage";
 import { ComponentsPage } from "./pages/ComponentsPage";
 import { StoryCardsPage } from "./pages/StoryCardsPage";
 import { BrainsPage } from "./pages/BrainsPage";
-import { AutoCardsPage } from "./pages/AutoCardsPage";
+
 import { TriggersPage } from "./pages/TriggersPage";
 import { SummaryPage } from "./pages/SummaryPage";
 import { MemoryInboxPage } from "./pages/MemoryInboxPage";
@@ -42,7 +42,6 @@ type TabId =
   | "components"
   | "storyCards"
   | "brains"
-  | "autoCards"
   | "triggers"
   | "summary"
   | "memoryInbox"
@@ -58,7 +57,6 @@ type EditorTabId =
   | "memoryInbox"
   | "summary"
   | "chronicle"
-  | "autoCards"
   | "triggers"
   | "context"
   | "cloudSaves"
@@ -71,7 +69,6 @@ const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = 
   { id: "memoryInbox", label: "Memory", badge: "memory" },
   { id: "summary", label: "Summary" },
   { id: "chronicle", label: "Chronicle" },
-  { id: "autoCards", label: "Auto-Cards" },
   { id: "triggers", label: "Automation" },
   { id: "context", label: "Context" },
   { id: "cloudSaves", label: "Saves" },
@@ -86,7 +83,6 @@ const modalTabs = new Set<TabId>([
   "components",
   "storyCards",
   "brains",
-  "autoCards",
   "triggers",
   "summary",
   "memoryInbox",
@@ -100,7 +96,6 @@ const modalTitles: Partial<Record<TabId, string>> = {
   components: "World Blocks",
   storyCards: "Story Cards",
   brains: "Character Selves",
-  autoCards: "Auto-Cards",
   triggers: "Automations",
   summary: "Story Summary",
   memoryInbox: "Memory Suggestions",
@@ -339,8 +334,6 @@ export default function App() {
         return <StoryCardsPage {...common} loading={runtime.loading} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
       case "brains":
         return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} />;
-      case "autoCards":
-        return <AutoCardsPage {...common} loading={runtime.loading} onGenerateAutoCardNow={runtime.generateAutoCardNow} />;
       case "triggers":
         return <TriggersPage {...common} />;
       case "summary":
@@ -548,7 +541,6 @@ export default function App() {
       case "components":
       case "storyCards":
       case "brains":
-      case "autoCards":
       case "triggers":
       case "summary":
       case "memoryInbox":

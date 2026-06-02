@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Adventure, MemoryPriorityMode, TokenBudgetSettings } from "../types/adventure";
-import { createDefaultAdventure, makeAutoCard, makeBrain, makeComponent, makeQuest, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
 import { buildContext } from "./contextBuilder";
@@ -9,13 +9,6 @@ function adventureForContext(): Adventure {
   const always = makeComponent({ title: "Always", content: "Always component", alwaysOn: true, active: true, priority: 100 });
   const pinned = makeComponent({ title: "Pinned", content: "Pinned component", pinned: true, active: true, priority: 90 });
   const story = makeStoryCard({ title: "Keyed Story", content: "Story content", keys: ["lantern"], active: true, priority: 80 });
-  const autoCard = makeAutoCard({
-    title: "Lantern Auto",
-    content: "Auto content",
-    detectedEntity: "lantern",
-    triggers: ["lantern"],
-    active: true,
-  });
   const brain = makeBrain({ characterName: "Mira", triggers: ["lantern"], currentState: "Brain state", active: true, priority: 70 });
   const quest = makeQuest({
     title: "Quest",
@@ -41,7 +34,6 @@ function adventureForContext(): Adventure {
     ...createDefaultAdventure("Context Test"),
     components: [always, pinned],
     storyCards: [story],
-    autoCards: [autoCard],
     brains: [brain],
     quests: [quest],
     rollingSummary: { content: "Old summary events. Recent summary events.", updatedAt: "2026-01-01T00:00:00.000Z" },
@@ -144,7 +136,7 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "plotEssentials")).toEqual([]);
     expect(itemTitles(adventureForContext(), "authorNote")).toEqual([]);
     expect(itemTitles(adventureForContext(), "components")).toEqual(["Always", "Pinned"]);
-    expect(itemTitles(adventureForContext(), "storyCards")).toEqual(["Keyed Story", "Lantern Auto"]);
+    expect(itemTitles(adventureForContext(), "storyCards")).toEqual(["Keyed Story"]);
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
     expect(itemTitles(adventureForContext(), "questState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
@@ -219,7 +211,7 @@ describe("buildContext", () => {
       ...adventureForContext(),
       components: [],
       storyCards: [],
-      autoCards: [],
+
       brains: [],
       quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
@@ -243,7 +235,7 @@ describe("buildContext", () => {
       ...adventureForContext(),
       components: [],
       storyCards: [],
-      autoCards: [],
+
       brains: [],
       quests: [],
       messages: [],
@@ -270,7 +262,7 @@ describe("buildContext", () => {
     const adventure = {
       ...adventureForContext(),
       storyCards: [low, high],
-      autoCards: [],
+
       brains: [],
       quests: [],
       messages: [],
@@ -295,7 +287,7 @@ describe("buildContext", () => {
         makeComponent({ id: "pinned-huge", title: "Pinned Huge", content: "pinned ".repeat(80), pinned: true, active: true, priority: 90, protected: false }),
       ],
       storyCards: [],
-      autoCards: [],
+
       brains: [],
       quests: [],
       messages: [],
@@ -336,7 +328,7 @@ describe("buildContext", () => {
       ...adventureForContext(),
       components: [],
       storyCards: [lowSystemSuggested, highUserCard],
-      autoCards: [],
+
       brains: [],
       quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
@@ -384,7 +376,7 @@ describe("buildContext", () => {
       ...adventureForContext(),
       components: [],
       storyCards: [low, high],
-      autoCards: [],
+
       brains: [],
       quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
@@ -405,22 +397,12 @@ describe("buildContext", () => {
     }
   });
 
-  it("logs inactive and cooldown exclusions", () => {
+  it("logs inactive exclusions", () => {
     const inactive = makeStoryCard({ title: "Inactive", content: "hidden", keys: ["lantern"], active: false });
-    const cooling = makeAutoCard({
-      title: "Cooling",
-      content: "cooldown",
-      detectedEntity: "lantern",
-      triggers: ["lantern"],
-      active: true,
-      cooldownTurns: 3,
-      lastUpdatedTurn: 2,
-    });
     const adventure = {
       ...adventureForContext(),
       activeState: { ...adventureForContext().activeState, turn: 3 },
       storyCards: [inactive],
-      autoCards: [cooling],
       brains: [],
       quests: [],
       messages: [],
@@ -429,34 +411,25 @@ describe("buildContext", () => {
 
     const result = buildContext(adventure, { currentInput: "lantern" });
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: inactive.id, reason: "inactive" }));
-    expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: cooling.id, reason: "cooldown" }));
   });
 
-  it("sets generatedBy correctly for system, user, and AI items", () => {
-    const aiCard = makeAutoCard({ id: "ai-card", title: "AI Card", content: "generated", detectedEntity: "npc", triggers: ["npc"], source: "generated", active: true });
-    const manualCard = makeAutoCard({ id: "manual-card", title: "Manual Card", content: "manual", detectedEntity: "place", triggers: ["place"], source: "manual", active: true });
+  it("sets generatedBy correctly for system and AI items", () => {
     const aiBrain = makeBrain({ id: "ai-brain", characterName: "npc", triggers: ["npc"], source: "generated", active: true });
     const adventure = {
       ...adventureForContext(),
       components: [],
       storyCards: [],
-      autoCards: [aiCard, manualCard],
       brains: [aiBrain],
       quests: [],
-      messages: [{ id: "msg-user", role: "user", content: "npc place appears.", createdAt: "2026-01-01T00:00:00.000Z" }],
+      messages: [{ id: "msg-user", role: "user", content: "npc appears.", createdAt: "2026-01-01T00:00:00.000Z" }],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       tokenBudgetSettings: budget({ maxContextTokens: 5000, maxRecentMessages: 2, recentMessageWindow: 2 }),
     } satisfies Adventure;
 
-    const result = buildContext(adventure, { currentInput: "npc place" });
+    const result = buildContext(adventure, { currentInput: "npc" });
 
     // System shell is "system"
     expect(result.sections.find((s) => s.id === "system")?.items[0].generatedBy).toBe("system");
-
-    // AI-generated auto card
-    const storySection = result.sections.find((s) => s.id === "storyCards");
-    expect(storySection?.items.find((i) => i.id === "ai-card")?.generatedBy).toBe("ai");
-    expect(storySection?.items.find((i) => i.id === "manual-card")?.generatedBy).toBe("user");
 
     // AI-generated brain
     expect(result.sections.find((s) => s.id === "brains")?.items.find((i) => i.id === "ai-brain")?.generatedBy).toBe("ai");
@@ -510,7 +483,7 @@ describe("buildContext", () => {
         ...adventureForContext(),
         components: [],
         storyCards: [],
-        autoCards: [],
+  
         brains: [],
         quests: [],
         rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
@@ -599,7 +572,7 @@ describe("buildContext", () => {
       ...createDefaultAdventure("Chronicle"),
       components: [],
       storyCards: [],
-      autoCards: [],
+
       brains: [],
       quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },

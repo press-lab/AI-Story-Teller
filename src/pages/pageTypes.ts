@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import type { Adventure, AdventureAction, AutoCardSettings, ContextBuildResult, InputMode, MemoryAutoApproveSettings, MemoryDetectionSettings, ProviderConfig, SemanticEvaluationSettings, TokenBudgetSettings } from "../types/adventure";
-import { defaultAutoCardSettings, defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
+import type { Adventure, AdventureAction, ContextBuildResult, InputMode, MemoryAutoApproveSettings, MemoryDetectionSettings, ProviderConfig, SemanticEvaluationSettings, TokenBudgetSettings } from "../types/adventure";
+import { defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
 
 export interface UiPreferences {
   darkMode: boolean;
@@ -14,7 +14,6 @@ export interface UiPreferences {
 export interface GlobalAdventureSettings {
   tokenBudgetSettings: TokenBudgetSettings;
   semanticEvaluationSettings: SemanticEvaluationSettings;
-  autoCardSettings: AutoCardSettings;
   memoryDetectionSettings: MemoryDetectionSettings;
   memoryAutoApprove: MemoryAutoApproveSettings;
 }
@@ -22,7 +21,6 @@ export interface GlobalAdventureSettings {
 export const defaultGlobalAdventureSettings: GlobalAdventureSettings = {
   tokenBudgetSettings: defaultTokenBudgetSettings,
   semanticEvaluationSettings: defaultSemanticEvaluationSettings,
-  autoCardSettings: defaultAutoCardSettings,
   memoryDetectionSettings: defaultMemoryDetectionSettings,
   memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
 };

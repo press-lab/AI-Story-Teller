@@ -101,27 +101,6 @@ export interface BrainEntry {
   updatedAt: ISODateString;
 }
 
-export type AutoCardSource = "manual" | "imported" | "generated";
-export type AutoCardUpdateMode = "manual" | "append" | "replace";
-
-export interface AutoCard {
-  id: string;
-  title: string;
-  detectedEntity: string;
-  triggers: string[];
-  content: string;
-  source: AutoCardSource;
-  active: boolean;
-  pinned: boolean;
-  protected: boolean;
-  inclusionPolicy: ContextInclusionPolicy;
-  priority: number;
-  updateMode: AutoCardUpdateMode;
-  cooldownTurns: number;
-  lastUpdatedTurn?: number;
-  createdAt: ISODateString;
-  updatedAt: ISODateString;
-}
 
 export type TriggerSource = "input" | "output" | "both";
 export type TriggerMatchType = "keyword" | "phrase" | "regex";
@@ -160,7 +139,6 @@ export type TriggerAction =
   | { type: "completeQuest"; questId: string }
   | { type: "activateQuestCard"; questId: string; storyCardId?: string }
   | { type: "createMilestoneCard"; questId?: string; title: string; content: string }
-  | { type: "createAutoCard"; questId?: string; entityTitle?: string }
   | { type: "forceIncludeNextTurn"; targetType: ForceIncludeTargetType; targetId: string };
 
 export interface TriggerRule {
@@ -285,13 +263,6 @@ export interface SemanticEvaluationSettings {
   semanticEvalEveryNTurns: number;
 }
 
-export interface AutoCardSettings {
-  enabled: boolean;
-  detectionCondition: string;
-  generationPrompt: string;
-  cooldownTurns: number;
-  lastGeneratedTurn?: number;
-}
 
 export interface MemoryDetectionSettings {
   enabled: boolean;
@@ -299,7 +270,7 @@ export interface MemoryDetectionSettings {
   everyNTurns: number;
 }
 
-export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "autoCard" | "quest";
+export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "quest";
 
 export interface ForceIncludeEntry {
   id: string;
@@ -359,28 +330,16 @@ export interface MemoryProposal {
   updatedAt: ISODateString;
 }
 
-export interface AutoCardReviewItem {
-  id: string;
-  title: string;
-  content: string;
-  keys: string[];
-  source: "generated";
-  generatedAtTurn: number;
-  conditionId?: string;
-  rawResponse?: string;
-  createdAt: ISODateString;
-  updatedAt: ISODateString;
-}
 
 export interface EvaluatedCondition {
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component" | "storyCard" | "summary";
+  sourceType: "triggerRule" | "brain" | "questStep" | "component" | "storyCard" | "summary";
 }
 
 export interface GeneratedContentPreview {
-  targetType: "brain" | "component" | "storyCard" | "autoCard";
+  targetType: "brain" | "component" | "storyCard";
   targetId?: string;
   title: string;
   preview: string;
@@ -434,7 +393,6 @@ export interface ActiveState {
   forceIncludeNextTurn: ForceIncludeEntry[];
   triggerLog: TriggerLogEntry[];
   evaluationLog: EvaluationLogEntry[];
-  autoCardReviewQueue: AutoCardReviewItem[];
   memoryProposals: MemoryProposal[];
   pendingUpdates: PendingAdventureUpdate[];
   storyUndoStack: StoryEditHistoryEntry[];
@@ -468,7 +426,6 @@ export interface Adventure {
   components: ComponentEntry[];
   storyCards: StoryCard[];
   brains: BrainEntry[];
-  autoCards: AutoCard[];
   triggerRules: TriggerRule[];
   quests: Quest[];
   questState: JsonObject;
@@ -479,7 +436,6 @@ export interface Adventure {
   tokenBudgetSettings: TokenBudgetSettings;
   modelConfig: ProviderConfig;
   semanticEvaluationSettings: SemanticEvaluationSettings;
-  autoCardSettings: AutoCardSettings;
   memoryAutoApprove: MemoryAutoApproveSettings;
   memoryDetectionSettings: MemoryDetectionSettings;
 }
@@ -555,7 +511,6 @@ export interface ContextItem {
     | "component"
     | "storyCard"
     | "brain"
-    | "autoCard"
     | "quest"
     | "summary"
     | "sceneState"
@@ -672,15 +627,6 @@ export type AdventureAction =
   | { type: "APPEND_BRAIN_STATE"; brainId: string; field?: BrainStateField; text: string }
   | { type: "REPLACE_BRAIN_STATE"; brainId: string; field?: BrainStateField; text: string }
   | { type: "APPLY_BRAIN_UPDATE"; brainId: string; patch: BrainPatch; mode?: "replace" | "append"; turn?: number; preview?: string }
-  | { type: "UPSERT_AUTO_CARD"; autoCard: AutoCard }
-  | { type: "DELETE_AUTO_CARD"; autoCardId: string }
-  | { type: "ACTIVATE_AUTO_CARD"; autoCardId: string }
-  | { type: "DEACTIVATE_AUTO_CARD"; autoCardId: string }
-  | { type: "UPDATE_AUTO_CARD"; autoCardId: string; patch: Partial<AutoCard> }
-  | { type: "MARK_AUTO_CARD_UPDATED"; autoCardId: string; turn: number }
-  | { type: "CREATE_AUTO_CARD"; title: string; content: string; keys: string[]; turn: number; conditionId?: string; rawResponse?: string }
-  | { type: "APPROVE_AUTO_CARD"; reviewId: string; patch?: Partial<Pick<AutoCardReviewItem, "title" | "content" | "keys">> }
-  | { type: "DISCARD_AUTO_CARD"; reviewId: string }
   | { type: "UPSERT_TRIGGER_RULE"; triggerRule: TriggerRule }
   | { type: "DELETE_TRIGGER_RULE"; triggerRuleId: string }
   | { type: "UPDATE_TRIGGER_RULE"; triggerRuleId: string; patch: Partial<TriggerRule> }
@@ -710,7 +656,6 @@ export type AdventureAction =
   | { type: "SET_TOKEN_BUDGET_SETTINGS"; settings: TokenBudgetSettings }
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
-  | { type: "SET_AUTO_CARD_SETTINGS"; settings: AutoCardSettings }
   | { type: "SET_MEMORY_AUTO_APPROVE"; settings: MemoryAutoApproveSettings }
   | { type: "SET_MEMORY_DETECTION_SETTINGS"; settings: MemoryDetectionSettings }
   | { type: "SET_STATE_FLAG"; key: string; value: string | number | boolean }

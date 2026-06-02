@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { adventureReducer } from "../state/adventureReducer";
 import { createDefaultAdventure } from "../state/defaults";
 import type { Adventure, AdventureAction } from "../types/adventure";
-import { AutoCardsPage } from "./AutoCardsPage";
+
 import { BrainsPage } from "./BrainsPage";
 import { ChroniclePage } from "./ChroniclePage";
 import { ComponentsPage } from "./ComponentsPage";
@@ -63,13 +63,6 @@ describe("side menu page smoke coverage", () => {
     ));
     await user.click(screen.getByRole("button", { name: "Create Character Self" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
-    cleanup();
-
-    renderWithAdventure((adventure, dispatch) => (
-      <AutoCardsPage adventure={adventure} dispatch={dispatch} loading={false} onGenerateAutoCardNow={async () => undefined} />
-    ));
-    await user.click(screen.getByRole("button", { name: "Create Auto-Card" }));
-    expect(screen.getAllByDisplayValue("New Auto-Card")[0]).toBeInTheDocument();
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <QuestsPage adventure={adventure} dispatch={dispatch} />);

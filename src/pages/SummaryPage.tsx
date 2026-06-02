@@ -118,8 +118,8 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
         />
       </article>
 
-      <div className="toolbar">
-        <button type="button" disabled={sceneLoading} onClick={handleGenerateScene}>
+      <div className={`toolbar${adventure.tokenBudgetSettings.sceneStateEnabled === false ? " disabled-section" : ""}`}>
+        <button type="button" disabled={sceneLoading || adventure.tokenBudgetSettings.sceneStateEnabled === false} onClick={handleGenerateScene}>
           {sceneLoading ? "Generating..." : "Regenerate"}
         </button>
         {sceneDraft !== null && sceneDraft !== savedSceneContent && (
@@ -144,6 +144,8 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
       <textarea
         rows={6}
         value={sceneValue}
+        disabled={adventure.tokenBudgetSettings.sceneStateEnabled === false}
+        style={adventure.tokenBudgetSettings.sceneStateEnabled === false ? { opacity: 0.4 } : undefined}
         onChange={(e) => {
           if (sceneDraft !== null) {
             setSceneDraft(e.target.value);

@@ -13,7 +13,6 @@ import {
   runTurnPipeline,
 } from "../state/turnPipeline";
 import {
-  runManualAutoCardGeneration,
   runManualBrainUpdate,
   runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
@@ -411,20 +410,6 @@ export function useAdventureRuntime(
     }
   }
 
-  async function generateAutoCardNow() {
-    if (!adventure || loading) return;
-    setLoading(true);
-    setError(undefined);
-    try {
-      const result = await runManualAutoCardGeneration(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
-    } catch (manualError) {
-      setError(manualError instanceof Error ? manualError.message : "Manual Auto-Card generation failed.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function suggestPlotUpdates() {
     if (!adventure || loading) return;
     setLoading(true);
@@ -529,7 +514,6 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     rememberThis,
     updateBrainNow,
     updatePEComponentNow,
-    generateAutoCardNow,
     suggestPlotUpdates,
     suggestCardUpdates,
     auditStoryCards,

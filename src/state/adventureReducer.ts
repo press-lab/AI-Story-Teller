@@ -1,8 +1,6 @@
 import type {
   Adventure,
   AdventureAction,
-  AutoCard,
-  AutoCardReviewItem,
   BrainEntry,
   BrainPatch,
   BrainStateField,
@@ -252,18 +250,6 @@ function resetQuestRuntime(quest: Quest): Quest {
   });
 }
 
-function makeReviewStoryCard(review: AutoCardReviewItem, patch?: Partial<Pick<AutoCardReviewItem, "title" | "content" | "keys">>): StoryCard {
-  return makeStoryCard({
-    title: patch?.title ?? review.title,
-    content: patch?.content ?? review.content,
-    keys: patch?.keys ?? review.keys,
-    type: "custom",
-    active: true,
-    pinned: false,
-    priority: 0,
-    state: "generated",
-  });
-}
 
 function updateMemoryProposal(proposal: MemoryProposal, patch: Partial<MemoryProposal>): MemoryProposal {
   const sanitizedPatch = { ...patch };
@@ -629,62 +615,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           applyBrainUpdate(item, action.patch, action.mode, action.turn, action.preview),
         ),
       });
-    case "UPSERT_AUTO_CARD":
-      return touchAdventure(state, { autoCards: upsertById(state.autoCards, touch(action.autoCard)) });
-    case "DELETE_AUTO_CARD":
-      return touchAdventure(state, { autoCards: deleteById(state.autoCards, action.autoCardId) });
-    case "ACTIVATE_AUTO_CARD":
-      return touchAdventure(state, { autoCards: updateById(state.autoCards, action.autoCardId, (item) => touch({ ...item, active: true })) });
-    case "DEACTIVATE_AUTO_CARD":
-      return touchAdventure(state, { autoCards: updateById(state.autoCards, action.autoCardId, (item) => touch({ ...item, active: false })) });
-    case "UPDATE_AUTO_CARD":
-      return touchAdventure(state, {
-        autoCards: updateById(state.autoCards, action.autoCardId, (item) => mergePatch<AutoCard>(item, action.patch)),
-      });
-    case "MARK_AUTO_CARD_UPDATED":
-      return touchAdventure(state, {
-        autoCards: updateById(state.autoCards, action.autoCardId, (item) => touch({ ...item, lastUpdatedTurn: action.turn })),
-      });
-    case "CREATE_AUTO_CARD": {
-      const timestamp = nowIso();
-      const review: AutoCardReviewItem = {
-        id: createId("review"),
-        title: action.title,
-        content: action.content,
-        keys: action.keys,
-        source: "generated",
-        generatedAtTurn: action.turn,
-        conditionId: action.conditionId,
-        rawResponse: action.rawResponse,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      };
-      return touchAdventure(state, {
-        activeState: {
-          ...state.activeState,
-          autoCardReviewQueue: [review, ...state.activeState.autoCardReviewQueue],
-        },
-        autoCardSettings: { ...state.autoCardSettings, lastGeneratedTurn: action.turn },
-      });
-    }
-    case "APPROVE_AUTO_CARD": {
-      const review = state.activeState.autoCardReviewQueue.find((entry) => entry.id === action.reviewId);
-      if (!review) return state;
-      return touchAdventure(state, {
-        storyCards: [...state.storyCards, makeReviewStoryCard(review, action.patch)],
-        activeState: {
-          ...state.activeState,
-          autoCardReviewQueue: state.activeState.autoCardReviewQueue.filter((entry) => entry.id !== action.reviewId),
-        },
-      });
-    }
-    case "DISCARD_AUTO_CARD":
-      return touchAdventure(state, {
-        activeState: {
-          ...state.activeState,
-          autoCardReviewQueue: state.activeState.autoCardReviewQueue.filter((entry) => entry.id !== action.reviewId),
-        },
-      });
     case "UPSERT_TRIGGER_RULE":
       return touchAdventure(state, { triggerRules: upsertById(state.triggerRules, touch(action.triggerRule)) });
     case "DELETE_TRIGGER_RULE":
@@ -866,8 +796,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, { modelConfig: stripProviderKey(action.config) });
     case "SET_SEMANTIC_EVALUATION_SETTINGS":
       return touchAdventure(state, { semanticEvaluationSettings: action.settings });
-    case "SET_AUTO_CARD_SETTINGS":
-      return touchAdventure(state, { autoCardSettings: action.settings });
     case "SET_MEMORY_AUTO_APPROVE":
       return touchAdventure(state, { memoryAutoApprove: action.settings });
     case "SET_MEMORY_DETECTION_SETTINGS":
@@ -962,7 +890,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           forceIncludeNextTurn: [],
           triggerLog: [],
           evaluationLog: [],
-          autoCardReviewQueue: [],
           memoryProposals: [],
           pendingUpdates: [],
           storyUndoStack: [],
@@ -971,7 +898,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           stateFlags: {},
           challengeMode: false,
         },
-        autoCards: state.autoCards.map((card) => touch({ ...card, lastUpdatedTurn: undefined })),
         triggerRules: state.triggerRules.map((rule) => touch({ ...rule, lastFiredTurn: undefined })),
         quests: state.quests.map(resetQuestRuntime),
       });

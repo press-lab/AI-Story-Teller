@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runManualAutoCardGeneration, runMemoryCycle } from "./semanticEngine";
+import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runMemoryCycle } from "./semanticEngine";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
 import type { Adventure } from "../types/adventure";
@@ -117,29 +117,6 @@ describe("runSemanticPostTurnEvaluation", () => {
   });
 
 
-  it("fires an auto-card condition, calls the generation prompt, and queues a CREATE_AUTO_CARD action", async () => {
-    const adventure = {
-      ...baseAdventure(),
-      autoCardSettings: {
-        enabled: true,
-        detectionCondition: "when a new named entity appears",
-        generationPrompt: "Generate a story card for the new entity as JSON.",
-        cooldownTurns: 0,
-        lastGeneratedTurn: undefined,
-      },
-    };
-    mockProvider
-      .mockResolvedValueOnce({ content: '["autoCards:global"]', raw: {} })
-      .mockResolvedValueOnce({ content: '{"title":"The Barkeep","content":"A gruff man.","keys":"barkeep, tavern"}', raw: {} });
-
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
-
-    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(true);
-    const createAction = result.actions.find((a) => a.type === "CREATE_AUTO_CARD") as Extract<typeof result.actions[number], { type: "CREATE_AUTO_CARD" }>;
-    expect(createAction.title).toBe("The Barkeep");
-    expect(createAction.content).toBe("A gruff man.");
-  });
-
   it("records a parse error in the log when the LLM returns invalid JSON for conditions", async () => {
     const adventure = {
       ...baseAdventure(),
@@ -193,7 +170,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
-      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+
       tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
     };
 
@@ -220,7 +197,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const adventure = {
       ...baseAdventure(),
       storyCards: [card],
-      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+
       // deactivate PE components and disable summary so only story card conditions are relevant
       components: baseAdventure().components.map((c) =>
         (c.type === "activePressure" || c.type === "immediateMomentum") ? { ...c, active: false } : c
@@ -240,7 +217,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       brains: [brain],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
-      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+
       semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
     };
 
@@ -275,7 +252,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo repeats the hedge prince joke.", createdAt: "2026-01-01T00:02:00.000Z" }],
-      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+
       semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
     };
 
@@ -314,7 +291,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const adventure = {
       ...baseAdventure(),
       components: [component],
-      autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+
     };
 
     mockProvider
@@ -383,43 +360,3 @@ describe("runManualBrainUpdate", () => {
   });
 });
 
-describe("runManualAutoCardGeneration", () => {
-  it("calls the generation prompt and returns a CREATE_AUTO_CARD action", async () => {
-    const adventure = {
-      ...baseAdventure(),
-      autoCardSettings: {
-        enabled: true,
-        detectionCondition: "when a new entity appears",
-        generationPrompt: "Generate a card.",
-        cooldownTurns: 0,
-      },
-    };
-    mockProvider.mockResolvedValueOnce({ content: '{"title":"Iron Compass","content":"A compass pointing to fear.","keys":"compass, Iron Compass"}', raw: {} });
-
-    const result = await runManualAutoCardGeneration(adventure, providerConfig);
-
-    expect(mockProvider).toHaveBeenCalledOnce();
-    const createAction = result.actions.find((a) => a.type === "CREATE_AUTO_CARD") as Extract<typeof result.actions[number], { type: "CREATE_AUTO_CARD" }>;
-    expect(createAction).toBeDefined();
-    expect(createAction.title).toBe("Iron Compass");
-    expect(createAction.keys).toContain("compass");
-  });
-
-  it("logs an error when the LLM returns invalid JSON", async () => {
-    const adventure = { ...baseAdventure(), autoCardSettings: { enabled: true, detectionCondition: "test", generationPrompt: "test", cooldownTurns: 0 } };
-    mockProvider.mockResolvedValueOnce({ content: "not json", raw: {} });
-
-    const result = await runManualAutoCardGeneration(adventure, providerConfig);
-    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(false);
-    expect(result.logEntry.errors.length).toBeGreaterThan(0);
-  });
-
-  it("logs an error when the LLM returns JSON missing title or content", async () => {
-    const adventure = { ...baseAdventure(), autoCardSettings: { enabled: true, detectionCondition: "test", generationPrompt: "test", cooldownTurns: 0 } };
-    mockProvider.mockResolvedValueOnce({ content: '{"keys":"something"}', raw: {} });
-
-    const result = await runManualAutoCardGeneration(adventure, providerConfig);
-    expect(result.actions.some((a) => a.type === "CREATE_AUTO_CARD")).toBe(false);
-    expect(result.logEntry.errors[0]).toMatch(/invalid JSON/i);
-  });
-});

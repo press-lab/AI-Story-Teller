@@ -1,6 +1,5 @@
 import type {
   Adventure,
-  AutoCard,
   BrainEntry,
   ComponentEntry,
   MemoryDetectionSettings,
@@ -11,7 +10,6 @@ import type {
   StoryCard,
   TokenBudgetSettings,
   TriggerRule,
-  AutoCardSettings,
   ProviderRequestThrottle,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
@@ -82,13 +80,6 @@ export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
   everyNTurns: 1,
 };
 
-export const defaultAutoCardSettings: AutoCardSettings = {
-  enabled: true,
-  detectionCondition:
-    "when a new named character, location, organization, or significant object is introduced that doesn't already have a story card",
-  generationPrompt: "__default__", // sentinel: use buildAutoCardGenerationPrompt() in semanticEngine
-  cooldownTurns: 3,
-};
 
 export function defaultNextTurnNote(): NextTurnNote {
   return {
@@ -148,7 +139,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     ],
     storyCards: [],
     brains: [],
-    autoCards: [],
     triggerRules: [],
     quests: [],
     questState: {},
@@ -160,7 +150,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       forceIncludeNextTurn: [],
       triggerLog: [],
       evaluationLog: [],
-      autoCardReviewQueue: [],
       memoryProposals: [],
       pendingUpdates: [],
       storyUndoStack: [],
@@ -176,7 +165,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
-    autoCardSettings: defaultAutoCardSettings,
     memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
     memoryDetectionSettings: defaultMemoryDetectionSettings,
   };
@@ -269,27 +257,6 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
   };
 }
 
-export function makeAutoCard(overrides: Partial<AutoCard> & Pick<AutoCard, "title" | "content">): AutoCard {
-  const timestamp = nowIso();
-  return {
-    id: overrides.id ?? createId("auto"),
-    title: overrides.title,
-    detectedEntity: overrides.detectedEntity ?? overrides.title,
-    triggers: overrides.triggers ?? [],
-    content: overrides.content,
-    source: overrides.source ?? "manual",
-    active: overrides.active ?? true,
-    pinned: overrides.pinned ?? false,
-    protected: overrides.protected ?? false,
-    inclusionPolicy: overrides.inclusionPolicy ?? "systemSuggested",
-    priority: overrides.priority ?? 0,
-    updateMode: overrides.updateMode ?? "manual",
-    cooldownTurns: overrides.cooldownTurns ?? 0,
-    lastUpdatedTurn: overrides.lastUpdatedTurn,
-    createdAt: overrides.createdAt ?? timestamp,
-    updatedAt: overrides.updatedAt ?? timestamp,
-  };
-}
 
 export function makeTriggerRule(overrides: Partial<TriggerRule> & Pick<TriggerRule, "name">): TriggerRule {
   const timestamp = nowIso();
@@ -356,7 +323,6 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       ...baseline.activeState,
       ...adventure.activeState,
       evaluationLog: adventure.activeState?.evaluationLog ?? [],
-      autoCardReviewQueue: adventure.activeState?.autoCardReviewQueue ?? [],
       memoryProposals: adventure.activeState?.memoryProposals ?? [],
       pendingUpdates: adventure.activeState?.pendingUpdates ?? [],
       storyUndoStack: adventure.activeState?.storyUndoStack ?? [],
@@ -435,13 +401,6 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         ...(hasImmediateMomentum ? [] : [makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true })]),
       ];
     })(),
-    autoCards: (adventure.autoCards ?? []).map((card) => ({
-      ...card,
-      priority: card.priority ?? 0,
-      pinned: card.pinned ?? false,
-      protected: card.protected ?? false,
-      inclusionPolicy: card.inclusionPolicy ?? "systemSuggested",
-    })),
     triggerRules: (adventure.triggerRules ?? []).map((rule) => ({
       ...rule,
       evaluationMode: rule.evaluationMode ?? "semantic",
@@ -463,10 +422,6 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       ...defaultSemanticEvaluationSettings,
       ...(adventure.semanticEvaluationSettings ?? {}),
       semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
-    },
-    autoCardSettings: {
-      ...defaultAutoCardSettings,
-      ...(adventure.autoCardSettings ?? {}),
     },
     memoryAutoApprove: {
       ...{ summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },

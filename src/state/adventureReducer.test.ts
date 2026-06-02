@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Adventure, AdventureAction, Quest, RawImportEntry, TriggerLogEntry } from "../types/adventure";
-import { createDefaultAdventure, makeAutoCard, makeBrain, makeComponent, makeQuest, makeStoryCard, makeTriggerRule } from "./defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard, makeTriggerRule } from "./defaults";
 import { adventureReducer } from "./adventureReducer";
 import { makeMemoryProposal } from "../test/goldenAdventure";
 
@@ -45,15 +45,6 @@ const testedActionTypes = [
   "APPEND_BRAIN_STATE",
   "REPLACE_BRAIN_STATE",
   "APPLY_BRAIN_UPDATE",
-  "UPSERT_AUTO_CARD",
-  "DELETE_AUTO_CARD",
-  "ACTIVATE_AUTO_CARD",
-  "DEACTIVATE_AUTO_CARD",
-  "UPDATE_AUTO_CARD",
-  "MARK_AUTO_CARD_UPDATED",
-  "CREATE_AUTO_CARD",
-  "APPROVE_AUTO_CARD",
-  "DISCARD_AUTO_CARD",
   "UPSERT_TRIGGER_RULE",
   "DELETE_TRIGGER_RULE",
   "UPDATE_TRIGGER_RULE",
@@ -83,7 +74,6 @@ const testedActionTypes = [
   "SET_TOKEN_BUDGET_SETTINGS",
   "SET_MODEL_CONFIG",
   "SET_SEMANTIC_EVALUATION_SETTINGS",
-  "SET_AUTO_CARD_SETTINGS",
   "SET_MEMORY_AUTO_APPROVE",
   "SET_MEMORY_DETECTION_SETTINGS",
   "SET_STATE_FLAG",
@@ -113,7 +103,6 @@ function baseAdventure(): Adventure {
   const storyA = makeStoryCard({ title: "Story A", content: "A", priority: 10, active: false });
   const storyB = makeStoryCard({ title: "Story B", content: "B", priority: 20 });
   const brain = makeBrain({ characterName: "Mira", active: false, currentState: "old" });
-  const autoCard = makeAutoCard({ title: "Auto A", content: "old", active: false });
   const triggerRule = makeTriggerRule({ name: "Rule A" });
   const quest = makeQuest({
     title: "Quest A",
@@ -149,7 +138,6 @@ function baseAdventure(): Adventure {
     components: [componentA, componentB],
     storyCards: [storyA, storyB],
     brains: [brain],
-    autoCards: [autoCard],
     triggerRules: [triggerRule],
     quests: [quest],
     messages: [
@@ -161,7 +149,6 @@ function baseAdventure(): Adventure {
       forceIncludeNextTurn: [],
       triggerLog: [],
       evaluationLog: [],
-      autoCardReviewQueue: [],
       memoryProposals: [],
       pendingUpdates: [],
       storyUndoStack: [],
@@ -270,12 +257,6 @@ describe("adventureReducer", () => {
     expect(state.semanticEvaluationSettings.evaluationModel).toBe("eval-model");
 
     state = reduce(state, {
-      type: "SET_AUTO_CARD_SETTINGS",
-      settings: { enabled: false, detectionCondition: "detect", generationPrompt: "generate", cooldownTurns: 5 },
-    });
-    expect(state.autoCardSettings.cooldownTurns).toBe(5);
-
-    state = reduce(state, {
       type: "SET_NEXT_TURN_NOTE",
       note: {
         content: "Keep the next output focused on the oath.",
@@ -331,7 +312,6 @@ describe("adventureReducer", () => {
     expect(state.activeState.turn).toBe(0);
     expect(state.activeState.nextTurnNote.content).toBe("");
     expect(state.triggerRules[0].lastFiredTurn).toBeUndefined();
-    expect(state.autoCards[0].lastUpdatedTurn).toBeUndefined();
     expect(state.quests[0].status).toBe("inactive");
   });
 
@@ -428,35 +408,6 @@ describe("adventureReducer", () => {
 
     state = reduce(state, { type: "DELETE_BRAIN", brainId: brain.id });
     expect(state.brains.some((entry) => entry.id === brain.id)).toBe(false);
-  });
-
-  it("handles every auto-card action", () => {
-    let state = baseAdventure();
-    const autoCard = makeAutoCard({ title: "Auto C", content: "C" });
-    state = reduce(state, { type: "UPSERT_AUTO_CARD", autoCard });
-    expect(state.autoCards.find((entry) => entry.id === autoCard.id)?.title).toBe("Auto C");
-
-    state = reduce(state, { type: "DEACTIVATE_AUTO_CARD", autoCardId: autoCard.id });
-    expect(state.autoCards.find((entry) => entry.id === autoCard.id)?.active).toBe(false);
-    state = reduce(state, { type: "ACTIVATE_AUTO_CARD", autoCardId: autoCard.id });
-    expect(state.autoCards.find((entry) => entry.id === autoCard.id)?.active).toBe(true);
-    state = reduce(state, { type: "UPDATE_AUTO_CARD", autoCardId: autoCard.id, patch: { content: "changed" } });
-    expect(state.autoCards.find((entry) => entry.id === autoCard.id)?.content).toBe("changed");
-    state = reduce(state, { type: "MARK_AUTO_CARD_UPDATED", autoCardId: autoCard.id, turn: 9 });
-    expect(state.autoCards.find((entry) => entry.id === autoCard.id)?.lastUpdatedTurn).toBe(9);
-
-    state = reduce(state, { type: "CREATE_AUTO_CARD", title: "Generated", content: "Generated content", keys: ["generated"], turn: 9 });
-    const reviewId = state.activeState.autoCardReviewQueue[0].id;
-    expect(state.activeState.autoCardReviewQueue[0].title).toBe("Generated");
-    state = reduce(state, { type: "APPROVE_AUTO_CARD", reviewId, patch: { title: "Approved" } });
-    expect(state.storyCards.some((entry) => entry.title === "Approved" && entry.state === "generated")).toBe(true);
-    state = reduce(state, { type: "CREATE_AUTO_CARD", title: "Discard", content: "Discard content", keys: ["discard"], turn: 9 });
-    const discardId = state.activeState.autoCardReviewQueue[0].id;
-    state = reduce(state, { type: "DISCARD_AUTO_CARD", reviewId: discardId });
-    expect(state.activeState.autoCardReviewQueue.some((entry) => entry.id === discardId)).toBe(false);
-
-    state = reduce(state, { type: "DELETE_AUTO_CARD", autoCardId: autoCard.id });
-    expect(state.autoCards.some((entry) => entry.id === autoCard.id)).toBe(false);
   });
 
   it("handles every trigger rule action", () => {

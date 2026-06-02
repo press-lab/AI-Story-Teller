@@ -1,7 +1,6 @@
 import type { Adventure, QuestStep } from "../types/adventure";
 import {
   createDefaultAdventure,
-  defaultAutoCardSettings,
   defaultSemanticEvaluationSettings,
   makeBrain,
   makeComponent,
@@ -950,7 +949,7 @@ export function createDevelopmentAdventure(): Adventure {
       evaluationMode: "semantic",
       condition:
         "when Setu, Azula, Nyxa, Mai, or Ty Lee make a powerful enemy, reveal a dangerous rival, or create a new recurring threat",
-      actions: [{ type: "createAutoCard" }],
+      actions: [],
       priority: 45,
       cooldownTurns: 2,
       updatePrompt:
@@ -1000,15 +999,6 @@ export function createDevelopmentAdventure(): Adventure {
       enabled: true,
       showLog: true,
       maxParallelUpdateCalls: 2,
-    },
-    autoCardSettings: {
-      ...defaultAutoCardSettings,
-      enabled: true,
-      detectionCondition:
-        "when a new named adult character, location, organization, military unit, faction, or significant object is introduced that does not already have a Story Card",
-      generationPrompt:
-        'A new entity worth remembering has appeared in the story. Write a Story Card for it in Avatar: The Last Airbender AU voice — adult Fire Nation tone, specific and grounded. Content must be third-person prose: complete sentences, mention the entity by name in each sentence, focus only on durable plot-significant details, avoid temporary scene observations, imitate the story\'s writing style. Return ONLY valid JSON: {"title": string, "content": string, "keys": string (comma-separated trigger keywords)}',
-      cooldownTurns: 3,
     },
     tokenBudgetSettings: {
       ...base.tokenBudgetSettings,

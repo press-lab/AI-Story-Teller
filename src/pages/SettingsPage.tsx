@@ -2,7 +2,6 @@ import { useState } from "react";
 import type {
   Adventure,
   AdventureAction,
-  AutoCardSettings,
   CloudSyncSettings,
   MemoryAutoApproveSettings,
   MemoryDetectionSettings,
@@ -138,11 +137,6 @@ export function SettingsPage({
     onGlobalAdventureSettingsChange({ ...globalAdventureSettings, semanticEvaluationSettings: { ...activeSettings.semanticEvaluationSettings, ...patch } });
   }
 
-  function updateAutoCardSettings(patch: Partial<AutoCardSettings>) {
-    if (adventure) { dispatch({ type: "SET_AUTO_CARD_SETTINGS", settings: { ...adventure.autoCardSettings, ...patch } }); return; }
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, autoCardSettings: { ...activeSettings.autoCardSettings, ...patch } });
-  }
-
   function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
     onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
   }
@@ -155,7 +149,6 @@ export function SettingsPage({
   const activeSettings: GlobalAdventureSettings = adventure ? {
     tokenBudgetSettings: adventure.tokenBudgetSettings,
     semanticEvaluationSettings: adventure.semanticEvaluationSettings,
-    autoCardSettings: adventure.autoCardSettings,
     memoryDetectionSettings: adventure.memoryDetectionSettings,
     memoryAutoApprove: adventure.memoryAutoApprove,
   } : globalAdventureSettings;
@@ -554,35 +547,6 @@ export function SettingsPage({
                     },
                   })
                 }
-              />
-            </Field>
-          </article>
-        )}
-
-        {/* ── Auto-Cards (advanced) ─────────────────── */}
-        {advanced && (
-          <article className="panel">
-            <h3>Auto-Cards</h3>
-            <CheckboxField label="Enable Auto-Cards" checked={activeSettings.autoCardSettings.enabled} onChange={(enabled) => updateAutoCardSettings({ enabled })} />
-            <Field label="Detection Condition">
-              <textarea
-                rows={3}
-                value={activeSettings.autoCardSettings.detectionCondition}
-                onChange={(e) => updateAutoCardSettings({ detectionCondition: e.target.value })}
-              />
-            </Field>
-            <Field label="Generation Prompt">
-              <textarea
-                rows={5}
-                value={activeSettings.autoCardSettings.generationPrompt}
-                onChange={(e) => updateAutoCardSettings({ generationPrompt: e.target.value })}
-              />
-            </Field>
-            <Field label="Cooldown Between Generations (turns)">
-              <NumberInput
-                min={0}
-                value={activeSettings.autoCardSettings.cooldownTurns}
-                onChange={(cooldownTurns) => updateAutoCardSettings({ cooldownTurns })}
               />
             </Field>
           </article>
