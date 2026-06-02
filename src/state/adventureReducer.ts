@@ -90,12 +90,22 @@ function updateBrainField(brain: BrainEntry, field: BrainStateField | undefined,
   return touch({ ...brain, [targetField]: nextValue });
 }
 
-function mergeThoughts(existing: Record<string, string>, patch: Record<string, string | null>): Record<string, string> {
-  const next = { ...existing };
+function mergeThoughts(
+  existing: Record<string, string>,
+  archived: Record<string, string>,
+  patch: Record<string, string | null>
+): { thoughts: Record<string, string>; archivedThoughts: Record<string, string> } {
+  const nextThoughts = { ...existing };
+  const nextArchived = { ...archived };
   for (const [key, value] of Object.entries(patch)) {
-    if (value === null) { delete next[key]; } else { next[key] = value; }
+    if (value === null) {
+      if (nextThoughts[key]) nextArchived[key] = nextThoughts[key];
+      delete nextThoughts[key];
+    } else {
+      nextThoughts[key] = value;
+    }
   }
-  return next;
+  return { thoughts: nextThoughts, archivedThoughts: nextArchived };
 }
 
 function applyBrainUpdate(
@@ -108,11 +118,11 @@ function applyBrainUpdate(
   const timestamp = nowIso();
   const { thoughts: thoughtsPatch, ...stringPatch } = patch;
 
-  const nextThoughts: Record<string, string> = thoughtsPatch
+  const { thoughts: nextThoughts, archivedThoughts: nextArchivedThoughts } = thoughtsPatch
     ? mode === "replace"
-      ? mergeThoughts({}, thoughtsPatch)
-      : mergeThoughts(brain.thoughts, thoughtsPatch)
-    : brain.thoughts;
+      ? mergeThoughts({}, brain.archivedThoughts, thoughtsPatch)
+      : mergeThoughts(brain.thoughts, brain.archivedThoughts, thoughtsPatch)
+    : { thoughts: brain.thoughts, archivedThoughts: brain.archivedThoughts };
 
   if (mode === "append") {
     const perField: Partial<Record<Exclude<BrainStateField, "thoughts">, string>> = {};
@@ -126,6 +136,7 @@ function applyBrainUpdate(
       ...brain,
       ...perField,
       thoughts: nextThoughts,
+      archivedThoughts: nextArchivedThoughts,
       lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
       lastUpdatedAt: timestamp,
       lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),
@@ -136,6 +147,7 @@ function applyBrainUpdate(
     ...brain,
     ...stringPatch,
     thoughts: nextThoughts,
+    archivedThoughts: nextArchivedThoughts,
     lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
     lastUpdatedAt: timestamp,
     lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),
@@ -351,7 +363,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         const raw = parsed as Record<string, unknown>;
         const patch: BrainPatch = {};
-        const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = ["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes", "characterAnchor"];
+        const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = ["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"];
         for (const f of stringFields) { if (typeof raw[f] === "string") patch[f] = raw[f] as string; }
         if (raw.thoughts && typeof raw.thoughts === "object" && !Array.isArray(raw.thoughts)) {
           patch.thoughts = raw.thoughts as Record<string, string | null>;

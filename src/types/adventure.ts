@@ -78,11 +78,12 @@ export interface BrainEntry {
   source?: "manual" | "imported" | "generated";
   currentState: string;
   thoughts: Record<string, string>;
+  archivedThoughts: Record<string, string>;
+  linkedStoryCardId?: string;
   relationshipPressure: string;
   emotionalInterpretation: string;
   recentDevelopments: string;
   notes: string;
-  characterAnchor: string;
   condenseThreshold?: number;
   active: boolean;
   pinned: boolean;
@@ -619,17 +620,15 @@ export type BrainStateField =
   | "relationshipPressure"
   | "emotionalInterpretation"
   | "recentDevelopments"
-  | "notes"
-  | "characterAnchor";
+  | "notes";
 
-/** Patch produced by AI brain updates. thoughts is a Record where null values delete that key. */
+/** Patch produced by AI brain updates. thoughts is a Record where null values archive that key. */
 export type BrainPatch = {
   currentState?: string;
   relationshipPressure?: string;
   emotionalInterpretation?: string;
   recentDevelopments?: string;
   notes?: string;
-  characterAnchor?: string;
   thoughts?: Record<string, string | null>;
 };
 

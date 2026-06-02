@@ -76,7 +76,7 @@ describe("memory architecture smoke path", () => {
       {
         type: "brainPatch",
         brainId: "brain-margo",
-        patch: { currentState: "Margo feels jealous but hides it." },
+        patch: { thoughts: { jealousy_hidden: "3 → Margo feels jealous but hides it." } },
         mode: "replace",
         turn: 3,
       },

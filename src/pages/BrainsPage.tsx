@@ -2,6 +2,7 @@ import type { ContextInclusionPolicy } from "../types/adventure";
 import { makeBrain } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
+import { useState } from "react";
 
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
@@ -10,16 +11,38 @@ interface BrainsPageProps extends AdventurePageProps {
   onUpdateBrainNow: (brainId: string) => Promise<void>;
 }
 
+function ThoughtArchive({ archivedThoughts }: { archivedThoughts: Record<string, string> }) {
+  const [open, setOpen] = useState(false);
+  const entries = Object.entries(archivedThoughts).sort((a, b) => {
+    const turnA = parseInt(a[1].match(/^(\d+)/)?.[1] ?? "0", 10);
+    const turnB = parseInt(b[1].match(/^(\d+)/)?.[1] ?? "0", 10);
+    return turnB - turnA;
+  });
+  return (
+    <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="muted">Thought Archive ({entries.length})</summary>
+      {entries.length === 0 ? (
+        <p className="muted" style={{ margin: "0.5rem 0" }}>No archived thoughts yet.</p>
+      ) : (
+        <div style={{ fontSize: "0.85em", color: "var(--color-muted, #888)", marginTop: "0.5rem" }}>
+          {entries.map(([key, value]) => (
+            <div key={key} style={{ marginBottom: "0.25rem" }}>
+              <strong>{key}:</strong> {value}
+            </div>
+          ))}
+        </div>
+      )}
+    </details>
+  );
+}
+
 export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: BrainsPageProps) {
   return (
     <section className="page">
       <p className="muted" style={{ margin: 0 }}>
-        Character Selves track the <strong>internal state</strong> of NPCs — what they know, feel, want, and believe right now.
-        The AI reads this context when writing their dialogue and actions, and updates it automatically after relevant scenes.
-        <strong> Current State</strong> is the primary summary sent to the model.
-        <strong> Thoughts, Relationship Pressure, Emotional Interpretation,</strong> and <strong>Recent Developments</strong> are
-        supplemental lenses the AI uses when regenerating the character's state.
-        {" "}<strong>Warning:</strong> the model writes toward whatever the brain says a character is. Unchecked auto-updates on emotional or relational content can lock in character drift — a cautious character becomes fragile, a chaotic one becomes needy. Use <strong>Append</strong> mode and a high cooldown to slow drift. Disable auto-approve for brains and review updates before they become permanent context.
+        Character Brains are private internal monologue — thoughts only. The AI records one new thought per update.
+        Old thoughts are archived rather than deleted. If a thought reveals a stable character truth, the brain can propose
+        an update to a linked story card via the Memory Inbox.
       </p>
 
       <div className="toolbar">
@@ -84,24 +107,28 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { triggers: fromCommaList(event.target.value) } })}
               />
             </Field>
-            <Field label="Current State (sent to the model every turn this character is active)">
-              <textarea
-                rows={4}
-                value={brain.currentState}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { currentState: event.target.value } })}
-              />
-            </Field>
-            <Field label="Character Anchor">
+            <Field label="Notes (manual freetext — not injected into context)">
               <textarea
                 rows={3}
-                value={brain.characterAnchor}
-                placeholder="Immutable voice and behavioral defaults. Brain updates will never rewrite these traits."
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { characterAnchor: event.target.value } })}
+                value={brain.notes}
+                placeholder="Personal notes about this character — for your reference only."
+                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { notes: event.target.value } })}
               />
+            </Field>
+            <Field label="Linked Story Card (for trait proposals)">
+              <select
+                value={brain.linkedStoryCardId ?? ""}
+                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { linkedStoryCardId: event.target.value || undefined } })}
+              >
+                <option value="">None</option>
+                {adventure.storyCards.map((card) => (
+                  <option key={card.id} value={card.id}>{card.title}</option>
+                ))}
+              </select>
             </Field>
 
             <details>
-              <summary className="muted">Update Settings &amp; AI-Managed Fields</summary>
+              <summary className="muted">Update Settings &amp; Thoughts</summary>
 
               <Field label="Update Condition">
                 <textarea
@@ -185,33 +212,14 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                   }}
                 />
               </Field>
-              <Field label="Relationship Pressure (AI-written — tensions or pulls toward specific people)">
-                <textarea
-                  rows={3}
-                  value={brain.relationshipPressure}
-                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { relationshipPressure: event.target.value } })}
-                />
-              </Field>
-              <Field label="Emotional Interpretation (AI-written — how this character reads the current scene)">
-                <textarea
-                  rows={3}
-                  value={brain.emotionalInterpretation}
-                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { emotionalInterpretation: event.target.value } })}
-                />
-              </Field>
-              <Field label="Recent Developments (AI-written — what just changed for this character)">
-                <textarea
-                  rows={3}
-                  value={brain.recentDevelopments}
-                  onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { recentDevelopments: event.target.value } })}
-                />
-              </Field>
               <div className="grid two">
                 <Field label="Last Generated Update Preview">
                   <textarea rows={3} readOnly value={brain.lastGeneratedUpdatePreview ?? ""} />
                 </Field>
               </div>
             </details>
+
+            <ThoughtArchive archivedThoughts={brain.archivedThoughts} />
           </article>
         ))}
       </div>

@@ -77,48 +77,37 @@ function preview(text: string): string {
 }
 
 function defaultBrainPrompt(brain: BrainEntry, turn: number): string {
-  const existing: string[] = [];
-  if (brain.currentState?.trim()) existing.push(`currentState: ${brain.currentState}`);
   const thoughtEntries = Object.entries(brain.thoughts);
-  if (thoughtEntries.length > 0) {
-    existing.push(`thoughts (existing — do NOT repeat these):\n${thoughtEntries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`);
-  }
-  if (brain.relationshipPressure?.trim()) existing.push(`relationshipPressure: ${brain.relationshipPressure}`);
-  if (brain.emotionalInterpretation?.trim()) existing.push(`emotionalInterpretation: ${brain.emotionalInterpretation}`);
-  if (brain.recentDevelopments?.trim()) existing.push(`recentDevelopments: ${brain.recentDevelopments}`);
-  const stateBlock = existing.length > 0 ? `\n\nEstablished state — maintain this voice and psychology:\n${existing.join("\n")}` : "";
-  const anchorBlock = brain.characterAnchor?.trim()
-    ? `\n\nCHARACTER ANCHOR — immutable voice and behavioral defaults (do NOT rewrite these based on story events):\n${brain.characterAnchor}\n\nWhen updating emotionalInterpretation, describe the emotion through this character's established expression style — not as a direct statement of feeling.`
+  const existingBlock = thoughtEntries.length > 0
+    ? `\n\nExisting thoughts (do NOT repeat these):\n${thoughtEntries.map(([k, v]) => `  ${k}: ${v}`).join("\n")}`
     : "";
-  return `You are adding one new inner observation for ${brain.characterName} based on what just happened in the scene. Current turn: ${turn}.${stateBlock}${anchorBlock}
+  return `You are recording one new thought, reaction, or private plan for ${brain.characterName} based on what just happened. Current turn: ${turn}.${existingBlock}
 
-Return ONLY valid JSON. Only include keys that actually changed.
+Return ONLY valid JSON. Only include keys that changed.
 
-For "thoughts": return an object where each key is a snake_case label and each value is "${turn} → first-person observation". Add ONE new thought entry. Optionally set one stale entry to null to delete it. Write in ${brain.characterName}'s own first-person voice from their specific vantage point — not a generic participant. Name actual people, cite what was said or done, say what it privately means. Never use generic labels ("excited", "focused", "intense").
-Example: { "thoughts": { "azula_evaluates_setu_power": "${turn} → Setu matched her escalation without flinching. That's either confidence or recklessness — I need to know which before I point him at something." } }
+For "thoughts": add ONE new entry. Key is snake_case label. Value is "${turn} → first-person observation, reaction, or plan". Write in ${brain.characterName}'s own voice — cite specific people, what was said or done, and what it privately means or what they intend to do about it. Never use generic labels ("excited", "uneasy", "focused"). Optionally set one stale entry to null to archive it.
 
-Other updatable fields — all in first person from ${brain.characterName}'s voice (e.g. currentState: "I'm holding ground but watching for the moment Azula shifts"): currentState, relationshipPressure, emotionalInterpretation, recentDevelopments.`;
+Example: { "thoughts": { "azula_praise_after_council": "${turn} → Her 'good to have you back' landed too clean. Azula doesn't give compliments — she extends leashes. I need to find out how much she knows before the delegation arrives." } }
+
+If this thought reveals something fundamental and permanent about how ${brain.characterName} behaves, thinks, or operates — something that would be true in any scene, not just this one — also include:
+"storyCardNote": "one concise sentence describing the trait or behavioral pattern"
+
+Only include storyCardNote if it genuinely describes a stable character truth (not a scene reaction). Leave it out otherwise.`;
 }
 
 const BRAIN_CONDENSE_THRESHOLD = 1600;
 
-function condenseBrainPrompt(brain: BrainEntry, fullThoughts: Record<string, string>, fullRecent: string): string {
+function condenseBrainPrompt(brain: BrainEntry, fullThoughts: Record<string, string>): string {
   const thoughtsFormatted = Object.entries(fullThoughts).map(([k, v]) => `  ${k}: ${v}`).join("\n");
-  return `You are pruning ${brain.characterName}'s thought log because it has grown too long. Keep the 3-5 most important and still-relevant entries. Delete the rest by setting them to null.
-${brain.notes ? `\nExisting notes log (do NOT modify):\n${brain.notes}` : ""}
+  return `You are pruning ${brain.characterName}'s thought log because it has grown too long. Keep the 3-5 most important and still-relevant entries. Set the rest to null — they will be archived, not deleted.
 
 Current thought entries:
 ${thoughtsFormatted}
-${fullRecent ? `\nRecent developments to condense:\n${fullRecent}` : ""}
 
 Return ONLY valid JSON:
-{
-  "thoughts": { "key_to_keep": "${brain.lastUpdatedTurn ?? 0} → text unchanged", "key_to_delete": null },
-  "recentDevelopments": "condensed to 1-3 items if applicable, otherwise omit this key",
-  "notes": "one short line summarizing what was compressed, e.g. \\"Compressed turns 40-80: garden walk, cellar tension, council aftermath\\""
-}
+{ "thoughts": { "key_to_keep": "${brain.lastUpdatedTurn ?? 0} → text unchanged", "key_to_archive": null } }
 
-Keep all values in first-person voice. The notes value gets appended to the permanent log.`;
+Keep all values verbatim and unchanged. Do not rewrite or summarize any entry.`;
 }
 
 function storyCardPrompt(card: StoryCard): string {
@@ -522,7 +511,11 @@ async function generatedActionsFor(
         return { actions: [] };
       }
       const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain, adventure.activeState.turn), accum);
-      const patch = sanitizeBrainPatch(parseJsonResponse<unknown>(raw));
+      const rawParsed = parseJsonResponse<unknown>(raw);
+      const storyCardNote = rawParsed && typeof rawParsed === "object" && "storyCardNote" in rawParsed && typeof (rawParsed as Record<string, unknown>).storyCardNote === "string"
+        ? (rawParsed as Record<string, unknown>).storyCardNote as string
+        : undefined;
+      const patch = sanitizeBrainPatch(rawParsed);
       if (Object.keys(patch).length === 0) return { actions: [], error: `Brain update returned no recognized keys for ${brain.characterName}.` };
       if (requireApproval) {
         const proposal = makeProposal(
@@ -539,22 +532,14 @@ async function generatedActionsFor(
       const postThoughtsRecord: Record<string, string> = updateMode === "append"
         ? Object.fromEntries([...Object.entries(brain.thoughts), ...Object.entries(patch.thoughts ?? {}).filter(([, v]) => v !== null)] as [string, string][])
         : Object.fromEntries(Object.entries(patch.thoughts ?? brain.thoughts).filter(([, v]) => v !== null) as [string, string][]);
-      const postRecent = updateMode === "append"
-        ? [brain.recentDevelopments, patch.recentDevelopments].filter(Boolean).join("\n")
-        : (patch.recentDevelopments ?? brain.recentDevelopments ?? "");
       const postThoughtsText = Object.values(postThoughtsRecord).join("\n");
-      const condenseNeeded = (postThoughtsText.length + postRecent.length) > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
+      const condenseNeeded = postThoughtsText.length > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
       if (condenseNeeded) {
-        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughtsRecord, postRecent), accum);
+        const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughtsRecord), accum);
         const condensed = sanitizeBrainPatch(parseJsonResponse<unknown>(condensedRaw));
         if (Object.keys(condensed).length > 0) {
-          const notesEntry = condensed.notes;
-          const finalPatch: BrainPatch = {
-            ...condensed,
-            notes: [brain.notes, notesEntry].filter(Boolean).join("\n") || undefined,
-          };
           const condenseUpdate = applyAIMemoryUpdate(adventure, [{
-            type: "brainPatch", brainId: brain.id, patch: finalPatch, mode: "replace",
+            type: "brainPatch", brainId: brain.id, patch: condensed, mode: "replace",
             turn: adventure.activeState.turn, preview: `[condensed] ${preview(condensedRaw)}`,
           }]);
           return {
@@ -574,8 +559,26 @@ async function generatedActionsFor(
           preview: preview(raw),
         },
       ]);
+      const extraActions: AdventureAction[] = [];
+      if (storyCardNote && brain.linkedStoryCardId) {
+        const card = adventure.storyCards.find((c) => c.id === brain.linkedStoryCardId);
+        if (card) {
+          const scProposal = makeProposal(
+            {
+              proposedType: "storyCard",
+              title: card.title,
+              content: storyCardNote,
+              suggestedTriggers: card.keys,
+              targetId: card.id,
+              rationale: `Brain thought for ${brain.characterName} revealed a stable character trait.`,
+            },
+            adventure,
+          );
+          extraActions.push({ type: "ADD_MEMORY_PROPOSAL", proposal: { ...scProposal, appendContent: true } });
+        }
+      }
       return {
-        actions: memoryUpdate.actions,
+        actions: [...memoryUpdate.actions, ...extraActions],
         generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: preview(raw) },
         error: memoryUpdate.rejectedUpdates[0]?.reason,
       };
