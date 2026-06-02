@@ -246,6 +246,57 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
         </div>
       </div>
 
+      {(() => {
+        const activeCards = adventure.storyCards.filter((c) => c.active);
+        const autoCard = adventure.storyCards.find((c) => c.autoUpdate);
+        return (
+          <div className="toolbar">
+            <CheckboxField
+              label="Auto-update one card per eval"
+              checked={!!autoCard}
+              onChange={(checked) => {
+                if (!checked && autoCard) {
+                  dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdate: false } });
+                } else if (checked && !autoCard && activeCards.length > 0) {
+                  dispatch({ type: "UPDATE_STORY_CARD", storyCardId: activeCards[0].id, patch: { autoUpdate: true } });
+                }
+              }}
+            />
+            <Field label="Card to auto-update">
+              <select
+                value={autoCard?.id ?? ""}
+                disabled={!autoCard}
+                onChange={(e) => {
+                  const newId = e.target.value;
+                  adventure.storyCards.forEach((c) => {
+                    if (c.autoUpdate && c.id !== newId) {
+                      dispatch({ type: "UPDATE_STORY_CARD", storyCardId: c.id, patch: { autoUpdate: false } });
+                    }
+                  });
+                  if (newId) dispatch({ type: "UPDATE_STORY_CARD", storyCardId: newId, patch: { autoUpdate: true } });
+                }}
+              >
+                {!autoCard && <option value="">— none selected —</option>}
+                {activeCards.map((c) => (
+                  <option key={c.id} value={c.id}>{c.title}</option>
+                ))}
+              </select>
+            </Field>
+            {autoCard && (
+              <Field label="Cooldown (turns)">
+                <NumberInput
+                  value={autoCard.autoUpdateCooldownTurns ?? 3}
+                  min={0}
+                  onChange={(autoUpdateCooldownTurns) =>
+                    dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdateCooldownTurns } })
+                  }
+                />
+              </Field>
+            )}
+          </div>
+        );
+      })()}
+
       <details className="panel">
         <summary>Import Story Cards JSON</summary>
         <textarea rows={6} value={importText} onChange={(event) => setImportText(event.target.value)} />
@@ -423,25 +474,6 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
                           </option>
                         ))}
                       </select>
-                    </Field>
-                  </div>
-                  <CheckboxField
-                    label="Auto-update via AI after relevant scenes"
-                    checked={card.autoUpdate ?? false}
-                    onChange={(autoUpdate) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { autoUpdate } })}
-                  />
-                  <div className="grid two">
-                    <Field label="Auto-update cooldown (turns)">
-                      <NumberInput
-                        value={card.autoUpdateCooldownTurns ?? 3}
-                        min={0}
-                        onChange={(autoUpdateCooldownTurns) =>
-                          dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { autoUpdateCooldownTurns } })
-                        }
-                      />
-                    </Field>
-                    <Field label="Last auto-update turn">
-                      <input value={card.lastAutoUpdateTurn ?? "Never"} readOnly />
                     </Field>
                   </div>
                   <Field label="State (runtime note visible to automation conditions)">

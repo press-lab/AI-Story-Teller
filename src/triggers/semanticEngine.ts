@@ -330,13 +330,15 @@ function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
     .filter((card) => card.active && card.autoUpdate)
     .filter((card) => !isStoryCardOnAutoUpdateCooldown(adventure, card))
     .filter((card) => card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched);
-  return eligible.map((card) => ({
-    id: `storyCard:${card.id}`,
-    label: `Story Card: ${card.title}`,
-    condition: `when the story has established new details, developments, or changes that should update the fact card titled "${card.title}" — only fire when something meaningfully new has been revealed about this entity`,
+  const target = eligible[0];
+  if (!target) return [];
+  return [{
+    id: `storyCard:${target.id}`,
+    label: `Story Card: ${target.title}`,
+    condition: `when the story has established new details, developments, or changes that should update the fact card titled "${target.title}" — only fire when something meaningfully new has been revealed about this entity`,
     sourceType: "storyCard" as const,
-    actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: card.id }],
-  }));
+    actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: target.id }],
+  }];
 }
 
 function summaryConditions(adventure: Adventure): SemanticCondition[] {
