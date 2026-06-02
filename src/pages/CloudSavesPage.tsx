@@ -40,8 +40,8 @@ export function CloudSavesPage({
     onGitHubSaveSettingsChange({ ...gitHubSaveSettings, ...patch });
   }
 
-  function updateAutoSave(autoSaveEnabled: boolean, autoSaveEveryNTurns: number) {
-    dispatch({ type: "SET_AUTO_SAVE_SETTINGS", autoSaveEnabled, autoSaveEveryNTurns });
+  function updateAutoSave(autoSaveEnabled: boolean, autoSaveEveryNTurns: number, autoSaveEveryNMinutes?: number) {
+    dispatch({ type: "SET_AUTO_SAVE_SETTINGS", autoSaveEnabled, autoSaveEveryNTurns, autoSaveEveryNMinutes });
   }
 
   return (
@@ -63,13 +63,20 @@ export function CloudSavesPage({
             <CheckboxField
               label="Auto-save after turns"
               checked={adventure.autoSaveEnabled}
-              onChange={(autoSaveEnabled) => updateAutoSave(autoSaveEnabled, adventure.autoSaveEveryNTurns)}
+              onChange={(autoSaveEnabled) => updateAutoSave(autoSaveEnabled, adventure.autoSaveEveryNTurns, adventure.autoSaveEveryNMinutes)}
             />
             <Field label="Auto-save every N turns">
               <NumberInput
                 min={1}
                 value={adventure.autoSaveEveryNTurns}
-                onChange={(autoSaveEveryNTurns) => updateAutoSave(adventure.autoSaveEnabled, autoSaveEveryNTurns)}
+                onChange={(autoSaveEveryNTurns) => updateAutoSave(adventure.autoSaveEnabled, autoSaveEveryNTurns, adventure.autoSaveEveryNMinutes)}
+              />
+            </Field>
+            <Field label="Auto-save every N minutes">
+              <NumberInput
+                min={0}
+                value={adventure.autoSaveEveryNMinutes ?? 5}
+                onChange={(autoSaveEveryNMinutes) => updateAutoSave(adventure.autoSaveEnabled, adventure.autoSaveEveryNTurns, autoSaveEveryNMinutes)}
               />
             </Field>
             <Field label="Saves folder path">

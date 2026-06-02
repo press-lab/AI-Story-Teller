@@ -300,7 +300,7 @@ export default function App() {
     const id = setInterval(() => {
       const current = adventure;
       if (current) void gitHubSaves.timedAutoSave(current);
-    }, 5 * 60 * 1000);
+    }, 60 * 1000); // check every minute; timedAutoSave gates on the adventure's configured interval
     return () => clearInterval(id);
     // intentional: stable interval; timedAutoSave checks the time gate internally
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -906,7 +906,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         quests: state.quests.map(resetQuestRuntime),
       });
     case "SET_AUTO_SAVE_SETTINGS":
-      return touchAdventure(state, { autoSaveEnabled: action.autoSaveEnabled, autoSaveEveryNTurns: action.autoSaveEveryNTurns });
+      return touchAdventure(state, { autoSaveEnabled: action.autoSaveEnabled, autoSaveEveryNTurns: action.autoSaveEveryNTurns, autoSaveEveryNMinutes: action.autoSaveEveryNMinutes });
     default: {
       const exhaustive: never = action;
       return exhaustive;

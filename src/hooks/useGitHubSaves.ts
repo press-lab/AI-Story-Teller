@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
 import { deleteGitHubSave, listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "../sync/githubSaves";
 
-const TIMER_SAVE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TIMER_SAVE_MINUTES = 5;
 
 export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: GitHubSaveSettings) {
   const [saveSlots, setSaveSlots] = useState<GitHubSaveSlot[]>([]);
@@ -73,8 +73,10 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
     async (adventure: Adventure): Promise<void> => {
       if (!adventure.autoSaveEnabled) return;
       if (adventure.activeState.turn <= 0) return;
+      const minutes = adventure.autoSaveEveryNMinutes ?? DEFAULT_TIMER_SAVE_MINUTES;
+      if (minutes <= 0) return;
       const lastAt = lastTimedSaveAtRef.current[adventure.id] ?? 0;
-      if (Date.now() - lastAt < TIMER_SAVE_INTERVAL_MS) return;
+      if (Date.now() - lastAt < minutes * 60 * 1000) return;
       try {
         const slot = await saveToGitHub(cloudSettings, saveSettings, adventure, "auto");
         lastTimedSaveAtRef.current = { ...lastTimedSaveAtRef.current, [adventure.id]: Date.now() };

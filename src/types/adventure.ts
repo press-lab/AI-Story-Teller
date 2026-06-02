@@ -423,6 +423,7 @@ export interface Adventure {
   metadata: JsonObject;
   autoSaveEnabled: boolean;
   autoSaveEveryNTurns: number;
+  autoSaveEveryNMinutes?: number;
   components: ComponentEntry[];
   storyCards: StoryCard[];
   brains: BrainEntry[];
@@ -672,4 +673,4 @@ export type AdventureAction =
   | { type: "SET_LAST_SEMANTIC_EVAL_TURN"; turn: number }
   | { type: "SET_LAST_SCENE_STATE_TURN"; turn: number }
   | { type: "RESET_RUNTIME_STATE" }
-  | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number };
+  | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number; autoSaveEveryNMinutes?: number };
