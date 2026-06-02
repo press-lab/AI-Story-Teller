@@ -59,6 +59,18 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 />
               </Field>
             </div>
+            <div className="grid two">
+              <Field label="Auto-update cooldown (turns, 0 = no limit)">
+                <NumberInput
+                  value={brain.autoUpdateCooldownTurns ?? 0}
+                  min={0}
+                  onChange={(value) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { autoUpdateCooldownTurns: value || undefined } })}
+                />
+              </Field>
+              <Field label="Last updated (turn)">
+                <input readOnly value={brain.lastUpdatedTurn ?? "Never"} />
+              </Field>
+            </div>
             <Field label="Aliases (comma-separated alternate names that trigger this brain)">
               <input
                 value={commaList(brain.aliases)}
@@ -186,19 +198,6 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 />
               </Field>
               <div className="grid two">
-                <Field label="Auto-update cooldown (turns, 0 = no limit)">
-                  <NumberInput
-                    value={brain.autoUpdateCooldownTurns ?? 0}
-                    min={0}
-                    onChange={(value) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { autoUpdateCooldownTurns: value || undefined } })}
-                  />
-                </Field>
-                <Field label="Last Updated (turn)">
-                  <input
-                    readOnly
-                    value={brain.lastUpdatedTurn ?? "Never"}
-                  />
-                </Field>
                 <Field label="Last Generated Update Preview">
                   <textarea rows={3} readOnly value={brain.lastGeneratedUpdatePreview ?? ""} />
                 </Field>
