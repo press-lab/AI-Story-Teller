@@ -182,12 +182,16 @@ function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Mes
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
 
-  const systemContent = lengthHintText ? `${contextText}\n\n${lengthHintText}` : contextText;
+  const systemContent = lengthHintText ? `${lengthHintText}\n\n${contextText}` : contextText;
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
+  const extraMessages: { role: "user" | "assistant"; content: string }[] = lengthHintText
+    ? [{ role: "user" as const, content: `[Reminder: ${lengthHintText}]` }]
+    : [];
   return [
     { role: "system" as const, content: systemContent },
     ...(openingScene ? [{ role: "assistant" as const, content: openingScene }] : []),
     ...chronologicalRecent.map((message) => ({ role: message.role, content: message.content })),
+    ...extraMessages,
   ];
 }
 
@@ -601,9 +605,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   );
 
   const wordTarget = typeof adventure.activeState.responseLengthHint === "number"
-    ? Math.max(50, Math.min(200, adventure.activeState.responseLengthHint))
+    ? Math.max(50, Math.min(500, adventure.activeState.responseLengthHint))
     : 150;
-  const lengthHintText = `RESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
+  const lengthHintText = `RESPONSE LENGTH LIMIT: Write no more than ${wordTarget} words. Stop at the nearest sentence boundary before reaching this limit. Do not continue writing past ${wordTarget} words regardless of narrative completeness.`;
 
   return {
     messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText),

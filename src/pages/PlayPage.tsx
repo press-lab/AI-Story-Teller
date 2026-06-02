@@ -424,8 +424,8 @@ export function PlayPage({
                 type="range"
                 className="length-slider"
                 min={50}
-                max={200}
-                step={10}
+                max={500}
+                step={25}
                 value={adventure.activeState.responseLengthHint ?? 150}
                 onChange={(event) => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: Number(event.target.value) })}
                 title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
@@ -495,7 +495,7 @@ export function PlayPage({
                 className="length-cycle-btn"
                 title="Response length — tap to cycle"
                 onClick={() => {
-                  const presets = [50, 75, 100, 150, 200];
+                  const presets = [75, 100, 150, 200, 300, 400, 500];
                   const cur = adventure.activeState.responseLengthHint ?? 150;
                   const idx = presets.indexOf(cur);
                   dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: presets[(idx + 1) % presets.length] });
