@@ -216,10 +216,12 @@ export function extractInlineThoughts(content: string): {
   while ((match = thoughtRegex.exec(content)) !== null) {
     thoughts.push({ name: match[1].trim(), key: match[2].trim(), value: match[3].trim() });
   }
-  // Strip the tags AND the [CHARACTER THOUGHT CAPTURE] header if the model echoed it
+  // Strip the tags AND the [CHARACTER THOUGHT CAPTURE] header if the model echoed it.
+  // Also handle unclosed <thought tags (model omitted closing tag) by stripping to end of string.
   const cleanContent = content
-    .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")
-    .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "")
+    .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")   // well-formed tags
+    .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "") // echoed header + everything after
+    .replace(/<thought[\s\S]*$/i, "")                      // unclosed tag to end of string
     .trimEnd();
   return { cleanContent, thoughts };
 }

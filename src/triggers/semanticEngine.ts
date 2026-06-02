@@ -312,6 +312,10 @@ function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
 
 function summaryConditions(adventure: Adventure): SemanticCondition[] {
   if (!(adventure.tokenBudgetSettings.autoSummarize ?? true)) return [];
+  const everyN = adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20;
+  const lastIndex = adventure.rollingSummary.lastSummarizedMessageIndex ?? 0;
+  const messagesSinceLast = adventure.messages.length - lastIndex;
+  if (messagesSinceLast < everyN) return [];
   return [{
     id: "summary:rolling",
     label: "Durable Summary",
