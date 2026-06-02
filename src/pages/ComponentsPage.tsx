@@ -172,6 +172,13 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
               )}
               {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum") && (
                 <div className="grid two">
+                  {component.type === "plotEssentials" && (
+                    <CheckboxField
+                      label="Auto-suggest (append new arc beats automatically)"
+                      checked={component.autoUpdate === true}
+                      onChange={(autoUpdate) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { autoUpdate } })}
+                    />
+                  )}
                   <Field label="Auto-update cooldown (turns)">
                     <NumberInput
                       value={component.autoUpdateCooldownTurns ?? 3}

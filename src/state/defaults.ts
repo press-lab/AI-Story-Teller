@@ -199,6 +199,7 @@ export function makeComponent(
     inclusionPolicy: overrides.inclusionPolicy ?? (alwaysOn || defaultProtected ? "always" : "manual"),
     state: overrides.state ?? "",
     tokenBudget: overrides.tokenBudget,
+    autoUpdate: overrides.autoUpdate,
     lastAutoUpdateTurn: overrides.lastAutoUpdateTurn,
     autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
     createdAt: overrides.createdAt ?? timestamp,

@@ -228,22 +228,22 @@ function activeSemanticRules(adventure: Adventure): SemanticCondition[] {
 
 function brainConditions(adventure: Adventure): SemanticCondition[] {
   const excerpt = recentExcerpt(adventure);
-  return adventure.brains
+  const eligible = adventure.brains
     .filter((brain) => brain.active)
     .filter((brain) => !isBrainOnCooldown(adventure, brain))
     .filter((brain) => {
-      // Pre-filter: skip semantic evaluation entirely if character has no presence in recent text.
-      // Saves one evaluation slot and a generation call when the character wasn't in the scene.
       const patterns = [brain.characterName, ...brain.aliases, ...brain.triggers].filter(Boolean);
       return patterns.length === 0 || matchPatterns(excerpt, patterns, "phrase").matched;
     })
-    .map((brain) => ({
-      id: `brain:${brain.id}`,
-      label: `Brain: ${brain.characterName}`,
-      condition: brain.updateCondition || `when something in this scene causes a genuine shift for ${brain.characterName}: a new realization, emotional pivot, changed read on another character, or meaningful reaction to events — do NOT fire just because they appear or speak`,
-      sourceType: "brain" as const,
-      actionFactory: () => [{ type: brain.updateMode === "append" ? "appendBrain" : "updateBrain", brainId: brain.id }],
-    }));
+    .sort((a, b) => (a.lastUpdatedTurn ?? -1) - (b.lastUpdatedTurn ?? -1))
+    .slice(0, 1);
+  return eligible.map((brain) => ({
+    id: `brain:${brain.id}`,
+    label: `Brain: ${brain.characterName}`,
+    condition: brain.updateCondition || `when something in this scene causes a genuine shift for ${brain.characterName}: a new realization, emotional pivot, changed read on another character, or meaningful reaction to events — do NOT fire just because they appear or speak`,
+    sourceType: "brain" as const,
+    actionFactory: () => [{ type: brain.updateMode === "append" ? "appendBrain" : "updateBrain", brainId: brain.id }],
+  }));
 }
 
 function questStepConditions(adventure: Adventure): SemanticCondition[] {
@@ -285,7 +285,7 @@ function autoCardConditions(adventure: Adventure): SemanticCondition[] {
 
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
   const arc = adventure.components
-    .filter((c) => c.type === "plotEssentials" && c.active && !isPEComponentOnCooldown(adventure, c))
+    .filter((c) => c.type === "plotEssentials" && c.active && c.autoUpdate === true && !isPEComponentOnCooldown(adventure, c))
     .map((component) => ({
       id: `plotEssentialsArc:${component.id}`,
       label: `Plot Arc: ${component.title}`,
@@ -317,20 +317,19 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
   if (isStoryCardSystemOnCooldown(adventure)) return [];
   const excerpt = recentExcerpt(adventure);
-  return adventure.storyCards
+  const eligible = adventure.storyCards
     .filter((card) => card.active && card.autoUpdate)
     .filter((card) => !isStoryCardOnAutoUpdateCooldown(adventure, card))
-    .filter((card) => {
-      // Pre-filter: skip if none of the card's trigger keywords appear in recent text.
-      return card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched;
-    })
-    .map((card) => ({
-      id: `storyCard:${card.id}`,
-      label: `Story Card: ${card.title}`,
-      condition: `when the story has established new details, developments, or changes that should update the fact card titled "${card.title}" — only fire when something meaningfully new has been revealed about this entity`,
-      sourceType: "storyCard" as const,
-      actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: card.id }],
-    }));
+    .filter((card) => card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched)
+    .sort((a, b) => (a.lastAutoUpdateTurn ?? -1) - (b.lastAutoUpdateTurn ?? -1))
+    .slice(0, 1);
+  return eligible.map((card) => ({
+    id: `storyCard:${card.id}`,
+    label: `Story Card: ${card.title}`,
+    condition: `when the story has established new details, developments, or changes that should update the fact card titled "${card.title}" — only fire when something meaningfully new has been revealed about this entity`,
+    sourceType: "storyCard" as const,
+    actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: card.id }],
+  }));
 }
 
 function buildConditions(adventure: Adventure): SemanticCondition[] {

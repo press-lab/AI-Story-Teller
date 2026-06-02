@@ -38,6 +38,7 @@ export interface ComponentEntry {
   inclusionPolicy: ContextInclusionPolicy;
   state: string;
   tokenBudget?: number;
+  autoUpdate?: boolean;
   lastAutoUpdateTurn?: number;
   autoUpdateCooldownTurns?: number;
   createdAt: ISODateString;
