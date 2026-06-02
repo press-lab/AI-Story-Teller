@@ -142,6 +142,7 @@ export type TriggerAction =
   | { type: "updateComponent"; componentId: string; patch?: Partial<ComponentEntry> }
   | { type: "updateComponentPressure"; componentId: string }
   | { type: "updateComponentMomentum"; componentId: string }
+  | { type: "updateSummary" }
   | { type: "activateStoryCard"; storyCardId: string }
   | { type: "deactivateStoryCard"; storyCardId: string }
   | { type: "pinStoryCard"; storyCardId: string }
@@ -289,7 +290,6 @@ export interface MemoryDetectionSettings {
   enabled: boolean;
   generateContent: boolean;
   everyNTurns: number;
-  lastDetectionTurn?: number;
 }
 
 export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "autoCard" | "quest";
@@ -369,7 +369,7 @@ export interface EvaluatedCondition {
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component" | "storyCard";
+  sourceType: "triggerRule" | "brain" | "questStep" | "autoCards" | "component" | "storyCard" | "summary";
 }
 
 export interface GeneratedContentPreview {
@@ -393,7 +393,7 @@ export interface EvaluationLogEntry {
 export interface PendingAdventureUpdate {
   id: string;
   createdAt: ISODateString;
-  source: "semanticEvaluation" | "autoSummary" | "autoSceneState" | "manual";
+  source: "semanticEvaluation" | "autoSummary" | "autoSceneState" | "memoryCycle" | "manual";
   actions: AdventureAction[];
 }
 
@@ -441,6 +441,8 @@ export interface ActiveState {
   backgroundTokenUsage: { promptTokens: number; completionTokens: number };
   /** Set when the player's input matches a continuity challenge phrase. Consumed after one turn. */
   challengeMode: boolean;
+  /** Turn number when the memory cycle last ran for this adventure. */
+  lastMemoryCycleTurn?: number;
 }
 
 export interface Adventure {
@@ -709,5 +711,6 @@ export type AdventureAction =
   | { type: "QUEUE_PENDING_UPDATE"; update: PendingAdventureUpdate }
   | { type: "FLUSH_PENDING_UPDATES" }
   | { type: "SET_CHALLENGE_MODE" }
+  | { type: "SET_LAST_MEMORY_CYCLE_TURN"; turn: number }
   | { type: "RESET_RUNTIME_STATE" }
   | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number };

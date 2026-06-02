@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
-import { detectMemoryFromTurn, regenerateProposalContent } from "../memory/memoryDetection";
+import { regenerateProposalContent } from "../memory/memoryDetection";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -18,6 +18,7 @@ import {
   runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
   runManualStoryCardsUpdate,
+  runMemoryCycle,
   runRememberThis,
   runSemanticPostTurnEvaluation,
 } from "../triggers/semanticEngine";
@@ -26,6 +27,7 @@ import type {
   AdventureAction,
   ContextBuildResult,
   InputMode,
+  MemoryDetectionSettings,
   PendingAdventureUpdate,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
@@ -64,11 +66,13 @@ export function useAdventureRuntime(
   setContextResult: (result: ContextBuildResult | undefined) => void,
   openTab: (tabId: "memoryInbox") => void,
   refreshAdventures: () => Promise<void>,
+  globalMemorySettings: MemoryDetectionSettings,
 ) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const adventureRef = useRef<Adventure | undefined>(adventure);
   const providerSettingsRef = useRef(providerSettings);
+  const globalMemorySettingsRef = useRef(globalMemorySettings);
   const isSubmittingRef = useRef(false);
   const queuedUpdatesRef = useRef<PendingAdventureUpdate[]>([]);
   const wasHiddenRef = useRef(false);
@@ -77,6 +81,7 @@ export function useAdventureRuntime(
 
   useEffect(() => { adventureRef.current = adventure; }, [adventure]);
   useEffect(() => { providerSettingsRef.current = providerSettings; }, [providerSettings]);
+  useEffect(() => { globalMemorySettingsRef.current = globalMemorySettings; }, [globalMemorySettings]);
 
   useEffect(() => {
     function onVisibilityChange() {
@@ -136,22 +141,26 @@ export function useAdventureRuntime(
     return adventureReducer(mergeQueuedUpdates(adventureState), { type: "FLUSH_PENDING_UPDATES" });
   }
 
-  async function applyMemoryDetectionFromOutput(snapshot: Adventure, text: string): Promise<Adventure> {
-    const settings = snapshot.memoryDetectionSettings;
-    if (!settings.enabled) return snapshot;
-    const currentTurn = snapshot.activeState.turn;
-    const onCooldown = settings.lastDetectionTurn !== undefined &&
-      (currentTurn - settings.lastDetectionTurn) < settings.everyNTurns;
-    if (onCooldown) return snapshot;
-    const pc = mergeProviderConfig(snapshot, providerSettingsRef.current);
-    const accum = { promptTokens: 0, completionTokens: 0 };
-    const action = await detectMemoryFromTurn(snapshot, pc, text, accum);
-    let next = action ? adventureReducer(snapshot, action) : snapshot;
-    next = adventureReducer(next, { type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...next.memoryDetectionSettings, lastDetectionTurn: currentTurn } });
-    if (accum.promptTokens > 0 || accum.completionTokens > 0) {
-      next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...accum });
+  function checkMemoryCycle(adventureState: Adventure) {
+    const settings = globalMemorySettingsRef.current;
+    if (!settings.enabled) return;
+    const currentTurn = adventureState.activeState.turn;
+    const last = adventureState.activeState.lastMemoryCycleTurn;
+    if (last !== undefined && currentTurn - last < settings.everyNTurns) return;
+    void startMemoryCycle(adventureState);
+  }
+
+  async function startMemoryCycle(adventureState: Adventure) {
+    try {
+      const result = await runMemoryCycle(adventureState, buildBackgroundConfig(adventureState, providerSettingsRef.current));
+      if (isSubmittingRef.current) {
+        queuePendingUpdate(result.actions, "memoryCycle");
+        return;
+      }
+      applyActionsAndPersist(result.actions);
+    } catch {
+      // silent — memory cycle is best-effort
     }
-    return next;
   }
 
   async function startSemanticEvaluation(snapshot: Adventure) {
@@ -190,37 +199,6 @@ export function useAdventureRuntime(
       applyActionsAndPersist(actions);
     } catch {
       // silent — auto scene state is best-effort
-    }
-  }
-
-  async function startAutoSummary(adventureState: Adventure) {
-    try {
-      const { messages: summaryMessages, lastIndex } = buildRollingSummaryPayload(adventureState);
-      const response = await sendOpenAICompatibleChatCompletion({
-        config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
-        messages: summaryMessages,
-      });
-      const additions = stripThinkTags(response.content).trim();
-      const existing = adventureState.rollingSummary.content.trim();
-      const content = additions ? (existing ? `${existing}\n\n${additions}` : additions) : existing;
-      const actions: AdventureAction[] = [
-        { type: "UPDATE_ROLLING_SUMMARY", content, lastSummarizedMessageIndex: lastIndex },
-        ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
-      ];
-      if (isSubmittingRef.current) {
-        queuePendingUpdate(actions, "autoSummary");
-        return;
-      }
-      applyActionsAndPersist(actions);
-    } catch {
-      // silent — auto-summary is best-effort
-    }
-  }
-
-  function checkAutoSummary(adventureState: Adventure) {
-    const bs = adventureState.tokenBudgetSettings;
-    if (bs.autoSummarize && adventureState.activeState.turn > 0 && adventureState.activeState.turn % bs.autoSummarizeEveryNTurns === 0) {
-      void startAutoSummary(adventureState);
     }
   }
 
@@ -267,7 +245,7 @@ export function useAdventureRuntime(
       if (mode !== "comms") {
         void startSemanticEvaluation(next);
         void startAutoSceneState(next);
-        checkAutoSummary(next);
+        checkMemoryCycle(next);
       }
     } catch (providerError) {
       const errMsg = providerError instanceof Error ? providerError.message : "Provider request failed.";
@@ -314,7 +292,7 @@ export function useAdventureRuntime(
       });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = await applyMemoryDetectionFromOutput(next, response.content);
+      void 0; // memory cycle runs post-turn via checkMemoryCycle
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
       next = adventureReducer(next, { type: "INCREMENT_TURN" });
@@ -326,7 +304,7 @@ export function useAdventureRuntime(
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
       void startAutoSceneState(next);
-      checkAutoSummary(next);
+      checkMemoryCycle(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
       setAdventure(next);
@@ -357,7 +335,7 @@ export function useAdventureRuntime(
       });
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: response.content, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      next = await applyMemoryDetectionFromOutput(next, response.content);
+      void 0; // memory cycle runs post-turn via checkMemoryCycle
       setAdventure(next);
       next = applyRuntimeEngines(next, { source: "output", text: response.content });
       next = mergeQueuedUpdates(next);

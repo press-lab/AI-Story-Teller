@@ -419,7 +419,9 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
 
   if (proposal.proposedType === "summaryUpdate") {
     if (!proposal.content.trim()) return {};
-    return { rollingSummary: { content: proposal.content, updatedAt: nowIso() } };
+    const existing = state.rollingSummary.content.trim();
+    const content = (proposal.appendContent && existing) ? `${existing}\n\n${proposal.content}` : proposal.content;
+    return { rollingSummary: { content, updatedAt: nowIso() } };
   }
 
   return {};
@@ -524,6 +526,10 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "SET_CHALLENGE_MODE":
       return touchAdventure(state, {
         activeState: { ...state.activeState, challengeMode: true },
+      });
+    case "SET_LAST_MEMORY_CYCLE_TURN":
+      return touchAdventure(state, {
+        activeState: { ...state.activeState, lastMemoryCycleTurn: action.turn },
       });
     case "UPSERT_COMPONENT":
       return touchAdventure(state, { components: upsertById(state.components, touch(action.component)) });

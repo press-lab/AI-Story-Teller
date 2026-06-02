@@ -275,6 +275,7 @@ export default function App() {
     setContextResult,
     openTab,
     library.refreshAdventures,
+    globalAdventureSettings.memoryDetectionSettings,
   );
 
   async function saveSyncedAdventures(syncedAdventures: Adventure[]) {

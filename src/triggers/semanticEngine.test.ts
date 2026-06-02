@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runManualAutoCardGeneration } from "./semanticEngine";
+import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runManualAutoCardGeneration, runMemoryCycle } from "./semanticEngine";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
 import type { Adventure } from "../types/adventure";
@@ -100,20 +100,18 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(result.actions.some((a) => a.type === "MARK_TRIGGER_FIRED")).toBe(true);
   });
 
-  it("evaluates a brain condition and calls a targeted brain-update prompt when fired", async () => {
+  it("evaluates a brain condition and routes to Memory Inbox via memory cycle", async () => {
     const brain = makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], active: true });
-    const adventure = { ...baseAdventure(), brains: [brain], messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }] };
+    const adventure = { ...baseAdventure(), brains: [brain], messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }], tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false } };
 
-    // First call: condition evaluation (returns brain condition fired)
-    // Second call: brain update prompt
     mockProvider
       .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
       .mockResolvedValueOnce({ content: '{"currentState": "Margo looks relieved."}', raw: {} });
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(mockProvider).toHaveBeenCalledTimes(2);
-    expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(true);
+    expect(result.actions.some((a) => a.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.logEntry.conditionsFired).toContain("brain:brain-margo");
   });
 
@@ -223,15 +221,16 @@ describe("runSemanticPostTurnEvaluation", () => {
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
     };
 
     mockProvider
       .mockResolvedValueOnce({ content: '["storyCard:card-margo"]', raw: {} })
       .mockResolvedValueOnce({ content: "Margo is protective and now worried about Seth.", raw: {} });
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
-    expect(result.actions.some((action) => action.type === "APPLY_STORY_CARD_UPDATE")).toBe(true);
+    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.actions).toContainEqual({ type: "MARK_STORY_CARD_UPDATED", storyCardId: "card-margo", turn: 5 });
   });
 
@@ -249,13 +248,14 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       storyCards: [card],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
-      // deactivate PE components so only story card conditions are relevant
+      // deactivate PE components and disable summary so only story card conditions are relevant
       components: baseAdventure().components.map((c) =>
         (c.type === "activePressure" || c.type === "immediateMomentum") ? { ...c, active: false } : c
       ),
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
     };
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(mockProvider).not.toHaveBeenCalled();
     expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).not.toContain("storyCard:card-cooling");
@@ -275,7 +275,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
       .mockResolvedValueOnce({ content: '{"currentState":"Margo is worried."}', raw: {} });
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.actions.some((action) => action.type === "APPLY_BRAIN_UPDATE")).toBe(false);
@@ -310,7 +310,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       .mockResolvedValueOnce({ content: '["storyCard:card-joke"]', raw: {} })
       .mockResolvedValueOnce({ content: "Margo calls Seth hedge prince only when scared.", raw: {} });
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.actions.some((action) => action.type === "APPLY_STORY_CARD_UPDATE")).toBe(false);
@@ -348,7 +348,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       .mockResolvedValueOnce({ content: '["plotEssentialsPressure:component-plot"]', raw: {} })
       .mockResolvedValueOnce({ content: "The Fire Nation court now expects a public duel.", raw: {} });
 
-    const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
+    const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.actions.some((action) => action.type === "APPLY_COMPONENT_UPDATE")).toBe(false);

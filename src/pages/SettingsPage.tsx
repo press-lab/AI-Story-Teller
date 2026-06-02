@@ -144,8 +144,7 @@ export function SettingsPage({
   }
 
   function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
-    if (adventure) { dispatch({ type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...adventure.memoryDetectionSettings, ...patch } }); return; }
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...activeSettings.memoryDetectionSettings, ...patch } });
+    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
   }
 
   function updateMemoryAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
@@ -536,21 +535,21 @@ export function SettingsPage({
             </p>
             <CheckboxField
               label="Enable AI memory detection"
-              checked={activeSettings.memoryDetectionSettings.enabled}
+              checked={globalAdventureSettings.memoryDetectionSettings.enabled}
               onChange={(enabled) => updateMemoryDetection({ enabled })}
             />
-            {activeSettings.memoryDetectionSettings.enabled && (
+            {globalAdventureSettings.memoryDetectionSettings.enabled && (
               <>
                 <Field label="Run every N turns (1 = every turn)">
                   <NumberInput
                     min={1}
-                    value={activeSettings.memoryDetectionSettings.everyNTurns}
+                    value={globalAdventureSettings.memoryDetectionSettings.everyNTurns}
                     onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })}
                   />
                 </Field>
                 <CheckboxField
                   label="Generate card content"
-                  checked={activeSettings.memoryDetectionSettings.generateContent}
+                  checked={globalAdventureSettings.memoryDetectionSettings.generateContent}
                   onChange={(generateContent) => updateMemoryDetection({ generateContent })}
                 />
                 <p className="muted">

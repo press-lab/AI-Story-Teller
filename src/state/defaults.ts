@@ -169,6 +169,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       responseLengthHint: 150,
       backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
       challengeMode: false,
+      lastMemoryCycleTurn: undefined,
     },
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
@@ -373,6 +374,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         : 150,
       backgroundTokenUsage: adventure.activeState?.backgroundTokenUsage ?? { promptTokens: 0, completionTokens: 0 },
       challengeMode: adventure.activeState?.challengeMode ?? false,
+      lastMemoryCycleTurn: adventure.activeState?.lastMemoryCycleTurn,
     },
     rollingSummary: {
       ...baseline.rollingSummary,

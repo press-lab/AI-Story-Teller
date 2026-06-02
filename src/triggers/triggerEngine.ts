@@ -154,6 +154,7 @@ export function triggerActionToAdventureActions(
     case "createAutoCard":
     case "updateComponentPressure":
     case "updateComponentMomentum":
+    case "updateSummary":
       return [];
     case "forceIncludeNextTurn":
       return [{ type: "FORCE_INCLUDE_NEXT_TURN", targetType: triggerAction.targetType, targetId: triggerAction.targetId }];
