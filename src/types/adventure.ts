@@ -442,6 +442,8 @@ export interface Adventure {
   createdAt: ISODateString;
   updatedAt: ISODateString;
   metadata: JsonObject;
+  autoSaveEnabled: boolean;
+  autoSaveEveryNTurns: number;
   components: ComponentEntry[];
   storyCards: StoryCard[];
   brains: BrainEntry[];
@@ -496,8 +498,6 @@ export interface CloudSyncSettings {
 }
 
 export interface GitHubSaveSettings {
-  autoSaveEnabled: boolean;
-  autoSaveEveryNTurns: number;
   savesBasePath: string;
 }
 
@@ -701,4 +701,5 @@ export type AdventureAction =
   | { type: "QUEUE_PENDING_UPDATE"; update: PendingAdventureUpdate }
   | { type: "FLUSH_PENDING_UPDATES" }
   | { type: "SET_CHALLENGE_MODE" }
-  | { type: "RESET_RUNTIME_STATE" };
+  | { type: "RESET_RUNTIME_STATE" }
+  | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number };

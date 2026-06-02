@@ -96,6 +96,7 @@ const testedActionTypes = [
   "SET_CHALLENGE_MODE",
   "RESET_RUNTIME_STATE",
   "ACCUMULATE_BACKGROUND_TOKENS",
+  "SET_AUTO_SAVE_SETTINGS",
 ] as const satisfies AdventureAction["type"][];
 
 type MissingActionCoverage = Exclude<AdventureAction["type"], (typeof testedActionTypes)[number]>;

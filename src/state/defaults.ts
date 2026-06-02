@@ -129,6 +129,8 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     createdAt: timestamp,
     updatedAt: timestamp,
     metadata: {},
+    autoSaveEnabled: true,
+    autoSaveEveryNTurns: 3,
     components: [
       makeComponent({
         title: "Global Generation Rules",
@@ -337,6 +339,8 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     ...adventure,
     openingScene: adventure.openingScene ?? "",
     metadata: adventure.metadata ?? {},
+    autoSaveEnabled: adventure.autoSaveEnabled ?? true,
+    autoSaveEveryNTurns: adventure.autoSaveEveryNTurns ?? 3,
     activeState: {
       ...baseline.activeState,
       ...adventure.activeState,

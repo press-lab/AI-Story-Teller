@@ -13,10 +13,12 @@ const cloudSettings: CloudSyncSettings = {
 };
 
 const saveSettings: GitHubSaveSettings = {
-  autoSaveEnabled: true,
-  autoSaveEveryNTurns: 5,
   savesBasePath: "sync/saves",
 };
+
+function autoSaveAdventure(overrides: Partial<Adventure> = {}): Adventure {
+  return makeAdventure({ autoSaveEnabled: true, autoSaveEveryNTurns: 5, ...overrides });
+}
 
 function response(status: number, body: unknown): Response {
   return {
@@ -41,45 +43,45 @@ afterEach(() => {
 
 describe("shouldAutoSave", () => {
   it("returns false when auto-save is disabled", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure({ autoSaveEnabled: false });
     adventure.activeState.turn = 10;
-    expect(shouldAutoSave(adventure, { ...saveSettings, autoSaveEnabled: false }, 0)).toBe(false);
+    expect(shouldAutoSave(adventure, saveSettings, 0)).toBe(false);
   });
 
   it("returns false when threshold not reached", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure();
     adventure.activeState.turn = 3;
     expect(shouldAutoSave(adventure, saveSettings, 0)).toBe(false);
   });
 
   it("returns false when turn equals last auto-saved turn (prevents duplicates)", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure();
     adventure.activeState.turn = 5;
     expect(shouldAutoSave(adventure, saveSettings, 5)).toBe(false);
   });
 
   it("returns true when threshold is met and turn has advanced", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure();
     adventure.activeState.turn = 5;
     expect(shouldAutoSave(adventure, saveSettings, 0)).toBe(true);
   });
 
   it("returns true when multiple thresholds have passed", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure();
     adventure.activeState.turn = 20;
     expect(shouldAutoSave(adventure, saveSettings, 5)).toBe(true);
   });
 
   it("returns false when everyNTurns is 0", () => {
-    const adventure = makeAdventure();
+    const adventure = autoSaveAdventure({ autoSaveEveryNTurns: 0 });
     adventure.activeState.turn = 100;
-    expect(shouldAutoSave(adventure, { ...saveSettings, autoSaveEveryNTurns: 0 }, 0)).toBe(false);
+    expect(shouldAutoSave(adventure, saveSettings, 0)).toBe(false);
   });
 
   it("treats each adventure independently — adventure B is not blocked by adventure A's saved turn", () => {
-    const adventureA = makeAdventure();
+    const adventureA = autoSaveAdventure();
     adventureA.activeState.turn = 50;
-    const adventureB = makeAdventure();
+    const adventureB = autoSaveAdventure();
     adventureB.activeState.turn = 5;
 
     // Simulate per-adventure tracking: A was last saved at turn 50, B at -1

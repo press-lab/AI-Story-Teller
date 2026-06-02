@@ -3,8 +3,6 @@ import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot, 
 import { encodeBase64Utf8, ensureRepo, fetchGitHubFileContent, githubRequest, resolveOwner } from "./githubSync";
 
 export const defaultGitHubSaveSettings: GitHubSaveSettings = {
-  autoSaveEnabled: false,
-  autoSaveEveryNTurns: 5,
   savesBasePath: "sync/saves",
 };
 
@@ -96,13 +94,14 @@ async function writeIndex(
 
 export function shouldAutoSave(
   adventure: Adventure,
-  saveSettings: GitHubSaveSettings,
+  _saveSettings: GitHubSaveSettings,
   lastAutoSavedTurn: number,
 ): boolean {
-  if (!saveSettings.autoSaveEnabled) return false;
-  if (saveSettings.autoSaveEveryNTurns <= 0) return false;
+  if (!adventure.autoSaveEnabled) return false;
+  const everyNTurns = adventure.autoSaveEveryNTurns ?? 3;
+  if (everyNTurns <= 0) return false;
   const currentTurn = adventure.activeState.turn;
-  return currentTurn > lastAutoSavedTurn && currentTurn - lastAutoSavedTurn >= saveSettings.autoSaveEveryNTurns;
+  return currentTurn > lastAutoSavedTurn && currentTurn - lastAutoSavedTurn >= everyNTurns;
 }
 
 export async function listGitHubSaves(

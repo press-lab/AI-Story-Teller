@@ -314,7 +314,7 @@ export default function App() {
   const gitHubSaves = useGitHubSaves(cloudSyncSettings, gitHubSaveSettings);
 
   useEffect(() => {
-    if (!adventure || !gitHubSaveSettings.autoSaveEnabled) return;
+    if (!adventure || !adventure.autoSaveEnabled) return;
     void gitHubSaves.autoSaveIfDue(adventure);
     // intentional: fire only when the turn counter increments
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,6 +372,7 @@ export default function App() {
         return (
           <CloudSavesPage
             adventure={adventure}
+            dispatch={dispatch}
             gitHubSaveSettings={gitHubSaveSettings}
             onGitHubSaveSettingsChange={setGitHubSaveSettings}
             saveSlots={gitHubSaves.saveSlots}

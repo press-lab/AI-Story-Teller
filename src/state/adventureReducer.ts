@@ -947,6 +947,8 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         triggerRules: state.triggerRules.map((rule) => touch({ ...rule, lastFiredTurn: undefined })),
         quests: state.quests.map(resetQuestRuntime),
       });
+    case "SET_AUTO_SAVE_SETTINGS":
+      return touchAdventure(state, { autoSaveEnabled: action.autoSaveEnabled, autoSaveEveryNTurns: action.autoSaveEveryNTurns });
     default: {
       const exhaustive: never = action;
       return exhaustive;

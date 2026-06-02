@@ -1,8 +1,9 @@
-import type { Adventure, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
+import type { AdventureAction, Adventure, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
 interface CloudSavesPageProps {
   adventure: Adventure;
+  dispatch: (action: AdventureAction) => void;
   gitHubSaveSettings: GitHubSaveSettings;
   onGitHubSaveSettingsChange: (settings: GitHubSaveSettings) => void;
   saveSlots: GitHubSaveSlot[];
@@ -22,6 +23,7 @@ function formatUtc(iso: string): string {
 
 export function CloudSavesPage({
   adventure,
+  dispatch,
   gitHubSaveSettings,
   onGitHubSaveSettingsChange,
   saveSlots,
@@ -36,6 +38,10 @@ export function CloudSavesPage({
 }: CloudSavesPageProps) {
   function update(patch: Partial<GitHubSaveSettings>) {
     onGitHubSaveSettingsChange({ ...gitHubSaveSettings, ...patch });
+  }
+
+  function updateAutoSave(autoSaveEnabled: boolean, autoSaveEveryNTurns: number) {
+    dispatch({ type: "SET_AUTO_SAVE_SETTINGS", autoSaveEnabled, autoSaveEveryNTurns });
   }
 
   return (
@@ -56,14 +62,14 @@ export function CloudSavesPage({
           <div className="grid three">
             <CheckboxField
               label="Auto-save after turns"
-              checked={gitHubSaveSettings.autoSaveEnabled}
-              onChange={(autoSaveEnabled) => update({ autoSaveEnabled })}
+              checked={adventure.autoSaveEnabled}
+              onChange={(autoSaveEnabled) => updateAutoSave(autoSaveEnabled, adventure.autoSaveEveryNTurns)}
             />
             <Field label="Auto-save every N turns">
               <NumberInput
                 min={1}
-                value={gitHubSaveSettings.autoSaveEveryNTurns}
-                onChange={(autoSaveEveryNTurns) => update({ autoSaveEveryNTurns })}
+                value={adventure.autoSaveEveryNTurns}
+                onChange={(autoSaveEveryNTurns) => updateAutoSave(adventure.autoSaveEnabled, autoSaveEveryNTurns)}
               />
             </Field>
             <Field label="Saves folder path">
