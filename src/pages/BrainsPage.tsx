@@ -95,12 +95,6 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 <input readOnly value={brain.lastUpdatedTurn ?? "Never"} />
               </Field>
             </div>
-            <Field label="Trigger Keys (comma-separated)">
-              <input
-                value={commaList(brain.triggers)}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { triggers: fromCommaList(event.target.value) } })}
-              />
-            </Field>
             <Field label="Notes (manual freetext — not injected into context)">
               <textarea
                 rows={3}

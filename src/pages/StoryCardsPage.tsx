@@ -394,6 +394,12 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
                       </select>
                     </Field>
                   </div>
+                  <Field label="Trigger Keys (comma-separated, leave blank to use title only)">
+                    <input
+                      value={commaList(card.keys)}
+                      onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { keys: fromCommaList(event.target.value) } })}
+                    />
+                  </Field>
                   <div className="grid two">
                     <Field label="Trigger Match Type">
                       <select
