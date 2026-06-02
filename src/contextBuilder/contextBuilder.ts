@@ -300,7 +300,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       pushExcluded("storyCard", card.id, card.title, "inactive");
       continue;
     }
-    const match = matchPatterns(triggerText, card.keys, card.matchType ?? "phrase");
+    const keysWithTitle = card.keys.includes(card.title) ? card.keys : [card.title, ...card.keys];
+    const match = matchPatterns(triggerText, keysWithTitle, card.matchType ?? "phrase");
     const matched = card.inclusionPolicy === "always" || card.pinned || forced || (card.inclusionPolicy !== "manual" && match.matched);
     if (matched) {
       const next = item(card.id, "storyCard", card.title, card.content, card.priority, card.protected, card.pinned, card.active, card.inclusionPolicy, "user");
@@ -340,7 +341,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       pushExcluded("brain", brain.id, brain.characterName, "inactive");
       return [];
     }
-    const patterns = [brain.characterName, ...brain.aliases, ...brain.triggers].filter(Boolean);
+    const patterns = [brain.characterName, ...brain.triggers].filter(Boolean);
     const match = matchPatterns(triggerText, patterns, "phrase");
     const matched = brain.inclusionPolicy === "always" || brain.pinned || forced || (brain.inclusionPolicy !== "manual" && match.matched);
     if (!matched) {

@@ -781,7 +781,6 @@ export function createDevelopmentAdventure(): Adventure {
     makeBrain({
       id: ids.brains.setu,
       characterName: "Setu Renzan",
-      aliases: ["Setu", "Renzan"],
       triggers: ["Setu", "Renzan", "demon fire"],
       priority: 60,
       currentState: "Guarded, disciplined, and alert under royal scrutiny.",
@@ -801,7 +800,6 @@ export function createDevelopmentAdventure(): Adventure {
     makeBrain({
       id: ids.brains.azula,
       characterName: "Azula",
-      aliases: ["Princess Azula", "Azula"],
       triggers: ["Azula", "blue fire"],
       priority: 58,
       currentState: "In command, testing every person in the room.",
@@ -818,7 +816,6 @@ export function createDevelopmentAdventure(): Adventure {
     makeBrain({
       id: ids.brains.nyxa,
       characterName: "Nyxa",
-      aliases: ["Nyx", "Princess Nyxa"],
       triggers: ["Nyxa", "Nyx", "Ozai's second daughter"],
       priority: 56,
       currentState: "Restless, sharp, and hungry to be seen as more than Azula's spare shadow.",
@@ -835,7 +832,6 @@ export function createDevelopmentAdventure(): Adventure {
     makeBrain({
       id: ids.brains.mai,
       characterName: "Mai",
-      aliases: ["Mai"],
       triggers: ["Mai", "knives"],
       priority: 40,
       currentState: "Outwardly bored, privately attentive.",
@@ -850,7 +846,6 @@ export function createDevelopmentAdventure(): Adventure {
     makeBrain({
       id: ids.brains.tyLee,
       characterName: "Ty Lee",
-      aliases: ["Ty Lee"],
       triggers: ["Ty Lee", "chi blocking"],
       priority: 40,
       currentState: "Warm, alert, and physically relaxed in a way that makes danger look harmless.",

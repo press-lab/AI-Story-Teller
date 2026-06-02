@@ -189,7 +189,6 @@ function parseCard(raw: unknown, sourceIndex: number): AidParsedCard | AidSkippe
   const brainCandidate = isBrainCandidate
     ? makeBrain({
         characterName: brainKeyData?.agent || title,
-        aliases: Array.from(new Set([title, ...keys].filter(Boolean))),
         triggers: keys,
         source: "imported",
         currentState: brainState,

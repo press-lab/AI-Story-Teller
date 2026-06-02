@@ -232,7 +232,7 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
     .filter((brain) => brain.active)
     .filter((brain) => !isBrainOnCooldown(adventure, brain))
     .filter((brain) => {
-      const patterns = [brain.characterName, ...brain.aliases, ...brain.triggers].filter(Boolean);
+      const patterns = [brain.characterName, ...brain.triggers].filter(Boolean);
       return patterns.length === 0 || matchPatterns(excerpt, patterns, "phrase").matched;
     });
   return eligible.map((brain) => ({

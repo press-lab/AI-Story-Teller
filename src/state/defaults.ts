@@ -240,7 +240,6 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
   return {
     id: overrides.id ?? createId("brain"),
     characterName: overrides.characterName,
-    aliases: overrides.aliases ?? [],
     triggers: overrides.triggers ?? [],
     source: overrides.source ?? "manual",
     currentState: overrides.currentState ?? "",

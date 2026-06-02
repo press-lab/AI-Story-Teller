@@ -97,7 +97,6 @@ export function goldenAdventure(): Adventure {
   const margoBrain = makeBrain({
     id: "brain-margo",
     characterName: "Margo",
-    aliases: ["Mar"],
     triggers: ["hedge prince"],
     currentState: "Margo is protective of Seth.",
     recentDevelopments: "She uses teasing to hide fear.",

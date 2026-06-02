@@ -45,7 +45,6 @@ function makeSmokeAdventure(): Adventure {
     brain: makeBrain({
       id: "brain-margo",
       characterName: "Margo",
-      aliases: ["Mar"],
       triggers: ["Margo"],
       currentState: "Margo is protective of Seth.",
       recentDevelopments: "She has been watching the ward for cracks.",

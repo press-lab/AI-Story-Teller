@@ -27,7 +27,6 @@ function hasNovelSignal(adventure: Adventure, text: string): boolean {
     ...adventure.storyCards.map((c) => c.title.toLowerCase()),
     ...adventure.storyCards.flatMap((c) => c.keys.map((k) => k.toLowerCase())),
     ...adventure.brains.map((b) => b.characterName.toLowerCase()),
-    ...adventure.brains.flatMap((b) => b.aliases.map((a) => a.toLowerCase())),
     ...adventure.activeState.memoryProposals
       .filter((p) => p.status === "rejected")
       .map((p) => p.title.toLowerCase()),

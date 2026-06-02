@@ -95,12 +95,6 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 <input readOnly value={brain.lastUpdatedTurn ?? "Never"} />
               </Field>
             </div>
-            <Field label="Aliases (comma-separated alternate names that trigger this brain)">
-              <input
-                value={commaList(brain.aliases)}
-                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { aliases: fromCommaList(event.target.value) } })}
-              />
-            </Field>
             <Field label="Trigger Keys (comma-separated)">
               <input
                 value={commaList(brain.triggers)}

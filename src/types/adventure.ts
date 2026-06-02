@@ -73,7 +73,6 @@ export interface StoryCard {
 export interface BrainEntry {
   id: string;
   characterName: string;
-  aliases: string[];
   triggers: string[];
   source?: "manual" | "imported" | "generated";
   currentState: string;
