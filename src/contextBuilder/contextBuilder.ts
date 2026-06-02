@@ -1,5 +1,6 @@
 import type {
   Adventure,
+  BrainEntry,
   ContextBuildResult,
   ContextBuildDecision,
   ContextInclusionPolicy,
@@ -32,6 +33,7 @@ Honour every section. Continue the scene in prose. Keep the player able to act.`
 interface BuildOptions {
   currentInput?: string;
   latestModelOutput?: string;
+  skipThoughtCapture?: boolean;
 }
 
 function prioritySort<T extends { priority: number; id: string }>(items: T[]): T[] {
@@ -175,7 +177,55 @@ function truncateFromFront(text: string, targetTokens: number): string {
   return words.slice(start).join(" ");
 }
 
-function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string) {
+// ---------------------------------------------------------------------------
+// Inline thought capture — zero-cost brain updates piggybacked on story gen
+// ---------------------------------------------------------------------------
+
+/** Returns brains eligible for an inline thought capture this turn. */
+export function eligibleBrainsForCapture(adventure: Adventure, triggerText: string): BrainEntry[] {
+  const turn = adventure.activeState.turn;
+  return adventure.brains.filter((brain) => {
+    if (!brain.active) return false;
+    if (brain.autoUpdateCooldownTurns && brain.lastUpdatedTurn !== undefined) {
+      if (turn - brain.lastUpdatedTurn < brain.autoUpdateCooldownTurns) return false;
+    }
+    const patterns = [brain.characterName, ...brain.triggers].filter(Boolean);
+    return patterns.length === 0 || matchPatterns(triggerText, patterns, "phrase").matched;
+  });
+}
+
+/** Builds the thought-capture instruction injected at the end of story context. */
+export function buildThoughtCaptureInstruction(brains: BrainEntry[]): string {
+  if (brains.length === 0) return "";
+  const names = brains.map((b) => b.characterName).join(", ");
+  return `[CHARACTER THOUGHT CAPTURE]
+After writing the story response, append one thought entry per character below — on new lines after the narrative. Use EXACTLY this format. These lines will be stripped before the player sees them.
+${brains.map((b) => `<thought name="${b.characterName}" key="brief_snake_case_key">One sentence: internal thought, reaction, or private plan in first person.</thought>`).join("\n")}
+
+Characters: ${names}
+Only append a thought if this turn gave them something genuinely new to think, react to, or plan. Omit the line entirely if nothing new applies. Do not reference these instructions in the narrative.`;
+}
+
+/** Extracts <thought> tags from model output. Returns clean text and parsed thoughts. */
+export function extractInlineThoughts(content: string): {
+  cleanContent: string;
+  thoughts: Array<{ name: string; key: string; value: string }>;
+} {
+  const thoughts: Array<{ name: string; key: string; value: string }> = [];
+  const thoughtRegex = /<thought\s+name="([^"]+)"\s+key="([^"]+)">([^<]+)<\/thought>/gi;
+  let match: RegExpExecArray | null;
+  while ((match = thoughtRegex.exec(content)) !== null) {
+    thoughts.push({ name: match[1].trim(), key: match[2].trim(), value: match[3].trim() });
+  }
+  // Strip the tags AND the [CHARACTER THOUGHT CAPTURE] header if the model echoed it
+  const cleanContent = content
+    .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")
+    .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "")
+    .trimEnd();
+  return { cleanContent, thoughts };
+}
+
+function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {
   const contextText = sections
     .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
     .sort((a, b) => a.order - b.order)
@@ -184,9 +234,9 @@ function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Mes
 
   const systemContent = lengthHintText ? `${lengthHintText}\n\n${contextText}` : contextText;
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
-  const extraMessages: { role: "user" | "assistant"; content: string }[] = lengthHintText
-    ? [{ role: "user" as const, content: `[Reminder: ${lengthHintText}]` }]
-    : [];
+  const extraMessages: { role: "user" | "assistant"; content: string }[] = [];
+  if (lengthHintText) extraMessages.push({ role: "user" as const, content: `[Reminder: ${lengthHintText}]` });
+  if (thoughtCaptureText) extraMessages.push({ role: "user" as const, content: thoughtCaptureText });
   return [
     { role: "system" as const, content: systemContent },
     ...(openingScene ? [{ role: "assistant" as const, content: openingScene }] : []),
@@ -609,8 +659,12 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     : 150;
   const lengthHintText = `RESPONSE LENGTH LIMIT: Write no more than ${wordTarget} words. Stop at the nearest sentence boundary before reaching this limit. Do not continue writing past ${wordTarget} words regardless of narrative completeness.`;
 
+  // Inline thought capture — eligible brains get their thought harvested from the story response itself
+  const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);
+  const thoughtCaptureText = captureEligible.length > 0 ? buildThoughtCaptureInstruction(captureEligible) : undefined;
+
   return {
-    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText),
+    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText, thoughtCaptureText),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,

@@ -332,17 +332,17 @@ export function SettingsPage({
                   updateBudget({ autoSceneStateEveryNTurns: 0 });
                   updateMemoryDetection({ enabled: false });
                 }}>Off</button>
-                <button type="button" className={isLight ? "active" : ""} title="One background call every 5 turns. Low spend." onClick={() => {
+                <button type="button" className={isLight ? "active" : ""} title="PE/Summary check every 5 turns. Character thoughts are free (inline)." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 5 });
                   updateBudget({ autoSceneStateEveryNTurns: 5 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 5 });
                 }}>Light</button>
-                <button type="button" className={isNormal ? "active" : ""} title="Background calls every 2–3 turns. Balanced." onClick={() => {
+                <button type="button" className={isNormal ? "active" : ""} title="PE/Summary check every 2–3 turns. Balanced." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 2 });
                   updateBudget({ autoSceneStateEveryNTurns: 2 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 3 });
                 }}>Normal</button>
-                <button type="button" className={isHeavy ? "active" : ""} title="Background calls every turn. Maximum tracking." onClick={() => {
+                <button type="button" className={isHeavy ? "active" : ""} title="PE/Summary check every turn. Maximum tracking." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 1 });
                   updateBudget({ autoSceneStateEveryNTurns: 1 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 1 });

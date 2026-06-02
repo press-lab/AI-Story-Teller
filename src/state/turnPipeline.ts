@@ -1,4 +1,4 @@
-import { buildContext } from "../contextBuilder/contextBuilder";
+import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { runContinuityCheck, scanForRiskyClaims } from "../continuityLint";
 import { evaluateTriggerRules, type TriggerEvaluationEvent } from "../triggers/triggerEngine";
 import type {
@@ -82,19 +82,43 @@ export async function runTurnPipeline({
   const providerPayload = preProviderContext.messages;
   const response = await sendChatCompletion(providerPayload, next, preProviderContext);
 
+  // Extract inline thought tags from the response before the player sees it
+  const { cleanContent: thoughtCleanContent, thoughts: inlineThoughts } = extractInlineThoughts(response.content);
+  const rawContentForLint = thoughtCleanContent;
+
   // Continuity lint: scan for risky claims and, if found, run a targeted LLM check.
   // Uses only the last 8 messages as context to keep tokens low.
-  let finalContent = response.content;
+  let finalContent = thoughtCleanContent;
   let continuityCorrected = false;
-  if (mode !== "comms" && providerConfig && scanForRiskyClaims(response.content)) {
+  if (mode !== "comms" && providerConfig && scanForRiskyClaims(rawContentForLint)) {
     const lintAccum = { promptTokens: 0, completionTokens: 0 };
-    const lintResult = await runContinuityCheck(next, providerConfig, response.content, lintAccum);
+    const lintResult = await runContinuityCheck(next, providerConfig, rawContentForLint, lintAccum);
     if (lintResult.correctedText) {
       finalContent = lintResult.correctedText;
       continuityCorrected = true;
     }
     if (lintAccum.promptTokens > 0 || lintAccum.completionTokens > 0) {
       next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...lintAccum });
+    }
+  }
+
+  // Apply inline thought captures to brains (zero extra API calls)
+  if (inlineThoughts.length > 0) {
+    const turn = next.activeState.turn;
+    for (const thought of inlineThoughts) {
+      const brain = next.brains.find(
+        (b) => b.characterName.toLowerCase() === thought.name.toLowerCase(),
+      );
+      if (brain && thought.key && thought.value) {
+        next = adventureReducer(next, {
+          type: "UPDATE_BRAIN",
+          brainId: brain.id,
+          patch: {
+            thoughts: { [`${turn}_${thought.key}`]: `${turn} → ${thought.value}` },
+            lastUpdatedTurn: turn,
+          },
+        });
+      }
     }
   }
 

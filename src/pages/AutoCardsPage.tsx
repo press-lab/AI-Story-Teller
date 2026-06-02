@@ -41,13 +41,7 @@ export function AutoCardsPage({ adventure, dispatch, loading, onGenerateAutoCard
       <article className="panel">
         <h3>Semantic Auto-Cards</h3>
         <CheckboxField label="Enable Auto-Cards" checked={adventure.autoCardSettings.enabled} onChange={(enabled) => updateSettings({ enabled })} />
-        <Field label="Detection Condition">
-          <textarea
-            rows={3}
-            value={adventure.autoCardSettings.detectionCondition}
-            onChange={(event) => updateSettings({ detectionCondition: event.target.value })}
-          />
-        </Field>
+        <p className="muted">New named entities are detected automatically from story text — no configuration needed. Use the generation prompt below to control the style of generated cards.</p>
         <Field label="Generation Prompt">
           <textarea
             rows={5}

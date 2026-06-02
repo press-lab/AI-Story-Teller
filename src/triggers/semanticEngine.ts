@@ -419,8 +419,8 @@ function summaryConditions(adventure: Adventure): SemanticCondition[] {
 }
 
 function buildMemoryConditions(adventure: Adventure): SemanticCondition[] {
+  // brainConditions removed — character thoughts are now captured inline during story generation
   return [
-    ...brainConditions(adventure),
     ...storyCardUpdateConditions(adventure),
     ...plotEssentialsConditions(adventure),
     ...summaryConditions(adventure),

@@ -84,7 +84,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
               </Field>
             </div>
             <div className="grid two">
-              <Field label="Auto-update cooldown (turns, 0 = no limit)">
+              <Field label="Capture thought every N turns (0 = every turn character appears)">
                 <NumberInput
                   value={brain.autoUpdateCooldownTurns ?? 0}
                   min={0}
