@@ -377,7 +377,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   const sceneStateCap = budgetSettings.sectionBudgets.sceneState;
   const rawSceneStateContent = adventure.sceneState?.content;
   const sceneStateContent = sceneStateCap && rawSceneStateContent ? truncateFromFront(rawSceneStateContent, sceneStateCap) : rawSceneStateContent;
-  const sceneStateItems = sceneStateContent
+  const sceneStateItems = sceneStateContent && adventure.tokenBudgetSettings.sceneStateEnabled !== false
     ? [item("scene-state", "sceneState", "Scene State", sceneStateContent, 0, false, false, true, "always", "ai")]
     : [];
   sceneStateItems.forEach((entry) => pushIncluded(entry, `Scene state included${sceneStateCap ? `; pre-capped to ${sceneStateCap} tokens` : ""}.`));

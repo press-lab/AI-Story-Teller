@@ -233,6 +233,8 @@ export interface TokenBudgetSettings {
   autoSummarizeEveryNTurns: number;
   /** How often to regenerate scene state in the background. 0 = manual only, 1 = every turn. Default 1. */
   autoSceneStateEveryNTurns: number;
+  /** When false, scene state is excluded from context and never auto-updated. Default true. */
+  sceneStateEnabled: boolean;
 }
 
 export interface ProviderConfig {

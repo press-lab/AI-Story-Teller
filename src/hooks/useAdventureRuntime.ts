@@ -193,6 +193,7 @@ export function useAdventureRuntime(
   }
 
   async function startAutoSceneState(adventureState: Adventure) {
+    if (adventureState.tokenBudgetSettings.sceneStateEnabled === false) return;
     const everyN = adventureState.tokenBudgetSettings.autoSceneStateEveryNTurns ?? 1;
     if (everyN === 0) return;
     const last = adventureState.activeState.lastSceneStateTurn;

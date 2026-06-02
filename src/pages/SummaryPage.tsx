@@ -110,6 +110,11 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
           Immediate present — current location, present characters, last important beat.
           Placed just before Recent Messages to ground the model in the current moment.
         </p>
+        <CheckboxField
+          label="Include scene state in context and auto-update"
+          checked={adventure.tokenBudgetSettings.sceneStateEnabled !== false}
+          onChange={(sceneStateEnabled) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, sceneStateEnabled } })}
+        />
       </article>
 
       <div className="toolbar">

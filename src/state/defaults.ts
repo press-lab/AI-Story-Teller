@@ -32,6 +32,7 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   autoSummarize: true,
   autoSummarizeEveryNTurns: 20,
   autoSceneStateEveryNTurns: 1,
+  sceneStateEnabled: true,
 };
 
 export const lightTokenBudgetPreset: Partial<TokenBudgetSettings> = {
@@ -480,6 +481,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       autoSummarize: adventure.tokenBudgetSettings?.autoSummarize ?? true,
       autoSummarizeEveryNTurns: adventure.tokenBudgetSettings?.autoSummarizeEveryNTurns ?? 20,
       autoSceneStateEveryNTurns: adventure.tokenBudgetSettings?.autoSceneStateEveryNTurns ?? 1,
+      sceneStateEnabled: adventure.tokenBudgetSettings?.sceneStateEnabled ?? true,
     },
     modelConfig: {
       ...defaultModelConfig,
