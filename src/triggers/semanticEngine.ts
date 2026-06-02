@@ -234,9 +234,7 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
     .filter((brain) => {
       const patterns = [brain.characterName, ...brain.aliases, ...brain.triggers].filter(Boolean);
       return patterns.length === 0 || matchPatterns(excerpt, patterns, "phrase").matched;
-    })
-    .sort((a, b) => (a.lastUpdatedTurn ?? -1) - (b.lastUpdatedTurn ?? -1))
-    .slice(0, 1);
+    });
   return eligible.map((brain) => ({
     id: `brain:${brain.id}`,
     label: `Brain: ${brain.characterName}`,
@@ -320,9 +318,7 @@ function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
   const eligible = adventure.storyCards
     .filter((card) => card.active && card.autoUpdate)
     .filter((card) => !isStoryCardOnAutoUpdateCooldown(adventure, card))
-    .filter((card) => card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched)
-    .sort((a, b) => (a.lastAutoUpdateTurn ?? -1) - (b.lastAutoUpdateTurn ?? -1))
-    .slice(0, 1);
+    .filter((card) => card.keys.length === 0 || matchPatterns(excerpt, card.keys, card.matchType ?? "phrase").matched);
   return eligible.map((card) => ({
     id: `storyCard:${card.id}`,
     label: `Story Card: ${card.title}`,
@@ -673,7 +669,16 @@ export async function runSemanticPostTurnEvaluation(
   const accum = { promptTokens: 0, completionTokens: 0 };
   const conditions = buildConditions(adventure);
   const { firedIds, errors } = await evaluateConditionIds(adventure, providerConfig, conditions, accum);
-  const fired = conditions.filter((condition) => firedIds.includes(condition.id));
+  const firedCounts: Partial<Record<string, number>> = {};
+  const fired = conditions.filter((condition) => {
+    if (!firedIds.includes(condition.id)) return false;
+    if (condition.sourceType === "brain" || condition.sourceType === "storyCard") {
+      const count = firedCounts[condition.sourceType] ?? 0;
+      if (count >= 1) return false;
+      firedCounts[condition.sourceType] = count + 1;
+    }
+    return true;
+  });
   const actions: AdventureAction[] = [];
   const generatedContent: GeneratedContentPreview[] = [];
   const actionsExecuted: string[] = [];
