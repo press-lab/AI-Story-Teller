@@ -400,8 +400,9 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const existing =
       state.components.find((c) => c.id === proposal.targetId && c.type === componentType) ??
       state.components.find((c) => c.type === componentType);
+    const turn = state.activeState.turn;
     if (existing) {
-      return { components: upsertById(state.components, touch({ ...existing, content: proposal.content })) };
+      return { components: upsertById(state.components, touch({ ...existing, content: proposal.content, lastAutoUpdateTurn: turn })) };
     }
     const component = makeComponent({
       title: defaultTitle,
@@ -412,7 +413,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       pinned: false,
       priority: defaultPriority,
     });
-    return { components: upsertById(state.components, component) };
+    return { components: upsertById(state.components, { ...component, lastAutoUpdateTurn: turn }) };
   }
 
   if (proposal.proposedType === "summaryUpdate") {

@@ -329,8 +329,8 @@ describe("runSemanticPostTurnEvaluation", () => {
   it("routes Plot Essentials pressure updates to Memory Inbox", async () => {
     const component = makeComponent({
       id: "component-plot",
-      title: "Plot Essentials",
-      type: "plotEssentials",
+      title: "Active Pressure",
+      type: "activePressure",
       content: "Old premise.",
       active: true,
     });
@@ -355,7 +355,6 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(proposal).toMatchObject({ proposedType: "plotPressureUpdate", status: "pending" });
 
     reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.components[0].content).toBe("Old premise."); // PE unchanged
     const pressureComp = reduced.components.find((c) => c.type === "activePressure");
     expect(pressureComp?.content).toContain("The Fire Nation court now expects a public duel.");
   });

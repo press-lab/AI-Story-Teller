@@ -180,6 +180,12 @@ function isStoryCardOnAutoUpdateCooldown(adventure: Adventure, card: StoryCard):
   return adventure.activeState.turn - last < (card.autoUpdateCooldownTurns ?? 3);
 }
 
+function isPEComponentOnCooldown(adventure: Adventure, component: ComponentEntry): boolean {
+  const last = component.lastAutoUpdateTurn;
+  if (last === undefined) return false;
+  return adventure.activeState.turn - last < 3;
+}
+
 function activeSemanticRules(adventure: Adventure): SemanticCondition[] {
   return adventure.triggerRules
     .filter((rule) => rule.enabled)
@@ -252,24 +258,25 @@ function autoCardConditions(adventure: Adventure): SemanticCondition[] {
 }
 
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
-  return adventure.components
-    .filter((c) => c.type === "plotEssentials" && c.active)
-    .flatMap((component) => [
-      {
-        id: `plotEssentialsPressure:${component.id}`,
-        label: `Active Pressure: ${component.title}`,
-        condition: `when the active threat, obligation, or force bearing on the player character has meaningfully changed — a new danger has emerged, stakes have shifted, or a pressure has been resolved or replaced by another. Do NOT fire for minor scene details.`,
-        sourceType: "component" as const,
-        actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
-      },
-      {
-        id: `plotEssentialsMomentum:${component.id}`,
-        label: `Immediate Momentum: ${component.title}`,
-        condition: `when the immediate direction of the scene has changed — the concrete next action, confrontation, or decision immediately in front of the player character has shifted. Fires more freely than pressure updates.`,
-        sourceType: "component" as const,
-        actionFactory: () => [{ type: "updateComponentMomentum" as const, componentId: component.id }],
-      },
-    ]);
+  const pressure = adventure.components
+    .filter((c) => c.type === "activePressure" && c.active && !isPEComponentOnCooldown(adventure, c))
+    .map((component) => ({
+      id: `plotEssentialsPressure:${component.id}`,
+      label: `Active Pressure: ${component.title}`,
+      condition: `when the active threat, obligation, or force bearing on the player character has meaningfully changed — a new danger has emerged, stakes have shifted, or a pressure has been resolved or replaced by another. Do NOT fire for minor scene details.`,
+      sourceType: "component" as const,
+      actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
+    }));
+  const momentum = adventure.components
+    .filter((c) => c.type === "immediateMomentum" && c.active && !isPEComponentOnCooldown(adventure, c))
+    .map((component) => ({
+      id: `plotEssentialsMomentum:${component.id}`,
+      label: `Immediate Momentum: ${component.title}`,
+      condition: `when the immediate direction of the scene has changed — the concrete next action, confrontation, or decision immediately in front of the player character has shifted. Fires more freely than pressure updates.`,
+      sourceType: "component" as const,
+      actionFactory: () => [{ type: "updateComponentMomentum" as const, componentId: component.id }],
+    }));
+  return [...pressure, ...momentum];
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
