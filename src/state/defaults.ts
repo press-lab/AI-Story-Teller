@@ -249,6 +249,7 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
     emotionalInterpretation: overrides.emotionalInterpretation ?? "",
     recentDevelopments: overrides.recentDevelopments ?? "",
     notes: overrides.notes ?? "",
+    characterAnchor: overrides.characterAnchor ?? "",
     active: overrides.active ?? true,
     pinned: overrides.pinned ?? false,
     protected: overrides.protected ?? false,
@@ -405,6 +406,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       updatePrompt: brain.updatePrompt ?? "",
       updateMode: brain.updateMode ?? "replace",
       thoughts: migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),
+      characterAnchor: brain.characterAnchor ?? "",
     })),
     storyCards: (adventure.storyCards ?? []).map((card) => ({
       ...card,

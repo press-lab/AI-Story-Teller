@@ -82,6 +82,7 @@ export interface BrainEntry {
   emotionalInterpretation: string;
   recentDevelopments: string;
   notes: string;
+  characterAnchor: string;
   condenseThreshold?: number;
   active: boolean;
   pinned: boolean;
@@ -618,7 +619,8 @@ export type BrainStateField =
   | "relationshipPressure"
   | "emotionalInterpretation"
   | "recentDevelopments"
-  | "notes";
+  | "notes"
+  | "characterAnchor";
 
 /** Patch produced by AI brain updates. thoughts is a Record where null values delete that key. */
 export type BrainPatch = {
@@ -627,6 +629,7 @@ export type BrainPatch = {
   emotionalInterpretation?: string;
   recentDevelopments?: string;
   notes?: string;
+  characterAnchor?: string;
   thoughts?: Record<string, string | null>;
 };
 

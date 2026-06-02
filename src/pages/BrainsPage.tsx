@@ -91,6 +91,14 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { currentState: event.target.value } })}
               />
             </Field>
+            <Field label="Character Anchor">
+              <textarea
+                rows={3}
+                value={brain.characterAnchor}
+                placeholder="Immutable voice and behavioral defaults. Brain updates will never rewrite these traits."
+                onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { characterAnchor: event.target.value } })}
+              />
+            </Field>
 
             <details>
               <summary className="muted">Update Settings &amp; AI-Managed Fields</summary>

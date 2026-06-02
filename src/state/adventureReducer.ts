@@ -351,7 +351,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         const raw = parsed as Record<string, unknown>;
         const patch: BrainPatch = {};
-        const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = ["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes"];
+        const stringFields: (keyof Omit<BrainPatch, "thoughts">)[] = ["currentState", "relationshipPressure", "emotionalInterpretation", "recentDevelopments", "notes", "characterAnchor"];
         for (const f of stringFields) { if (typeof raw[f] === "string") patch[f] = raw[f] as string; }
         if (raw.thoughts && typeof raw.thoughts === "object" && !Array.isArray(raw.thoughts)) {
           patch.thoughts = raw.thoughts as Record<string, string | null>;

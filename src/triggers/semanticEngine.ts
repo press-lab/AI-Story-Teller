@@ -87,7 +87,10 @@ function defaultBrainPrompt(brain: BrainEntry, turn: number): string {
   if (brain.emotionalInterpretation?.trim()) existing.push(`emotionalInterpretation: ${brain.emotionalInterpretation}`);
   if (brain.recentDevelopments?.trim()) existing.push(`recentDevelopments: ${brain.recentDevelopments}`);
   const stateBlock = existing.length > 0 ? `\n\nEstablished state — maintain this voice and psychology:\n${existing.join("\n")}` : "";
-  return `You are adding one new inner observation for ${brain.characterName} based on what just happened in the scene. Current turn: ${turn}.${stateBlock}
+  const anchorBlock = brain.characterAnchor?.trim()
+    ? `\n\nCHARACTER ANCHOR — immutable voice and behavioral defaults (do NOT rewrite these based on story events):\n${brain.characterAnchor}\n\nWhen updating emotionalInterpretation, describe the emotion through this character's established expression style — not as a direct statement of feeling.`
+    : "";
+  return `You are adding one new inner observation for ${brain.characterName} based on what just happened in the scene. Current turn: ${turn}.${stateBlock}${anchorBlock}
 
 Return ONLY valid JSON. Only include keys that actually changed.
 
@@ -158,6 +161,8 @@ Active Pressure is the current threat, obligation, or force bearing on the playe
 Current Active Pressure:
 ${current}
 
+Do not describe how characters feel, think, or what they want. Describe only the external story pressure — the threat, obligation, or force acting on the situation.
+
 Write 1–3 sentences describing the current active pressure. Return ONLY the new content as plain text.`;
 }
 
@@ -174,6 +179,8 @@ BAD: "Unspoken feelings hang in the air." (subtext, not a next move)
 
 Current Immediate Momentum:
 ${current}
+
+Do not describe character emotional states or desires. Describe only the concrete next action or decision the story is driving toward.
 
 Write 1–2 sentences stating what concrete action or decision is immediately ahead. Return ONLY the new content as plain text.`;
 }
