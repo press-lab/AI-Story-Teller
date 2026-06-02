@@ -249,6 +249,10 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       storyCards: [card],
       autoCardSettings: { ...baseAdventure().autoCardSettings, enabled: false },
+      // deactivate PE components so only story card conditions are relevant
+      components: baseAdventure().components.map((c) =>
+        (c.type === "activePressure" || c.type === "immediateMomentum") ? { ...c, active: false } : c
+      ),
     };
 
     const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);

@@ -39,6 +39,7 @@ export interface ComponentEntry {
   state: string;
   tokenBudget?: number;
   lastAutoUpdateTurn?: number;
+  autoUpdateCooldownTurns?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

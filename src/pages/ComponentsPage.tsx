@@ -51,9 +51,10 @@ interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
   onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
+  onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
 }
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
@@ -169,6 +170,20 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   />
                 </Field>
               )}
+              {(component.type === "activePressure" || component.type === "immediateMomentum") && (
+                <div className="grid two">
+                  <Field label="Auto-update cooldown (turns)">
+                    <NumberInput
+                      value={component.autoUpdateCooldownTurns ?? 3}
+                      min={0}
+                      onChange={(value) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { autoUpdateCooldownTurns: value } })}
+                    />
+                  </Field>
+                  <Field label="Last updated (turn)">
+                    <input value={component.lastAutoUpdateTurn ?? "Never"} readOnly />
+                  </Field>
+                </div>
+              )}
               <div className="grid four">
                 <Field label="Priority (higher loads first)">
                   <NumberInput
@@ -237,6 +252,16 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
                   Move Down
                 </button>
+                {(component.type === "activePressure" || component.type === "immediateMomentum") && onUpdatePEComponentNow && (
+                  <button
+                    type="button"
+                    disabled={loading}
+                    onClick={() => onUpdatePEComponentNow(component.id)}
+                    title="Ask the AI to review recent story turns and generate an updated version. Result goes to Memory Suggestions for review."
+                  >
+                    {loading ? "Generating…" : "Update Now"}
+                  </button>
+                )}
                 {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
                   <button
                     type="button"

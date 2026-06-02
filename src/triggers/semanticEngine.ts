@@ -183,7 +183,7 @@ function isStoryCardOnAutoUpdateCooldown(adventure: Adventure, card: StoryCard):
 function isPEComponentOnCooldown(adventure: Adventure, component: ComponentEntry): boolean {
   const last = component.lastAutoUpdateTurn;
   if (last === undefined) return false;
-  return adventure.activeState.turn - last < 3;
+  return adventure.activeState.turn - last < (component.autoUpdateCooldownTurns ?? 3);
 }
 
 function activeSemanticRules(adventure: Adventure): SemanticCondition[] {
@@ -940,4 +940,53 @@ The "content" field must use • bullet points, one per line. Each bullet should
     const logEntry = { ...emptyLog, errors: [error] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
+}
+
+export async function runManualPEComponentUpdate(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+  componentId: string,
+): Promise<SemanticRunResult> {
+  const component = adventure.components.find((c) => c.id === componentId);
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+
+  if (!component || (component.type !== "activePressure" && component.type !== "immediateMomentum")) {
+    const errorLog = { ...emptyLog, errors: [`Component not found or wrong type: ${componentId}`] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: errorLog }], logEntry: errorLog };
+  }
+
+  const triggerAction = component.type === "activePressure"
+    ? { type: "updateComponentPressure" as const, componentId }
+    : { type: "updateComponentMomentum" as const, componentId };
+
+  const forcePropose = {
+    ...adventure,
+    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+  };
+
+  const result = await generatedActionsFor(
+    forcePropose,
+    providerConfig,
+    triggerAction,
+    `manual${component.type === "activePressure" ? "Pressure" : "Momentum"}:${componentId}`,
+  );
+
+  const logEntry: EvaluationLogEntry = {
+    ...emptyLog,
+    conditionsFired: [`manual:${componentId}`],
+    actionsExecuted: result.generated ? [`Manual ${component.title} update`] : [],
+    generatedContent: result.generated ? [result.generated] : [],
+    errors: result.error ? [result.error] : [],
+  };
+
+  return { actions: [...result.actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
 }

@@ -140,6 +140,8 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
         alwaysOn: true,
         pinned: true,
       }),
+      makeComponent({ title: "Active Pressure", type: "activePressure", content: "", priority: 245, active: true }),
+      makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true }),
     ],
     storyCards: [],
     brains: [],
@@ -196,6 +198,8 @@ export function makeComponent(
     inclusionPolicy: overrides.inclusionPolicy ?? (alwaysOn || defaultProtected ? "always" : "manual"),
     state: overrides.state ?? "",
     tokenBudget: overrides.tokenBudget,
+    lastAutoUpdateTurn: overrides.lastAutoUpdateTurn,
+    autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };
@@ -400,15 +404,25 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       autoUpdate: card.autoUpdate ?? false,
       autoUpdateCooldownTurns: card.autoUpdateCooldownTurns ?? 3,
     })),
-    components: (adventure.components ?? []).map((component) => {
-      const defaultProtected =
-        component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote";
-      return {
-        ...component,
-        protected: component.protected ?? defaultProtected,
-        inclusionPolicy: component.inclusionPolicy ?? (component.alwaysOn || defaultProtected ? "always" : "manual"),
-      };
-    }),
+    components: (() => {
+      const existing = adventure.components ?? [];
+      const normalized = existing.map((component) => {
+        const defaultProtected =
+          component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "authorNote";
+        return {
+          ...component,
+          protected: component.protected ?? defaultProtected,
+          inclusionPolicy: component.inclusionPolicy ?? (component.alwaysOn || defaultProtected ? "always" : "manual"),
+        };
+      });
+      const hasActivePressure = normalized.some((c) => c.type === "activePressure");
+      const hasImmediateMomentum = normalized.some((c) => c.type === "immediateMomentum");
+      return [
+        ...normalized,
+        ...(hasActivePressure ? [] : [makeComponent({ title: "Active Pressure", type: "activePressure", content: "", priority: 245, active: true })]),
+        ...(hasImmediateMomentum ? [] : [makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true })]),
+      ];
+    })(),
     autoCards: (adventure.autoCards ?? []).map((card) => ({
       ...card,
       priority: card.priority ?? 0,

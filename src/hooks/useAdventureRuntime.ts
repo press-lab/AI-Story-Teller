@@ -15,6 +15,7 @@ import {
 import {
   runManualAutoCardGeneration,
   runManualBrainUpdate,
+  runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
   runManualStoryCardsUpdate,
   runRememberThis,
@@ -397,6 +398,21 @@ export function useAdventureRuntime(
     }
   }
 
+  async function updatePEComponentNow(componentId: string) {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runManualPEComponentUpdate(adventure, activeProviderConfig, componentId);
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Manual PE update failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function generateAutoCardNow() {
     if (!adventure || loading) return;
     setLoading(true);
@@ -512,6 +528,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     regenerateLastResponse,
     rememberThis,
     updateBrainNow,
+    updatePEComponentNow,
     generateAutoCardNow,
     suggestPlotUpdates,
     suggestCardUpdates,
