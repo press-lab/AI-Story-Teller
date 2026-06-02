@@ -101,21 +101,8 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(result.actions.some((a) => a.type === "MARK_TRIGGER_FIRED")).toBe(true);
   });
 
-  it("evaluates a brain condition and routes to Memory Inbox via memory cycle", async () => {
-    const brain = makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], active: true });
-    const adventure = { ...baseAdventure(), brains: [brain], messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }], tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false } };
-
-    mockProvider
-      .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
-      .mockResolvedValueOnce({ content: '{"currentState": "Margo looks relieved."}', raw: {} });
-
-    const result = await runMemoryCycle(adventure, providerConfig);
-
-    expect(mockProvider).toHaveBeenCalledTimes(2);
-    expect(result.actions.some((a) => a.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
-    expect(result.logEntry.conditionsFired).toContain("brain:brain-margo");
-  });
-
+  // Brain updates are handled inline during story generation (zero extra API calls), not via semantic evaluation.
+  // See contextBuilder.ts: eligibleBrainsForCapture + buildThoughtCaptureInstruction.
 
   it("records a parse error in the log when the LLM returns invalid JSON for conditions", async () => {
     const adventure = {
@@ -209,34 +196,6 @@ describe("runSemanticPostTurnEvaluation", () => {
 
     expect(mockProvider).not.toHaveBeenCalled();
     expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).not.toContain("storyCard:card-cooling");
-  });
-
-  it("routes brain updates to Memory Inbox when auto-update approval is required", async () => {
-    const brain = makeBrain({ id: "brain-margo", characterName: "Margo", active: true });
-    const adventure = {
-      ...baseAdventure(),
-      brains: [brain],
-      messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
-
-      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
-    };
-
-    mockProvider
-      .mockResolvedValueOnce({ content: '["brain:brain-margo"]', raw: {} })
-      .mockResolvedValueOnce({ content: '{"currentState":"Margo is worried."}', raw: {} });
-
-    const result = await runMemoryCycle(adventure, providerConfig);
-
-    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
-    expect(result.actions.some((action) => action.type === "APPLY_BRAIN_UPDATE")).toBe(false);
-
-    let reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
-    expect(reduced.brains[0].currentState).not.toBe("Margo is worried.");
-    const proposal = reduced.activeState.memoryProposals[0];
-    expect(proposal).toMatchObject({ proposedType: "brainUpdate", status: "pending", targetId: "brain-margo" });
-
-    reduced = adventureReducer(reduced, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.brains[0].currentState).toBe("Margo is worried.");
   });
 
   it("routes story-card updates to Memory Inbox when auto-update approval is required", async () => {

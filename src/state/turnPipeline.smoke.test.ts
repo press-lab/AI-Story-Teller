@@ -70,7 +70,8 @@ function expectContextPreviewMatchesProviderPayload(result: ContextBuildResult) 
   ]
     .reverse()
     .map((item) => item.content);
-  expect(result.messages.slice(1).map((message) => message.content)).toEqual(recentItemsOldestFirst);
+  // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
+  expect(result.messages.slice(1, 1 + recentItemsOldestFirst.length).map((message) => message.content)).toEqual(recentItemsOldestFirst);
 }
 
 describe("full turn smoke path", () => {

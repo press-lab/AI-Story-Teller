@@ -72,10 +72,11 @@ function expectPreviewMatchesPayload(adventure: Adventure, mode: MemoryPriorityM
   for (const section of result.sections.filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)) {
     expect(systemPayload).toContain(section.content);
   }
-  const recentPayload = result.messages.slice(1).map((message) => message.content);
   const includedRecent = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])]
     .reverse()
     .map((item) => item.content);
+  // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
+  const recentPayload = result.messages.slice(1, 1 + includedRecent.length).map((message) => message.content);
   expect(recentPayload).toEqual(includedRecent);
 }
 
@@ -96,8 +97,9 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
-  const wordTarget = Math.max(50, Math.min(200, configured.activeState.responseLengthHint));
-  const expectedSystem = `${contextText}\n\nRESPONSE LENGTH: Aim for approximately ${wordTarget} words.`;
+  const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
+  const lengthHint = `RESPONSE LENGTH LIMIT: Write no more than ${wordTarget} words. Stop at the nearest sentence boundary before reaching this limit. Do not continue writing past ${wordTarget} words regardless of narrative completeness.`;
+  const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {
     if (item.id === "opening-scene") return [{ role: "assistant" as const, content: configured.openingScene }];
@@ -105,7 +107,9 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     return message ? [{ role: message.role, content: message.content }] : [];
   });
 
-  expect(result.messages).toEqual([{ role: "system", content: expectedSystem }, ...expectedRecent]);
+  // Extra messages (reminder, thought capture) may be appended after recent — only verify recent + system
+  expect(result.messages[0]).toEqual({ role: "system", content: expectedSystem });
+  expect(result.messages.slice(1, 1 + expectedRecent.length)).toEqual(expectedRecent);
 }
 
 describe("buildContext", () => {
@@ -588,8 +592,8 @@ describe("buildContext", () => {
     expect(recentSection?.items[0].id).toBe("msg-49"); // newest
     expect(recentSection?.items[4].id).toBe("msg-45"); // oldest of the window
 
-    // Provider payload: 1 system message + 5 recent messages in chronological order
-    expect(result.messages).toHaveLength(6);
+    // Provider payload: 1 system message + 5 recent messages in chronological order (extra messages like length reminder may follow)
+    expect(result.messages.length).toBeGreaterThanOrEqual(6);
     expect(result.messages[0].role).toBe("system");
     expect(result.messages[1].content).toBe("Turn 45 content.");
     expect(result.messages[5].content).toBe("Turn 49 content.");
@@ -702,14 +706,16 @@ describe("buildContext", () => {
     expect(result.messages[0].content).toContain("# F. Story Cards");
     expect(result.messages[0].content).toContain("## Hedge Prince Joke");
     expect(result.messages[0].content).toContain("# I. Rolling Summary");
-    expect(result.messages.slice(1).map((message) => message.content)).toEqual([
+    const expectedRecent = [
       "Rain tapped against the glass.",
       "I ask Margo about the ward.",
       "Margo glances toward Seth.",
       "I repeat the hedge prince joke.",
       "The Beast howls somewhere below.",
       "We hurry toward the threshold.",
-    ]);
+    ];
+    // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
+    expect(result.messages.slice(1, 1 + expectedRecent.length).map((message) => message.content)).toEqual(expectedRecent);
 
     // E. Components is present because the golden adventure has a pinned weather component
     // Single-item sections render content directly under the section header (no ## sub-header)

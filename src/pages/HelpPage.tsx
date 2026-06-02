@@ -235,24 +235,6 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     ),
   },
   {
-    id: "side-menu-auto-cards",
-    title: "Auto-Cards",
-    category: "Side Menu",
-    summary: "Configure generated card proposals and the Auto-Card review queue.",
-    tags: ["auto-cards", "generated", "review queue", "semantic trigger"],
-    body: (
-      <>
-        <p>
-          Auto-Cards are generated memory candidates. Semantic detection can create review-queue cards,
-          and the user decides whether to approve, edit, or discard them.
-        </p>
-        <p>
-          Generated Auto-Cards should not become active Story Cards until they are reviewed and approved.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "side-menu-context-preview",
     title: "Context Preview",
     category: "Side Menu",
@@ -318,8 +300,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
       <>
         <p>
           Settings stores tiny app preferences in localStorage, including provider API key, selected model,
-          and dark mode. Adventure-specific settings control token budgets, semantic evaluation, and
-          Auto-Card behavior.
+          and dark mode. Adventure-specific settings control token budgets, semantic evaluation, memory
+          detection, and background update behavior.
         </p>
         <p>
           The Provider section includes an API throttle. Enable it to enforce a minimum delay between
@@ -488,6 +470,191 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     ),
   },
   {
+    id: "best-practices-brain",
+    title: "Brain Thoughts — Best Practices",
+    category: "Best Practices",
+    summary: "What to put in a character brain and how to write thoughts that steer the story.",
+    tags: ["brain", "character", "thoughts", "inner state", "best practices"],
+    body: (
+      <>
+        <p>
+          Brains store a character's private, evolving inner state — what they are thinking, feeling, suspecting, or planning. The model reads brains but never quotes them directly to the player.
+        </p>
+        <p><strong>What belongs in a brain thought:</strong></p>
+        <ul>
+          <li>A specific reaction to something that just happened, in first person and in the character's voice.</li>
+          <li>A private suspicion or plan the character hasn't revealed.</li>
+          <li>A shift in how the character now sees another person or situation.</li>
+          <li>Something the character is hiding or suppressing.</li>
+        </ul>
+        <p><strong>What does NOT belong:</strong></p>
+        <ul>
+          <li>Generic emotional states: "feeling anxious", "excited", "uneasy". These give the model nothing actionable.</li>
+          <li>Scene descriptions or location tracking — that's Scene State.</li>
+          <li>Permanent character traits — those belong in a Story Card.</li>
+          <li>Things the character has already said or done openly — that's in the transcript.</li>
+        </ul>
+        <p><strong>Good:</strong> <code>margo_on_setu_ward_question: "She asked about the ward the same way she asked about the knife last winter. She already knows. I need to decide before the delegation arrives whether to tell her or redirect."</code></p>
+        <p><strong>Bad:</strong> <code>mood: "Margo is anxious and protective."</code></p>
+        <p>
+          Thoughts are captured inline during story generation at zero extra API cost. Each thought should have a descriptive snake_case key. Old thoughts are automatically archived when the brain grows long.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "best-practices-story-cards",
+    title: "Story Cards — Best Practices",
+    category: "Best Practices",
+    summary: "What Story Cards are for, how to write them, and what to exclude.",
+    tags: ["story cards", "memory", "durable facts", "best practices"],
+    body: (
+      <>
+        <p>
+          Story Cards store durable, recurring facts. They enter context only when their trigger keys appear — so they stay dormant and cost no tokens when off-topic.
+        </p>
+        <p><strong>What belongs in a Story Card:</strong></p>
+        <ul>
+          <li>A character's permanent traits, history, relationships, and rules of behavior.</li>
+          <li>A location's sensory details, layout, and significance.</li>
+          <li>A recurring object, secret, promise, or rule the story keeps returning to.</li>
+          <li>Canon facts that must stay consistent regardless of scene.</li>
+        </ul>
+        <p><strong>What does NOT belong:</strong></p>
+        <ul>
+          <li>Current location or scene presence — that's Scene State.</li>
+          <li>Temporary mission status or current assignments.</li>
+          <li>Emotional reactions to specific events — that's a Brain thought.</li>
+          <li>One-off scenery or room details that won't recur.</li>
+        </ul>
+        <p><strong>Format:</strong> Bullet points, one per line, using •. Each bullet is one self-contained fact. Lead with what is always true, then add specific constraints or rules.</p>
+        <p><strong>Trigger keys:</strong> Use the character's name, key places, and specific phrases the story returns to. Avoid overly broad triggers that pull the card in on every turn.</p>
+        <p><strong>Good card:</strong></p>
+        <pre>{`• Margo uses teasing to deflect when she's afraid.
+• She has a long-running private joke calling Seth "hedge prince."
+• She knows more about the ward than she has admitted.
+• She will not act against Seth directly, but she will redirect him.`}</pre>
+      </>
+    ),
+  },
+  {
+    id: "best-practices-pe",
+    title: "Plot Essentials — Best Practices",
+    category: "Best Practices",
+    summary: "How to use Plot Essentials effectively without cluttering it with scene state.",
+    tags: ["plot essentials", "world blocks", "canon", "best practices"],
+    body: (
+      <>
+        <p>
+          Plot Essentials is an always-on context component for permanent world facts, sealed arc beats, and active constraints that must shape every scene. It loads every turn and costs tokens every turn — keep it tight.
+        </p>
+        <p><strong>What belongs:</strong></p>
+        <ul>
+          <li>Sealed consequences: decisions that cannot be undone, factions that have been revealed, rules broken.</li>
+          <li>Active constraints: things that are now permanently true about the world or the player character's situation.</li>
+          <li>Open plot truths: major revelations that the story is now built around.</li>
+        </ul>
+        <p><strong>What does NOT belong:</strong></p>
+        <ul>
+          <li>Current scene position or who is present — that's Scene State.</li>
+          <li>Character emotional states or internal goals.</li>
+          <li>Temporary mission status that changes every few turns.</li>
+          <li>Lore that only matters when a specific character or place comes up — use a Story Card instead.</li>
+        </ul>
+        <p><strong>Format:</strong> Tight bullet points. Each bullet should be one permanent truth, not a scene description. AI updates are append-only — new bullets are added; existing bullets are preserved.</p>
+        <p><strong>Good PE entry:</strong> <code>• The warded threshold collapsed. The ward cannot be resealed.</code></p>
+        <p><strong>Bad PE entry:</strong> <code>• Seth and Margo are currently standing near the threshold discussing the ward.</code> (scene state, not a permanent truth)</p>
+      </>
+    ),
+  },
+  {
+    id: "best-practices-summary",
+    title: "Durable Summary — Best Practices",
+    category: "Best Practices",
+    summary: "What the Rolling Summary is for and how to write one that keeps the story on track.",
+    tags: ["rolling summary", "summary", "continuity", "best practices"],
+    body: (
+      <>
+        <p>
+          The Rolling Summary is the compressed, model-facing continuity layer. It replaces the full transcript once the story grows long. The model treats it as canon — so what is in the summary defines what the story is "about."
+        </p>
+        <p><strong>What belongs:</strong></p>
+        <ul>
+          <li>Arc beats — the key moments that moved the story forward.</li>
+          <li>Permanent changes — decisions made, things revealed, bridges burned.</li>
+          <li>Open plot threads — unresolved problems, active threats, things the player character still needs to do.</li>
+          <li>Relationship shifts — changes in how characters relate to each other.</li>
+        </ul>
+        <p><strong>The most important rule:</strong> If the summary fills with emotional beats and relationship milestones without any external threat, unresolved problem, or active obligation, the model will write a relationship story. Keep at least one external arc, unresolved problem, or active threat visible here alongside personal developments.</p>
+        <p><strong>What does NOT belong:</strong></p>
+        <ul>
+          <li>Scene descriptions or current location.</li>
+          <li>Character inner thoughts — those belong in Brains.</li>
+          <li>Permanent world facts that belong in Story Cards or Plot Essentials.</li>
+        </ul>
+        <p>Auto-summarize appends new facts periodically. Review it manually after a major arc beat to make sure the external stakes are still visible.</p>
+      </>
+    ),
+  },
+  {
+    id: "best-practices-active-pressure",
+    title: "Active Pressure — Best Practices",
+    category: "Best Practices",
+    summary: "What Active Pressure tracks and how to write it so the model stays in external-stakes mode.",
+    tags: ["active pressure", "pressure", "threat", "obligation", "best practices"],
+    body: (
+      <>
+        <p>
+          Active Pressure describes the external threat, obligation, or force currently bearing on the player character at the story level. It tells the model "this is what is pushing or threatening right now" — and it should replace the previous value entirely when the pressure changes.
+        </p>
+        <p><strong>Active Pressure answers:</strong> <em>What is currently threatening, pressing, or obligating the player character from the outside?</em></p>
+        <p><strong>Good Active Pressure:</strong></p>
+        <ul>
+          <li>"The delegation arrives at dawn. Setu has until then to decide whether to reveal what she knows."</li>
+          <li>"The Beast has scented the group and is circling the ward's outer edge."</li>
+          <li>"Kael has issued a public challenge. Not responding by nightfall reads as surrender."</li>
+        </ul>
+        <p><strong>Bad Active Pressure:</strong></p>
+        <ul>
+          <li>"Setu feels the weight of her choices pressing in." (character emotion, not external pressure)</li>
+          <li>"There is tension between Margo and Seth." (relationship state, not a story-level threat)</li>
+          <li>"Setu is uncertain about what to do next." (internal state, not external force)</li>
+        </ul>
+        <p>Active Pressure is auto-updated by the semantic engine. You can also edit it directly if the model's version misses the real threat.</p>
+      </>
+    ),
+  },
+  {
+    id: "best-practices-momentum",
+    title: "Immediate Momentum — Best Practices",
+    category: "Best Practices",
+    summary: "What Immediate Momentum tracks and how to write it so the model drives toward a concrete next action.",
+    tags: ["immediate momentum", "momentum", "direction", "next action", "best practices"],
+    body: (
+      <>
+        <p>
+          Immediate Momentum describes the concrete next move or decision the story is driving toward. It is a direction, not a mood. It should tell the model "this is what is immediately in front of the player character."
+        </p>
+        <p><strong>Immediate Momentum answers:</strong> <em>What is the concrete next action, confrontation, or choice the story is driving toward right now?</em></p>
+        <p><strong>Good Immediate Momentum:</strong></p>
+        <ul>
+          <li>"Setu needs to answer Kael's challenge before they reach the gate."</li>
+          <li>"The group is moving toward the war room to deliver the report."</li>
+          <li>"Margo is waiting for Seth to acknowledge what she said — the scene can't move until he does."</li>
+        </ul>
+        <p><strong>Bad Immediate Momentum:</strong></p>
+        <ul>
+          <li>"The tension between them lingers, pulling toward connection." (mood, not a next move)</li>
+          <li>"Unspoken feelings hang in the air." (subtext, not an action)</li>
+          <li>"Setu is conflicted about her feelings for Kael." (internal state, not a direction)</li>
+        </ul>
+        <p>
+          If Immediate Momentum ever becomes a mood description, the model loses its forward drive and tends to loop on emotional beats. Reset it to a concrete action whenever this happens.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "ai-mutation-boundaries",
     title: "AI Mutation Boundaries",
     category: "Safety",
@@ -527,8 +694,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           trigger logs are visible in Automations.
         </p>
         <p>
-          Generated content actions include brain updates, Story Card updates, Plot Essentials updates,
-          and Auto-Card review queue creation.
+          Generated content actions include Story Card updates and Plot Essentials updates. Brain updates
+          are handled inline during story generation at zero extra API cost.
         </p>
       </>
     ),
@@ -757,7 +924,7 @@ npm.cmd run build
 npm.cmd run test:live`}</pre>
         <p>
           Normal tests are deterministic and do not require a live API. Live tests are opt-in and cover
-          provider, semantic trigger, manual brain update, Auto-Card review queue, and Remember This flows.
+          provider, semantic trigger, manual brain update, and Remember This flows.
         </p>
       </>
     ),
