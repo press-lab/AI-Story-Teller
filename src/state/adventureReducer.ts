@@ -583,6 +583,10 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, lastAutoUpdateTurn: action.turn })),
       });
+    case "MARK_COMPONENT_UPDATED":
+      return touchAdventure(state, {
+        components: updateById(state.components, action.componentId, (item) => touch({ ...item, lastAutoUpdateTurn: action.turn })),
+      });
     case "REORDER_STORY_CARD":
       return touchAdventure(state, { storyCards: moveByPriority(state.storyCards, action.storyCardId, action.direction) });
     case "UPSERT_BRAIN":

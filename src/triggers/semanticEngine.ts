@@ -602,7 +602,7 @@ async function generatedActionsFor(
         adventure,
       );
       return {
-        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }, { type: "MARK_COMPONENT_UPDATED", componentId: component.id, turn: adventure.activeState.turn }],
         generated: { targetType: "component", targetId: component.id, title: component.title, preview: preview(content) },
       };
     }
@@ -614,8 +614,10 @@ async function generatedActionsFor(
         { proposedType: "plotPressureUpdate", title: "Active Pressure", content, targetId: pressureComp?.id, rationale: "Active Pressure update." },
         adventure,
       );
+      const actions: AdventureAction[] = [{ type: "ADD_MEMORY_PROPOSAL", proposal }];
+      if (pressureComp) actions.push({ type: "MARK_COMPONENT_UPDATED", componentId: pressureComp.id, turn: adventure.activeState.turn });
       return {
-        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        actions,
         generated: { targetType: "component", targetId: pressureComp?.id, title: "Active Pressure", preview: preview(content) },
       };
     }
@@ -627,8 +629,10 @@ async function generatedActionsFor(
         { proposedType: "plotMomentumUpdate", title: "Immediate Momentum", content, targetId: momentumComp?.id, rationale: "Immediate Momentum update." },
         adventure,
       );
+      const actions: AdventureAction[] = [{ type: "ADD_MEMORY_PROPOSAL", proposal }];
+      if (momentumComp) actions.push({ type: "MARK_COMPONENT_UPDATED", componentId: momentumComp.id, turn: adventure.activeState.turn });
       return {
-        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
+        actions,
         generated: { targetType: "component", targetId: momentumComp?.id, title: "Immediate Momentum", preview: preview(content) },
       };
     }
