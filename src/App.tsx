@@ -296,6 +296,16 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adventure?.activeState.turn]);
 
+  useEffect(() => {
+    const id = setInterval(() => {
+      const current = adventure;
+      if (current) void gitHubSaves.timedAutoSave(current);
+    }, 5 * 60 * 1000);
+    return () => clearInterval(id);
+    // intentional: stable interval; timedAutoSave checks the time gate internally
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const applyGitHubSave = useCallback(async (loaded: Adventure) => {
     await saveAdventure(loaded);
     setAdventure(loaded);

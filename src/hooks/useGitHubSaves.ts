@@ -2,10 +2,13 @@ import { useCallback, useRef, useState } from "react";
 import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
 import { deleteGitHubSave, listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "../sync/githubSaves";
 
+const TIMER_SAVE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: GitHubSaveSettings) {
   const [saveSlots, setSaveSlots] = useState<GitHubSaveSlot[]>([]);
   const [savesStatus, setSavesStatus] = useState("");
   const lastAutoSavedTurnRef = useRef<Record<string, number>>({});
+  const lastTimedSaveAtRef = useRef<Record<string, number>>({}); // timestamp ms per adventure id
 
   const listSaves = useCallback(async () => {
     setSavesStatus("Loading saves…");
@@ -57,9 +60,28 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
       try {
         const slot = await saveToGitHub(cloudSettings, saveSettings, adventure, "auto");
         lastAutoSavedTurnRef.current = { ...lastAutoSavedTurnRef.current, [adventure.id]: adventure.activeState.turn };
+        lastTimedSaveAtRef.current = { ...lastTimedSaveAtRef.current, [adventure.id]: Date.now() };
         setSaveSlots((current) => [slot, ...current.filter((s) => s.saveId !== slot.saveId)]);
       } catch {
         // auto-save failures are silent — don't surface transient GitHub errors to the user mid-session
+      }
+    },
+    [cloudSettings, saveSettings],
+  );
+
+  const timedAutoSave = useCallback(
+    async (adventure: Adventure): Promise<void> => {
+      if (!adventure.autoSaveEnabled) return;
+      if (adventure.activeState.turn <= 0) return;
+      const lastAt = lastTimedSaveAtRef.current[adventure.id] ?? 0;
+      if (Date.now() - lastAt < TIMER_SAVE_INTERVAL_MS) return;
+      try {
+        const slot = await saveToGitHub(cloudSettings, saveSettings, adventure, "auto");
+        lastTimedSaveAtRef.current = { ...lastTimedSaveAtRef.current, [adventure.id]: Date.now() };
+        lastAutoSavedTurnRef.current = { ...lastAutoSavedTurnRef.current, [adventure.id]: adventure.activeState.turn };
+        setSaveSlots((current) => [slot, ...current.filter((s) => s.saveId !== slot.saveId)]);
+      } catch {
+        // timer save failures are silent
       }
     },
     [cloudSettings, saveSettings],
@@ -103,5 +125,5 @@ export function useGitHubSaves(cloudSettings: CloudSyncSettings, saveSettings: G
     [cloudSettings, saveSettings],
   );
 
-  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, deleteSave, autoSaveIfDue, pullLatestForAdventure };
+  return { saveSlots, savesStatus, listSaves, saveNow, loadSave, deleteSave, autoSaveIfDue, timedAutoSave, pullLatestForAdventure };
 }
