@@ -87,6 +87,8 @@ Return ONLY valid JSON. Only include keys that changed.
 
 For "thoughts": add ONE new entry. Key is snake_case label. Value is "${turn} → first-person observation, reaction, or plan". Write in ${brain.characterName}'s own voice — cite specific people, what was said or done, and what it privately means or what they intend to do about it. Never use generic labels ("excited", "uneasy", "focused"). Optionally set one stale entry to null to archive it.
 
+Do NOT record: current location, who is present in this scene, or stable personality traits. Location and scene presence belong in Scene State. Permanent behavioral patterns belong in a Story Card, not here.
+
 Example: { "thoughts": { "azula_praise_after_council": "${turn} → Her 'good to have you back' landed too clean. Azula doesn't give compliments — she extends leashes. I need to find out how much she knows before the delegation arrives." } }
 
 If this thought reveals something fundamental and permanent about how ${brain.characterName} behaves, thinks, or operates — something that would be true in any scene, not just this one — also include:
@@ -118,10 +120,12 @@ ${card.content}
 
 Based on what just happened, rewrite or extend this card. Format the content as concise bullet points, one per line, using the • character. Each bullet should be a single self-contained fact, trait, or rule. Preserve all existing facts that are still true; update or remove only what has changed.
 
+Do NOT include: current location, who is currently present in a scene, active mission status, or any "currently X" state. These are temporary and belong in Scene State, not a Story Card. Only record facts that are durably true regardless of which scene is happening.
+
 Example format:
-• Fact or trait about the entity.
-• Another fact or current status.
-• Rule or constraint the story should respect.
+• Permanent trait, history, or rule about the entity.
+• Relationship or constraint that holds across all scenes.
+• Canon fact the story must always respect.
 
 Return ONLY the bullet-pointed content — no title, no headers, no commentary.`;
 }
@@ -135,6 +139,8 @@ Current arc:
 ${current || "(empty)"}
 
 Based on the most recent story events, write ONLY new permanent developments to append — completed arc beats, sealed consequences, major relationship shifts, or revealed plot truths. Do NOT repeat anything already captured above. If nothing new and permanent happened, respond with an empty string.
+
+Do NOT include: character emotional states, reactions, or desires. Do not describe the current scene or who is present. Do not record temporary mission status or active assignments. Only sealed consequences and permanent world constraints belong here.
 
 Write as tight bullet points (• one per line). Return ONLY the new additions.`;
   }
