@@ -315,34 +315,53 @@ export function SettingsPage({
         </article>
 
         {/* ── Background Cost Mode ──────────────────── */}
-        {adventure && (
-          <article className="panel" style={{ gridColumn: "1 / -1" }}>
-            <h3>Background Cost</h3>
-            <p className="muted">Presets for how aggressively background systems run. Each turn can fire semantic eval, scene state, and memory cycle — set all at once here, or tune individually in Context Budget and LLM Evaluation.</p>
-            <div className="toolbar">
-              <button type="button" title="Disable all background AI calls. Play-only." onClick={() => {
-                updateSemanticSettings({ enabled: false, semanticEvalEveryNTurns: 1 });
-                updateBudget({ autoSceneStateEveryNTurns: 0 });
-                updateMemoryDetection({ enabled: false });
-              }}>Off</button>
-              <button type="button" title="One background call every 5 turns. Low spend." onClick={() => {
-                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 5 });
-                updateBudget({ autoSceneStateEveryNTurns: 5 });
-                updateMemoryDetection({ enabled: true, everyNTurns: 5 });
-              }}>Light</button>
-              <button type="button" title="Background calls every 2–3 turns. Balanced." onClick={() => {
-                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 2 });
-                updateBudget({ autoSceneStateEveryNTurns: 2 });
-                updateMemoryDetection({ enabled: true, everyNTurns: 3 });
-              }}>Normal</button>
-              <button type="button" title="Background calls every turn. Maximum tracking." onClick={() => {
-                updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 1 });
-                updateBudget({ autoSceneStateEveryNTurns: 1 });
-                updateMemoryDetection({ enabled: true, everyNTurns: 1 });
-              }}>Heavy</button>
-            </div>
-          </article>
-        )}
+        {adventure && (() => {
+          const sem = activeSettings.semanticEvaluationSettings;
+          const bud = activeSettings.tokenBudgetSettings;
+          const mem = globalAdventureSettings.memoryDetectionSettings;
+          const isOff = !sem.enabled;
+          const isLight = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) >= 5 && (bud.autoSceneStateEveryNTurns ?? 1) >= 5 && mem.enabled && mem.everyNTurns >= 5;
+          const isNormal = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 2 && (bud.autoSceneStateEveryNTurns ?? 1) === 2 && mem.enabled && mem.everyNTurns === 3;
+          const isHeavy = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 1 && (bud.autoSceneStateEveryNTurns ?? 1) === 1 && mem.enabled && mem.everyNTurns === 1;
+          return (
+            <article className="panel" style={{ gridColumn: "1 / -1" }}>
+              <h3>Background Cost</h3>
+              <div className="toolbar" style={{ marginBottom: "0.5rem" }}>
+                <button type="button" className={isOff ? "active" : ""} title="Disable all background AI calls. Play-only." onClick={() => {
+                  updateSemanticSettings({ enabled: false, semanticEvalEveryNTurns: 1 });
+                  updateBudget({ autoSceneStateEveryNTurns: 0 });
+                  updateMemoryDetection({ enabled: false });
+                }}>Off</button>
+                <button type="button" className={isLight ? "active" : ""} title="One background call every 5 turns. Low spend." onClick={() => {
+                  updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 5 });
+                  updateBudget({ autoSceneStateEveryNTurns: 5 });
+                  updateMemoryDetection({ enabled: true, everyNTurns: 5 });
+                }}>Light</button>
+                <button type="button" className={isNormal ? "active" : ""} title="Background calls every 2–3 turns. Balanced." onClick={() => {
+                  updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 2 });
+                  updateBudget({ autoSceneStateEveryNTurns: 2 });
+                  updateMemoryDetection({ enabled: true, everyNTurns: 3 });
+                }}>Normal</button>
+                <button type="button" className={isHeavy ? "active" : ""} title="Background calls every turn. Maximum tracking." onClick={() => {
+                  updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 1 });
+                  updateBudget({ autoSceneStateEveryNTurns: 1 });
+                  updateMemoryDetection({ enabled: true, everyNTurns: 1 });
+                }}>Heavy</button>
+              </div>
+              <div className="grid three" style={{ marginTop: "0.5rem" }}>
+                <Field label="Memory every N turns">
+                  <NumberInput min={1} value={mem.everyNTurns} onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })} />
+                </Field>
+                <Field label="Scene state every N turns (0 = off)">
+                  <NumberInput min={0} value={bud.autoSceneStateEveryNTurns ?? 1} onChange={(autoSceneStateEveryNTurns) => updateBudget({ autoSceneStateEveryNTurns })} />
+                </Field>
+                <Field label="Semantic eval every N turns (0 = off)">
+                  <NumberInput min={0} value={sem.semanticEvalEveryNTurns ?? 1} onChange={(semanticEvalEveryNTurns) => updateSemanticSettings({ semanticEvalEveryNTurns })} />
+                </Field>
+              </div>
+            </article>
+          );
+        })()}
 
         {/* ── Context Budget (advanced) ─────────────── */}
         {advanced && (
