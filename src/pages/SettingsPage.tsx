@@ -315,7 +315,7 @@ export function SettingsPage({
         </article>
 
         {/* ── Background Cost Mode ──────────────────── */}
-        {adventure && (() => {
+        {(() => {
           const sem = activeSettings.semanticEvaluationSettings;
           const bud = activeSettings.tokenBudgetSettings;
           const mem = globalAdventureSettings.memoryDetectionSettings;
