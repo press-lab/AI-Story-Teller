@@ -137,11 +137,17 @@ export function useAdventureRuntime(
   }
 
   async function applyMemoryDetectionFromOutput(snapshot: Adventure, text: string): Promise<Adventure> {
-    if (!snapshot.memoryDetectionSettings.enabled) return snapshot;
+    const settings = snapshot.memoryDetectionSettings;
+    if (!settings.enabled) return snapshot;
+    const currentTurn = snapshot.activeState.turn;
+    const onCooldown = settings.lastDetectionTurn !== undefined &&
+      (currentTurn - settings.lastDetectionTurn) < settings.everyNTurns;
+    if (onCooldown) return snapshot;
     const pc = mergeProviderConfig(snapshot, providerSettingsRef.current);
     const accum = { promptTokens: 0, completionTokens: 0 };
     const action = await detectMemoryFromTurn(snapshot, pc, text, accum);
     let next = action ? adventureReducer(snapshot, action) : snapshot;
+    next = adventureReducer(next, { type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...next.memoryDetectionSettings, lastDetectionTurn: currentTurn } });
     if (accum.promptTokens > 0 || accum.completionTokens > 0) {
       next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...accum });
     }

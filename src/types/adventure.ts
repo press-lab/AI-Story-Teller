@@ -284,6 +284,8 @@ export interface AutoCardSettings {
 export interface MemoryDetectionSettings {
   enabled: boolean;
   generateContent: boolean;
+  everyNTurns: number;
+  lastDetectionTurn?: number;
 }
 
 export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "autoCard" | "quest";

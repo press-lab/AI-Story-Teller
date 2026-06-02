@@ -112,10 +112,15 @@ export async function runTurnPipeline({
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
   let detectionTokenUsage: { promptTokens: number; completionTokens: number } | undefined;
-  if (mode !== "comms" && !next.activeState.challengeMode && next.memoryDetectionSettings.enabled && providerConfig) {
+  const detectionSettings = next.memoryDetectionSettings;
+  const detectionTurn = next.activeState.turn;
+  const detectionOnCooldown = detectionSettings.lastDetectionTurn !== undefined &&
+    (detectionTurn - detectionSettings.lastDetectionTurn) < detectionSettings.everyNTurns;
+  if (mode !== "comms" && !next.activeState.challengeMode && detectionSettings.enabled && !detectionOnCooldown && providerConfig) {
     const accum = { promptTokens: 0, completionTokens: 0 };
     const proposalAction = await detectMemoryFromTurn(next, providerConfig, response.content, accum);
     if (proposalAction) next = adventureReducer(next, proposalAction);
+    next = adventureReducer(next, { type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...next.memoryDetectionSettings, lastDetectionTurn: detectionTurn } });
     if (accum.promptTokens > 0 || accum.completionTokens > 0) {
       detectionTokenUsage = accum;
       next = adventureReducer(next, { type: "ACCUMULATE_BACKGROUND_TOKENS", ...accum });

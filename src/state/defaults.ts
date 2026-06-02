@@ -76,6 +76,7 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
 export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
   enabled: false,
   generateContent: true,
+  everyNTurns: 1,
 };
 
 export const defaultAutoCardSettings: AutoCardSettings = {

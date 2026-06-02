@@ -528,6 +528,13 @@ export function SettingsPage({
             />
             {globalAdventureSettings.memoryDetectionSettings.enabled && (
               <>
+                <Field label="Run every N turns (1 = every turn)">
+                  <NumberInput
+                    min={1}
+                    value={globalAdventureSettings.memoryDetectionSettings.everyNTurns}
+                    onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })}
+                  />
+                </Field>
                 <CheckboxField
                   label="Generate card content"
                   checked={globalAdventureSettings.memoryDetectionSettings.generateContent}
