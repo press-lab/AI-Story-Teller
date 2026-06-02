@@ -348,12 +348,12 @@ export function PlayPage({
                     <span className="message-usage muted">
                       {message.usage && (
                         <span title={`Prompt: ${message.usage.promptTokens} · Completion: ${message.usage.completionTokens} · Total: ${message.usage.promptTokens + message.usage.completionTokens}`}>
-                          {message.usage.promptTokens + message.usage.completionTokens} tokens
+                          ↑{message.usage.promptTokens} ↓{message.usage.completionTokens}
                         </span>
                       )}
                       {message.id === lastAssistant?.id && adventure.activeState.backgroundTokenUsage.promptTokens > 0 && (
                         <span title={`Background (cumulative): ${adventure.activeState.backgroundTokenUsage.promptTokens} prompt + ${adventure.activeState.backgroundTokenUsage.completionTokens} completion`}>
-                          {" · "}bg {adventure.activeState.backgroundTokenUsage.promptTokens + adventure.activeState.backgroundTokenUsage.completionTokens}
+                          {" · "}bg ↑{adventure.activeState.backgroundTokenUsage.promptTokens} ↓{adventure.activeState.backgroundTokenUsage.completionTokens}
                         </span>
                       )}
                       {message.id === lastAssistant?.id && pendingMemoryCount > 0 && (
