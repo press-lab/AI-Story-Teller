@@ -394,9 +394,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   // H. Quest State — disabled; quests are not UI-exposed so their data never enters context
   const questItems: ContextItem[] = [];
 
-  // I. Rolling Summary — pre-cap to sectionBudgets.rollingSummary before assembly
+  // I. Rolling Summary — excluded entirely when summaryEnabled is false
   const summaryCap = budgetSettings.sectionBudgets.rollingSummary;
-  const rawSummaryContent = adventure.rollingSummary.content;
+  const rawSummaryContent = budgetSettings.summaryEnabled !== false ? adventure.rollingSummary.content : "";
   const summaryContent = summaryCap && rawSummaryContent ? truncateFromFront(rawSummaryContent, summaryCap) : rawSummaryContent;
   const summaryItems = summaryContent
     ? [item("rolling-summary", "summary", "Rolling Summary", summaryContent, 0, false, false, true, "always", "user")]

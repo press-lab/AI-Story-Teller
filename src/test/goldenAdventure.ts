@@ -169,6 +169,7 @@ export function goldenAdventure(): Adventure {
       autoSummarizeEveryNTurns: 20,
       autoSceneStateEveryNTurns: 1,
       sceneStateEnabled: true,
+      summaryEnabled: true,
     },
   };
 }

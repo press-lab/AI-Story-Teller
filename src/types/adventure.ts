@@ -214,6 +214,8 @@ export interface TokenBudgetSettings {
   autoSceneStateEveryNTurns: number;
   /** When false, scene state is excluded from context and never auto-updated. Default true. */
   sceneStateEnabled: boolean;
+  /** When false, the durable rolling summary is excluded from context and never auto-generated. Default true. */
+  summaryEnabled: boolean;
 }
 
 export interface ProviderConfig {

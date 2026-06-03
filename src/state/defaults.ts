@@ -31,6 +31,7 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   autoSummarizeEveryNTurns: 20,
   autoSceneStateEveryNTurns: 1,
   sceneStateEnabled: true,
+  summaryEnabled: true,
 };
 
 export const lightTokenBudgetPreset: Partial<TokenBudgetSettings> = {
@@ -101,7 +102,7 @@ function clampSummaryIndex(index: number | undefined, messageCount: number): num
 export const defaultNarrationRulesContent = `You are the narrator of a collaborative interactive fiction adventure.
 Continue the story in response to the player, then leave the scene open for their next action.
 
-END OPEN: Never resolve a decision for the player. End each response on an actionable moment, not a conclusion.
+END OPEN: Never resolve a decision for the player. End each response on an actionable moment, not a conclusion. Do NOT end with explicit choices, questions directed at the player, or option menus ("Want to X, or Y?"). End at a natural story beat — the player decides what happens next.
 
 PERSPECTIVE: Follow the perspective the player has established — first person, second person, or third person. Match it exactly. Do not override or reassign it.
 

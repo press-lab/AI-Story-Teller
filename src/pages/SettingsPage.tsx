@@ -418,6 +418,11 @@ export function SettingsPage({
               </div>
               <div>
                 <CheckboxField
+                  label="Include durable summary in context"
+                  checked={activeSettings.tokenBudgetSettings.summaryEnabled !== false}
+                  onChange={(summaryEnabled) => updateBudget({ summaryEnabled })}
+                />
+                <CheckboxField
                   label="Auto-summarize in background"
                   checked={activeSettings.tokenBudgetSettings.autoSummarize ?? true}
                   onChange={(autoSummarize) => updateBudget({ autoSummarize })}

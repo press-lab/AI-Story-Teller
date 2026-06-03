@@ -655,6 +655,36 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     ),
   },
   {
+    id: "best-practices-ai-instructions",
+    title: "AI Instructions — Best Practices",
+    category: "Best Practices",
+    summary: "How to write AI Instructions that produce consistent narrative style without breaking character immersion.",
+    tags: ["ai instructions", "narration", "options", "choices", "voice", "immersion", "best practices"],
+    body: (
+      <>
+        <p>
+          AI Instructions are always-on context sent every turn. They set the model's narrative contract. How you phrase them shapes the model's behavior more than almost anything else in the system.
+        </p>
+        <p><strong>The option-menu problem.</strong> Models trained with strong human-approval feedback (e.g. DeepSeek) interpret "leave choices for the player" as an instruction to <em>present explicit options</em>. The result: every character ends their scene with "Want to X, or Y?" — breaking immersion because every character feels the same.</p>
+        <p><strong>Fix: forbid the pattern explicitly.</strong></p>
+        <p><strong>Good AI Instructions ending behavior:</strong></p>
+        <ul>
+          <li>"Do not end turns with explicit choices, questions directed at the player, or option menus. End at a natural story beat — the player decides what happens next."</li>
+          <li>"Each character finishes their scene naturally. Never structure the end of a turn as a choose-your-own-adventure prompt."</li>
+        </ul>
+        <p><strong>Bad AI Instructions ending behavior:</strong></p>
+        <ul>
+          <li>"Leave choices for the player." (triggers option-menu behavior in RLHF-heavy models)</li>
+          <li>"Give the player agency." (same problem — model interprets this as presenting menus)</li>
+          <li>"End scenes open-ended." (too vague — model defaults to option listing as its "open" behavior)</li>
+        </ul>
+        <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in a brain card anchor, not in AI Instructions. AI Instructions apply globally — per-character voice belongs on the character.</p>
+        <p><strong>The word "choices" is a trigger.</strong> Whenever you write "leave X's choices for the player," the model reads "present choices to the player." Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
+        <p><strong>The most important rule:</strong> AI Instructions are a narrative contract, not a prompt. They tell the model <em>what kind of story to tell</em>, not what to do next turn. Keep them stable, short, and behavioral — not scene-specific.</p>
+      </>
+    ),
+  },
+  {
     id: "ai-mutation-boundaries",
     title: "AI Mutation Boundaries",
     category: "Safety",
