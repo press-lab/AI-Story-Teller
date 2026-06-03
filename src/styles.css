@@ -93,6 +93,10 @@ body,
   min-height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 h1, h2, h3, h4 {
   font-weight: 500;
 }
@@ -3033,9 +3037,15 @@ summary {
   .main-content {
     grid-row: 2;
     padding: 10px;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+  }
+
+  /* Play page: fixed-height container — transcript scrolls internally */
+  .main-content.play-content {
+    overflow: hidden;
   }
 
   /* Edit page: editor body grows with content on mobile, so the
