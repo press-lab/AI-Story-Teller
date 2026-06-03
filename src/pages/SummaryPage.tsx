@@ -76,8 +76,8 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
         </div>
       </article>
 
-      <div className="toolbar">
-        <button type="button" disabled={durableLoading} onClick={handleGenerateDurable}>
+      <div className={`toolbar${adventure.tokenBudgetSettings.summaryEnabled === false ? " disabled-section" : ""}`}>
+        <button type="button" disabled={durableLoading || adventure.tokenBudgetSettings.summaryEnabled === false} onClick={handleGenerateDurable}>
           {durableLoading ? "Generating..." : "Regenerate"}
         </button>
         {durableDraft !== null && durableDraft !== adventure.rollingSummary.content && (
@@ -100,6 +100,8 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
       <textarea
         rows={12}
         value={durableValue}
+        disabled={adventure.tokenBudgetSettings.summaryEnabled === false}
+        style={adventure.tokenBudgetSettings.summaryEnabled === false ? { opacity: 0.4 } : undefined}
         onChange={(e) => {
           if (durableDraft !== null) {
             setDurableDraft(e.target.value);
