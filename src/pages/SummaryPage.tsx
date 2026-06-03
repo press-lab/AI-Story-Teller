@@ -63,12 +63,14 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
           />
           <CheckboxField
             label="Auto-summarize"
+            disabled={adventure.tokenBudgetSettings.summaryEnabled === false}
             checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
             onChange={(autoSummarize) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, autoSummarize } })}
           />
-          <Field label="Every N turns">
+          <Field label="Every N turns" style={adventure.tokenBudgetSettings.summaryEnabled === false ? { opacity: 0.4 } : undefined}>
             <NumberInput
               min={1}
+              disabled={adventure.tokenBudgetSettings.summaryEnabled === false}
               value={adventure.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
               onChange={(autoSummarizeEveryNTurns) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, autoSummarizeEveryNTurns } })}
             />

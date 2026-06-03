@@ -3,12 +3,14 @@ import type { ChangeEvent } from "react";
 export function Field({
   label,
   children,
+  style,
 }: {
   label: string;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 }) {
   return (
-    <label className="field">
+    <label className="field" style={style}>
       <span>{label}</span>
       {children}
     </label>
@@ -19,14 +21,16 @@ export function CheckboxField({
   label,
   checked,
   onChange,
+  disabled,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <label className="check-field">
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+    <label className="check-field" style={disabled ? { opacity: 0.4 } : undefined}>
+      <input type="checkbox" checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
       <span>{label}</span>
     </label>
   );
@@ -37,17 +41,20 @@ export function NumberInput({
   onChange,
   min,
   max,
+  disabled,
 }: {
   value: number;
   onChange: (value: number) => void;
   min?: number;
   max?: number;
+  disabled?: boolean;
 }) {
   return (
     <input
       type="number"
       min={min}
       max={max}
+      disabled={disabled}
       value={Number.isFinite(value) ? value : 0}
       onChange={(event) => onChange(Number(event.target.value))}
     />
