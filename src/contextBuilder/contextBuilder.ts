@@ -250,6 +250,19 @@ export function extractInlineThoughts(content: string): {
     .replace(/\*\*end of response\.?\*\*/gi, "")           // model-generated closing markers
     .replace(/---\s*end\s*---/gi, "")                      // variant: --- end ---
     .trimEnd();
+
+  // Strip bilingual duplicates: if the response starts in a Latin-script language but then
+  // a CJK block appears (Chinese/Japanese/Korean translation appended by some models), cut there.
+  // Only fires when the first ~200 chars contain no CJK — avoids stripping genuinely multilingual stories.
+  const cjkRange = /[一-鿿぀-ヿ가-힯]/;
+  const firstChunk = cleanContent.slice(0, 200);
+  if (!cjkRange.test(firstChunk)) {
+    const cjkParagraph = /\n\n(?=[一-鿿぀-ヿ가-힯])/;
+    const cjkIdx = cleanContent.search(cjkParagraph);
+    if (cjkIdx > 0) {
+      return { cleanContent: cleanContent.slice(0, cjkIdx).trimEnd(), thoughts, memoryTags };
+    }
+  }
   return { cleanContent, thoughts, memoryTags };
 }
 

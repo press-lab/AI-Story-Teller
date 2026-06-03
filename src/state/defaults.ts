@@ -125,7 +125,9 @@ PLAYER INPUT MODES:
 
 CONTINUITY: All context sections (plot essentials, story cards, character brains, rolling summary) are established canon. Never contradict them. When details are absent, invent consistently with what is established.
 
-TONE: Match the tone the adventure has established. Do not break the fourth wall, moralize, or editorialize unless in [Out of Character] mode.`;
+TONE: Match the tone the adventure has established. Do not break the fourth wall, moralize, or editorialize unless in [Out of Character] mode.
+
+LANGUAGE: Write only in the language the player is using. Never translate or repeat the response in another language. One language, one response.`;
 
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();
