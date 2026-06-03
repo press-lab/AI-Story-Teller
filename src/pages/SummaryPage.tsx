@@ -57,6 +57,11 @@ export function SummaryPage({ adventure, dispatch, onGenerateDurableSummary, onG
         </p>
         <div className="grid two">
           <CheckboxField
+            label="Include in context"
+            checked={adventure.tokenBudgetSettings.summaryEnabled !== false}
+            onChange={(summaryEnabled) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, summaryEnabled } })}
+          />
+          <CheckboxField
             label="Auto-summarize"
             checked={adventure.tokenBudgetSettings.autoSummarize ?? true}
             onChange={(autoSummarize) => dispatch({ type: "SET_TOKEN_BUDGET_SETTINGS", settings: { ...adventure.tokenBudgetSettings, autoSummarize } })}
