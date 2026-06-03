@@ -679,6 +679,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>"End scenes open-ended." (too vague — model defaults to option listing as its "open" behavior)</li>
         </ul>
         <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in a brain card anchor, not in AI Instructions. AI Instructions apply globally — per-character voice belongs on the character.</p>
+        <p><strong>Don't duplicate Global Generation Rules.</strong> Rules like "write each character from their Story Card" and "match the player's language" already live in Global Generation Rules and are sent every turn. Don't restate them in AI Instructions — it wastes tokens and creates two sources of truth. AI Instructions should add what Global Generation Rules doesn't cover: adventure-specific tone, narrator voice, world flavor.</p>
         <p><strong>The word "choices" is a trigger.</strong> Whenever you write "leave X's choices for the player," the model reads "present choices to the player." Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
         <p><strong>The most important rule:</strong> AI Instructions are a narrative contract, not a prompt. They tell the model <em>what kind of story to tell</em>, not what to do next turn. Keep them stable, short, and behavioral — not scene-specific.</p>
       </>
