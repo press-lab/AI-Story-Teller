@@ -29,8 +29,8 @@ describe("mobile layout contract", () => {
     const mobileBlock = css.match(/@media \(max-width: 640px\) \{[\s\S]*$/)?.[0] ?? "";
 
     expect(mobileBlock).toMatch(/input,\s*\n\s*select,\s*\n\s*textarea\s*{[^}]*font-size:\s*16px/s);
-    expect(mobileBlock).toMatch(/\.composer\s*{[^}]*position:\s*sticky/s);
-    expect(mobileBlock).toMatch(/\.composer\s*{[^}]*bottom:\s*0/s);
+    // position:relative (not sticky) avoids iOS Safari overflow-containment horizontal scroll
+    expect(mobileBlock).toMatch(/\.composer\s*{[^}]*position:\s*relative/s);
     expect(mobileBlock).toMatch(/\.composer-actions\s*{[^}]*overflow-x:\s*auto/s);
     expect(mobileBlock).toMatch(/\.tool-modal\s*{[^}]*height:\s*100dvh/s);
   });

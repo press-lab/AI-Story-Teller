@@ -304,6 +304,16 @@ export interface RawImportEntry {
   updatedAt: ISODateString;
 }
 
+/** Categories for inline memory tagging (zero-cost, piggybacks on story generation). */
+export type InlineMemoryCategory = "relationship" | "world_fact" | "character_reveal" | "plot_beat" | "status_change";
+
+export interface SystemTriggerSettings {
+  /** When false, no <memory> tag instructions are injected and no proposals are generated. */
+  enabled: boolean;
+  /** Per-category opt-out. All true by default. */
+  categories: Record<InlineMemoryCategory, boolean>;
+}
+
 export type MemoryProposalType =
   | "storyCard"
   | "brainUpdate"
@@ -441,6 +451,7 @@ export interface Adventure {
   semanticEvaluationSettings: SemanticEvaluationSettings;
   memoryAutoApprove: MemoryAutoApproveSettings;
   memoryDetectionSettings: MemoryDetectionSettings;
+  systemTriggers: SystemTriggerSettings;
 }
 
 export interface MemoryAutoApproveSettings {
@@ -658,6 +669,7 @@ export type AdventureAction =
   | { type: "UPDATE_ROLLING_SUMMARY"; content: string; lastSummarizedMessageIndex?: number }
   | { type: "UPDATE_SCENE_STATE"; content: string }
   | { type: "SET_TOKEN_BUDGET_SETTINGS"; settings: TokenBudgetSettings }
+  | { type: "SET_SYSTEM_TRIGGER_SETTINGS"; settings: SystemTriggerSettings }
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
   | { type: "SET_SEMANTIC_EVALUATION_SETTINGS"; settings: SemanticEvaluationSettings }
   | { type: "SET_MEMORY_AUTO_APPROVE"; settings: MemoryAutoApproveSettings }

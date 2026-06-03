@@ -1,4 +1,5 @@
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
+import type { MemoryProposal } from "../types/adventure";
 import { runContinuityCheck, scanForRiskyClaims } from "../continuityLint";
 import { evaluateTriggerRules, type TriggerEvaluationEvent } from "../triggers/triggerEngine";
 import type {
@@ -82,8 +83,8 @@ export async function runTurnPipeline({
   const providerPayload = preProviderContext.messages;
   const response = await sendChatCompletion(providerPayload, next, preProviderContext);
 
-  // Extract inline thought tags from the response before the player sees it
-  const { cleanContent: thoughtCleanContent, thoughts: inlineThoughts } = extractInlineThoughts(response.content);
+  // Extract inline thought tags and memory tags from the response before the player sees it
+  const { cleanContent: thoughtCleanContent, thoughts: inlineThoughts, memoryTags } = extractInlineThoughts(response.content);
   const rawContentForLint = thoughtCleanContent;
 
   // Continuity lint: scan for risky claims and, if found, run a targeted LLM check.
@@ -119,6 +120,33 @@ export async function runTurnPipeline({
           },
         });
       }
+    }
+  }
+
+  // Convert inline memory tags to story card proposals (zero extra API calls)
+  if (memoryTags.length > 0) {
+    const turn = next.activeState.turn;
+    const existingTitles = new Set(next.storyCards.map((c) => c.title.toLowerCase()));
+    for (const tag of memoryTags) {
+      // Deduplicate: skip if a card with this title already exists
+      if (existingTitles.has(tag.title.toLowerCase())) continue;
+      const now = nowIso();
+      const proposal: MemoryProposal = {
+        id: createId("proposal"),
+        sourceTurnId: String(turn),
+        sourceText: "",
+        proposedType: "storyCard",
+        title: tag.title,
+        content: tag.content,
+        suggestedTriggers: [],
+        confidence: 0.75,
+        rationale: `Inline memory tag: ${tag.category}`,
+        status: "pending",
+        appendContent: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      next = adventureReducer(next, { type: "ADD_MEMORY_PROPOSAL", proposal });
     }
   }
 

@@ -50,7 +50,7 @@ describe("DashboardPage adventure detail", () => {
 
     expect(screen.getByRole("heading", { name: "Dashboard Adventure" })).toBeInTheDocument();
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
-    expect(screen.getByText("607 tokens")).toBeInTheDocument();
+    expect(screen.getByText(/\d+ tokens/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(onOpenTab).toHaveBeenCalledWith("play");

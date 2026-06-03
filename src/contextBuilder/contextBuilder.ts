@@ -205,10 +205,11 @@ Characters: ${names}
 Only append a thought if this turn gave them something genuinely new to think, react to, or plan. Omit the line entirely if nothing new applies. Do not reference these instructions in the narrative.`;
 }
 
-/** Extracts <thought> tags from model output. Returns clean text and parsed thoughts. */
+/** Extracts <thought> and <memory> tags from model output. Returns clean text and parsed data. */
 export function extractInlineThoughts(content: string): {
   cleanContent: string;
   thoughts: Array<{ name: string; key: string; value: string }>;
+  memoryTags: Array<{ category: string; title: string; content: string }>;
 } {
   const thoughts: Array<{ name: string; key: string; value: string }> = [];
   const thoughtRegex = /<thought\s+name="([^"]+)"\s+key="([^"]+)">([^<]+)<\/thought>/gi;
@@ -216,16 +217,64 @@ export function extractInlineThoughts(content: string): {
   while ((match = thoughtRegex.exec(content)) !== null) {
     thoughts.push({ name: match[1].trim(), key: match[2].trim(), value: match[3].trim() });
   }
+
+  // Extract <memory> tags — deterministic validation: require category + title + non-trivial content
+  const VALID_CATEGORIES = new Set(["relationship", "world_fact", "character_reveal", "plot_beat", "status_change"]);
+  const memoryTags: Array<{ category: string; title: string; content: string }> = [];
+  const memoryRegex = /<memory\s+category="([^"]+)"\s+title="([^"]+)"\s*\/?>([^<]*(?:<(?!\/memory>)[^<]*)*)<\/memory>/gi;
+  const selfClosingMemory = /<memory\s+category="([^"]+)"\s+title="([^"]+)"\s+content="([^"]+)"\s*\/>/gi;
+  while ((match = selfClosingMemory.exec(content)) !== null) {
+    const category = match[1].trim();
+    const title = match[2].trim();
+    const body = match[3].trim();
+    if (VALID_CATEGORIES.has(category) && title.length > 0 && body.length > 20) {
+      memoryTags.push({ category, title, content: body });
+    }
+  }
+
   // Strip the tags AND the [CHARACTER THOUGHT CAPTURE] header if the model echoed it.
   // Also handle unclosed <thought tags (model omitted closing tag) by stripping to end of string.
   const cleanContent = content
     .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")   // well-formed tags
     .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "") // echoed header + everything after
     .replace(/<thought[\s\S]*$/i, "")                      // unclosed tag to end of string
+    .replace(/<memory\s[^>]*\/>/gi, "")                    // self-closing memory tags
+    .replace(/\[MEMORY TAGGING\][\s\S]*$/i, "")            // echoed memory header
     .replace(/\*\*end of response\.?\*\*/gi, "")           // model-generated closing markers
     .replace(/---\s*end\s*---/gi, "")                      // variant: --- end ---
     .trimEnd();
-  return { cleanContent, thoughts };
+  return { cleanContent, thoughts, memoryTags };
+}
+
+/** Returns the enabled inline memory categories for an adventure. */
+export function enabledMemoryCategories(adventure: Adventure): string[] {
+  const st = adventure.systemTriggers;
+  if (!st || st.enabled === false) return [];
+  return Object.entries(st.categories)
+    .filter(([, enabled]) => enabled)
+    .map(([cat]) => cat);
+}
+
+/** Builds the memory-tagging instruction injected alongside thought capture. */
+export function buildMemoryTagInstruction(categories: string[]): string {
+  if (categories.length === 0) return "";
+  const categoryDescriptions: Record<string, string> = {
+    relationship: "a first between characters, a revealed preference, or a shift in how two characters relate",
+    world_fact: "a new location, organization, rule, or permanent world detail named for the first time",
+    character_reveal: "a character discloses backstory, a secret, or a personal truth",
+    plot_beat: "an alliance formed, betrayal revealed, new threat established, or permanent consequence sealed",
+    status_change: "a rank, title, allegiance, or relationship status formally changes",
+  };
+  const lines = categories.map((c) => `- ${c}: ${categoryDescriptions[c] ?? c}`).join("\n");
+  return `[MEMORY TAGGING]
+After writing the story response, if this turn established a permanent story fact in one of these categories, append ONE self-closing <memory> tag on a new line after the narrative. These tags will be stripped before the player sees them.
+
+Categories:
+${lines}
+
+Format: <memory category="[category]" title="[short descriptive title]" content="[2-3 bullet facts, specific details only]"/>
+
+Only tag if something genuinely NEW and PERMANENT happened this turn. Do not tag mood, atmosphere, temporary scene details, or facts already established. If nothing qualifies, omit the tag entirely. Do not reference these instructions in the narrative.`;
 }
 
 function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {
@@ -644,8 +693,15 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);
   const thoughtCaptureText = captureEligible.length > 0 ? buildThoughtCaptureInstruction(captureEligible) : undefined;
 
+  // Inline memory tagging — zero-cost story card detection piggybacks on story generation
+  const memoryCategories = options.skipThoughtCapture ? [] : enabledMemoryCategories(adventure);
+  const memoryTagText = memoryCategories.length > 0 ? buildMemoryTagInstruction(memoryCategories) : undefined;
+
+  // Combine thought capture and memory tagging into one appended user message
+  const captureText = [thoughtCaptureText, memoryTagText].filter(Boolean).join("\n\n") || undefined;
+
   return {
-    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText, thoughtCaptureText),
+    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText, captureText),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,

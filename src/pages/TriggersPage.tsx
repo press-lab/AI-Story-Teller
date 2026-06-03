@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TriggerEvaluationMode, TriggerMatchType, TriggerSource } from "../types/adventure";
+import type { InlineMemoryCategory, TriggerEvaluationMode, TriggerMatchType, TriggerSource } from "../types/adventure";
 import { makeTriggerRule } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput, commaList, fromCommaList } from "./shared";
@@ -24,6 +24,46 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
 
   return (
     <section className="page">
+      <article className="panel">
+        <h3>System Triggers</h3>
+        <p className="muted">
+          Inline story card detection — zero extra API calls. The model flags permanent story facts while writing each response.
+          Proposals go to the Memory Inbox for your approval. Turn off categories you don't want.
+        </p>
+        {(() => {
+          const st = adventure.systemTriggers;
+          const enabled = st.enabled !== false;
+          const categories: Array<{ key: InlineMemoryCategory; label: string; description: string }> = [
+            { key: "relationship", label: "Relationship Milestone", description: "First between characters, revealed preference, dynamic shift" },
+            { key: "world_fact", label: "World Fact", description: "New location, organization, rule, or permanent world detail" },
+            { key: "character_reveal", label: "Character Reveal", description: "Character discloses backstory, secret, or personal truth" },
+            { key: "plot_beat", label: "Plot Beat", description: "Alliance, betrayal, new threat, or permanent consequence sealed" },
+            { key: "status_change", label: "Status Change", description: "Rank, title, allegiance, or relationship status changes" },
+          ];
+          return (
+            <>
+              <CheckboxField
+                label="Enable system triggers"
+                checked={enabled}
+                onChange={(v) => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: v } })}
+              />
+              <div className="grid two" style={{ marginTop: "0.5rem", opacity: enabled ? 1 : 0.4, pointerEvents: enabled ? undefined : "none" }}>
+                {categories.map(({ key, label, description }) => (
+                  <div key={key}>
+                    <CheckboxField
+                      label={label}
+                      checked={st.categories[key] !== false}
+                      onChange={(v) => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, categories: { ...st.categories, [key]: v } } })}
+                    />
+                    <p className="muted" style={{ marginTop: "0.1rem", fontSize: "0.8rem" }}>{description}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          );
+        })()}
+      </article>
+
       <article className="panel">
         <h3>Automations</h3>
         <p className="muted">

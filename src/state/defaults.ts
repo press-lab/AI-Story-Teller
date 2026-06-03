@@ -8,6 +8,7 @@ import type {
   Quest,
   SemanticEvaluationSettings,
   StoryCard,
+  SystemTriggerSettings,
   TokenBudgetSettings,
   TriggerRule,
   ProviderRequestThrottle,
@@ -79,6 +80,17 @@ export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
   enabled: true,
   generateContent: true,
   everyNTurns: 1,
+};
+
+export const defaultSystemTriggerSettings: SystemTriggerSettings = {
+  enabled: true,
+  categories: {
+    relationship: true,
+    world_fact: true,
+    character_reveal: true,
+    plot_beat: true,
+    status_change: true,
+  },
 };
 
 
@@ -168,6 +180,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
     memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
     memoryDetectionSettings: defaultMemoryDetectionSettings,
+    systemTriggers: defaultSystemTriggerSettings,
   };
 }
 
@@ -431,6 +444,14 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     memoryDetectionSettings: {
       ...defaultMemoryDetectionSettings,
       ...(adventure.memoryDetectionSettings ?? {}),
+    },
+    systemTriggers: {
+      ...defaultSystemTriggerSettings,
+      ...(adventure.systemTriggers ?? {}),
+      categories: {
+        ...defaultSystemTriggerSettings.categories,
+        ...(adventure.systemTriggers?.categories ?? {}),
+      },
     },
     tokenBudgetSettings: {
       ...defaultTokenBudgetSettings,

@@ -796,6 +796,8 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       });
     case "SET_TOKEN_BUDGET_SETTINGS":
       return touchAdventure(state, { tokenBudgetSettings: action.settings });
+    case "SET_SYSTEM_TRIGGER_SETTINGS":
+      return touchAdventure(state, { systemTriggers: action.settings });
     case "SET_MODEL_CONFIG":
       return touchAdventure(state, { modelConfig: stripProviderKey(action.config) });
     case "SET_SEMANTIC_EVALUATION_SETTINGS":
