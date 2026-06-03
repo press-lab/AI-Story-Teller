@@ -209,7 +209,7 @@ Only append a thought if this turn gave them something genuinely new to think, r
 export function extractInlineThoughts(content: string): {
   cleanContent: string;
   thoughts: Array<{ name: string; key: string; value: string }>;
-  memoryTags: Array<{ category: string; title: string; content: string }>;
+  memoryTags: Array<{ category: string; title: string; content: string; triggers: string[] }>;
 } {
   const thoughts: Array<{ name: string; key: string; value: string }> = [];
   const thoughtRegex = /<thought\s+name="([^"]+)"\s+key="([^"]+)">([^<]+)<\/thought>/gi;
@@ -220,15 +220,22 @@ export function extractInlineThoughts(content: string): {
 
   // Extract <memory> tags — deterministic validation: require category + title + non-trivial content
   const VALID_CATEGORIES = new Set(["relationship", "world_fact", "character_reveal", "plot_beat", "status_change"]);
-  const memoryTags: Array<{ category: string; title: string; content: string }> = [];
-  const memoryRegex = /<memory\s+category="([^"]+)"\s+title="([^"]+)"\s*\/?>([^<]*(?:<(?!\/memory>)[^<]*)*)<\/memory>/gi;
-  const selfClosingMemory = /<memory\s+category="([^"]+)"\s+title="([^"]+)"\s+content="([^"]+)"\s*\/>/gi;
+  const memoryTags: Array<{ category: string; title: string; content: string; triggers: string[] }> = [];
+  // Match self-closing tags with optional triggers attribute (order-independent)
+  const selfClosingMemory = /<memory\b([^/]*)\/?>/gi;
+  function attr(attrs: string, name: string): string {
+    const m = new RegExp(`\\b${name}="([^"]*)"`, "i").exec(attrs);
+    return m ? m[1].trim() : "";
+  }
   while ((match = selfClosingMemory.exec(content)) !== null) {
-    const category = match[1].trim();
-    const title = match[2].trim();
-    const body = match[3].trim();
+    const attrs = match[1];
+    const category = attr(attrs, "category");
+    const title = attr(attrs, "title");
+    const body = attr(attrs, "content");
+    const triggersRaw = attr(attrs, "triggers");
+    const triggers = triggersRaw ? triggersRaw.split(",").map((t) => t.trim()).filter(Boolean) : [];
     if (VALID_CATEGORIES.has(category) && title.length > 0 && body.length > 20) {
-      memoryTags.push({ category, title, content: body });
+      memoryTags.push({ category, title, content: body, triggers });
     }
   }
 
@@ -272,7 +279,7 @@ After writing the story response, if this turn established a permanent story fac
 Categories:
 ${lines}
 
-Format: <memory category="[category]" title="[short descriptive title]" content="[2-3 bullet facts, specific details only]"/>
+Format: <memory category="[category]" title="[short descriptive title]" content="[2-3 bullet facts, specific details only]" triggers="[comma-separated keywords or character names that should surface this card]"/>
 
 Only tag if something genuinely NEW and PERMANENT happened this turn. Do not tag mood, atmosphere, temporary scene details, or facts already established. If nothing qualifies, omit the tag entirely. Do not reference these instructions in the narrative.`;
 }

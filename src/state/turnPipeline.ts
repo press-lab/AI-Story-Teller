@@ -138,7 +138,7 @@ export async function runTurnPipeline({
         proposedType: "storyCard",
         title: tag.title,
         content: tag.content,
-        suggestedTriggers: [],
+        suggestedTriggers: tag.triggers,
         confidence: 0.75,
         rationale: `Inline memory tag: ${tag.category}`,
         status: "pending",
