@@ -222,6 +222,8 @@ export function extractInlineThoughts(content: string): {
     .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")   // well-formed tags
     .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "") // echoed header + everything after
     .replace(/<thought[\s\S]*$/i, "")                      // unclosed tag to end of string
+    .replace(/\*\*end of response\.?\*\*/gi, "")           // model-generated closing markers
+    .replace(/---\s*end\s*---/gi, "")                      // variant: --- end ---
     .trimEnd();
   return { cleanContent, thoughts };
 }
