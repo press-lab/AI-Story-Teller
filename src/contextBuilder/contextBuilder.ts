@@ -276,25 +276,32 @@ export function enabledMemoryCategories(adventure: Adventure): string[] {
 }
 
 /** Builds the memory-tagging instruction injected alongside thought capture. */
-export function buildMemoryTagInstruction(categories: string[]): string {
+export function buildMemoryTagInstruction(categories: string[], existingCardTitles: string[] = []): string {
   if (categories.length === 0) return "";
   const categoryDescriptions: Record<string, string> = {
-    relationship: "a first between characters, a revealed preference, or a shift in how two characters relate",
-    world_fact: "a new location, organization, rule, or permanent world detail named for the first time",
-    character_reveal: "a character discloses backstory, a secret, or a personal truth",
-    plot_beat: "an alliance formed, betrayal revealed, new threat established, or permanent consequence sealed",
-    status_change: "a rank, title, allegiance, or relationship status formally changes",
+    relationship: "confirmed bond, established dynamic, or sealed commitment between two characters",
+    world_fact: "new named location, faction, technique, or permanent world rule introduced this turn",
+    character_reveal: "new named character introduced, or a character's permanent nature, role, or history revealed",
+    plot_beat: "permanent consequence, sealed alliance, betrayal, or irreversible shift in the story's state",
+    status_change: "rank, title, allegiance, or formal role that has permanently changed",
   };
   const lines = categories.map((c) => `- ${c}: ${categoryDescriptions[c] ?? c}`).join("\n");
   return `[MEMORY TAGGING]
-After writing the story response, if this turn established a permanent story fact in one of these categories, append ONE self-closing <memory> tag on a new line after the narrative. These tags will be stripped before the player sees them.
+After writing your response, if this turn introduced a NEW named subject (character, location, technique, or relationship) not already captured in the story cards, append ONE self-closing <memory> tag. These tags are stripped before the player sees them.
 
-Categories:
+Qualifying categories:
 ${lines}
 
-Format: <memory category="[category]" title="[short descriptive title]" content="[2-3 bullet facts, specific details only]" triggers="[comma-separated keywords or character names that should surface this card]"/>
+FORMAT — bullet facts, present tense, third person:
+<memory category="[category]" title="[Subject Name]" content="• [Permanent fact about the subject.]\n• [Permanent fact.]\n• [Permanent fact.]" triggers="[subject name, relevant keywords]"/>
 
-Only tag if something genuinely NEW and PERMANENT happened this turn. Do not tag mood, atmosphere, temporary scene details, or facts already established. If nothing qualifies, omit the tag entirely. Do not reference these instructions in the narrative.`;
+RULES:
+- Title is the SUBJECT'S NAME — the person, place, technique, or relationship (e.g. "Nyx", "Plum Tree Courtyard", "Nyx and Setu Bond"). Never an event name ("Mutual confession", "First kiss").
+- Content is what is PERMANENTLY TRUE about this subject — who they are, their role, personality, abilities, established relationship state. Written so the AI understands this subject every time it appears.
+- Do NOT log scene events. Wrong: "They kissed on the ship." Right: "Romantic bond confirmed; kept deliberately discreet from court."
+- Only tag NEW subjects with no existing story card. If the subject already has a card, skip the tag.
+- 3–5 bullets maximum. Each bullet is one standalone fact.
+- One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards (do not duplicate): ${existingCardTitles.join(", ")}` : ""}`;
 }
 
 function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {
@@ -715,7 +722,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   // Inline memory tagging — zero-cost story card detection piggybacks on story generation
   const memoryCategories = options.skipThoughtCapture ? [] : enabledMemoryCategories(adventure);
-  const memoryTagText = memoryCategories.length > 0 ? buildMemoryTagInstruction(memoryCategories) : undefined;
+  const existingCardTitles = adventure.storyCards.map((c) => c.title);
+  const memoryTagText = memoryCategories.length > 0 ? buildMemoryTagInstruction(memoryCategories, existingCardTitles) : undefined;
 
   // Combine thought capture and memory tagging into one appended user message
   const captureText = [thoughtCaptureText, memoryTagText].filter(Boolean).join("\n\n") || undefined;
