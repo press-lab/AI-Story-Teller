@@ -302,7 +302,11 @@ export function useAdventureRuntime(
 
     try {
       const continueConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
-      const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: continueConfig });
+      // Inject a silent user turn so the model has something to respond to.
+      // continueTurn sends no player input — without this the model sees its own last
+      // message and has no cue for what to generate next, causing repetition or stumbling.
+      const continueMessages = [...context.messages, { role: "user" as const, content: "[continue]" }];
+      const response = await sendOpenAICompatibleChatCompletion({ messages: continueMessages, config: continueConfig });
       const { cleanContent: continueClean } = extractInlineThoughts(response.content);
       next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: continueClean, usage: response.usage });
       next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
