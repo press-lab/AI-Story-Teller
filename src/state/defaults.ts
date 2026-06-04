@@ -5,7 +5,6 @@ import type {
   MemoryDetectionSettings,
   NextTurnNote,
   ProviderConfig,
-  Quest,
   SemanticEvaluationSettings,
   StoryCard,
   SystemTriggerSettings,
@@ -157,8 +156,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     storyCards: [],
     brains: [],
     triggerRules: [],
-    quests: [],
-    questState: {},
     rollingSummary: { content: "", updatedAt: timestamp },
     sceneState: { content: "", updatedAt: timestamp },
     messages: [],
@@ -270,6 +267,7 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
     lastUpdatedTurn: overrides.lastUpdatedTurn,
     lastUpdatedAt: overrides.lastUpdatedAt,
     lastGeneratedUpdatePreview: overrides.lastGeneratedUpdatePreview,
+    printThoughts: overrides.printThoughts ?? false,
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };
@@ -293,29 +291,6 @@ export function makeTriggerRule(overrides: Partial<TriggerRule> & Pick<TriggerRu
     priority: overrides.priority ?? 0,
     cooldownTurns: overrides.cooldownTurns ?? 0,
     lastFiredTurn: overrides.lastFiredTurn,
-    createdAt: overrides.createdAt ?? timestamp,
-    updatedAt: overrides.updatedAt ?? timestamp,
-  };
-}
-
-export function makeQuest(overrides: Partial<Quest> & Pick<Quest, "title">): Quest {
-  const timestamp = nowIso();
-  return {
-    id: overrides.id ?? createId("quest"),
-    title: overrides.title,
-    description: overrides.description ?? "",
-    status: overrides.status ?? "inactive",
-    currentStepId: overrides.currentStepId,
-    steps:
-      overrides.steps?.map((step) => ({
-        ...step,
-        completionCondition: step.completionCondition ?? "",
-      })) ?? [],
-    relatedCards: overrides.relatedCards ?? [],
-    priority: overrides.priority ?? 0,
-    pinned: overrides.pinned ?? false,
-    protected: overrides.protected ?? false,
-    inclusionPolicy: overrides.inclusionPolicy ?? "always",
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };
@@ -424,17 +399,6 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       evaluationMode: rule.evaluationMode ?? "semantic",
       condition: rule.condition ?? "",
       updatePrompt: rule.updatePrompt ?? "",
-    })),
-    quests: (adventure.quests ?? []).map((quest) => ({
-      ...quest,
-      priority: quest.priority ?? 0,
-      pinned: quest.pinned ?? false,
-      protected: quest.protected ?? false,
-      inclusionPolicy: quest.inclusionPolicy ?? "always",
-      steps: quest.steps.map((step) => ({
-        ...step,
-        completionCondition: step.completionCondition ?? "",
-      })),
     })),
     semanticEvaluationSettings: {
       ...defaultSemanticEvaluationSettings,

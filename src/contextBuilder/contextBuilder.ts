@@ -211,9 +211,16 @@ export function extractInlineThoughts(content: string): {
   memoryTags: Array<{ category: string; title: string; content: string; triggers: string[] }>;
 } {
   const thoughts: Array<{ name: string; key: string; value: string }> = [];
+  // Standard format: <thought name="..." key="...">...</thought>
   const thoughtRegex = /<thought\s+name="([^"]+)"\s+key="([^"]+)">([^<]+)<\/thought>/gi;
   let match: RegExpExecArray | null;
   while ((match = thoughtRegex.exec(content)) !== null) {
+    thoughts.push({ name: match[1].trim(), key: match[2].trim(), value: match[3].trim() });
+  }
+  // Variant format the model sometimes emits: <other name="..." thought="...">...</other>
+  // Map thought= attribute to key for compatibility with the standard thought pipeline.
+  const otherRegex = /<other\s+name="([^"]+)"\s+thought="([^"]+)">([^<]+)<\/other>/gi;
+  while ((match = otherRegex.exec(content)) !== null) {
     thoughts.push({ name: match[1].trim(), key: match[2].trim(), value: match[3].trim() });
   }
 
@@ -241,9 +248,11 @@ export function extractInlineThoughts(content: string): {
   // Strip the tags AND the [CHARACTER THOUGHT CAPTURE] header if the model echoed it.
   // Also handle unclosed <thought tags (model omitted closing tag) by stripping to end of string.
   const cleanContent = content
-    .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")   // well-formed tags
+    .replace(/<thought[^>]*>[\s\S]*?<\/thought>/gi, "")   // well-formed <thought> tags
+    .replace(/<other[^>]*>[\s\S]*?<\/other>/gi, "")       // variant <other> tags
     .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "") // echoed header + everything after
-    .replace(/<thought[\s\S]*$/i, "")                      // unclosed tag to end of string
+    .replace(/<thought[\s\S]*$/i, "")                      // unclosed <thought> tag to end of string
+    .replace(/<other[\s\S]*$/i, "")                        // unclosed <other> tag to end of string
     .replace(/<memory\s[^>]*\/>/gi, "")                    // self-closing memory tags
     .replace(/\[MEMORY TAGGING\][\s\S]*$/i, "")            // echoed memory header
     .replace(/\*\*end of response\.?\*\*/gi, "")           // model-generated closing markers

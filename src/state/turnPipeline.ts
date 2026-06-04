@@ -104,6 +104,8 @@ export async function runTurnPipeline({
   }
 
   // Apply inline thought captures to brains (zero extra API calls)
+  // Also collect thoughts from brains with printThoughts enabled so they can be appended visibly.
+  const visibleThoughtLines: string[] = [];
   if (inlineThoughts.length > 0) {
     const turn = next.activeState.turn;
     for (const thought of inlineThoughts) {
@@ -119,8 +121,14 @@ export async function runTurnPipeline({
             lastUpdatedTurn: turn,
           },
         });
+        if (brain.printThoughts) {
+          visibleThoughtLines.push(`*[${brain.characterName}]: ${thought.value}*`);
+        }
       }
     }
+  }
+  if (visibleThoughtLines.length > 0) {
+    finalContent = `${finalContent}\n\n${visibleThoughtLines.join("\n")}`;
   }
 
   // Convert inline memory tags to story card proposals (zero extra API calls)

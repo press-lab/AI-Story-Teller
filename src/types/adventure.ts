@@ -97,6 +97,8 @@ export interface BrainEntry {
   lastUpdatedTurn?: number;
   lastUpdatedAt?: ISODateString;
   lastGeneratedUpdatePreview?: string;
+  /** When true, thought tags captured from this character are appended visibly to the story output. */
+  printThoughts?: boolean;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
@@ -107,10 +109,9 @@ export type TriggerMatchType = "keyword" | "phrase" | "regex";
 export type TriggerEvaluationMode = "semantic" | "keyword" | "regex";
 
 export interface TriggerCondition {
-  field: "turn" | "questStatus" | "stateFlag";
+  field: "turn" | "stateFlag";
   operator: "equals" | "notEquals" | "gte" | "lte" | "includes";
   value: string | number | boolean;
-  questId?: string;
   key?: string;
 }
 
@@ -134,11 +135,6 @@ export type TriggerAction =
   | { type: "appendBrain"; brainId: string }
   | { type: "appendBrainState"; brainId: string; field?: BrainStateField; text: string }
   | { type: "replaceBrainState"; brainId: string; field?: BrainStateField; text: string }
-  | { type: "startQuest"; questId: string }
-  | { type: "progressQuest"; questId: string; stepId?: string }
-  | { type: "completeQuest"; questId: string }
-  | { type: "activateQuestCard"; questId: string; storyCardId?: string }
-  | { type: "createMilestoneCard"; questId?: string; title: string; content: string }
   | { type: "forceIncludeNextTurn"; targetType: ForceIncludeTargetType; targetId: string };
 
 export interface TriggerRule {
@@ -156,37 +152,6 @@ export interface TriggerRule {
   priority: number;
   cooldownTurns: number;
   lastFiredTurn?: number;
-  createdAt: ISODateString;
-  updatedAt: ISODateString;
-}
-
-export type QuestStatus = "inactive" | "active" | "completed" | "failed";
-export type QuestStepStatus = "pending" | "active" | "completed" | "failed";
-
-export interface QuestStep {
-  id: string;
-  title: string;
-  objective: string;
-  status: QuestStepStatus;
-  completionCondition: string;
-  triggerConditions: TriggerCondition[];
-  onStartActions: TriggerAction[];
-  onCompleteActions: TriggerAction[];
-  contextText: string;
-}
-
-export interface Quest {
-  id: string;
-  title: string;
-  description: string;
-  status: QuestStatus;
-  currentStepId?: string;
-  steps: QuestStep[];
-  relatedCards: string[];
-  priority: number;
-  pinned: boolean;
-  protected: boolean;
-  inclusionPolicy: ContextInclusionPolicy;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
@@ -272,7 +237,7 @@ export interface MemoryDetectionSettings {
   everyNTurns: number;
 }
 
-export type ForceIncludeTargetType = "component" | "storyCard" | "brain" | "quest";
+export type ForceIncludeTargetType = "component" | "storyCard" | "brain";
 
 export interface ForceIncludeEntry {
   id: string;
@@ -347,7 +312,7 @@ export interface EvaluatedCondition {
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "questStep" | "component" | "storyCard" | "summary";
+  sourceType: "triggerRule" | "brain" | "component" | "storyCard" | "summary";
 }
 
 export interface GeneratedContentPreview {
@@ -440,8 +405,6 @@ export interface Adventure {
   storyCards: StoryCard[];
   brains: BrainEntry[];
   triggerRules: TriggerRule[];
-  quests: Quest[];
-  questState: JsonObject;
   rollingSummary: RollingSummary;
   sceneState?: RollingSummary;
   messages: Message[];
@@ -509,7 +472,6 @@ export type ContextSectionKind =
   | "components"      // E. General always-on / pinned components
   | "storyCards"      // F. Story Cards + Auto-Cards (triggered / pinned)
   | "brains"          // G. Brain entries
-  | "questState"      // H. Active quest state
   | "rollingSummary"  // I. Rolling Summary — durable canon
   | "nextTurnNote"    // J. Next Output Bias
   | "recentMessages"  // K. Recent Messages
@@ -525,7 +487,6 @@ export interface ContextItem {
     | "component"
     | "storyCard"
     | "brain"
-    | "quest"
     | "summary"
     | "sceneState"
     | "nextTurnNote"
@@ -648,15 +609,6 @@ export type AdventureAction =
   | { type: "MARK_TRIGGER_FIRED"; triggerRuleId: string; turn: number }
   | { type: "LOG_TRIGGER_FIRE"; entry: TriggerLogEntry }
   | { type: "LOG_EVALUATION_RESULT"; entry: EvaluationLogEntry }
-  | { type: "UPSERT_QUEST"; quest: Quest }
-  | { type: "DELETE_QUEST"; questId: string }
-  | { type: "START_QUEST"; questId: string }
-  | { type: "PROGRESS_QUEST"; questId: string; stepId?: string }
-  | { type: "COMPLETE_QUEST"; questId: string }
-  | { type: "COMPLETE_QUEST_STEP"; questId: string; stepId?: string }
-  | { type: "FAIL_QUEST"; questId: string }
-  | { type: "ACTIVATE_QUEST_CARD"; questId: string; storyCardId?: string }
-  | { type: "CREATE_MILESTONE_CARD"; questId?: string; title: string; content: string }
   | { type: "FORCE_INCLUDE_NEXT_TURN"; targetType: ForceIncludeTargetType; targetId: string }
   | { type: "ADD_RAW_IMPORT"; rawImport: RawImportEntry }
   | { type: "UPDATE_RAW_IMPORT"; rawImportId: string; patch: Partial<RawImportEntry> }
