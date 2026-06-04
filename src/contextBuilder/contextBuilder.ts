@@ -128,8 +128,7 @@ function isForced(adventure: Adventure, sourceType: ContextItem["sourceType"], i
       entry.expiresTurn >= turn &&
       ((entry.targetType === "storyCard" && sourceType === "storyCard") ||
         (entry.targetType === "brain" && sourceType === "brain") ||
-        (entry.targetType === "component" && sourceType === "component") ||
-        (entry.targetType === "quest" && sourceType === "quest")),
+        (entry.targetType === "component" && sourceType === "component")),
   );
 }
 
@@ -292,15 +291,17 @@ After writing your response, if this turn introduced a NEW named subject (charac
 Qualifying categories:
 ${lines}
 
-FORMAT — bullet facts, present tense, third person:
+FORMAT — for locations, relationships, lore, and plot beats (bullet facts, present tense, third person):
 <memory category="[category]" title="[Subject Name]" content="• [Permanent fact about the subject.]\n• [Permanent fact.]\n• [Permanent fact.]" triggers="[subject name, relevant keywords]"/>
+
+CHARACTER FORMAT — for character_reveal only, include a VOICE CONTRACT after the bullet facts:
+<memory category="character_reveal" title="[Name]" content="• [Who they are, role, or defining trait.]\n• [Permanent fact.]\n\nVOICE CONTRACT\nRhythm: [sentence patterns and pacing]\nDefault move: [instinctive first action when speaking or entering a scene]\nEmotional defense: [how they protect vulnerability]\nNever sounds like: [concrete forbidden behaviors — e.g. warm, offering choices, saying I feel...]\nExample lines: &quot;[line in their actual voice]&quot; / &quot;[another line]&quot;" triggers="[name, relevant keywords]"/>
 
 RULES:
 - Title is the SUBJECT'S NAME — the person, place, technique, or relationship (e.g. "Nyx", "Plum Tree Courtyard", "Nyx and Setu Bond"). Never an event name ("Mutual confession", "First kiss").
 - Content is what is PERMANENTLY TRUE about this subject — who they are, their role, personality, abilities, established relationship state. Written so the AI understands this subject every time it appears.
 - Do NOT log scene events. Wrong: "They kissed on the ship." Right: "Romantic bond confirmed; kept deliberately discreet from court."
 - Only tag NEW subjects with no existing story card. If the subject already has a card, skip the tag.
-- 3–5 bullets maximum. Each bullet is one standalone fact.
 - One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards (do not duplicate): ${existingCardTitles.join(", ")}` : ""}`;
 }
 
@@ -469,9 +470,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // H. Quest State — disabled; quests are not UI-exposed so their data never enters context
-  const questItems: ContextItem[] = [];
-
   // I. Rolling Summary — excluded entirely when summaryEnabled is false
   const summaryCap = budgetSettings.sectionBudgets.rollingSummary;
   const rawSummaryContent = budgetSettings.summaryEnabled !== false ? adventure.rollingSummary.content : "";
@@ -567,7 +565,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     section("components", "E. Components", 3, generalComponentItems),
     section("storyCards", "F. Story Cards", 4, storyCardItems),
     section("brains", "G. Brains", 5, brainItems),
-    section("questState", "H. Quest State", 6, questItems),
     section("rollingSummary", "I. Rolling Summary", 7, summaryItems),
     // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     section("authorNote", "D. Author's Note", 8, authorNoteItems),

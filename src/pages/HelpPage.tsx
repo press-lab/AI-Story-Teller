@@ -157,6 +157,37 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     ),
   },
   {
+    id: "best-practices-character-cards",
+    title: "Character Cards — Voice Contract",
+    category: "Best Practices",
+    summary: "How to write character story cards that actually control voice, not just describe traits.",
+    tags: ["character cards", "voice", "voice contract", "npc", "story cards", "best practices"],
+    body: (
+      <>
+        <p>
+          A character card that only describes traits — "witty, guarded, dangerous" — tells the model what
+          kind of character to generate. It fills the voice in from its defaults, which produces generic
+          "interesting NPC" behavior. To control how a character actually sounds, the card needs a{" "}
+          <strong>Voice Contract</strong>.
+        </p>
+        <p>
+          Append a Voice Contract section to any character card that matters. The existing descriptive
+          content stays — the Voice Contract goes below it:
+        </p>
+        <pre style={{ background: "var(--surface-2, #1e1e1e)", padding: "0.75rem", borderRadius: "4px", fontSize: "0.85em", overflowX: "auto" }}>{`VOICE CONTRACT
+Rhythm: [sentence length, pacing, speech patterns]
+Default move: [what they do first when speaking or entering a scene]
+Emotional defense: [how they protect vulnerability — deflection, humor, aggression, pivot to task, silence]
+Never sounds like: [specific behaviors the AI must not give this character — be concrete]
+Example lines: "[line in their actual voice]" / "[another line]" / "[a third line]"`}</pre>
+        <p><strong>The example lines carry the most weight.</strong> The model pattern-matches prose style from examples far more reliably than it follows trait descriptions. Three lines in the character's actual voice do more than three paragraphs of personality description.</p>
+        <p><strong>"Never sounds like"</strong> is the second most important field. Negative constraints are strong — "never warm, never offers choices, never says what she's feeling directly" is harder for the model to ignore than "emotionally guarded."</p>
+        <p><strong>What not to put in AI Instructions.</strong> Per-character voice belongs on the character's card, not in AI Instructions. AI Instructions apply to every turn globally — character-specific rules dilute them and create two sources of truth. If Nyx needs to sound a specific way, that goes on Nyx's card.</p>
+        <p><strong>Auto-generated cards</strong> from "Generate with AI" and inline memory tagging automatically use Voice Contract format for character cards. For existing cards, paste the Voice Contract section in below the existing content — don't overwrite it.</p>
+      </>
+    ),
+  },
+  {
     id: "side-menu-characters",
     title: "Characters",
     category: "Side Menu",
@@ -657,7 +688,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           <li>"Give the player agency." (same problem — model interprets this as presenting menus)</li>
           <li>"End scenes open-ended." (too vague — model defaults to option listing as its "open" behavior)</li>
         </ul>
-        <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in a brain card anchor, not in AI Instructions. AI Instructions apply globally — per-character voice belongs on the character.</p>
+        <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in the character's Story Card using a Voice Contract — not in AI Instructions. AI Instructions apply globally. Per-character voice belongs on the character's card.</p>
         <p><strong>Don't duplicate Global Generation Rules.</strong> Rules like "write each character from their Story Card" and "match the player's language" already live in Global Generation Rules and are sent every turn. Don't restate them in AI Instructions — it wastes tokens and creates two sources of truth. AI Instructions should add what Global Generation Rules doesn't cover: adventure-specific tone, narrator voice, world flavor.</p>
         <p><strong>The word "choices" is a trigger.</strong> Whenever you write "leave X's choices for the player," the model reads "present choices to the player." Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
         <p><strong>The most important rule:</strong> AI Instructions are a narrative contract, not a prompt. They tell the model <em>what kind of story to tell</em>, not what to do next turn. Keep them stable, short, and behavioral — not scene-specific.</p>

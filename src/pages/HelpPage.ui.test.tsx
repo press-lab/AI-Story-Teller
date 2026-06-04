@@ -36,6 +36,7 @@ describe("HelpPage documentation UI", () => {
       "Chronicle",
       "Memory Suggestions",
       "Story Cards",
+      "Character Cards — Voice Contract",
       "Characters",
       "Summary",
       "World Blocks",
