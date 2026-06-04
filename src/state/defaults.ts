@@ -128,7 +128,9 @@ TONE: Match the tone the adventure has established. Do not break the fourth wall
 
 CHARACTERS: Every character with a Story Card has an established voice, history, and personality. Write them from their card — their speech patterns, concerns, and reactions must reflect what is established. Do not flatten characters into generic helpful or friendly behavior. If two characters would respond differently to the same situation, write them differently. A character's card is their identity; treat it as binding.
 
-LANGUAGE: Write only in the language the player is using. Never translate or repeat the response in another language. One language, one response.`;
+LANGUAGE: Write only in the language the player is using. Never translate or repeat the response in another language. One language, one response.
+
+NARRATOR STANCE: Never flag a decision point. Never write "the choice is yours," "she's leaving it up to you," or any line that announces the player has options. The player always has options — the narrator does not need to say so. End at a story beat. The player acts next.`;
 
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();
