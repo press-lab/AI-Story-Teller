@@ -195,7 +195,6 @@ describe("buildContext", () => {
       storyCards: [],
 
       brains: [],
-      quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       messages: [
         { id: "old", role: "user", content: "old ".repeat(80), createdAt: "2026-01-01T00:00:00.000Z" },
@@ -219,7 +218,6 @@ describe("buildContext", () => {
       storyCards: [],
 
       brains: [],
-      quests: [],
       messages: [],
       rollingSummary: {
         content: `${"front ".repeat(120)}keep-tail`,
@@ -246,7 +244,6 @@ describe("buildContext", () => {
       storyCards: [low, high],
 
       brains: [],
-      quests: [],
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       // Budget sized to fit system-shell + high-priority card only
@@ -271,7 +268,6 @@ describe("buildContext", () => {
       storyCards: [],
 
       brains: [],
-      quests: [],
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       tokenBudgetSettings: budget({ maxContextTokens: 10, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
@@ -312,7 +308,6 @@ describe("buildContext", () => {
       storyCards: [lowSystemSuggested, highUserCard],
 
       brains: [],
-      quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       messages: [
         { id: "old", role: "user", content: "old ".repeat(80), createdAt: "2026-01-01T00:00:00.000Z" },
@@ -360,7 +355,6 @@ describe("buildContext", () => {
       storyCards: [low, high],
 
       brains: [],
-      quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       messages: [{ id: "m1", role: "user", content: "signal", createdAt: "2026-01-01T00:00:00.000Z" }],
       tokenBudgetSettings: budget({ maxContextTokens: 1000, maxRecentMessages: 1, recentMessageWindow: 1 }),
@@ -386,7 +380,6 @@ describe("buildContext", () => {
       activeState: { ...adventureForContext().activeState, turn: 3 },
       storyCards: [inactive],
       brains: [],
-      quests: [],
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
     } satisfies Adventure;
@@ -402,7 +395,6 @@ describe("buildContext", () => {
       components: [],
       storyCards: [],
       brains: [aiBrain],
-      quests: [],
       messages: [{ id: "msg-user", role: "user", content: "npc appears.", createdAt: "2026-01-01T00:00:00.000Z" }],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       tokenBudgetSettings: budget({ maxContextTokens: 5000, maxRecentMessages: 2, recentMessageWindow: 2 }),
@@ -467,7 +459,6 @@ describe("buildContext", () => {
         storyCards: [],
   
         brains: [],
-        quests: [],
         rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
         messages: [],
         activeState: {
@@ -556,7 +547,6 @@ describe("buildContext", () => {
       storyCards: [],
 
       brains: [],
-      quests: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       messages: chronicle,
       tokenBudgetSettings: budget({ maxContextTokens: 50000, maxRecentMessages: 5, recentMessageWindow: 5, sectionBudgets: {} }),

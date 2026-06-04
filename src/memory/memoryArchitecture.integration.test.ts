@@ -18,7 +18,6 @@ describe("memory architecture smoke path", () => {
       ...goldenAdventure(),
       storyCards: [],
       brains: [makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], currentState: "guarded" })],
-      quests: [],
     };
 
     const turnOneClassification = classifyMemory("Margo calls Seth 'hedge prince' as a private joke");
