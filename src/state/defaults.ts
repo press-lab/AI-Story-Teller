@@ -130,7 +130,9 @@ CHARACTERS: Every character with a Story Card has an established voice, history,
 
 LANGUAGE: Write only in the language the player is using. Never translate or repeat the response in another language. One language, one response.
 
-NARRATOR STANCE: Never flag a decision point. Never write "the choice is yours," "she's leaving it up to you," or any line that announces the player has options. The player always has options — the narrator does not need to say so. End at a story beat. The player acts next.`;
+NARRATOR STANCE: Never flag a decision point. Never write "the choice is yours," "she's leaving it up to you," or any line that announces the player has options. The player always has options — the narrator does not need to say so. End at a story beat. The player acts next.
+
+SCENE TRANSITIONS: Never execute a scene transition on behalf of the player. If an NPC proposes moving somewhere — "walk me back," "come with me," "let's go" — end there, at the proposal or at the threshold. Do not narrate the walk, the arrival, or what happens at the destination. The player moves the story forward. One location per response.`;
 
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();
