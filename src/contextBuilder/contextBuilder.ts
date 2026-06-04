@@ -20,9 +20,9 @@ CONTEXT SECTIONS (read all, honour their order):
   B. AI Instructions — narrative rules and style for this adventure.
   C. Plot Essentials — permanent world facts and canon plot state. Ground truth.
   E. Components — general world-building context (always-on or pinned entries).
-  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
   F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.
   G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
+  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
   D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
   L. Scene State — current location, present characters, immediate situation, last story beat. Treat as ground truth for what is happening right now.
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
@@ -565,12 +565,10 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
     section("components", "E. Components", 3, generalComponentItems),
-    section("questState", "H. Quest State", 4, questItems),
-    section("rollingSummary", "I. Rolling Summary", 5, summaryItems),
-    // F. Story Cards and G. Brains are placed after the rolling summary so they are positionally
-    // close to recent messages — giving character voice and world details more influence over generation.
-    section("storyCards", "F. Story Cards", 6, storyCardItems),
-    section("brains", "G. Brains", 7, brainItems),
+    section("storyCards", "F. Story Cards", 4, storyCardItems),
+    section("brains", "G. Brains", 5, brainItems),
+    section("questState", "H. Quest State", 6, questItems),
+    section("rollingSummary", "I. Rolling Summary", 7, summaryItems),
     // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     section("authorNote", "D. Author's Note", 8, authorNoteItems),
     // L. Scene State is placed after Author's Note so the model sees current grounding just before recent messages

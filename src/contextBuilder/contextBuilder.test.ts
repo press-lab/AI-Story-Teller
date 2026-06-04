@@ -116,8 +116,6 @@ describe("buildContext", () => {
   it("assembles sections in the required deterministic order (A–M)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
     // All 13 sections must exist in the correct order
-    // Story Cards and Brains are placed AFTER Rolling Summary so they sit close to recent messages,
-    // giving character voice and world details maximum positional influence over generation.
     // Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     // Scene State follows Author's Note to ground the model in the current moment
     // Continuity Challenge (M) sits between Next Output Bias and Recent Messages when active
@@ -126,10 +124,10 @@ describe("buildContext", () => {
       "aiInstructions",
       "plotEssentials",
       "components",
-      "questState",
-      "rollingSummary",
       "storyCards",
       "brains",
+      "questState",
+      "rollingSummary",
       "authorNote",
       "sceneState",
       "nextTurnNote",
@@ -663,17 +661,16 @@ describe("buildContext", () => {
       latestModelOutput: "The Beast howls at the ward.",
     });
 
-    // Story Cards and Brains placed after Rolling Summary for positional character voice influence.
-    // Author's Note placed just before recent messages (AID-style); Scene State follows for current grounding.
+    // Author's Note placed after rolling summary (AID-style); Scene State follows for current grounding
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
       "components",
-      "questState",
-      "rollingSummary",
       "storyCards",
       "brains",
+      "questState",
+      "rollingSummary",
       "authorNote",
       "sceneState",
       "nextTurnNote",
