@@ -36,16 +36,17 @@ describe("development adventure seed", () => {
     });
 
     const sectionIds = result.sections.map((section) => section.id);
-    // Author's Note appears after rolling summary (AID-style); Scene State follows for current grounding
+    // Story Cards and Brains placed after Rolling Summary for positional character voice influence.
+    // Author's Note appears just before recent messages (AID-style); Scene State follows for current grounding.
     expect(sectionIds).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
       "components",
-      "storyCards",
-      "brains",
       "questState",
       "rollingSummary",
+      "storyCards",
+      "brains",
       "authorNote",
       "sceneState",
       "nextTurnNote",
