@@ -253,7 +253,7 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
     .map((component) => ({
       id: `plotEssentialsPressure:${component.id}`,
       label: `Active Pressure: ${component.title}`,
-      condition: `when the active threat, obligation, or force bearing on the player character has meaningfully changed — a new danger has emerged, stakes have shifted, or a pressure has been resolved or replaced by another. Do NOT fire for minor scene details.`,
+      condition: `when the fundamental nature of the external pressure has changed — a genuinely new threat has arrived, an existing pressure has fully resolved, or the stakes have shifted in kind (not just intensity). Do NOT fire if the same pressure continues with new scene details, escalated tension, or additional obligations layered on top. If uncertain, do NOT fire.`,
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
     }));
@@ -604,12 +604,13 @@ async function generatedActionsFor(
     if (triggerAction.type === "updateComponentMomentum") {
       const momentumComp = adventure.components.find((c) => c.type === "immediateMomentum");
       const content = await sendTargetedUpdate(adventure, providerConfig, plotMomentumPrompt(adventure), accum);
-      const proposal = makeProposal(
-        { proposedType: "plotMomentumUpdate", title: "Immediate Momentum", content, targetId: momentumComp?.id, rationale: "Immediate Momentum update." },
-        adventure,
-      );
-      const actions: AdventureAction[] = [{ type: "ADD_MEMORY_PROPOSAL", proposal }];
-      if (momentumComp) actions.push({ type: "MARK_COMPONENT_UPDATED", componentId: momentumComp.id, turn: adventure.activeState.turn });
+      // Momentum auto-applies directly — no inbox, no approval step.
+      // It describes what is happening right now; by the time a proposal is reviewed it is already stale.
+      const actions: AdventureAction[] = [];
+      if (momentumComp) {
+        actions.push({ type: "UPDATE_COMPONENT", componentId: momentumComp.id, patch: { content } });
+        actions.push({ type: "MARK_COMPONENT_UPDATED", componentId: momentumComp.id, turn: adventure.activeState.turn });
+      }
       return {
         actions,
         generated: { targetType: "component", targetId: momentumComp?.id, title: "Immediate Momentum", preview: preview(content) },
