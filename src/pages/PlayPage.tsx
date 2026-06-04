@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { getCurrentQuestObjective } from "../quests/questEngine";
 import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
@@ -574,9 +573,6 @@ export function PlayPage({
               <span className="trim-warning" title={trimTooltip || "Context trimmed to fit token budget"}>
                 ⚠ {totalDropped} dropped
               </span>
-            )}
-            {getCurrentQuestObjective(adventure.quests) && (
-              <span>{getCurrentQuestObjective(adventure.quests)}</span>
             )}
           </div>
         </div>

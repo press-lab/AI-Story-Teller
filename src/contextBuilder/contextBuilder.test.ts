@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Adventure, MemoryPriorityMode, TokenBudgetSettings } from "../types/adventure";
-import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
 import { buildContext } from "./contextBuilder";
@@ -10,32 +10,12 @@ function adventureForContext(): Adventure {
   const pinned = makeComponent({ title: "Pinned", content: "Pinned component", pinned: true, active: true, priority: 90 });
   const story = makeStoryCard({ title: "Keyed Story", content: "Story content", keys: ["lantern"], active: true, priority: 80 });
   const brain = makeBrain({ characterName: "Mira", triggers: ["lantern"], currentState: "Brain state", active: true, priority: 70 });
-  const quest = makeQuest({
-    title: "Quest",
-    description: "Quest description",
-    status: "active",
-    currentStepId: "step-1",
-    steps: [
-      {
-        id: "step-1",
-        title: "Find",
-        objective: "Find the lantern",
-        status: "active",
-        completionCondition: "when the lantern is found",
-        triggerConditions: [],
-        onStartActions: [],
-        onCompleteActions: [],
-        contextText: "Quest context",
-      },
-    ],
-  });
 
   return {
     ...createDefaultAdventure("Context Test"),
     components: [always, pinned],
     storyCards: [story],
     brains: [brain],
-    quests: [quest],
     rollingSummary: { content: "Old summary events. Recent summary events.", updatedAt: "2026-01-01T00:00:00.000Z" },
     messages: [
       { id: "old-msg", role: "user", content: "Old message about the road.", createdAt: "2026-01-01T00:00:00.000Z" },
@@ -126,7 +106,6 @@ describe("buildContext", () => {
       "components",
       "storyCards",
       "brains",
-      "questState",
       "rollingSummary",
       "authorNote",
       "sceneState",
@@ -142,7 +121,6 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "components")).toEqual(["Always", "Pinned"]);
     expect(itemTitles(adventureForContext(), "storyCards")).toEqual(["Keyed Story"]);
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
-    expect(itemTitles(adventureForContext(), "questState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
     expect(itemTitles(adventureForContext(), "sceneState")).toEqual([]);
     expect(itemTitles(adventureForContext(), "nextTurnNote")).toEqual([]);
@@ -643,8 +621,8 @@ describe("buildContext", () => {
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
     // adventureForContext has no aiInstructions/plotEssentials/authorNote/sceneState content
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 13 section IDs always present in result.sections
-    expect(result.sections.map((s) => s.id)).toHaveLength(13);
+    // All 12 section IDs always present in result.sections
+    expect(result.sections.map((s) => s.id)).toHaveLength(12);
     // Empty typed sections do not appear in the system payload
     const payload = result.messages[0].content;
     expect(payload).not.toContain("# B. AI Instructions");
@@ -669,7 +647,6 @@ describe("buildContext", () => {
       "components",
       "storyCards",
       "brains",
-      "questState",
       "rollingSummary",
       "authorNote",
       "sceneState",
@@ -683,7 +660,6 @@ describe("buildContext", () => {
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual(["component-pinned"]);
     expect(result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toEqual(["card-joke", "card-beast"]);
     expect(result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id)).toEqual(["brain-margo", "brain-seth"]);
-    expect(result.sections.find((section) => section.id === "questState")?.items.map((item) => item.id)).toEqual([]);
     expect(result.sections.find((section) => section.id === "nextTurnNote")?.items).toEqual([]);
     expect(result.sections.find((section) => section.id === "recentMessages")?.items.map((item) => item.id)).toEqual([
       "msg-6",

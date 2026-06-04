@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { progressQuest } from "../quests/questEngine";
 import { adventureReducer } from "../state/adventureReducer";
-import { makeBrain, makeQuest } from "../state/defaults";
+import { makeBrain } from "../state/defaults";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
 import { triggerActionToAdventureActions } from "../triggers/triggerEngine";
 import type { Adventure, MemoryProposal } from "../types/adventure";
@@ -19,38 +18,7 @@ describe("memory architecture smoke path", () => {
       ...goldenAdventure(),
       storyCards: [],
       brains: [makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], currentState: "guarded" })],
-      quests: [
-        makeQuest({
-          id: "quest-elevator",
-          title: "Reach the Elevator",
-          status: "active",
-          currentStepId: "step-1",
-          steps: [
-            {
-              id: "step-1",
-              title: "Arrive",
-              objective: "Reach the elevator",
-              status: "active",
-              completionCondition: "when the group reaches the elevator",
-              triggerConditions: [],
-              onStartActions: [],
-              onCompleteActions: [{ type: "createMilestoneCard", questId: "quest-elevator", title: "Elevator Reached", content: "The group reached the elevator." }],
-              contextText: "The elevator is the current objective.",
-            },
-            {
-              id: "step-2",
-              title: "Ascend",
-              objective: "Take the elevator up",
-              status: "pending",
-              completionCondition: "when the group ascends",
-              triggerConditions: [],
-              onStartActions: [],
-              onCompleteActions: [],
-              contextText: "The next objective is to ascend.",
-            },
-          ],
-        }),
-      ],
+      quests: [],
     };
 
     const turnOneClassification = classifyMemory("Margo calls Seth 'hedge prince' as a private joke");
@@ -96,11 +64,5 @@ describe("memory architecture smoke path", () => {
     adventure = adventureReducer(adventure, { type: "ADD_MEMORY_PROPOSAL", proposal: ignoredProposal });
     expect(adventure.storyCards.some((card) => card.content.includes("couch"))).toBe(false);
 
-    const questBefore = adventure.quests.find((quest) => quest.id === "quest-elevator");
-    expect(questBefore?.currentStepId).toBe("step-1");
-    adventure = reduceAll(adventure, triggerActionToAdventureActions(adventure, { type: "progressQuest", questId: "quest-elevator", stepId: "step-1" }));
-    expect(adventure.quests.find((quest) => quest.id === "quest-elevator")?.currentStepId).toBe("step-2");
-    expect(progressQuest(questBefore!, "step-1").currentStepId).toBe("step-2");
-    expect(adventure.storyCards.some((card) => card.title === "Elevator Reached")).toBe(true);
   });
 });

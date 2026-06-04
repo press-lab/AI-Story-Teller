@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { getCurrentQuestObjective } from "../quests/questEngine";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 
@@ -34,7 +33,6 @@ export function DashboardPage({
     try { await onPullLatest(); } finally { setPulling(false); }
   }
   const computedContext = useMemo(() => contextResult ?? buildContext(adventure), [adventure, contextResult]);
-  const objective = getCurrentQuestObjective(adventure.quests);
   const pendingProposals = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending");
   const activeCards = adventure.storyCards.filter((card) => card.active);
   const activeCharacters = adventure.brains.filter((brain) => brain.active);
@@ -84,10 +82,6 @@ export function DashboardPage({
         </article>
 
         <aside className="adventure-stats-panel">
-          <div className="adventure-stat">
-            <span>Objective</span>
-            <strong>{objective || "Open-ended"}</strong>
-          </div>
           <div className="adventure-stat">
             <span>Story Cards</span>
             <strong>{activeCards.length}</strong>

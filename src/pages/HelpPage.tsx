@@ -214,27 +214,6 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
     ),
   },
   {
-    id: "side-menu-quests",
-    title: "Quests",
-    category: "Advanced",
-    summary: "Dormant quest system — data model and reducer preserved but context injection is disabled.",
-    tags: ["quests", "objectives", "steps", "progression"],
-    body: (
-      <>
-        <p>
-          Quests stores explicit quest definitions and step state. The quest UI is not exposed in the
-          sidebar and quest context injection is disabled: quest data never enters the provider payload
-          regardless of quest status in saved adventure files.
-        </p>
-        <p>
-          The data model, reducer cases, and quest engine are preserved for existing saves and future use.
-          Re-enabling context injection requires uncommenting the quest assembly block in{" "}
-          <code>contextBuilder.ts</code>.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "side-menu-context-preview",
     title: "Context Preview",
     category: "Side Menu",
