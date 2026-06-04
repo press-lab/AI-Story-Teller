@@ -10,8 +10,6 @@ import type {
   GeneratedContentPreview,
   MemoryProposal,
   ProviderConfig,
-  Quest,
-  QuestStep,
   StoryCard,
   TriggerAction,
   TriggerRule,
@@ -240,27 +238,6 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
   }));
 }
 
-function questStepConditions(adventure: Adventure): SemanticCondition[] {
-  return adventure.quests.flatMap((quest) => {
-    if (quest.status !== "active") return [];
-    const step = quest.steps.find((entry) => entry.id === quest.currentStepId);
-    if (!step?.completionCondition.trim()) return [];
-    return [
-      {
-        id: `questStep:${quest.id}:${step.id}`,
-        label: `Quest step: ${quest.title} / ${step.title}`,
-        condition: step.completionCondition,
-        sourceType: "questStep" as const,
-        actionFactory: () => [
-          { type: "progressQuest", questId: quest.id, stepId: step.id },
-          ...step.onCompleteActions,
-        ],
-      },
-    ];
-  });
-}
-
-
 function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
   const arc = adventure.components
     .filter((c) => c.type === "plotEssentials" && c.active && c.autoUpdate === true && !isPEComponentOnCooldown(adventure, c))
@@ -384,9 +361,6 @@ async function evaluateConditionIds(
 
 function immediateActionsFor(adventure: Adventure, triggerAction: TriggerAction): AdventureAction[] {
   if (triggerAction.type === "updateBrain" || triggerAction.type === "appendBrain") return [];
-  if (triggerAction.type === "progressQuest") {
-    return [{ type: "COMPLETE_QUEST_STEP", questId: triggerAction.questId, stepId: triggerAction.stepId }];
-  }
   return triggerActionToAdventureActions(adventure, triggerAction);
 }
 

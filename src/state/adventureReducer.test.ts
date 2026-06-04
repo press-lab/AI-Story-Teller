@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { Adventure, AdventureAction, Quest, RawImportEntry, TriggerLogEntry } from "../types/adventure";
-import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard, makeTriggerRule } from "./defaults";
+import type { Adventure, AdventureAction, RawImportEntry, TriggerLogEntry } from "../types/adventure";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "./defaults";
 import { adventureReducer } from "./adventureReducer";
 import { makeMemoryProposal } from "../test/goldenAdventure";
 
@@ -51,15 +51,6 @@ const testedActionTypes = [
   "MARK_TRIGGER_FIRED",
   "LOG_TRIGGER_FIRE",
   "LOG_EVALUATION_RESULT",
-  "UPSERT_QUEST",
-  "DELETE_QUEST",
-  "START_QUEST",
-  "PROGRESS_QUEST",
-  "COMPLETE_QUEST",
-  "COMPLETE_QUEST_STEP",
-  "FAIL_QUEST",
-  "ACTIVATE_QUEST_CARD",
-  "CREATE_MILESTONE_CARD",
   "FORCE_INCLUDE_NEXT_TURN",
   "ADD_RAW_IMPORT",
   "UPDATE_RAW_IMPORT",
@@ -106,42 +97,12 @@ function baseAdventure(): Adventure {
   const storyB = makeStoryCard({ title: "Story B", content: "B", priority: 20 });
   const brain = makeBrain({ characterName: "Mira", active: false, currentState: "old" });
   const triggerRule = makeTriggerRule({ name: "Rule A" });
-  const quest = makeQuest({
-    title: "Quest A",
-    relatedCards: [storyA.id],
-    steps: [
-      {
-        id: "step-1",
-        title: "Step 1",
-        objective: "Start",
-        status: "pending",
-        completionCondition: "when step one is done",
-        triggerConditions: [],
-        onStartActions: [],
-        onCompleteActions: [],
-        contextText: "Step one context",
-      },
-      {
-        id: "step-2",
-        title: "Step 2",
-        objective: "Finish",
-        status: "pending",
-        completionCondition: "when step two is done",
-        triggerConditions: [],
-        onStartActions: [],
-        onCompleteActions: [],
-        contextText: "Step two context",
-      },
-    ],
-  });
-
   return {
     ...createDefaultAdventure("Reducer Test"),
     components: [componentA, componentB],
     storyCards: [storyA, storyB],
     brains: [brain],
     triggerRules: [triggerRule],
-    quests: [quest],
     messages: [
       { id: "msg-user", role: "user", content: "hello", createdAt: "2026-01-01T00:00:00.000Z" },
       { id: "msg-assistant", role: "assistant", content: "hi", createdAt: "2026-01-01T00:01:00.000Z" },
@@ -314,7 +275,6 @@ describe("adventureReducer", () => {
     expect(state.activeState.turn).toBe(0);
     expect(state.activeState.nextTurnNote.content).toBe("");
     expect(state.triggerRules[0].lastFiredTurn).toBeUndefined();
-    expect(state.quests[0].status).toBe("inactive");
   });
 
   it("handles every component action", () => {
@@ -455,64 +415,8 @@ describe("adventureReducer", () => {
     expect(state.triggerRules.some((entry) => entry.id === triggerRule.id)).toBe(false);
   });
 
-  it("handles every quest action", () => {
+  it("handles force include and raw import actions", () => {
     let state = baseAdventure();
-    const quest = makeQuest({
-      title: "Quest C",
-      steps: [
-        {
-          id: "qc-1",
-          title: "One",
-          objective: "One",
-          status: "pending",
-          completionCondition: "one done",
-          triggerConditions: [],
-          onStartActions: [],
-          onCompleteActions: [],
-          contextText: "One",
-        },
-        {
-          id: "qc-2",
-          title: "Two",
-          objective: "Two",
-          status: "pending",
-          completionCondition: "two done",
-          triggerConditions: [],
-          onStartActions: [],
-          onCompleteActions: [],
-          contextText: "Two",
-        },
-      ],
-    });
-    state = reduce(state, { type: "UPSERT_QUEST", quest });
-    expect(state.quests.find((entry) => entry.id === quest.id)?.title).toBe("Quest C");
-
-    state = reduce(state, { type: "START_QUEST", questId: quest.id });
-    expect(state.quests.find((entry) => entry.id === quest.id)).toMatchObject({ status: "active", currentStepId: "qc-1" });
-    state = reduce(state, { type: "PROGRESS_QUEST", questId: quest.id });
-    expect(state.quests.find((entry) => entry.id === quest.id)).toMatchObject({ status: "active", currentStepId: "qc-2" });
-    state = reduce(state, { type: "COMPLETE_QUEST_STEP", questId: quest.id });
-    expect(state.quests.find((entry) => entry.id === quest.id)?.status).toBe("completed");
-    state = reduce(state, { type: "START_QUEST", questId: quest.id });
-    state = reduce(state, { type: "COMPLETE_QUEST", questId: quest.id });
-    expect(state.quests.find((entry) => entry.id === quest.id)?.status).toBe("completed");
-    state = reduce(state, { type: "FAIL_QUEST", questId: quest.id });
-    expect(state.quests.find((entry) => entry.id === quest.id)?.status).toBe("failed");
-
-    state = reduce(state, { type: "DELETE_QUEST", questId: quest.id });
-    expect(state.quests.some((entry) => entry.id === quest.id)).toBe(false);
-  });
-
-  it("handles quest card activation, milestone creation, force include, and raw import actions", () => {
-    let state = baseAdventure();
-    const quest = state.quests[0] as Quest;
-    const relatedCardId = quest.relatedCards[0];
-    expect(state.storyCards.find((entry) => entry.id === relatedCardId)?.active).toBe(false);
-    state = reduce(state, { type: "ACTIVATE_QUEST_CARD", questId: quest.id });
-    expect(state.storyCards.find((entry) => entry.id === relatedCardId)?.active).toBe(true);
-
-    state = reduce(state, { type: "CREATE_MILESTONE_CARD", questId: quest.id, title: "Milestone", content: "A thing happened" });
-    expect(state.storyCards.some((entry) => entry.title === "Milestone" && entry.keys.includes(quest.id))).toBe(true);
 
     state = reduce(state, { type: "FORCE_INCLUDE_NEXT_TURN", targetType: "brain", targetId: state.brains[0].id });
     expect(state.activeState.forceIncludeNextTurn[0]).toMatchObject({ targetType: "brain", targetId: state.brains[0].id });

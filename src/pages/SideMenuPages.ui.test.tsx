@@ -16,7 +16,6 @@ import { ComponentsPage } from "./ComponentsPage";
 import { ContextPreviewPage } from "./ContextPreviewPage";
 import { ImportExportPage } from "./ImportExportPage";
 import { MemoryInboxPage } from "./MemoryInboxPage";
-import { QuestsPage } from "./QuestsPage";
 import { StoryCardsPage } from "./StoryCardsPage";
 import { SummaryPage } from "./SummaryPage";
 import { TriggersPage } from "./TriggersPage";
@@ -63,11 +62,6 @@ describe("side menu page smoke coverage", () => {
     ));
     await user.click(screen.getByRole("button", { name: "Create Character Self" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
-    cleanup();
-
-    renderWithAdventure((adventure, dispatch) => <QuestsPage adventure={adventure} dispatch={dispatch} />);
-    await user.click(screen.getByRole("button", { name: "Create Quest" }));
-    expect(screen.getByDisplayValue("New Quest")).toBeInTheDocument();
   });
 
   it("covers Memory Inbox proposal creation and approval", async () => {

@@ -8,14 +8,12 @@ import type {
   MemoryProposal,
   Message,
   ProviderConfig,
-  Quest,
   RawImportEntry,
   StoryEditHistoryEntry,
   StoryEditPatch,
   StoryCard,
   TriggerRule,
 } from "../types/adventure";
-import { completeQuest, failQuest, progressQuest, startQuest } from "../quests/questEngine";
 import { defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 
@@ -240,16 +238,6 @@ function redoStoryEdit(state: Adventure): Adventure {
     },
   });
 }
-
-function resetQuestRuntime(quest: Quest): Quest {
-  return touch({
-    ...quest,
-    status: "inactive",
-    currentStepId: undefined,
-    steps: quest.steps.map((step) => ({ ...step, status: "pending" })),
-  });
-}
-
 
 function updateMemoryProposal(proposal: MemoryProposal, patch: Partial<MemoryProposal>): MemoryProposal {
   const sanitizedPatch = { ...patch };
@@ -645,41 +633,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           evaluationLog: [action.entry, ...state.activeState.evaluationLog].slice(0, 100),
         },
       });
-    case "UPSERT_QUEST":
-      return touchAdventure(state, { quests: upsertById(state.quests, touch(action.quest)) });
-    case "DELETE_QUEST":
-      return touchAdventure(state, { quests: deleteById(state.quests, action.questId) });
-    case "START_QUEST":
-      return touchAdventure(state, { quests: updateById(state.quests, action.questId, startQuest) });
-    case "PROGRESS_QUEST":
-      return touchAdventure(state, { quests: updateById(state.quests, action.questId, (quest) => progressQuest(quest, action.stepId)) });
-    case "COMPLETE_QUEST":
-      return touchAdventure(state, { quests: updateById(state.quests, action.questId, completeQuest) });
-    case "COMPLETE_QUEST_STEP":
-      return touchAdventure(state, {
-        quests: updateById(state.quests, action.questId, (quest) => progressQuest(quest, action.stepId ?? quest.currentStepId)),
-      });
-    case "FAIL_QUEST":
-      return touchAdventure(state, { quests: updateById(state.quests, action.questId, failQuest) });
-    case "ACTIVATE_QUEST_CARD": {
-      const quest = state.quests.find((item) => item.id === action.questId);
-      const targetIds = action.storyCardId ? [action.storyCardId] : quest?.relatedCards ?? [];
-      return touchAdventure(state, {
-        storyCards: state.storyCards.map((card) => (targetIds.includes(card.id) ? touch({ ...card, active: true }) : card)),
-      });
-    }
-    case "CREATE_MILESTONE_CARD": {
-      const storyCard = makeStoryCard({
-        title: action.title,
-        content: action.content,
-        type: "plot",
-        active: true,
-        pinned: false,
-        priority: 50,
-        keys: action.questId ? [action.questId, action.title] : [action.title],
-      });
-      return touchAdventure(state, { storyCards: [...state.storyCards, storyCard] });
-    }
     case "FORCE_INCLUDE_NEXT_TURN":
       return touchAdventure(state, {
         activeState: {
@@ -905,7 +858,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           challengeMode: false,
         },
         triggerRules: state.triggerRules.map((rule) => touch({ ...rule, lastFiredTurn: undefined })),
-        quests: state.quests.map(resetQuestRuntime),
       });
     case "SET_AUTO_SAVE_SETTINGS":
       return touchAdventure(state, { autoSaveEnabled: action.autoSaveEnabled, autoSaveEveryNTurns: action.autoSaveEveryNTurns, autoSaveEveryNMinutes: action.autoSaveEveryNMinutes });

@@ -43,10 +43,6 @@ function compare(value: unknown, condition: TriggerCondition): boolean {
 function conditionsPass(adventure: Adventure, conditions: TriggerCondition[]): boolean {
   return conditions.every((condition) => {
     if (condition.field === "turn") return compare(adventure.activeState.turn, condition);
-    if (condition.field === "questStatus") {
-      const quest = adventure.quests.find((item) => item.id === condition.questId);
-      return compare(quest?.status, condition);
-    }
     if (condition.field === "stateFlag") {
       return compare(adventure.activeState.stateFlags[condition.key ?? ""], condition);
     }
@@ -120,37 +116,6 @@ export function triggerActionToAdventureActions(
       return [{ type: "APPEND_BRAIN_STATE", brainId: triggerAction.brainId, field: triggerAction.field, text: triggerAction.text }];
     case "replaceBrainState":
       return [{ type: "REPLACE_BRAIN_STATE", brainId: triggerAction.brainId, field: triggerAction.field, text: triggerAction.text }];
-    case "startQuest": {
-      const quest = adventure.quests.find((item) => item.id === triggerAction.questId);
-      const firstStep = quest?.steps[0];
-      return [
-        { type: "START_QUEST", questId: triggerAction.questId },
-        ...(firstStep?.onStartActions.flatMap((action) => triggerActionToAdventureActions(adventure, action, depth + 1)) ?? []),
-      ];
-    }
-    case "progressQuest": {
-      const quest = adventure.quests.find((item) => item.id === triggerAction.questId);
-      const currentStep = quest?.steps.find((step) => step.id === (triggerAction.stepId ?? quest.currentStepId));
-      const currentIndex = quest?.steps.findIndex((step) => step.id === currentStep?.id) ?? -1;
-      const nextStep = currentIndex >= 0 ? quest?.steps[currentIndex + 1] : undefined;
-      return [
-        ...(currentStep?.onCompleteActions.flatMap((action) => triggerActionToAdventureActions(adventure, action, depth + 1)) ?? []),
-        { type: "PROGRESS_QUEST", questId: triggerAction.questId, stepId: triggerAction.stepId },
-        ...(nextStep?.onStartActions.flatMap((action) => triggerActionToAdventureActions(adventure, action, depth + 1)) ?? []),
-      ];
-    }
-    case "completeQuest": {
-      const quest = adventure.quests.find((item) => item.id === triggerAction.questId);
-      const currentStep = quest?.steps.find((step) => step.id === quest.currentStepId);
-      return [
-        ...(currentStep?.onCompleteActions.flatMap((action) => triggerActionToAdventureActions(adventure, action, depth + 1)) ?? []),
-        { type: "COMPLETE_QUEST", questId: triggerAction.questId },
-      ];
-    }
-    case "activateQuestCard":
-      return [{ type: "ACTIVATE_QUEST_CARD", questId: triggerAction.questId, storyCardId: triggerAction.storyCardId }];
-    case "createMilestoneCard":
-      return [{ type: "CREATE_MILESTONE_CARD", questId: triggerAction.questId, title: triggerAction.title, content: triggerAction.content }];
     case "updateComponentPressure":
     case "updateComponentMomentum":
     case "updateSummary":

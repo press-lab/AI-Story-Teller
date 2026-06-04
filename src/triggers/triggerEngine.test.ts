@@ -76,7 +76,7 @@ describe("evaluateTriggerRules", () => {
       enabled: false,
       evaluationMode: "keyword",
       patterns: ["door"],
-      actions: [{ type: "forceIncludeNextTurn", targetType: "quest", targetId: "quest-x" }],
+      actions: [{ type: "forceIncludeNextTurn", targetType: "storyCard", targetId: "card-x" }],
     });
     const cooling = makeTriggerRule({
       id: "trigger-cooling",
@@ -85,7 +85,7 @@ describe("evaluateTriggerRules", () => {
       patterns: ["door"],
       cooldownTurns: 3,
       lastFiredTurn: 4,
-      actions: [{ type: "forceIncludeNextTurn", targetType: "quest", targetId: "quest-y" }],
+      actions: [{ type: "forceIncludeNextTurn", targetType: "storyCard", targetId: "card-y" }],
     });
     const adventure = {
       ...createDefaultAdventure("Triggers"),
@@ -103,7 +103,7 @@ describe("evaluateTriggerRules", () => {
       evaluationMode: "keyword",
       patterns: ["signal"],
       priority: 10,
-      actions: [{ type: "forceIncludeNextTurn", targetType: "quest", targetId: "quest-b" }],
+      actions: [{ type: "forceIncludeNextTurn", targetType: "storyCard", targetId: "card-b" }],
     });
     const ruleHigh = makeTriggerRule({
       id: "trigger-a",
@@ -111,7 +111,7 @@ describe("evaluateTriggerRules", () => {
       evaluationMode: "keyword",
       patterns: ["signal"],
       priority: 20,
-      actions: [{ type: "forceIncludeNextTurn", targetType: "quest", targetId: "quest-a" }],
+      actions: [{ type: "forceIncludeNextTurn", targetType: "storyCard", targetId: "card-a" }],
     });
     const adventure = { ...createDefaultAdventure("Triggers"), triggerRules: [ruleLow, ruleHigh] };
 

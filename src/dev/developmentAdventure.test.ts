@@ -19,13 +19,10 @@ describe("development adventure seed", () => {
     expect(adventure.storyCards).toHaveLength(57);
     expect(adventure.brains).toHaveLength(5);
     expect(adventure.triggerRules).toHaveLength(4);
-    expect(adventure.quests).toHaveLength(1);
     expect(adventure.messages).toHaveLength(1);
     expect(adventure.components.find((component) => component.title === "AI Instructions")?.content).toContain(
       "second person",
     );
-    expect(adventure.quests[0].status).toBe("active");
-    expect(adventure.quests[0].currentStepId).toBe("dev-step-war-room-briefing");
   });
 
   it("builds inspectable context with triggered cards, brains, and summary", () => {
@@ -44,7 +41,6 @@ describe("development adventure seed", () => {
       "components",
       "storyCards",
       "brains",
-      "questState",
       "rollingSummary",
       "authorNote",
       "sceneState",

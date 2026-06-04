@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { adventureReducer } from "./adventureReducer";
-import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard, makeTriggerRule } from "./defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "./defaults";
 import type { Adventure, AdventureAction, ChatMessage, ContextBuildResult } from "../types/adventure";
 import { makeMemoryProposal } from "../test/goldenAdventure";
 import { runTurnPipeline } from "./turnPipeline";
@@ -254,63 +254,8 @@ describe("full turn smoke path", () => {
     expectContextPreviewMatchesProviderPayload(pinnedContext);
   });
 
-  it("plays a longer deterministic memory, brain, and quest scenario without activating unapproved memory", async () => {
+  it("plays a longer deterministic memory and brain scenario without activating unapproved memory", async () => {
     let adventure = makeSmokeAdventure();
-    adventure = dispatch(adventure, {
-      type: "UPSERT_QUEST",
-      quest: makeQuest({
-        id: "quest-package",
-        title: "Deliver the Package",
-        description: "A sealed package must reach the merchant.",
-        status: "active",
-        currentStepId: "step-deliver",
-        steps: [
-          {
-            id: "step-deliver",
-            title: "Delivery",
-            objective: "Deliver the package to the merchant.",
-            status: "active",
-            completionCondition: "when the package reaches the merchant",
-            triggerConditions: [],
-            onStartActions: [],
-            onCompleteActions: [
-              {
-                type: "createMilestoneCard",
-                questId: "quest-package",
-                title: "Package Delivered",
-                content: "Seth delivered the sealed package to the merchant.",
-              },
-            ],
-            contextText: "The current objective is to deliver the sealed package.",
-          },
-          {
-            id: "step-report",
-            title: "Report Back",
-            objective: "Report back after the delivery.",
-            status: "pending",
-            completionCondition: "when Seth reports back",
-            triggerConditions: [],
-            onStartActions: [],
-            onCompleteActions: [],
-            contextText: "The next objective is to report back.",
-          },
-        ],
-      }),
-    });
-    adventure = dispatch(adventure, {
-      type: "UPSERT_TRIGGER_RULE",
-      triggerRule: makeTriggerRule({
-        id: "trigger-delivered",
-        name: "Package delivered",
-        enabled: true,
-        source: "output",
-        evaluationMode: "keyword",
-        matchType: "phrase",
-        patterns: ["package delivered"],
-        actions: [{ type: "progressQuest", questId: "quest-package", stepId: "step-deliver" }],
-        priority: 100,
-      }),
-    });
 
     const playTurn = async (text: string, output: string, turn: number) => {
       let capturedPayload: ChatMessage[] | undefined;
@@ -395,21 +340,6 @@ describe("full turn smoke path", () => {
     await playTurn("I scan the room.", "The couch is against the west wall.", 4);
     expect(adventure.activeState.memoryProposals).toHaveLength(proposalCountBeforeRoomDetail);
     expect(adventure.storyCards.some((card) => card.content.includes("west wall"))).toBe(false);
-
-    await playTurn(
-      "I hand the sealed package to the merchant.",
-      "The merchant signs the receipt. Package delivered.",
-      5,
-    );
-    const quest = adventure.quests.find((entry) => entry.id === "quest-package");
-    expect(quest?.currentStepId).toBe("step-report");
-    expect(quest?.steps.find((step) => step.id === "step-deliver")?.status).toBe("completed");
-    expect(quest?.steps.find((step) => step.id === "step-report")?.status).toBe("active");
-    expect(adventure.storyCards.some((card) => card.title === "Package Delivered")).toBe(true);
-    expect(adventure.activeState.triggerLog[0]).toMatchObject({
-      triggerRuleId: "trigger-delivered",
-      source: "output",
-    });
   });
 
   it("sends Next Output Bias in the provider payload and consumes it after one successful output", async () => {

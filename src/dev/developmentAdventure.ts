@@ -1,10 +1,9 @@
-import type { Adventure, QuestStep } from "../types/adventure";
+import type { Adventure } from "../types/adventure";
 import {
   createDefaultAdventure,
   defaultSemanticEvaluationSettings,
   makeBrain,
   makeComponent,
-  makeQuest,
   makeStoryCard,
   makeTriggerRule,
 } from "../state/defaults";
@@ -95,12 +94,6 @@ const ids = {
     mai: "dev-brain-mai",
     tyLee: "dev-brain-ty-lee",
   },
-  quest: "dev-quest-opening-arc",
-  steps: {
-    briefing: "dev-step-war-room-briefing",
-    mission: "dev-step-first-mission",
-    court: "dev-step-court-fallout",
-  },
   triggers: {
     betrothal: "dev-trigger-betrothal-shift",
     nyxa: "dev-trigger-nyxa-volatility",
@@ -109,20 +102,6 @@ const ids = {
   },
   message: "dev-msg-opening",
 };
-
-function devStep(overrides: Partial<QuestStep> & Pick<QuestStep, "id" | "title" | "objective" | "contextText">): QuestStep {
-  return {
-    id: overrides.id,
-    title: overrides.title,
-    objective: overrides.objective,
-    status: overrides.status ?? "pending",
-    completionCondition: overrides.completionCondition ?? "",
-    triggerConditions: overrides.triggerConditions ?? [],
-    onStartActions: overrides.onStartActions ?? [],
-    onCompleteActions: overrides.onCompleteActions ?? [],
-    contextText: overrides.contextText,
-  };
-}
 
 const openingText =
   "You stand in the dueling court beneath the Royal Palace, heat shimmering across black stone.\n\nThe morning air smells of soot, lacquered armor, and old privilege. Servants wait along the wall with water that nobody important will drink. Officers pretend not to stare. Nobles pretend they are not afraid.\n\nYour last burst of demon fire still crawls along the stone in black-edged embers.\n\nAcross from you, Princess Nyxa rolls one shoulder, grinning like this is all deeply funny and only a little treasonous.\n\n\"Again,\" she says.\n\nAzula watches from the upper gallery, one hand resting against the rail, gold eyes sharp with amusement.\n\nMai leans near a pillar, bored enough to look carved from expensive disapproval. Ty Lee sits cross-legged beside her, smiling brightly like she has not just watched two royal-adjacent prodigies try to turn a training match into an obituary.\n\nNyxa's flame gathers in her palm.\n\nThe court goes quiet.";
@@ -858,56 +837,6 @@ export function createDevelopmentAdventure(): Adventure {
     }),
   ];
 
-  const quest = makeQuest({
-    id: ids.quest,
-    title: "Opening Arc: Ashes Under the Crown",
-    description:
-      "Navigate the Royal Caldera's training gauntlet, the first special mission, and the court consequences without letting Setu become someone else's pawn.",
-    status: "active",
-    currentStepId: ids.steps.briefing,
-    priority: 65,
-    pinned: true,
-    steps: [
-      devStep({
-        id: ids.steps.briefing,
-        title: "War Room Briefing",
-        objective: "Hear Azula's mission parameters and decide how Setu presents himself to the room.",
-        status: "active",
-        completionCondition:
-          "when Azula gives the mission parameters and Setu commits to a public role in the operation",
-        contextText:
-          "Current objective: survive the training session and political pressure of the dueling court, then prepare for Azula's mission briefing.",
-        onCompleteActions: [
-          {
-            type: "createMilestoneCard",
-            questId: ids.quest,
-            title: "War Room Briefing Outcome",
-            content: "Record how Setu publicly positioned himself during Azula's mission briefing.",
-          },
-        ],
-      }),
-      devStep({
-        id: ids.steps.mission,
-        title: "First Strike",
-        objective: "Execute the first special mission without losing control of the political narrative.",
-        completionCondition:
-          "when the mission objective is completed or decisively fails and the team must face consequences",
-        contextText:
-          "Current objective: carry out the special mission while tracking who gains leverage from Setu's choices.",
-      }),
-      devStep({
-        id: ids.steps.court,
-        title: "Court Fallout",
-        objective: "Handle court reaction, betrothal pressure, and rumors before they harden into policy.",
-        completionCondition:
-          "when the court formally reacts to the mission and Setu either accepts, rejects, or redirects the proposed political consequence",
-        contextText:
-          "Current objective: manage court fallout and prevent one rumor from becoming Setu's cage.",
-      }),
-    ],
-    relatedCards: [ids.cards.nyxa, ids.cards.royalPalace],
-  });
-
   const triggerRules = [
     makeTriggerRule({
       id: ids.triggers.betrothal,
@@ -973,7 +902,6 @@ export function createDevelopmentAdventure(): Adventure {
     storyCards,
     brains,
     triggerRules,
-    quests: [quest],
     rollingSummary: {
       content:
         "Setu Renzan, adult heir of the murdered noble House Renzan, stands in the dueling court beneath the Royal Palace. His demon fire — black-streaked flame of extreme heat — still crawls along the stone. Across from him, Princess Nyxa grins and calls for another round. Azula watches from the gallery. Mai leans against a pillar. Ty Lee sits nearby, smiling. The court is quiet and watching. Everyone is trying to understand what Setu and Nyxa are to each other.",

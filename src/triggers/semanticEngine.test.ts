@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runMemoryCycle } from "./semanticEngine";
-import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule, makeQuest } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
 import type { Adventure } from "../types/adventure";
 

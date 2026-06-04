@@ -1,4 +1,4 @@
-import { createDefaultAdventure, makeBrain, makeComponent, makeQuest, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
 import type { Adventure, MemoryProposal } from "../types/adventure";
 
 const timestamp = "2026-01-01T00:00:00.000Z";
@@ -112,33 +112,11 @@ export function goldenAdventure(): Adventure {
     priority: 70,
   });
 
-  const quest = makeQuest({
-    id: "quest-ward",
-    title: "Seal the Ward",
-    description: "The ward is failing.",
-    status: "active",
-    currentStepId: "quest-step-1",
-    steps: [
-      {
-        id: "quest-step-1",
-        title: "Reach the Threshold",
-        objective: "Bring Margo and Seth to the warded threshold.",
-        status: "active",
-        completionCondition: "when Seth reaches the warded threshold",
-        triggerConditions: [],
-        onStartActions: [],
-        onCompleteActions: [],
-        contextText: "The current objective is to reach the warded threshold before midnight.",
-      },
-    ],
-  });
-
   return {
     ...createDefaultAdventure("Golden Adventure"),
     components: [aiInstructions, plotEssentials, authorNote, pinnedNormal, inactiveNormal],
     storyCards: [jokeCard, beastCard, inactiveCard],
     brains: [margoBrain, sethBrain],
-    quests: [quest],
     rollingSummary: {
       content: "Seth and Margo entered the old city while the Beast drew closer.",
       updatedAt: timestamp,
