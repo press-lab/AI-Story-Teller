@@ -208,20 +208,56 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     ),
   },
   {
-    id: "side-menu-summary",
-    title: "Summary",
+    id: "current-story-arc",
+    title: "Current Story Arc",
     category: "Side Menu",
-    summary: "The editable rolling summary that compresses the Chronicle for model context.",
-    tags: ["summary", "rolling summary", "compression", "context"],
+    summary: "Auto-updating arc log that tracks what's happening in the active story arc.",
+    tags: ["current arc", "story arc", "arc log", "plot", "auto-update", "graduate"],
     body: (
       <>
         <p>
-          Summary edits the Rolling Summary. This is the compressed model-facing continuity layer that
-          appears after priority memory and before Recent Messages.
+          <strong>Current Story Arc</strong> is a World Block component (type: Current Story Arc) that maintains a
+          running log of meaningful events in the active arc. Unlike Plot Essentials — which holds static world
+          constants — Current Story Arc grows as the story unfolds and gets retired when the arc resolves.
         </p>
         <p>
-          Updating the summary must not overwrite Story Cards, Brains, or raw imported source text.
+          <strong>Arc Premise (required for auto-update):</strong> Seed the component with a one-line premise
+          describing what this arc is about. Example: <em>"Kira is building toward deserting the Fire Nation,
+          but hasn't decided yet."</em> The semantic engine uses this premise as a filter — it only fires when
+          a story event meaningfully advances or complicates that specific premise. Without a premise, no
+          auto-updates fire.
         </p>
+        <p>
+          <strong>Arc Log:</strong> Each auto-update appends 1–3 sentences capturing a specific arc
+          development. The log grows freely — no size limit — because it's designed to be completed and
+          moved out, not trimmed.
+        </p>
+        <h4>Best Practices</h4>
+        <ul>
+          <li>
+            <strong>Keep the premise tight.</strong> "Kira is building toward desertion" fires on relevant
+            arc beats. "The adventure continues" fires on everything — useless.
+          </li>
+          <li>
+            <strong>Leave it alone during play.</strong> Don't direct it. The point is that arc events
+            accumulate without your involvement. If the log fills with noise, tighten the premise.
+          </li>
+          <li>
+            <strong>Plot Essentials ≠ Current Arc.</strong> PE holds static world constants — setting,
+            factions, history. The arc holds what's actively happening to the protagonist right now.
+          </li>
+          <li>
+            <strong>Graduate when the arc resolves.</strong> When the arc has run its course, click
+            "Complete Arc → Story Card." This creates a permanent Story Card (type: plot) from the arc log
+            and clears the component for the next arc. The graduated card stays in context when triggered
+            by relevant keywords — keeping the resolved arc as referenced backstory.
+          </li>
+          <li>
+            <strong>Auto-approval is on by default.</strong> Arc updates go through Memory Inbox but are
+            auto-approved, so they apply without you touching them. If you want to review each entry,
+            turn off "currentArcUpdate" in Memory Auto-Approve settings.
+          </li>
+        </ul>
       </>
     ),
   },
@@ -229,8 +265,8 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "side-menu-world-blocks",
     title: "World Blocks",
     category: "Side Menu",
-    summary: "Manage AI Instructions, Plot Essentials, Author's Note, and custom components.",
-    tags: ["world blocks", "components", "plot essentials", "author note", "ai instructions"],
+    summary: "Manage AI Instructions, Plot Essentials, Current Story Arc, Author's Note, and custom components.",
+    tags: ["world blocks", "components", "plot essentials", "current arc", "author note", "ai instructions"],
     body: (
       <>
         <p>

@@ -97,18 +97,16 @@ describe("buildContext", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
     // All 13 sections must exist in the correct order
     // Author's Note is placed just before recent messages (AID-style) for maximum recency influence
-    // Scene State follows Author's Note to ground the model in the current moment
     // Continuity Challenge (M) sits between Next Output Bias and Recent Messages when active
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
+      "currentArc",
       "components",
       "storyCards",
       "brains",
-      "rollingSummary",
       "authorNote",
-      "sceneState",
       "nextTurnNote",
       "challengeMode",
       "recentMessages",
@@ -121,8 +119,7 @@ describe("buildContext", () => {
     expect(itemTitles(adventureForContext(), "components")).toEqual(["Always", "Pinned"]);
     expect(itemTitles(adventureForContext(), "storyCards")).toEqual(["Keyed Story"]);
     expect(itemTitles(adventureForContext(), "brains")).toEqual(["Mira"]);
-    expect(itemTitles(adventureForContext(), "rollingSummary")).toEqual(["Rolling Summary"]);
-    expect(itemTitles(adventureForContext(), "sceneState")).toEqual([]);
+    expect(itemTitles(adventureForContext(), "currentArc")).toEqual([]);
     expect(itemTitles(adventureForContext(), "nextTurnNote")).toEqual([]);
     expect(itemTitles(adventureForContext(), "recentMessages")).toEqual(["assistant message 1", "user message 2"]);
   });
@@ -211,29 +208,20 @@ describe("buildContext", () => {
     expect(result.excludedItems.filter((item) => item.reason === "budget_exceeded").map((item) => item.id)).toEqual(["old", "middle"]);
   });
 
-  it("truncates rolling summary from the front after recent messages are exhausted", () => {
+  it("rolling summary is not injected into context (deprecated)", () => {
     const adventure = {
       ...adventureForContext(),
-      components: [],
-      storyCards: [],
-
-      brains: [],
-      messages: [],
       rollingSummary: {
-        content: `${"front ".repeat(120)}keep-tail`,
+        content: "This is old rolling summary content that should not appear.",
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
-      // Budget leaves room for system-shell + partial truncated summary only
-      tokenBudgetSettings: budget({ maxContextTokens: 310, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure);
-    const summary = result.sections.find((section) => section.id === "rollingSummary")?.items[0]?.content ?? "";
-    expect(summary.split(/\s+/).length).toBeLessThan(adventure.rollingSummary.content.split(/\s+/).length);
-    expect(summary).toContain("keep-tail");
-    expect(result.excludedItems).toContainEqual(
-      expect.objectContaining({ sourceType: "summary", id: "rolling-summary", reason: "budget_exceeded" }),
-    );
+    // rollingSummary section no longer exists in the sections array
+    expect(result.sections.find((s) => s.id === "rollingSummary")).toBeUndefined();
+    // Summary content does not appear in the provider payload
+    expect(result.messages[0].content).not.toContain("rolling summary content");
   });
 
   it("drops lowest-priority triggered cards after message and summary cuts", () => {
@@ -611,8 +599,8 @@ describe("buildContext", () => {
   it("empty sections are omitted from the provider payload but still present in result.sections", () => {
     // adventureForContext has no aiInstructions/plotEssentials/authorNote/sceneState content
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
-    // All 12 section IDs always present in result.sections
-    expect(result.sections.map((s) => s.id)).toHaveLength(12);
+    // All section IDs always present in result.sections
+    expect(result.sections.map((s) => s.id)).toHaveLength(11);
     // Empty typed sections do not appear in the system payload
     const payload = result.messages[0].content;
     expect(payload).not.toContain("# B. AI Instructions");
@@ -629,17 +617,15 @@ describe("buildContext", () => {
       latestModelOutput: "The Beast howls at the ward.",
     });
 
-    // Author's Note placed after rolling summary (AID-style); Scene State follows for current grounding
     expect(result.sections.map((section) => section.id)).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
+      "currentArc",
       "components",
       "storyCards",
       "brains",
-      "rollingSummary",
       "authorNote",
-      "sceneState",
       "nextTurnNote",
       "challengeMode",
       "recentMessages",
@@ -671,7 +657,7 @@ describe("buildContext", () => {
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# F. Story Cards");
     expect(result.messages[0].content).toContain("## Hedge Prince Joke");
-    expect(result.messages[0].content).toContain("# I. Rolling Summary");
+    expect(result.messages[0].content).not.toContain("# I. Rolling Summary");
     const expectedRecent = [
       "Rain tapped against the glass.",
       "I ask Margo about the ward.",

@@ -33,17 +33,15 @@ describe("development adventure seed", () => {
     });
 
     const sectionIds = result.sections.map((section) => section.id);
-    // Author's Note appears after rolling summary (AID-style); Scene State follows for current grounding
     expect(sectionIds).toEqual([
       "system",
       "aiInstructions",
       "plotEssentials",
+      "currentArc",
       "components",
       "storyCards",
       "brains",
-      "rollingSummary",
       "authorNote",
-      "sceneState",
       "nextTurnNote",
       "challengeMode",
       "recentMessages",

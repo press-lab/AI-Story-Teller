@@ -1,18 +1,19 @@
 import { useState } from "react";
 import type { ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
-import { makeComponent } from "../state/defaults";
+import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, contentSnippet } from "./shared";
 
-const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "authorNote"]);
+const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "authorNote"]);
 
-const activeComponentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "authorNote", "custom"];
+const activeComponentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "authorNote", "custom"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
 const TYPE_LABELS: Record<ComponentType, string> = {
   narrationRules: "Narration Rules",
   aiInstructions: "AI Instructions",
   plotEssentials: "Plot Essentials",
+  currentArc: "Current Story Arc",
   activePressure: "Active Pressure",
   immediateMomentum: "Immediate Momentum",
   authorNote: "Author's Note",
@@ -24,6 +25,7 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   narrationRules: "Global narration style — POV, tone, format, writing rules. Loaded first. One per adventure. Put hard behavioral rules here: who drives scenes, what the model must never do, perspective constraints. Rules here outlast any single turn.",
   aiInstructions: "Explicit AI behavior rules separate from narration style. The right place for drift prevention: 'do not escalate romance unless the player explicitly initiates', 'character X's primary drive is external goals not the relationship', 'end on action not emotion'. Treat this as the contract the model follows when the story pulls it somewhere you don't want to go.",
   plotEssentials: "Durable story shape — core conflict, major forces, what the story is about. Human-edited only. Warning: the model writes toward what this says the story is about. If it contains only relationship content, you get a relationship story. Always keep at least one external threat, unresolved problem, or active arc visible here.",
+  currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Story Card and start fresh.",
   activePressure: "The external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it. The model reads this as 'what the scene is about' and writes toward it.",
   immediateMomentum: "The concrete next action or decision immediately in front of the player character. Auto-generated, approved via Memory Inbox. Keep the character initiating, not waiting. 'Nix waits for Seth to answer' is a passive momentum — it writes a passive character. 'Nix needs to source the next component before the Registry traces the portal' writes an active one.",
   authorNote: "Near-context narrative direction — inserted just before Recent Messages for maximum influence on the next response. One per adventure. Most powerful mid-session correction tool: if a character is drifting too passive, too emotional, or too reactive, add a directive here before the next turn. 'Nix should have a project she is actively working on right now' resets the register immediately.",
@@ -58,6 +60,24 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [search, setSearch] = useState("");
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
+  const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
+
+  function handleGraduateArc(component: ComponentEntry) {
+    if (graduateConfirm !== component.id) {
+      setGraduateConfirm(component.id);
+      return;
+    }
+    // Create a story card from the arc content
+    const cardTitle = component.arcPremise?.trim() || component.title;
+    const cardContent = [
+      component.arcPremise?.trim() ? `Arc: ${component.arcPremise.trim()}\n` : "",
+      component.content.trim(),
+    ].filter(Boolean).join("\n");
+    dispatch({ type: "UPSERT_STORY_CARD", storyCard: makeStoryCard({ title: cardTitle, content: cardContent, type: "plot", active: true }) });
+    // Clear the arc for the next story arc
+    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: "", arcPremise: "" } });
+    setGraduateConfirm(null);
+  }
 
   async function handleRegeneratePE(componentId: string) {
     if (!onRegeneratePlotEssentials || peRegenerating) return;
@@ -154,7 +174,20 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </Field>
               </div>
               <p className="muted component-type-hint">{TYPE_DESCRIPTIONS[component.type]}</p>
-              <Field label="Content">
+              {component.type === "currentArc" && (
+                <Field label="Arc Premise" style={{ marginBottom: "0.5rem" }}>
+                  <textarea
+                    rows={2}
+                    placeholder="One-line premise — what is this arc building toward? e.g. 'Kira is building toward deserting the Fire Nation'"
+                    value={component.arcPremise ?? ""}
+                    onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { arcPremise: event.target.value } })}
+                  />
+                  <p className="muted" style={{ marginTop: "0.25rem", fontSize: "0.85em" }}>
+                    The AI auto-appends arc entries only when events meaningfully advance <em>this specific premise</em>. Without a premise, auto-update is disabled.
+                  </p>
+                </Field>
+              )}
+              <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
                 <textarea
                   rows={6}
                   value={component.content}
@@ -170,7 +203,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   />
                 </Field>
               )}
-              {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum") && (
+              {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "currentArc") && (
                 <div className="grid two">
                   {component.type === "plotEssentials" && (
                     <CheckboxField
@@ -181,7 +214,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   )}
                   <Field label="Auto-update cooldown (turns)">
                     <NumberInput
-                      value={component.autoUpdateCooldownTurns ?? 3}
+                      value={component.autoUpdateCooldownTurns ?? (component.type === "currentArc" ? 4 : 3)}
                       min={0}
                       onChange={(value) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { autoUpdateCooldownTurns: value } })}
                     />
@@ -259,7 +292,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
                   Move Down
                 </button>
-                {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum") && onUpdatePEComponentNow && (
+                {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "currentArc") && onUpdatePEComponentNow && (
                   <button
                     type="button"
                     disabled={loading}
@@ -268,6 +301,19 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   >
                     {loading ? "Generating…" : "Update Now"}
                   </button>
+                )}
+                {component.type === "currentArc" && (
+                  <button
+                    type="button"
+                    className={graduateConfirm === component.id ? "danger" : ""}
+                    title="Graduate the completed arc to a permanent Story Card and reset the arc log."
+                    onClick={() => handleGraduateArc(component)}
+                  >
+                    {graduateConfirm === component.id ? "Confirm — Graduate Arc" : "Complete Arc → Story Card"}
+                  </button>
+                )}
+                {graduateConfirm === component.id && (
+                  <button type="button" onClick={() => setGraduateConfirm(null)}>Cancel</button>
                 )}
                 {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
                   <button

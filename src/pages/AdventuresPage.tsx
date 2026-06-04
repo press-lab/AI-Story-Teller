@@ -65,6 +65,7 @@ const COMPONENT_TYPE_LABELS: Record<ComponentType, string> = {
   narrationRules: "Narration Rules",
   aiInstructions: "AI Instructions",
   plotEssentials: "Plot Essentials",
+  currentArc: "Current Story Arc",
   activePressure: "Active Pressure",
   immediateMomentum: "Immediate Momentum",
   authorNote: "Author's Note",

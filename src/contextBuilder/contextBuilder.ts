@@ -410,6 +410,21 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
+  // C2. Current Story Arc — active arc log, always included when active and has content
+  const currentArcItems = prioritySort(adventure.components).flatMap((component) => {
+    if (component.type !== "currentArc") return [];
+    if (!component.active) {
+      logExcludedOnce(component.id, component.title, "inactive");
+      return [];
+    }
+    if (!component.content.trim() && !component.arcPremise?.trim()) return [];
+    const premiseHeader = component.arcPremise?.trim() ? `[Arc Premise: ${component.arcPremise.trim()}]\n` : "";
+    const arcContent = premiseHeader + (component.content.trim() || "(no entries yet)");
+    const next = item(component.id, "component", component.title, arcContent, component.priority, component.protected, component.pinned, component.active, component.inclusionPolicy, "user");
+    pushIncluded(next, `Current Story Arc loaded; priority=${component.priority}.`);
+    return [next];
+  });
+
   // D. Author's Note — all active components with type === "authorNote"
   const authorNoteItems = prioritySort(adventure.components).flatMap((component) => {
     if (component.type !== "authorNote") return [];
@@ -424,7 +439,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   // E. Components — general always-on or pinned components (not a special typed section above)
   const generalComponentItems = prioritySort(adventure.components).flatMap((component) => {
-    if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "authorNote") return [];
+    if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "currentArc" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "authorNote") return [];
     if (!component.active) {
       logExcludedOnce(component.id, component.title, "inactive");
       return [];
@@ -478,24 +493,6 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     pushIncluded(next, `Brain included by ${brain.pinned ? "pin" : forced ? "manual force" : brain.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${brain.priority}; protected=${brain.protected}.`);
     return [next];
   });
-
-  // I. Rolling Summary — excluded entirely when summaryEnabled is false
-  const summaryCap = budgetSettings.sectionBudgets.rollingSummary;
-  const rawSummaryContent = budgetSettings.summaryEnabled !== false ? adventure.rollingSummary.content : "";
-  const summaryContent = summaryCap && rawSummaryContent ? truncateFromFront(rawSummaryContent, summaryCap) : rawSummaryContent;
-  const summaryItems = summaryContent
-    ? [item("rolling-summary", "summary", "Rolling Summary", summaryContent, 0, false, false, true, "always", "user")]
-    : [];
-  summaryItems.forEach((entry) => pushIncluded(entry, `Rolling summary included${summaryCap ? `; pre-capped to ${summaryCap} tokens` : ""}.`));
-
-  // L. Scene State — pre-cap to sectionBudgets.sceneState before assembly
-  const sceneStateCap = budgetSettings.sectionBudgets.sceneState;
-  const rawSceneStateContent = adventure.sceneState?.content;
-  const sceneStateContent = sceneStateCap && rawSceneStateContent ? truncateFromFront(rawSceneStateContent, sceneStateCap) : rawSceneStateContent;
-  const sceneStateItems = sceneStateContent && adventure.tokenBudgetSettings.sceneStateEnabled !== false
-    ? [item("scene-state", "sceneState", "Scene State", sceneStateContent, 0, false, false, true, "always", "ai")]
-    : [];
-  sceneStateItems.forEach((entry) => pushIncluded(entry, `Scene state included${sceneStateCap ? `; pre-capped to ${sceneStateCap} tokens` : ""}.`));
 
   // J. Next Output Bias (+ response length hint)
   const nextTurnNote = adventure.activeState.nextTurnNote;
@@ -571,14 +568,12 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     systemSection,
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
+    section("currentArc", "C2. Current Story Arc", 2.5, currentArcItems),
     section("components", "E. Components", 3, generalComponentItems),
     section("storyCards", "F. Story Cards", 4, storyCardItems),
     section("brains", "G. Brains", 5, brainItems),
-    section("rollingSummary", "I. Rolling Summary", 7, summaryItems),
     // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     section("authorNote", "D. Author's Note", 8, authorNoteItems),
-    // L. Scene State is placed after Author's Note so the model sees current grounding just before recent messages
-    section("sceneState", "L. Scene State", 9, sceneStateItems),
     section("nextTurnNote", "J. Next Output Bias", 10, nextTurnNoteItems),
     section("challengeMode", "M. Continuity Challenge", 10.5, challengeItems),
     section("recentMessages", "K. Recent Messages", 11, recentMessageItems),
@@ -615,24 +610,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return dropped ? dropItem("recentMessages", dropped, "Dropped oldest recent message according to userLocked/hybrid priority behavior.") : false;
   };
 
-  const truncateSummaryIfPossible = (): boolean => {
-    if (!budgetSettings.allowSystemToTruncateSummary) return false;
-    const rolling = sections.find((entry) => entry.id === "rollingSummary");
-    const rollingItem = rolling?.items[0];
-    if (!rolling || !rollingItem || !isDroppable("rollingSummary", rollingItem)) return false;
-    const protectedCost = totalTokens(sections.filter((entry) => entry.id !== "rollingSummary"));
-    const sectionOverhead = Math.max(0, rolling.tokenEstimate - rollingItem.tokenEstimate);
-    const remaining = Math.max(0, budget - protectedCost - sectionOverhead);
-    const truncated = truncateFromFront(rollingItem.content, remaining);
-    if (truncated === rollingItem.content) return false;
-    pushExcluded("summary", rollingItem.id, rollingItem.title, "budget_exceeded", "Truncated rolling summary from the front.");
-    decisions.push(decision(rollingItem, "truncated", "budget_exceeded", "Rolling summary is truncatable and was cut from the front."));
-    rolling.items = truncated
-      ? [{ ...rollingItem, content: truncated, tokenEstimate: approximateTokenCount(truncated) }]
-      : [];
-    sections = recalculate(sections);
-    return true;
-  };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const truncateSummaryIfPossible = (): boolean => false;
 
   const candidateScore = (sectionId: ContextSectionKind, entry: ContextItem): number => {
     const pinnedBonus = entry.pinned ? 1000 : 0;

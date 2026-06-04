@@ -19,6 +19,7 @@ export type ComponentType =
   | "narrationRules"
   | "aiInstructions"
   | "plotEssentials"
+  | "currentArc"
   | "activePressure"
   | "immediateMomentum"
   | "authorNote"
@@ -30,6 +31,8 @@ export interface ComponentEntry {
   title: string;
   type: ComponentType;
   content: string;
+  /** Current Story Arc only — the one-line premise seeding this arc's auto-update filter. */
+  arcPremise?: string;
   priority: number;
   alwaysOn: boolean;
   active: boolean;
@@ -123,6 +126,7 @@ export type TriggerAction =
   | { type: "updateComponent"; componentId: string; patch?: Partial<ComponentEntry> }
   | { type: "updateComponentPressure"; componentId: string }
   | { type: "updateComponentMomentum"; componentId: string }
+  | { type: "updateComponentArc"; componentId: string }
   | { type: "updateSummary" }
   | { type: "activateStoryCard"; storyCardId: string }
   | { type: "deactivateStoryCard"; storyCardId: string }
@@ -283,6 +287,7 @@ export type MemoryProposalType =
   | "storyCard"
   | "brainUpdate"
   | "plotEssentialsUpdate"
+  | "currentArcUpdate"
   | "plotPressureUpdate"
   | "plotMomentumUpdate"
   | "summaryUpdate"
@@ -420,6 +425,7 @@ export interface Adventure {
 export interface MemoryAutoApproveSettings {
   summaryUpdate: boolean;
   plotEssentialsUpdate: boolean;
+  currentArcUpdate: boolean;
   plotPressureUpdate: boolean;
   plotMomentumUpdate: boolean;
   storyCard: boolean;
@@ -468,14 +474,15 @@ export type ContextSectionKind =
   | "system"          // A. System Shell
   | "aiInstructions"  // B. AI Instructions components
   | "plotEssentials"  // C. Plot Essentials components
+  | "currentArc"      // C2. Current Story Arc — active arc log with premise
   | "authorNote"      // D. Author's Note components
   | "components"      // E. General always-on / pinned components
   | "storyCards"      // F. Story Cards + Auto-Cards (triggered / pinned)
   | "brains"          // G. Brain entries
-  | "rollingSummary"  // I. Rolling Summary — durable canon
+  | "rollingSummary"  // I. Rolling Summary — durable canon (deprecated, kept for saves compat)
   | "nextTurnNote"    // J. Next Output Bias
   | "recentMessages"  // K. Recent Messages
-  | "sceneState"      // L. Scene State — current location, characters, situation
+  | "sceneState"      // L. Scene State — current location, characters, situation (deprecated)
   | "challengeMode";  // M. Continuity Challenge — one-turn verification instruction
 
 export type ExcludedReason = "budget_exceeded" | "inactive" | "cooldown" | "not_triggered";

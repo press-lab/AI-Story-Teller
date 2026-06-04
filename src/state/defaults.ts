@@ -183,7 +183,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
-    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
+    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
     memoryDetectionSettings: defaultMemoryDetectionSettings,
     systemTriggers: defaultSystemTriggerSettings,
   };
@@ -410,7 +410,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
     },
     memoryAutoApprove: {
-      ...{ summaryUpdate: false, plotEssentialsUpdate: false, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
+      ...{ summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
       ...(adventure.memoryAutoApprove ?? {}),
     },
     memoryDetectionSettings: {

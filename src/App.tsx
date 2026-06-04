@@ -25,7 +25,6 @@ import { StoryCardsPage } from "./pages/StoryCardsPage";
 import { BrainsPage } from "./pages/BrainsPage";
 
 import { TriggersPage } from "./pages/TriggersPage";
-import { SummaryPage } from "./pages/SummaryPage";
 import { MemoryInboxPage } from "./pages/MemoryInboxPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
@@ -43,7 +42,6 @@ type TabId =
   | "storyCards"
   | "brains"
   | "triggers"
-  | "summary"
   | "memoryInbox"
   | "cloudSaves"
   | "settings"
@@ -55,7 +53,6 @@ type EditorTabId =
   | "storyCards"
   | "brains"
   | "memoryInbox"
-  | "summary"
   | "chronicle"
   | "triggers"
   | "context"
@@ -67,7 +64,6 @@ const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = 
   { id: "storyCards", label: "Story Cards" },
   { id: "brains", label: "Characters" },
   { id: "memoryInbox", label: "Memory", badge: "memory" },
-  { id: "summary", label: "Summary" },
   { id: "chronicle", label: "Chronicle" },
   { id: "triggers", label: "Automation" },
   { id: "context", label: "Context" },
@@ -84,7 +80,6 @@ const modalTabs = new Set<TabId>([
   "storyCards",
   "brains",
   "triggers",
-  "summary",
   "memoryInbox",
   "settings",
   "importExport",
@@ -97,7 +92,6 @@ const modalTitles: Partial<Record<TabId, string>> = {
   storyCards: "Story Cards",
   brains: "Character Selves",
   triggers: "Automations",
-  summary: "Story Summary",
   memoryInbox: "Memory Suggestions",
   cloudSaves: "GitHub Saves",
   settings: "Settings",
@@ -346,8 +340,6 @@ export default function App() {
         return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} />;
       case "triggers":
         return <TriggersPage {...common} />;
-      case "summary":
-        return <SummaryPage {...common} onGenerateDurableSummary={runtime.generateDurableSummary} onGenerateSceneState={runtime.generateSceneState} />;
       case "memoryInbox":
         return <MemoryInboxPage {...common} onRegenerateProposal={runtime.regenerateMemoryProposal} />;
       case "cloudSaves":
@@ -552,7 +544,6 @@ export default function App() {
       case "storyCards":
       case "brains":
       case "triggers":
-      case "summary":
       case "memoryInbox":
       case "importExport":
         return renderAdventureTool(activeTab);

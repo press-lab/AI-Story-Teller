@@ -403,6 +403,17 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     return { components: upsertById(state.components, { ...component, lastAutoUpdateTurn: turn }) };
   }
 
+  if (proposal.proposedType === "currentArcUpdate") {
+    if (!proposal.content.trim()) return {};
+    const arcComp =
+      (proposal.targetId ? state.components.find((c) => c.id === proposal.targetId && c.type === "currentArc") : undefined) ??
+      state.components.find((c) => c.type === "currentArc");
+    if (!arcComp) return {};
+    const existing = arcComp.content.trim();
+    const newContent = existing ? `${existing}\n\n${proposal.content}` : proposal.content;
+    return { components: upsertById(state.components, touch({ ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn })) };
+  }
+
   if (proposal.proposedType === "summaryUpdate") {
     if (!proposal.content.trim()) return {};
     const existing = state.rollingSummary.content.trim();

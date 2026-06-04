@@ -5,7 +5,6 @@ import { regenerateProposalContent } from "../memory/memoryDetection";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
-import { buildRollingSummaryPayload, buildSceneStatePayload } from "../state/rollingSummary";
 import {
   applyRuntimeEngines,
   latestAssistantOutput,
@@ -191,33 +190,6 @@ export function useAdventureRuntime(
     applyActionsAndPersist(allActions);
   }
 
-  async function startAutoSceneState(adventureState: Adventure) {
-    if (adventureState.tokenBudgetSettings.sceneStateEnabled === false) return;
-    const everyN = adventureState.tokenBudgetSettings.autoSceneStateEveryNTurns ?? 1;
-    if (everyN === 0) return;
-    const last = adventureState.activeState.lastSceneStateTurn;
-    if (last !== undefined && adventureState.activeState.turn - last < everyN) return;
-    try {
-      const { messages: sceneMessages } = buildSceneStatePayload(adventureState);
-      const response = await sendOpenAICompatibleChatCompletion({
-        config: buildBackgroundConfig(adventureState, providerSettingsRef.current),
-        messages: sceneMessages,
-      });
-      const content = stripThinkTags(response.content);
-      const actions: AdventureAction[] = [
-        { type: "UPDATE_SCENE_STATE", content },
-        { type: "SET_LAST_SCENE_STATE_TURN", turn: adventureState.activeState.turn },
-        ...(response.usage ? [{ type: "ACCUMULATE_BACKGROUND_TOKENS" as const, promptTokens: response.usage.promptTokens ?? 0, completionTokens: response.usage.completionTokens ?? 0 }] : []),
-      ];
-      if (isSubmittingRef.current) {
-        queuePendingUpdate(actions, "autoSceneState");
-        return;
-      }
-      applyActionsAndPersist(actions);
-    } catch {
-      // silent — auto scene state is best-effort
-    }
-  }
 
   const buildPreview = useCallback(() => {
     if (!adventure) return;
@@ -259,8 +231,7 @@ export function useAdventureRuntime(
       isSubmittingRef.current = false;
       if (mode !== "comms") {
         void startSemanticEvaluation(next);
-        void startAutoSceneState(next);
-        checkMemoryCycle(next);
+          checkMemoryCycle(next);
       }
     } catch (providerError) {
       const errMsg = providerError instanceof Error ? providerError.message : "Provider request failed.";
@@ -321,7 +292,6 @@ export function useAdventureRuntime(
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
-      void startAutoSceneState(next);
       checkMemoryCycle(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
@@ -362,7 +332,6 @@ export function useAdventureRuntime(
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
-      void startAutoSceneState(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Regeneration failed.");
       setAdventure(next);
@@ -471,7 +440,6 @@ ${component.content}
 
 Recent story turns:
 ${recentTurns}
-${adventure.rollingSummary.content ? `\nRolling summary:\n${adventure.rollingSummary.content.slice(0, 400)}` : ""}
 
 Rewrite the plot essentials as a clean, current, non-redundant block.
 Remove resolved events and outdated constraints. Keep active pressures, open tensions, and immediate momentum.
@@ -482,28 +450,6 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
       messages: [{ role: "user", content: systemPrompt }],
     });
     return response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-  }
-
-  async function generateDurableSummary(): Promise<string> {
-    if (!adventure) throw new Error("No adventure loaded.");
-    const { messages: summaryMessages } = buildRollingSummaryPayload(adventure);
-    const response = await sendOpenAICompatibleChatCompletion({
-      config: activeProviderConfig,
-      messages: summaryMessages,
-    });
-    const additions = stripThinkTags(response.content).trim();
-    const existing = adventure.rollingSummary.content.trim();
-    return additions ? (existing ? `${existing}\n\n${additions}` : additions) : existing;
-  }
-
-  async function generateSceneState(): Promise<string> {
-    if (!adventure) throw new Error("No adventure loaded.");
-    const { messages: sceneMessages } = buildSceneStatePayload(adventure);
-    const response = await sendOpenAICompatibleChatCompletion({
-      config: activeProviderConfig,
-      messages: sceneMessages,
-    });
-    return response.content;
   }
 
   continueTurnRef.current = continueTurn;
@@ -525,8 +471,6 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     auditStoryCards,
     regenerateMemoryProposal,
     regeneratePlotEssentials,
-    generateDurableSummary,
-    generateSceneState,
     applyActionsAndPersist,
   };
 }
