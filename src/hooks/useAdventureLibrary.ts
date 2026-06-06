@@ -48,13 +48,16 @@ export function useAdventureLibrary(
 
   async function createAdventure(setup: NewAdventureSetup) {
     const baseline = createDefaultAdventure(setup.title);
-    const hasAiInstructions = setup.components.some((c) => c.type === "aiInstructions");
+    // Collect all singleton component types the wizard is providing so we can drop
+    // the baseline defaults for those types — avoids duplicate narrationRules,
+    // aiInstructions, plotEssentials, etc. when the wizard seeds its own copy.
+    const setupTypes = new Set(setup.components.map((c) => c.type));
     const next = {
       ...baseline,
       openingScene: setup.openingScene,
       metadata: setup.thumbnailImage ? thumbnailMetadataPatch(setup.thumbnailImage) : baseline.metadata,
       components: [
-        ...baseline.components.filter((c) => !(hasAiInstructions && c.type === "aiInstructions")),
+        ...baseline.components.filter((c) => !setupTypes.has(c.type)),
         ...setup.components,
       ],
       storyCards: setup.storyCards,

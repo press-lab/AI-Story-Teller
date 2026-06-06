@@ -390,10 +390,21 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
           inclusionPolicy: component.inclusionPolicy ?? (component.alwaysOn || defaultProtected ? "always" : "manual"),
         };
       });
-      const hasActivePressure = normalized.some((c) => c.type === "activePressure");
-      const hasImmediateMomentum = normalized.some((c) => c.type === "immediateMomentum");
+      // Deduplicate singleton types: keep the first occurrence of each singleton type.
+      // This fixes adventures that were created with duplicate narrationRules (or other
+      // singleton) components due to a bug in createAdventure merging baseline + setup.
+      const singletonTypes = new Set(["narrationRules", "aiInstructions", "plotEssentials", "authorNote", "currentArc"]);
+      const seenSingletons = new Set<string>();
+      const deduped = normalized.filter((component) => {
+        if (!singletonTypes.has(component.type)) return true;
+        if (seenSingletons.has(component.type)) return false;
+        seenSingletons.add(component.type);
+        return true;
+      });
+      const hasActivePressure = deduped.some((c) => c.type === "activePressure");
+      const hasImmediateMomentum = deduped.some((c) => c.type === "immediateMomentum");
       return [
-        ...normalized,
+        ...deduped,
         ...(hasActivePressure ? [] : [makeComponent({ title: "Active Pressure", type: "activePressure", content: "", priority: 245, active: true })]),
         ...(hasImmediateMomentum ? [] : [makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true })]),
       ];
