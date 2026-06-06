@@ -111,6 +111,23 @@ describe("AdventuresPage new adventure setup", () => {
     });
   });
 
+  it("prevents creation when an unpinned Story Card has no triggers", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderAdventuresPage();
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Add Manual Card" }));
+    await user.type(screen.getAllByLabelText("Content").at(-1)!, "A fact that needs to be reachable.");
+    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+
+    expect(onCreate).not.toHaveBeenCalled();
+    expect(screen.getByText(/Add at least one trigger/)).toBeInTheDocument();
+
+    await user.click(screen.getAllByLabelText("Pinned").at(-1)!);
+    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
   it("shows adventure thumbnail images in the Library", () => {
     renderAdventuresPage(undefined, {
       adventures: [

@@ -26,6 +26,9 @@ export interface AdventureGenResult {
   storyCards: GenStoryCard[];
 }
 
+const generatedComponentTypes = new Set<ComponentType>(["plotEssentials", "custom"]);
+const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
+
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
@@ -109,11 +112,27 @@ export async function runAdventureGen(
 function isValidComponent(c: unknown): c is GenComponent {
   if (!c || typeof c !== "object") return false;
   const obj = c as Record<string, unknown>;
-  return typeof obj.title === "string" && typeof obj.type === "string" && typeof obj.content === "string";
+  return (
+    typeof obj.title === "string"
+    && typeof obj.type === "string"
+    && generatedComponentTypes.has(obj.type as ComponentType)
+    && typeof obj.content === "string"
+    && (obj.alwaysOn === undefined || typeof obj.alwaysOn === "boolean")
+    && (obj.pinned === undefined || typeof obj.pinned === "boolean")
+    && (obj.priority === undefined || typeof obj.priority === "number")
+  );
 }
 
 function isValidCard(c: unknown): c is GenStoryCard {
   if (!c || typeof c !== "object") return false;
   const obj = c as Record<string, unknown>;
-  return typeof obj.title === "string" && typeof obj.type === "string" && typeof obj.content === "string";
+  return (
+    typeof obj.title === "string"
+    && typeof obj.type === "string"
+    && storyCardTypes.has(obj.type as StoryCardType)
+    && typeof obj.content === "string"
+    && (obj.keys === undefined || (Array.isArray(obj.keys) && obj.keys.every((key) => typeof key === "string")))
+    && (obj.pinned === undefined || typeof obj.pinned === "boolean")
+    && (obj.priority === undefined || typeof obj.priority === "number")
+  );
 }

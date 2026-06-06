@@ -73,6 +73,15 @@ const COMPONENT_TYPE_LABELS: Record<ComponentType, string> = {
   custom: "Custom",
 };
 const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
+const uniqueComponentTypes = new Set<ComponentType>([
+  "narrationRules",
+  "aiInstructions",
+  "plotEssentials",
+  "authorNote",
+  "currentArc",
+  "activePressure",
+  "immediateMomentum",
+]);
 
 function isFixedComponentType(type: ComponentType): boolean {
   return type === "narrationRules" || type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
@@ -193,6 +202,7 @@ export function AdventuresPage({
   const [premise, setPremise] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState<string | undefined>();
+  const [setupError, setSetupError] = useState<string | undefined>();
 
   const starterComponents = componentDrafts.map(componentFromDraft).filter((component): component is ComponentEntry => Boolean(component));
   const manualStoryCards = manualStoryCardDrafts.map(storyCardFromDraft).filter((card): card is StoryCard => Boolean(card));
@@ -244,6 +254,21 @@ export function AdventuresPage({
   }
 
   async function createAdventure() {
+    const duplicateTypes = starterComponents
+      .map((component) => component.type)
+      .filter((type, index, types) => uniqueComponentTypes.has(type) && types.indexOf(type) !== index);
+    if (duplicateTypes.length > 0) {
+      setSetupError(`Keep only one ${COMPONENT_TYPE_LABELS[duplicateTypes[0]]} component.`);
+      return;
+    }
+    const unreachableCard = [...manualStoryCards, ...jsonStoryCards].find(
+      (card) => !card.pinned && card.keys.length === 0,
+    );
+    if (unreachableCard) {
+      setSetupError(`Add at least one trigger to "${unreachableCard.title}", or pin the card so it can enter context.`);
+      return;
+    }
+    setSetupError(undefined);
     await onCreate({
       title: title.trim() || "New Adventure",
       openingScene: openingScene.trim(),
@@ -263,7 +288,6 @@ export function AdventuresPage({
       if (result.openingScene) setOpeningScene(result.openingScene);
       if (result.components.length > 0) {
         setComponentDrafts((existing) => {
-          const kept = existing.filter((d) => d.protected);
           const generated = result.components.map((c) => ({
             id: createId("componentDraft"),
             type: c.type as ComponentType,
@@ -273,12 +297,14 @@ export function AdventuresPage({
             pinned: c.pinned ?? true,
             protected: false,
           }));
-          return [...kept, ...generated];
+          const existingTypes = new Set(existing.map((draft) => draft.type));
+          return [...existing, ...generated.filter((draft) => !uniqueComponentTypes.has(draft.type) || !existingTypes.has(draft.type))];
         });
       }
       if (result.storyCards.length > 0) {
-        setManualStoryCardDrafts(
-          result.storyCards.map((card) => ({
+        setManualStoryCardDrafts((existing) => [
+          ...existing,
+          ...result.storyCards.map((card) => ({
             id: createId("storyCardDraft"),
             title: card.title,
             type: card.type as StoryCardType,
@@ -287,7 +313,7 @@ export function AdventuresPage({
             priority: card.priority ?? 0,
             pinned: card.pinned ?? false,
           })),
-        );
+        ]);
       }
     } catch (err) {
       setGenError(err instanceof Error ? err.message : "Generation failed.");
@@ -320,6 +346,7 @@ export function AdventuresPage({
               </button>
             </div>
           </div>
+          {setupError && <p className="error-box">{setupError}</p>}
 
           {providerConfig && (
             <details className="setup-panel" open={!title || title === "New Adventure"}>
@@ -380,7 +407,8 @@ export function AdventuresPage({
           <details className="setup-panel">
             <summary>Starter Components ({starterComponents.length})</summary>
             <p className="muted">
-              Components become World Blocks. Use Plot Essentials for tiny always-on premise/current-state context.
+              Components become World Blocks. Keep Plot Essentials short and factual; use AI Instructions for
+              persistent generation rules and Author's Note for tone.
             </p>
             <div className="toolbar">
               {!componentDrafts.some((d) => d.type === "aiInstructions") && (
@@ -468,7 +496,8 @@ export function AdventuresPage({
           <details className="setup-panel" open>
             <summary>Starter Story Cards ({totalStoryCardCount})</summary>
             <p className="muted">
-              Add Story Cards manually, paste JSON, or upload a .json file. Imported cards are previewed before creation.
+              Cards should be self-contained. Add names, aliases, and nicknames as triggers; unpinned cards need at
+              least one trigger to enter context. Character cards work best with concrete voice examples.
             </p>
 
             <div className="grid two">
