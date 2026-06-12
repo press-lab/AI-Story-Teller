@@ -125,7 +125,8 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
     aidMessages.length > 0 ||
     cardCounts.storyCards > 0 ||
     cardCounts.brains > 0 ||
-    setupComponentCount > 0;
+    setupComponentCount > 0 ||
+    Boolean(aidComponentResult?.openingScene);
 
   function applyStoryResult(result: AidStoryParseResult) {
     setAidStoryResult(result);
@@ -229,7 +230,7 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
 
     const next: Adventure = {
       ...base,
-      openingScene: aidStoryResult?.openingScene ?? base.openingScene,
+      openingScene: aidComponentResult?.openingScene ?? aidStoryResult?.openingScene ?? base.openingScene,
       components: mergeSingletonComponents([...base.components, ...setupComponents]),
       storyCards: selectedStoryCards,
       brains: selectedBrains,
@@ -414,8 +415,9 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
       <div className="card">
         <h3>Step 3: Plot Components</h3>
         <p className="muted">
-          Upload a Plot Components JSON file exported by AI Story Teller. Uploaded singleton components replace
-          matching defaults or AI Dungeon metadata; custom components are added.
+          Upload a Plot Components JSON file exported by AI Story Teller. The file may also include a top-level
+          openingScene. Uploaded singleton components replace matching defaults or AI Dungeon metadata; custom
+          components are added.
         </p>
         <Field label="Plot component files (multi-file OK)">
           <input type="file" multiple accept=".json,application/json" onChange={loadComponentFiles} />
@@ -427,7 +429,7 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
               rows={8}
               value={aidComponentText}
               onChange={(event) => setAidComponentText(event.target.value)}
-              placeholder={'Paste JSON shaped like { "components": [...] } here.'}
+              placeholder={'Paste JSON shaped like { "openingScene": "...", "components": [...] } here.'}
             />
           </Field>
           <button type="button" onClick={parseComponentInput}>Parse Plot Components</button>
@@ -447,6 +449,12 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
                 Component {skipped.sourceIndex + 1}: {skipped.reason}
               </p>
             ))}
+            {aidComponentResult.openingScene && (
+              <details open>
+                <summary>Opening Scene Preview</summary>
+                <textarea rows={6} readOnly value={aidComponentResult.openingScene} />
+              </details>
+            )}
             {aidComponentResult.components.length > 0 && (
               <details open>
                 <summary>Component Preview ({aidComponentResult.components.length})</summary>

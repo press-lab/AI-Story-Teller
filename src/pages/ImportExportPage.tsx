@@ -50,7 +50,10 @@ export function ImportExportPage({
   }
 
   function handleExportComponents() {
-    const text = JSON.stringify({ components: adventure.components }, null, 2);
+    const text = JSON.stringify({
+      openingScene: adventure.openingScene,
+      components: adventure.components,
+    }, null, 2);
     download(`${slug()}-components.json`, text);
   }
 

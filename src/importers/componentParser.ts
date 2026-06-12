@@ -17,6 +17,7 @@ export interface ComponentParseResult {
   components: ParsedComponent[];
   skipped: SkippedComponent[];
   warnings: string[];
+  openingScene?: string;
   error?: string;
 }
 
@@ -154,12 +155,20 @@ function parseComponent(raw: unknown, sourceIndex: number): ParsedComponent | Sk
 }
 
 function parseJsonValue(value: unknown): ComponentParseResult {
+  const openingScene = isRecord(value)
+    ? stringField(value, "openingScene")?.trim() || undefined
+    : undefined;
   const rawComponents = collectComponents(value);
   if (rawComponents.length === 0) {
     return {
       components: [],
       skipped: [],
-      warnings: ["Valid JSON was found, but it did not contain plot components."],
+      warnings: [
+        openingScene
+          ? "Opening scene found; no plot components were included."
+          : "Valid JSON was found, but it did not contain plot components.",
+      ],
+      openingScene,
     };
   }
 
@@ -177,6 +186,7 @@ function parseJsonValue(value: unknown): ComponentParseResult {
     warnings: skipped.length > 0
       ? [`Skipped ${skipped.length} component(s). Review reasons before importing.`]
       : [],
+    openingScene,
   };
 }
 
@@ -231,10 +241,15 @@ function tryParseMultipleDocuments(text: string): ComponentParseResult | undefin
 }
 
 export function mergeComponentParseResults(results: ComponentParseResult[]): ComponentParseResult {
+  const openingScene = results.reduce<string | undefined>(
+    (current, result) => result.openingScene ?? current,
+    undefined,
+  );
   return {
     components: results.flatMap((result) => result.components),
     skipped: results.flatMap((result) => result.skipped),
     warnings: results.flatMap((result) => result.warnings),
+    openingScene,
     error: results.find((result) => result.error)?.error,
   };
 }

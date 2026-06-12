@@ -89,6 +89,7 @@ describe("plot component parser", () => {
   it("imports exported component JSON and preserves component settings", () => {
     const result = parseComponentsJson(
       JSON.stringify({
+        openingScene: "Rain falls upward from the Sump tonight.",
         components: [
           {
             id: "component-plot",
@@ -117,6 +118,7 @@ describe("plot component parser", () => {
     );
 
     expect(result.error).toBeUndefined();
+    expect(result.openingScene).toBe("Rain falls upward from the Sump tonight.");
     expect(result.skipped).toHaveLength(0);
     expect(result.components).toHaveLength(2);
     expect(result.components[0].component).toMatchObject({
@@ -154,5 +156,17 @@ describe("plot component parser", () => {
       'Unknown component type "mystery".',
       "Component content was empty.",
     ]);
+  });
+
+  it("accepts an opening-scene-only setup file", () => {
+    const result = parseComponentsJson(
+      JSON.stringify({
+        openingScene: "The relay says: Come closer.",
+      }),
+    );
+
+    expect(result.components).toHaveLength(0);
+    expect(result.openingScene).toBe("The relay says: Come closer.");
+    expect(result.warnings).toContain("Opening scene found; no plot components were included.");
   });
 });

@@ -17,6 +17,7 @@ describe("AidImportWizard plot component upload", () => {
     const file = new File(
       [
         JSON.stringify({
+          openingScene: "Rain falls upward from the Sump tonight.",
           components: [
             {
               title: "Plot Essentials",
@@ -50,12 +51,14 @@ describe("AidImportWizard plot component upload", () => {
 
     await user.upload(screen.getByLabelText("Plot component files (multi-file OK)"), file);
     await waitFor(() => expect(screen.getByText("Component Preview (2)")).toBeInTheDocument());
+    expect(screen.getByText("Opening Scene Preview")).toBeInTheDocument();
     expect(screen.getByText("Nyx remains secret from everyone except Seth.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
     expect(onCreateAdventureFromImport).toHaveBeenCalledTimes(1);
     const adventure = onCreateAdventureFromImport.mock.calls[0][0];
+    expect(adventure.openingScene).toBe("Rain falls upward from the Sump tonight.");
     expect(adventure.components.filter((component) => component.type === "plotEssentials")).toHaveLength(1);
     expect(adventure.components.find((component) => component.type === "plotEssentials")).toMatchObject({
       content: "Nyx remains secret from everyone except Seth.",
