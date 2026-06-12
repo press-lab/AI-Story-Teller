@@ -10,8 +10,13 @@ import {
   parseAidStoryText,
   type AidStoryParseResult,
 } from "../importers/aidStoryParser";
+import {
+  mergeComponentParseResults,
+  parseComponentsJson,
+  type ComponentParseResult,
+} from "../importers/componentParser";
 import { createDefaultAdventure, makeComponent } from "../state/defaults";
-import type { Adventure, BrainEntry, Message, StoryCard } from "../types/adventure";
+import type { Adventure, BrainEntry, ComponentEntry, ComponentType, Message, StoryCard } from "../types/adventure";
 import { nowIso } from "../utils/id";
 import { Field } from "../pages/shared";
 
@@ -73,6 +78,30 @@ function selectedCounts(cards: AidCardParseResult["cards"], targets: Record<stri
   );
 }
 
+const singletonComponentTypes = new Set<ComponentType>([
+  "narrationRules",
+  "aiInstructions",
+  "plotEssentials",
+  "currentArc",
+  "activePressure",
+  "immediateMomentum",
+  "authorNote",
+]);
+
+function mergeSingletonComponents<T extends { type: ComponentType }>(components: T[]): T[] {
+  const merged: T[] = [];
+  for (const component of components) {
+    if (!singletonComponentTypes.has(component.type)) {
+      merged.push(component);
+      continue;
+    }
+    const existingIndex = merged.findIndex((candidate) => candidate.type === component.type);
+    if (existingIndex === -1) merged.push(component);
+    else merged[existingIndex] = component;
+  }
+  return merged;
+}
+
 export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBack, backLabel = "← Back" }: AidImportWizardProps) {
   const [aidStoryText, setAidStoryText] = useState("");
   const [aidStoryResult, setAidStoryResult] = useState<AidStoryParseResult>();
@@ -80,17 +109,23 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
   const [aidCardText, setAidCardText] = useState("");
   const [aidCardResult, setAidCardResult] = useState<AidCardParseResult>();
   const [aidCardTargets, setAidCardTargets] = useState<Record<string, AidCardImportTarget>>({});
+  const [aidComponentText, setAidComponentText] = useState("");
+  const [aidComponentResult, setAidComponentResult] = useState<ComponentParseResult>();
   const [aidAdventureName, setAidAdventureName] = useState("");
   const [summaryMode, setSummaryMode] = useState<SummaryMode>("blank");
   const [summaryMessageCount, setSummaryMessageCount] = useState(12);
   const [aidCompletion, setAidCompletion] = useState<AidImportCompletion>();
 
   const cardCounts = selectedCounts(aidCardResult?.cards ?? [], aidCardTargets);
+  const setupComponentCount = mergeSingletonComponents([
+    ...(aidStoryResult?.setupComponents ?? []),
+    ...(aidComponentResult?.components.map((parsed) => parsed.component) ?? []),
+  ]).length;
   const canCreate =
     aidMessages.length > 0 ||
     cardCounts.storyCards > 0 ||
     cardCounts.brains > 0 ||
-    (aidStoryResult?.setupComponents.length ?? 0) > 0;
+    setupComponentCount > 0;
 
   function applyStoryResult(result: AidStoryParseResult) {
     setAidStoryResult(result);
@@ -126,12 +161,22 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
     applyCardResult(mergeAidCardParseResults(texts.map(parseAidStoryCards)));
   }
 
+  async function loadComponentFiles(event: ChangeEvent<HTMLInputElement>) {
+    const texts = await readFilesAlphabetical(event);
+    setAidComponentText(texts.join("\n\n"));
+    setAidComponentResult(mergeComponentParseResults(texts.map(parseComponentsJson)));
+  }
+
   function parseStoryInput() {
     applyStoryResult(parseAidStoryText(aidStoryText));
   }
 
   function parseCardInput() {
     applyCardResult(parseAidStoryCards(aidCardText));
+  }
+
+  function parseComponentInput() {
+    setAidComponentResult(parseComponentsJson(aidComponentText));
   }
 
   function setCardTarget(cardId: string, target: AidCardImportTarget) {
@@ -170,7 +215,10 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
       if (target === "brain" && card.brainCandidate) selectedBrains.push(card.brainCandidate);
     }
 
-    const setupComponents = (aidStoryResult?.setupComponents ?? []).map((c) => makeComponent(c));
+    const setupComponents = mergeSingletonComponents<ComponentEntry>([
+      ...(aidStoryResult?.setupComponents ?? []).map((component) => makeComponent(component)),
+      ...(aidComponentResult?.components.map((parsed) => parsed.component) ?? []),
+    ]);
     const timestamp = nowIso();
     const summaryContent =
       summaryMode === "firstN"
@@ -182,7 +230,7 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
     const next: Adventure = {
       ...base,
       openingScene: aidStoryResult?.openingScene ?? base.openingScene,
-      components: [...base.components, ...setupComponents],
+      components: mergeSingletonComponents([...base.components, ...setupComponents]),
       storyCards: selectedStoryCards,
       brains: selectedBrains,
       messages: aidMessages,
@@ -196,7 +244,11 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
           setupComponentCount: setupComponents.length,
           parsedCardCount: aidCardResult?.cards.length ?? 0,
           skippedCards: aidCardResult?.skipped ?? [],
-          warnings: [...(aidStoryResult?.warnings ?? []), ...(aidCardResult?.warnings ?? [])],
+          warnings: [
+            ...(aidStoryResult?.warnings ?? []),
+            ...(aidCardResult?.warnings ?? []),
+            ...(aidComponentResult?.warnings ?? []),
+          ],
         },
       },
       activeState: {
@@ -360,6 +412,71 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
       </div>
 
       <div className="card">
+        <h3>Step 3: Plot Components</h3>
+        <p className="muted">
+          Upload a Plot Components JSON file exported by AI Story Teller. Uploaded singleton components replace
+          matching defaults or AI Dungeon metadata; custom components are added.
+        </p>
+        <Field label="Plot component files (multi-file OK)">
+          <input type="file" multiple accept=".json,application/json" onChange={loadComponentFiles} />
+        </Field>
+        <details>
+          <summary className="muted">Paste plot component JSON instead</summary>
+          <Field label="Pasted plot component JSON">
+            <textarea
+              rows={8}
+              value={aidComponentText}
+              onChange={(event) => setAidComponentText(event.target.value)}
+              placeholder={'Paste JSON shaped like { "components": [...] } here.'}
+            />
+          </Field>
+          <button type="button" onClick={parseComponentInput}>Parse Plot Components</button>
+        </details>
+
+        {aidComponentResult && (
+          <div className="list">
+            {aidComponentResult.error && <p className="error-box">Invalid JSON: {aidComponentResult.error}</p>}
+            <div className="grid three">
+              <div><strong>{aidComponentResult.components.length}</strong><span className="muted"> parsed</span></div>
+              <div><strong>{setupComponentCount}</strong><span className="muted"> setup components</span></div>
+              <div><strong>{aidComponentResult.skipped.length}</strong><span className="muted"> skipped</span></div>
+            </div>
+            {aidComponentResult.warnings.map((warning) => <p key={warning} className="notice">{warning}</p>)}
+            {aidComponentResult.skipped.map((skipped) => (
+              <p key={`${skipped.sourceIndex}:${skipped.reason}`} className="notice">
+                Component {skipped.sourceIndex + 1}: {skipped.reason}
+              </p>
+            ))}
+            {aidComponentResult.components.length > 0 && (
+              <details open>
+                <summary>Component Preview ({aidComponentResult.components.length})</summary>
+                <div style={{ maxHeight: 300, overflow: "auto" }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Title</th>
+                        <th>Content</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {aidComponentResult.components.map(({ component }, index) => (
+                        <tr key={`${component.id}:${index}`}>
+                          <td>{component.type}</td>
+                          <td>{component.title}</td>
+                          <td>{shortPreview(component.content)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
         <h3>Create Adventure</h3>
         <Field label="Adventure name">
           <input
@@ -394,9 +511,9 @@ export function AidImportWizard({ onCreateAdventureFromImport, onComplete, onBac
           <div><strong>{aidMessages.length}</strong><span className="muted"> messages</span></div>
           <div><strong>{cardCounts.storyCards}</strong><span className="muted"> story cards</span></div>
           <div><strong>{cardCounts.brains}</strong><span className="muted"> brains</span></div>
-          <div><strong>{aidStoryResult?.setupComponents.length ?? 0}</strong><span className="muted"> components</span></div>
+          <div><strong>{setupComponentCount}</strong><span className="muted"> components</span></div>
         </div>
-        {!canCreate && <p className="notice">Load story or card files above to enable import.</p>}
+        {!canCreate && <p className="notice">Load story, card, or component files above to enable import.</p>}
         <div className="toolbar">
           {onBack && (
             <button type="button" onClick={onBack}>

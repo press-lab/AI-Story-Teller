@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseAidStoryCards } from "./aidCardParser";
 import { parseAidStoryText } from "./aidStoryParser";
+import { parseComponentsJson } from "./componentParser";
 
 describe("AI Dungeon story parser", () => {
   it("parses AI Dungeon action JSON into assistant and user messages", () => {
@@ -81,5 +82,77 @@ describe("AI Dungeon story card parser", () => {
     expect(result.cards[1].brainCandidate?.characterName).toBe("Nyx");
     expect(result.cards[1].brainCandidate?.source).toBe("imported");
     expect(result.cards[1].brainCandidate?.currentState).toBe("setu: Setu surprised me.");
+  });
+});
+
+describe("plot component parser", () => {
+  it("imports exported component JSON and preserves component settings", () => {
+    const result = parseComponentsJson(
+      JSON.stringify({
+        components: [
+          {
+            id: "component-plot",
+            title: "Plot Essentials",
+            type: "plotEssentials",
+            content: "Nyx remains secret.",
+            priority: 92,
+            alwaysOn: true,
+            active: true,
+            pinned: true,
+            protected: true,
+            inclusionPolicy: "always",
+            state: "",
+            autoUpdate: false,
+            createdAt: "2026-06-12T00:00:00.000Z",
+            updatedAt: "2026-06-12T00:00:00.000Z",
+          },
+          {
+            title: "Active Pressure",
+            type: "activePressure",
+            content: "The relay is failing.",
+            autoUpdate: true,
+          },
+        ],
+      }),
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.skipped).toHaveLength(0);
+    expect(result.components).toHaveLength(2);
+    expect(result.components[0].component).toMatchObject({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "Nyx remains secret.",
+      priority: 92,
+      alwaysOn: true,
+      pinned: true,
+      protected: true,
+      inclusionPolicy: "always",
+    });
+    expect(result.components[1].component).toMatchObject({
+      title: "Active Pressure",
+      type: "activePressure",
+      content: "The relay is failing.",
+      priority: 245,
+      autoUpdate: true,
+    });
+  });
+
+  it("skips unknown or empty components with reviewable reasons", () => {
+    const result = parseComponentsJson(
+      JSON.stringify({
+        components: [
+          { title: "Wrong", type: "mystery", content: "Unknown type." },
+          { title: "Empty", type: "plotEssentials", content: "  " },
+        ],
+      }),
+    );
+
+    expect(result.components).toHaveLength(0);
+    expect(result.skipped.map((item) => item.reason)).toEqual([
+      'Unknown component type "mystery".',
+      "Component content was empty.",
+    ]);
   });
 });
