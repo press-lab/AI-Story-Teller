@@ -335,7 +335,7 @@ export default function App() {
       case "components":
         return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} />;
       case "storyCards":
-        return <StoryCardsPage {...common} loading={runtime.loading} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
+        return <StoryCardsPage {...common} loading={runtime.loading} onGenerateMemorySuggestion={runtime.rememberThis} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
       case "brains":
         return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} />;
       case "triggers":

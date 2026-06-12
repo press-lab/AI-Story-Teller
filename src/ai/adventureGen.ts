@@ -1,5 +1,5 @@
 import type { ComponentType, ProviderConfig, StoryCardType } from "../types/adventure";
-import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 
 export interface GenComponent {
   title: string;
@@ -26,7 +26,14 @@ export interface AdventureGenResult {
   storyCards: GenStoryCard[];
 }
 
-const generatedComponentTypes = new Set<ComponentType>(["plotEssentials", "custom"]);
+const generatedComponentTypes = new Set<ComponentType>([
+  "aiInstructions",
+  "plotEssentials",
+  "activePressure",
+  "immediateMomentum",
+  "authorNote",
+  "custom",
+]);
 const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
 
 function parseJsonFenced<T>(text: string): T {
@@ -44,7 +51,7 @@ Output ONLY valid JSON matching this schema exactly:
   "components": [
     {
       "title": "string",
-      "type": "plotEssentials | custom",
+      "type": "aiInstructions | plotEssentials | activePressure | immediateMomentum | authorNote | custom",
       "content": "string",
       "alwaysOn": true,
       "pinned": true,
@@ -64,12 +71,17 @@ Output ONLY valid JSON matching this schema exactly:
 }
 
 Component guidelines:
-- Always include one "plotEssentials" component summarising the core premise, stakes, and player role. Keep it under 200 words.
-- Add a "custom" component for world-specific rules, tone, or genre conventions if the premise warrants it.
-- Do NOT include narrationRules or aiInstructions — those are managed separately.
+- Always include one "plotEssentials" component containing only permanent world truths, the player's durable role or condition, and canon constraints that must shape every scene. Use tight bullet points and keep it under 120 words. Do not put temporary danger, current location, or the next action here.
+- Include one "activePressure" component for the immediate external threat, obligation, deadline, or unresolved problem driving the opening. Keep it to 1-3 concise bullets.
+- Include one "immediateMomentum" component for the concrete action, confrontation, discovery, or decision directly ahead when the opening scene ends. Keep it to 1-2 concise bullets.
+- Add "aiInstructions" only for scenario-specific generation constraints or drift prevention that are not general narration mechanics.
+- Add "authorNote" only for concise tone, mood, pacing, or prose influence.
+- Add a "custom" component only for broad world context that is relevant every turn. If it matters only when a character, place, faction, object, or secret appears, use a Story Card instead.
+- Do NOT include narrationRules — those are managed separately.
 
 Story card guidelines:
-- Create cards for every named character, significant location, faction, and key lore item that the opening scene or premise introduces.
+- Create cards for recurring named characters, significant recurring locations, factions, and key lore items introduced by the premise or opening scene.
+- Do not create cards for current scene position, temporary mission status, one-off scenery, or throwaway objects. Put immediate danger in activePressure and the next concrete beat in immediateMomentum.
 - keys array: all names, nicknames, and aliases the card should trigger on — lowercase preferred.
 - Aim for 4–12 cards depending on the complexity of the premise. Quality over quantity.
 - Each card's content should be self-contained reference material the AI will use mid-story.
@@ -97,6 +109,9 @@ export async function runAdventureGen(
       { role: "user", content: `Premise:\n${premise.trim()}` },
     ],
     config,
+    ...(isNativeDeepSeekProvider(config)
+      ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+      : {}),
   });
 
   const raw = parseJsonFenced<Partial<AdventureGenResult>>(response.content);

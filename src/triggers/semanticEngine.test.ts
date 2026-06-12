@@ -1,10 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { runSemanticPostTurnEvaluation, runManualBrainUpdate, runMemoryCycle } from "./semanticEngine";
+import {
+  runSemanticPostTurnEvaluation,
+  runManualBrainUpdate,
+  runMemoryCycle,
+  runRememberThis,
+} from "./semanticEngine";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
 import type { Adventure } from "../types/adventure";
 
 vi.mock("../providers/openAICompatible", () => ({
+  isNativeDeepSeekProvider: vi.fn((config: { baseUrl: string }) => config.baseUrl.includes("deepseek.com")),
   sendOpenAICompatibleChatCompletion: vi.fn(),
 }));
 
@@ -316,6 +322,44 @@ describe("runManualBrainUpdate", () => {
     expect(action.patch.relationshipPressure).toBe("bound by command");
     expect(action.patch.thoughts).toEqual({ seth_watches_court: "5 → Watch the court. Do not flinch." });
     expect(result.logEntry.errors).toEqual([]);
+  });
+});
+
+describe("runRememberThis", () => {
+  it("turns a description into a pending Story Card proposal", async () => {
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        proposals: [{
+          action: "create",
+          title: "Margo",
+          content: "• Margo hides fear behind dry teasing.",
+          keys: ["Margo", "hedge prince"],
+        }],
+        rationale: "This is durable character memory.",
+      }),
+      raw: {},
+    });
+
+    const result = await runRememberThis(
+      baseAdventure(),
+      { ...providerConfig, baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash" },
+      "Margo is a ward engineer who uses dry teasing when afraid.",
+    );
+
+    expect(mockProvider).toHaveBeenCalledWith(expect.objectContaining({
+      responseFormat: "json_object",
+      thinking: "disabled",
+    }));
+    const proposalAction = result.actions.find((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalAction).toMatchObject({
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        proposedType: "storyCard",
+        title: "Margo",
+        status: "pending",
+        suggestedTriggers: ["Margo", "hedge prince"],
+      },
+    });
   });
 });
 

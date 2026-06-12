@@ -4,6 +4,8 @@ export interface SendChatCompletionOptions {
   messages: ChatMessage[];
   config: ProviderConfig;
   signal?: AbortSignal;
+  responseFormat?: "json_object";
+  thinking?: "enabled" | "disabled";
 }
 
 export interface ProviderResponse {
@@ -108,6 +110,8 @@ async function sendOpenAIRequest(
   messages: ChatMessage[],
   config: ProviderConfig,
   signal?: AbortSignal,
+  responseFormat?: SendChatCompletionOptions["responseFormat"],
+  thinking?: SendChatCompletionOptions["thinking"],
 ): Promise<ProviderResponse> {
   let response: Response;
   try {
@@ -123,6 +127,8 @@ async function sendOpenAIRequest(
         messages,
         temperature: config.temperature,
         max_tokens: config.maxOutputTokens,
+        ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
+        ...(thinking ? { thinking: { type: thinking } } : {}),
       }),
     });
   } catch (err) {
@@ -220,6 +226,8 @@ export async function sendOpenAICompatibleChatCompletion({
   messages,
   config,
   signal,
+  responseFormat,
+  thinking,
 }: SendChatCompletionOptions): Promise<ProviderResponse> {
   if (!config.apiKey?.trim()) {
     throw new Error("Missing API key. Add one in Settings before generating.");
@@ -231,5 +239,14 @@ export async function sendOpenAICompatibleChatCompletion({
   if (isAnthropicFormat(config.baseUrl)) {
     return sendAnthropicRequest(endpoint, messages, config, signal);
   }
-  return sendOpenAIRequest(endpoint, messages, config, signal);
+  return sendOpenAIRequest(endpoint, messages, config, signal, responseFormat, thinking);
+}
+
+export function isNativeDeepSeekProvider(config: Pick<ProviderConfig, "baseUrl">): boolean {
+  try {
+    const hostname = new URL(config.baseUrl).hostname.toLowerCase();
+    return hostname === "deepseek.com" || hostname.endsWith(".deepseek.com");
+  } catch {
+    return config.baseUrl.toLowerCase().includes("deepseek.com");
+  }
 }

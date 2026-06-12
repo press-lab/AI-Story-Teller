@@ -88,10 +88,11 @@ The Context Preview page shows:
 - **Adventure Chronicle**: `adventure.messages`, the full persisted transcript. Inspectable in the Chronicle tab. Never automatically compressed or flooded into model context.
 - **Rolling Summary**: `adventure.rollingSummary`, user-editable compression of the Chronicle. Appears in section I after durable memory and before recent messages. Separate from the Chronicle.
 - **Next Output Bias**: `activeState.nextTurnNote`, a visible short-term steering note. It appears in section J, is token-counted, and expires after one successful generation by default.
-- **Story Cards**: durable recurring facts, promises, secrets, nicknames, named objects, relationship facts, locations, and rules. Trigger-matched or pinned into section F. Optional AI auto-updates use a per-card cooldown and can be routed through Memory Inbox when approval is required.
+- **Story Cards**: durable recurring facts, promises, secrets, nicknames, named objects, relationship facts, locations, and rules. Trigger-matched or pinned into section F. The Story Cards page can turn a user description into a pending AI-generated Memory Proposal for review. Optional AI auto-updates use a per-card cooldown and can be routed through Memory Inbox when approval is required.
 - **Brains**: opt-in character-internal state for major characters only. AI may update a Brain only when a `BrainEntry` already exists. Do not create Brains for random NPCs.
 - **Plot Essentials**: tiny always-on current-state constraints, e.g. "The Beast is hunting Seth tonight." Section C.
-- **AI Instructions**: persistent narrative generation rules. Section B. AI must not modify these.
+- **Narration Rules**: the primary per-adventure behavior contract, copied from defaults but editable during creation and afterward. Loaded with the system shell before other context.
+- **AI Instructions**: optional persistent scenario-specific rules in section B. They are not required when Narration Rules already contain the complete stable contract. Avoid duplicating the same rule across both surfaces. AI must not modify these.
 - **Author's Note**: author-layer mood or tonal constraints. Section D. AI must not modify these.
 - **Memory Inbox / Proposals**: `activeState.memoryProposals`, where AI-suggested durable memories wait for user approval. Pending proposals appear in Context Preview but are not model context. Approving converts them to Story Cards, Brain updates, Plot Essentials edits, or Summary updates through reducer actions.
 - **Protected**: non-droppable during token truncation. `aiInstructions`, `plotEssentials`, and `authorNote` components are protected by default.

@@ -81,8 +81,8 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 
 | Type | Singleton | Context Position | AI-Updates | Notes |
 |---|---|---|---|---|
-| `narrationRules` | Yes | System shell (A) | No | Hard behavioral rules. POV, tone, format. Protected. One per adventure. |
-| `aiInstructions` | Yes | B | No | Drift prevention contract. Protected. One per adventure. |
+| `narrationRules` | Yes | System shell (A) | No | Primary per-adventure behavior contract. POV, agency, continuity, tone, format. Protected. One per adventure. |
+| `aiInstructions` | Yes | B | No | Optional separately inspectable scenario-specific contract. Not required when Narration Rules already contain the stable rules. Protected. One per adventure. |
 | `plotEssentials` | Yes | C | Yes (append) | Static world constants — setting, factions, arc beats. Human-edited. AI appends only via Memory Inbox. Auto-update toggle required. |
 | `currentArc` | Yes | C2 | Yes (append) | Running arc log. Requires `arcPremise` for auto-update. Graduate → Story Card when done. |
 | `activePressure` | No* | C | Yes (replace) | Current external threat or obligation. Auto-updated, auto-approved by default. |
@@ -112,9 +112,15 @@ Types: `character`, `location`, `lore`, `plot`, `custom`
 ### Triggering:
 - Card title is always added to its own key list
 - Match types: `keyword` (anywhere in text), `phrase` (whole-word), `regex`
-- Trigger text = recent N messages + current input + latest assistant output
+- Trigger text = recent N messages + current input + latest assistant output; the opening scene is also considered on turn 0
 - Inclusion policies: `always`, `triggered`, `manual`, `systemSuggested`
 - `forceIncludeNextTurn` overrides trigger matching for one turn
+
+### AI-assisted creation:
+- The Story Cards page accepts a freeform description of a character, place, faction, relationship, object, secret, or durable rule.
+- The AI compares the description with existing Story Cards and character entries.
+- The result is one or more pending `storyCard` Memory Proposals, never an immediate active-memory write.
+- Native DeepSeek requests use JSON output with thinking disabled for this schema-driven call.
 
 ### Auto-update:
 - `autoUpdate: boolean` per card

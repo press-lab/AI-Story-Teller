@@ -93,6 +93,28 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
 }
 
 describe("buildContext", () => {
+  it("uses Narration Rules as a complete system contract without requiring AI Instructions", () => {
+    const narrationRules = makeComponent({
+      id: "narration-only",
+      title: "Narration Rules",
+      type: "narrationRules",
+      content: "Keep player agency intact and end on action.",
+      active: true,
+      alwaysOn: true,
+      protected: true,
+    });
+    const adventure = {
+      ...createDefaultAdventure("Narration Only"),
+      components: [narrationRules],
+    } satisfies Adventure;
+
+    const result = buildContext(adventure);
+
+    expect(result.messages[0].content).toContain("Keep player agency intact and end on action.");
+    expect(result.sections.find((section) => section.id === "aiInstructions")?.items).toHaveLength(0);
+    expect(result.sections.find((section) => section.id === "system")?.items.map((item) => item.id)).toContain("narration-only");
+  });
+
   it("assembles sections in the required deterministic order (A–M)", () => {
     const result = buildContext(adventureForContext(), { currentInput: "lantern" });
     // All 13 sections must exist in the correct order
@@ -183,6 +205,30 @@ describe("buildContext", () => {
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-inactive", reason: "inactive" }));
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-unmatched", reason: "not_triggered" }));
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-phrase-regex", reason: "not_triggered" }));
+  });
+
+  it("uses the opening scene to trigger cards only on the first turn", () => {
+    const card = makeStoryCard({
+      id: "card-opening",
+      title: "Margo",
+      content: "Margo guards the ward.",
+      keys: ["Margo"],
+      active: true,
+    });
+    const firstTurn = {
+      ...createDefaultAdventure("Opening Triggers"),
+      openingScene: "Margo waits beside the failing ward.",
+      storyCards: [card],
+    } satisfies Adventure;
+
+    const initialContext = buildContext(firstTurn, { currentInput: "I approach her." });
+    expect(initialContext.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toContain("card-opening");
+
+    const laterContext = buildContext(
+      { ...firstTurn, activeState: { ...firstTurn.activeState, turn: 1 } },
+      { currentInput: "I approach her." },
+    );
+    expect(laterContext.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).not.toContain("card-opening");
   });
 
   it("drops oldest recent messages before cutting other sections", () => {

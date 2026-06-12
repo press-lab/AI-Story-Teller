@@ -45,6 +45,7 @@ function sortCards(cards: StoryCard[], mode: SortMode): StoryCard[] {
 
 interface StoryCardsPageProps extends AdventurePageProps {
   loading?: boolean;
+  onGenerateMemorySuggestion?: (description: string) => Promise<void>;
   onSuggestCardUpdates?: () => Promise<void>;
   onAuditStoryCards?: (nTurns: number) => Promise<AuditRecommendation[]>;
 }
@@ -55,8 +56,16 @@ type AuditState = {
   errorMessage?: string;
 };
 
-export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpdates, onAuditStoryCards }: StoryCardsPageProps) {
+export function StoryCardsPage({
+  adventure,
+  dispatch,
+  loading,
+  onGenerateMemorySuggestion,
+  onSuggestCardUpdates,
+  onAuditStoryCards,
+}: StoryCardsPageProps) {
   const [importText, setImportText] = useState("");
+  const [aiDescription, setAiDescription] = useState("");
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [search, setSearch] = useState("");
@@ -149,6 +158,35 @@ export function StoryCardsPage({ adventure, dispatch, loading, onSuggestCardUpda
         that are only relevant some of the time.
         For always-on world lore that should load every turn regardless, use a <strong>World Block</strong>.
       </p>
+
+      {onGenerateMemorySuggestion && (
+        <details className="panel" open>
+          <summary>Create a Story Card with AI</summary>
+          <p className="muted">
+            Describe a character, place, faction, relationship, recurring object, secret, or durable rule.
+            The AI will compare it with existing cards and create a pending Memory Suggestion for you to review.
+          </p>
+          <Field label="Story Card description">
+            <textarea
+              rows={5}
+              value={aiDescription}
+              onChange={(event) => setAiDescription(event.target.value)}
+              placeholder="Example: Margo is a disgraced ward engineer who hides fear behind dry teasing. She calls Seth “hedge prince” only when she is worried about him."
+            />
+          </Field>
+          <div className="toolbar">
+            <button
+              type="button"
+              className="primary-action"
+              disabled={loading || !aiDescription.trim()}
+              onClick={() => void onGenerateMemorySuggestion(aiDescription.trim())}
+            >
+              {loading ? "Generating…" : "Generate Memory Suggestion"}
+            </button>
+            <span className="muted">Nothing is added to active memory until you approve it.</span>
+          </div>
+        </details>
+      )}
 
       <div className="toolbar">
         <input

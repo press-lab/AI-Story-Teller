@@ -22,8 +22,8 @@ const TYPE_LABELS: Record<ComponentType, string> = {
 };
 
 const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
-  narrationRules: "Global narration style — POV, tone, format, writing rules. Loaded first. One per adventure. Put hard behavioral rules here: who drives scenes, what the model must never do, perspective constraints. Rules here outlast any single turn.",
-  aiInstructions: "Explicit AI behavior rules separate from narration style. The right place for drift prevention: 'do not escalate romance unless the player explicitly initiates', 'character X's primary drive is external goals not the relationship', 'end on action not emotion'. Treat this as the contract the model follows when the story pulls it somewhere you don't want to go.",
+  narrationRules: "The primary per-adventure behavior contract — POV, format, player agency, continuity, tone, and hard writing rules. Loaded first with the system shell. It is valid to keep all stable generation rules here and use no AI Instructions block.",
+  aiInstructions: "Optional scenario-specific rules separated for organization. Use this only when you want a distinct drift-prevention or genre contract outside Narration Rules. Do not duplicate rules already present in Narration Rules; both blocks load every turn.",
   plotEssentials: "Durable story shape — core conflict, major forces, what the story is about. Human-edited only. Warning: the model writes toward what this says the story is about. If it contains only relationship content, you get a relationship story. Always keep at least one external threat, unresolved problem, or active arc visible here.",
   currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Story Card and start fresh.",
   activePressure: "The external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it. The model reads this as 'what the scene is about' and writes toward it.",
@@ -112,7 +112,8 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
         Use them for narration rules, plot state, and author direction.
         For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
-        <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons — one of each per adventure.
+        <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons.
+        AI Instructions are optional; Narration Rules can hold the complete stable behavior contract by themselves.
       </p>
 
       <div className="toolbar">

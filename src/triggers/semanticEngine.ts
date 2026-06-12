@@ -14,7 +14,7 @@ import type {
   TriggerAction,
   TriggerRule,
 } from "../types/adventure";
-import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
 import { createId, nowIso } from "../utils/id";
 import { matchPatterns, splitList } from "./matching";
@@ -868,12 +868,14 @@ export async function runRememberThis(
     .map((b) => `[ID: ${b.id}] ${b.characterName}: ${b.currentState.slice(0, 100)}`)
     .join("\n");
 
-  const systemPrompt = `You are a world memory assistant for an interactive fiction game. The player wants to record an important story fact.
+  const systemPrompt = `You are a world memory assistant for an interactive fiction game. The player described something they want represented as durable story memory.
 
-Examine the fact against existing story cards and characters:
+Examine the description against existing story cards and characters:
 - If the fact is a property or development of existing entities, propose updating those cards (action "update" with the cardId)
 - If the fact is a distinct event, concept, or relationship with its own identity, propose a new card (action "create")
 - You may propose both updates AND a new card for the same fact
+- Prefer one focused proposal. Return multiple proposals only when the description clearly contains separate durable subjects.
+- Do not propose temporary scene state, one-off scenery, generic movement, or short-lived emotional reactions.
 
 Respond ONLY with valid JSON:
 {
@@ -884,9 +886,10 @@ Respond ONLY with valid JSON:
   "rationale": "Brief explanation of choices"
 }
 
-The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.`;
+The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.
+For a character, include a VOICE CONTRACT when the description provides enough voice information to do so.`;
 
-  const userPrompt = `Fact to record: "${fact}"\n\nExisting Story Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
+  const userPrompt = `Description to turn into durable Story Card memory:\n${fact.trim()}\n\nExisting Story Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
 
   const emptyLog: EvaluationLogEntry = {
     id: createId("evaluation"),
@@ -900,12 +903,16 @@ The "content" field must use • bullet points, one per line. Each bullet should
   };
 
   try {
+    const resolvedConfig = evaluationConfig(adventure, config);
     const response = await sendOpenAICompatibleChatCompletion({
-      config: evaluationConfig(adventure, config),
+      config: resolvedConfig,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
+      ...(isNativeDeepSeekProvider(resolvedConfig)
+        ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+        : {}),
     });
 
     const parsed = parseJsonResponse<{

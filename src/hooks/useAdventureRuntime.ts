@@ -347,6 +347,10 @@ export function useAdventureRuntime(
     setError(undefined);
     try {
       const result = await runRememberThis(adventure, activeProviderConfig, fact);
+      const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+      if (proposalCount === 0) {
+        throw new Error(result.logEntry.errors[0] ?? "The AI did not produce a Story Card suggestion.");
+      }
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
     } catch (rememberError) {

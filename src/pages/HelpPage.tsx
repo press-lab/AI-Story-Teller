@@ -48,7 +48,10 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
         </p>
         <p>
           New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
-          Story Cards, and Story Cards parsed from uploaded or pasted JSON.
+          Story Cards, and Story Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
+          opening scene, tight Plot Essentials, Active Pressure, Immediate Momentum, optional scenario-specific
+          AI Instructions or Author's Note, and recurring Story Cards for review. Native DeepSeek generation uses
+          structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
         <p>
           Library also contains Personal Cloud Sync. For a private single-user setup, it can push and pull
@@ -148,6 +151,11 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
         <p>
           Story Cards store durable facts: names, promises, secrets, recurring places, rules, relationships,
           and important objects.
+        </p>
+        <p>
+          Use <strong>Create a Story Card with AI</strong> to describe what should be remembered. The AI compares
+          the description with existing cards and creates a pending Memory Suggestion. It does not change active
+          memory until you approve the proposal.
         </p>
         <p>
           Active cards enter context when their triggers match the current input, latest output, or recent
@@ -270,8 +278,11 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          World Blocks are context components. AI Instructions, Plot Essentials, and Author's Note are
-          protected by default. Custom components can be active, pinned, protected, prioritized, or manual.
+          World Blocks are context components. Narration Rules are the primary per-adventure behavior contract.
+          AI Instructions are optional: use them only when you deliberately want scenario-specific rules separated
+          from Narration Rules. Both load every turn, so duplicating the same rules wastes context and can create
+          competing wording. AI Instructions, Plot Essentials, and Author's Note are protected by default.
+          Custom components can be active, pinned, protected, prioritized, or manual.
         </p>
         <p>
           AI-generated updates may only touch component content when the component type is Plot Essentials,
@@ -709,7 +720,10 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          AI Instructions are always-on context sent every turn. They set the model's narrative contract. How you phrase them shapes the model's behavior more than almost anything else in the system.
+          AI Instructions are optional always-on context sent every turn after Narration Rules. They can hold a
+          separate scenario-specific contract, but they are not required for Narration Rules to work. If your
+          Narration Rules already contain the stable behavior, perspective, agency, tone, and drift-prevention
+          rules you want, leaving AI Instructions absent is valid and usually avoids duplication.
         </p>
         <p><strong>The option-menu problem.</strong> Models trained with strong human-approval feedback (e.g. DeepSeek) interpret "leave choices for the player" as an instruction to <em>present explicit options</em>. The result: every character ends their scene with "Want to X, or Y?" — breaking immersion because every character feels the same.</p>
         <p><strong>Fix: forbid the pattern explicitly.</strong></p>
@@ -725,9 +739,9 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>"End scenes open-ended." (too vague — model defaults to option listing as its "open" behavior)</li>
         </ul>
         <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in the character's Story Card using a Voice Contract — not in AI Instructions. AI Instructions apply globally. Per-character voice belongs on the character's card.</p>
-        <p><strong>Don't duplicate Global Generation Rules.</strong> Rules like "write each character from their Story Card" and "match the player's language" already live in Global Generation Rules and are sent every turn. Don't restate them in AI Instructions — it wastes tokens and creates two sources of truth. AI Instructions should add what Global Generation Rules doesn't cover: adventure-specific tone, narrator voice, world flavor.</p>
+        <p><strong>Don't duplicate Narration Rules.</strong> Rules like "write each character from their Story Card" and "match the player's language" already live in the default Narration Rules and are sent every turn. Don't restate them in AI Instructions — it wastes tokens and creates two sources of truth. Use AI Instructions only for a separate scenario-specific contract you intentionally want to inspect on its own.</p>
         <p><strong>The word "choices" is a trigger.</strong> Whenever you write "leave X's choices for the player," the model reads "present choices to the player." Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
-        <p><strong>The most important rule:</strong> AI Instructions are a narrative contract, not a prompt. They tell the model <em>what kind of story to tell</em>, not what to do next turn. Keep them stable, short, and behavioral — not scene-specific.</p>
+        <p><strong>The most important rule:</strong> choose one authoritative home for each stable rule. Keeping the complete contract in Narration Rules is valid. If you use AI Instructions, keep them short, non-duplicative, behavioral, and scenario-specific — never scene-specific.</p>
       </>
     ),
   },

@@ -64,6 +64,25 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
   });
 
+  it("sends a Story Card description to the AI memory suggestion flow", async () => {
+    const user = userEvent.setup();
+    const onGenerateMemorySuggestion = vi.fn(async () => undefined);
+    renderWithAdventure((adventure, dispatch) => (
+      <StoryCardsPage
+        adventure={adventure}
+        dispatch={dispatch}
+        loading={false}
+        onGenerateMemorySuggestion={onGenerateMemorySuggestion}
+      />
+    ));
+
+    const description = "Margo is a ward engineer who hides fear behind dry teasing.";
+    await user.type(screen.getByLabelText("Story Card description"), description);
+    await user.click(screen.getByRole("button", { name: "Generate Memory Suggestion" }));
+
+    expect(onGenerateMemorySuggestion).toHaveBeenCalledWith(description);
+  });
+
   it("covers Memory Inbox proposal creation and approval", async () => {
     const user = userEvent.setup();
     renderWithAdventure((adventure, dispatch) => <MemoryInboxPage adventure={adventure} dispatch={dispatch} />);

@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetProviderThrottleForTests, sendOpenAICompatibleChatCompletion } from "./openAICompatible";
+import {
+  isNativeDeepSeekProvider,
+  resetProviderThrottleForTests,
+  sendOpenAICompatibleChatCompletion,
+} from "./openAICompatible";
 import type { ProviderConfig } from "../types/adventure";
 
 const config: ProviderConfig = {
@@ -27,6 +31,13 @@ afterEach(() => {
 });
 
 describe("sendOpenAICompatibleChatCompletion", () => {
+  it("recognizes only native DeepSeek API hosts", () => {
+    expect(isNativeDeepSeekProvider({ baseUrl: "https://api.deepseek.com" })).toBe(true);
+    expect(isNativeDeepSeekProvider({ baseUrl: "https://deepseek.com/v1" })).toBe(true);
+    expect(isNativeDeepSeekProvider({ baseUrl: "https://openrouter.ai/api/v1" })).toBe(false);
+    expect(isNativeDeepSeekProvider({ baseUrl: "https://deepseek.com.example.test" })).toBe(false);
+  });
+
   it("throws when API key is missing", async () => {
     await expect(
       sendOpenAICompatibleChatCompletion({ messages: [], config: { ...config, apiKey: "" } }),
@@ -55,6 +66,21 @@ describe("sendOpenAICompatibleChatCompletion", () => {
       temperature: 0.8,
       max_tokens: 256,
     });
+  });
+
+  it("sends optional JSON output and thinking controls", async () => {
+    const spy = mockFetch(200, { choices: [{ message: { content: "{}" } }] });
+    await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "user", content: "Return JSON." }],
+      config,
+      responseFormat: "json_object",
+      thinking: "disabled",
+    });
+
+    const [, init] = spy.mock.calls[0];
+    const body = JSON.parse(init?.body as string);
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.thinking).toEqual({ type: "disabled" });
   });
 
   it("does not double-append v1 when base URL already ends with /v1", async () => {

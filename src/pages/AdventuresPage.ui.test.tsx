@@ -6,8 +6,13 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { runAdventureGen } from "../ai/adventureGen";
 import type { NewAdventureSetup } from "../types/adventure";
 import { AdventuresPage } from "./AdventuresPage";
+
+vi.mock("../ai/adventureGen", () => ({
+  runAdventureGen: vi.fn(),
+}));
 
 function renderAdventuresPage(
   onCreate = vi.fn(async (_setup: NewAdventureSetup) => undefined),
@@ -29,6 +34,7 @@ function renderAdventuresPage(
 describe("AdventuresPage new adventure setup", () => {
   afterEach(() => {
     cleanup();
+    vi.mocked(runAdventureGen).mockReset();
   });
 
   it("creates a new adventure with starter components and manual Story Cards", async () => {
@@ -126,6 +132,78 @@ describe("AdventuresPage new adventure setup", () => {
     await user.click(screen.getAllByLabelText("Pinned").at(-1)!);
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
     expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("replaces prior generated drafts, preserves manual cards, and protects generated Plot Essentials", async () => {
+    const user = userEvent.setup();
+    const onCreate = vi.fn(async (_setup: NewAdventureSetup) => undefined);
+    renderAdventuresPage(onCreate, {
+      providerConfig: {
+        name: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        apiKey: "test-key",
+        model: "deepseek-v4-flash",
+        temperature: 1,
+        maxOutputTokens: 1200,
+      },
+    });
+    vi.mocked(runAdventureGen)
+      .mockResolvedValueOnce({
+        title: "First Draft",
+        openingScene: "The first opening.",
+        components: [
+          { title: "Plot", type: "plotEssentials", content: "Old canon.", alwaysOn: false, pinned: false, priority: 80 },
+          { title: "World", type: "custom", content: "Old world context.", alwaysOn: true, pinned: false, priority: 0 },
+        ],
+        storyCards: [
+          { title: "Old Ally", type: "character", keys: ["old ally"], content: "Old card.", pinned: false, priority: 0 },
+        ],
+      })
+      .mockResolvedValueOnce({
+        title: "Second Draft",
+        openingScene: "The second opening.",
+        components: [
+          { title: "Plot", type: "plotEssentials", content: "New canon.", alwaysOn: false, pinned: false, priority: 80 },
+          { title: "Pressure", type: "activePressure", content: "The gate is failing.", alwaysOn: true, pinned: false, priority: 245 },
+          { title: "World", type: "custom", content: "New world context.", alwaysOn: true, pinned: false, priority: 0 },
+        ],
+        storyCards: [
+          { title: "New Ally", type: "character", keys: ["new ally"], content: "New card.", pinned: false, priority: 0 },
+          { title: "New Ally", type: "character", keys: ["duplicate"], content: "Duplicate card.", pinned: false, priority: 0 },
+        ],
+      });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Add Manual Card" }));
+    const manualTitle = screen.getAllByLabelText("Title").at(-1)!;
+    await user.clear(manualTitle);
+    await user.type(manualTitle, "Manual Ally");
+    await user.type(screen.getByLabelText("Triggers / keys"), "manual ally");
+    await user.type(screen.getAllByLabelText("Content").at(-1)!, "Keep this manual card.");
+    await user.type(screen.getByLabelText("Premise"), "A ward is failing.");
+
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await waitFor(() => expect(screen.getByDisplayValue("Old canon.")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await waitFor(() => expect(screen.getByDisplayValue("New canon.")).toBeInTheDocument());
+
+    expect(screen.queryByDisplayValue("Old canon.")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Old world context.")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Old Ally")).not.toBeInTheDocument();
+    expect(screen.getAllByDisplayValue("New Ally")).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    const setup = onCreate.mock.calls[0][0];
+    expect(setup.components.find((component) => component.type === "plotEssentials")).toMatchObject({
+      content: "New canon.",
+      alwaysOn: true,
+      pinned: true,
+      protected: true,
+    });
+    expect(setup.components.map((component) => component.content)).not.toContain("Old world context.");
+    expect(setup.storyCards.map((card) => card.title)).toEqual(["Manual Ally", "New Ally"]);
   });
 
   it("shows adventure thumbnail images in the Library", () => {

@@ -41,6 +41,7 @@ interface AdventuresPageProps {
 
 interface ComponentDraft {
   id: string;
+  source: "manual" | "generated";
   type: ComponentType;
   content: string;
   priority: number;
@@ -51,6 +52,7 @@ interface ComponentDraft {
 
 interface StoryCardDraft {
   id: string;
+  source: "manual" | "generated";
   title: string;
   keysText: string;
   content: string;
@@ -59,7 +61,15 @@ interface StoryCardDraft {
   pinned: boolean;
 }
 
-const componentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "authorNote", "custom"];
+const componentTypes: ComponentType[] = [
+  "narrationRules",
+  "aiInstructions",
+  "plotEssentials",
+  "activePressure",
+  "immediateMomentum",
+  "authorNote",
+  "custom",
+];
 
 const COMPONENT_TYPE_LABELS: Record<ComponentType, string> = {
   narrationRules: "Narration Rules",
@@ -91,6 +101,8 @@ function defaultComponentPriority(type: ComponentType): number {
   if (type === "narrationRules") return 100;
   if (type === "aiInstructions") return 90;
   if (type === "plotEssentials") return 80;
+  if (type === "activePressure") return 245;
+  if (type === "immediateMomentum") return 240;
   if (type === "authorNote") return 70;
   return 0;
 }
@@ -99,6 +111,7 @@ function blankComponentDraft(type: ComponentType = "plotEssentials"): ComponentD
   const fixed = isFixedComponentType(type);
   return {
     id: createId("componentDraft"),
+    source: "manual",
     type,
     content: "",
     priority: defaultComponentPriority(type),
@@ -111,6 +124,7 @@ function blankComponentDraft(type: ComponentType = "plotEssentials"): ComponentD
 function blankStoryCardDraft(): StoryCardDraft {
   return {
     id: createId("storyDraft"),
+    source: "manual",
     title: "New Story Card",
     keysText: "",
     content: "",
@@ -187,6 +201,7 @@ export function AdventuresPage({
   const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
   const [componentDrafts, setComponentDrafts] = useState<ComponentDraft[]>([{
     id: createId("componentDraft"),
+    source: "manual",
     type: "narrationRules",
     content: defaultNarrationRulesContent,
     priority: 100,
@@ -286,35 +301,59 @@ export function AdventuresPage({
       const result = await runAdventureGen(premise, providerConfig);
       if (result.title) setTitle(result.title);
       if (result.openingScene) setOpeningScene(result.openingScene);
-      if (result.components.length > 0) {
-        setComponentDrafts((existing) => {
-          const generated = result.components.map((c) => ({
+      setComponentDrafts((existing) => {
+        const preserved = existing.filter((draft) => draft.source !== "generated");
+        const existingTypes = new Set(preserved.map((draft) => draft.type));
+        const generatedTypes = new Set<ComponentType>();
+        const generatedContent = new Set<string>();
+        const generated = result.components.flatMap((component) => {
+          const type = component.type as ComponentType;
+          const contentKey = `${type}:${component.content.trim().toLocaleLowerCase()}`;
+          if (
+            (uniqueComponentTypes.has(type) && (existingTypes.has(type) || generatedTypes.has(type)))
+            || generatedContent.has(contentKey)
+          ) {
+            return [];
+          }
+          generatedTypes.add(type);
+          generatedContent.add(contentKey);
+          const fixed = isFixedComponentType(type);
+          return [{
             id: createId("componentDraft"),
-            type: c.type as ComponentType,
-            content: c.content,
-            priority: c.priority ?? 80,
-            alwaysOn: c.alwaysOn ?? true,
-            pinned: c.pinned ?? true,
-            protected: false,
-          }));
-          const existingTypes = new Set(existing.map((draft) => draft.type));
-          return [...existing, ...generated.filter((draft) => !uniqueComponentTypes.has(draft.type) || !existingTypes.has(draft.type))];
+            source: "generated" as const,
+            type,
+            content: component.content,
+            priority: component.priority ?? defaultComponentPriority(type),
+            alwaysOn: fixed || (component.alwaysOn ?? true),
+            pinned: fixed || (component.pinned ?? false),
+            protected: fixed,
+          }];
         });
-      }
-      if (result.storyCards.length > 0) {
-        setManualStoryCardDrafts((existing) => [
-          ...existing,
-          ...result.storyCards.map((card) => ({
+        return [...preserved, ...generated];
+      });
+      setManualStoryCardDrafts((existing) => {
+        const preserved = existing.filter((draft) => draft.source !== "generated");
+        const seenTitles = new Set([
+          ...preserved.map((draft) => draft.title.trim().toLocaleLowerCase()),
+          ...jsonStoryCards.map((card) => card.title.trim().toLocaleLowerCase()),
+        ].filter(Boolean));
+        const generated = result.storyCards.flatMap((card) => {
+          const titleKey = card.title.trim().toLocaleLowerCase();
+          if (!titleKey || seenTitles.has(titleKey)) return [];
+          seenTitles.add(titleKey);
+          return [{
             id: createId("storyCardDraft"),
+            source: "generated" as const,
             title: card.title,
             type: card.type as StoryCardType,
             keysText: (card.keys ?? []).join(", "),
             content: card.content,
             priority: card.priority ?? 0,
             pinned: card.pinned ?? false,
-          })),
-        ]);
-      }
+          }];
+        });
+        return [...preserved, ...generated];
+      });
     } catch (err) {
       setGenError(err instanceof Error ? err.message : "Generation failed.");
     } finally {

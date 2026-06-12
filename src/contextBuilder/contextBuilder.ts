@@ -117,7 +117,8 @@ function recentText(adventure: Adventure, options: BuildOptions): string {
     .slice(-windowSize)
     .map((message) => message.content)
     .join("\n");
-  return [options.currentInput, options.latestModelOutput, recent].filter(Boolean).join("\n");
+  const openingScene = adventure.activeState.turn === 0 ? adventure.openingScene : "";
+  return [options.currentInput, options.latestModelOutput, recent, openingScene].filter(Boolean).join("\n");
 }
 
 function isForced(adventure: Adventure, sourceType: ContextItem["sourceType"], id: string): boolean {
