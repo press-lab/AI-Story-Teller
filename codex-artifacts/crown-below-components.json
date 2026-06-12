@@ -1,0 +1,72 @@
+{
+  "components": [
+    {
+      "id": "component-crown-below-plot-essentials",
+      "title": "Plot Essentials",
+      "type": "plotEssentials",
+      "content": "- Seth is an undercity arcane technician: talented and resourceful, but not legendary, famous, or a warlock.\n- The city is layered into the wealthy Crown, the infrastructure-heavy Veins, and the exploited Sump. Beneath them lies the ancient Deep Lattice.\n- The Crown's comfort depends on machinery, labor, power, and bodies drawn from below. The Sump is nearing a political and material breaking point.\n- Nyx is an ancient techno-arcane entity fused into and imprisoned within the Deep Lattice. She may be part intelligence, part machine-god, and part original city power source.\n- Seth accidentally formed a secret pact with Nyx inside a sealed pre-city chamber. There were no witnesses and no public transformation.\n- Nyx is secret. Only Seth hears her directly. She reaches him through machine noise, violet static, reflections, dreams, hidden glyphs, and sudden technical knowledge.\n- The pact lets Seth read hidden circuitry, stabilize dead engines, unlock sealed systems, reroute energy through impossible paths, and survive hazardous arcane exposure. It does not make him omnipotent or broadly unbeatable.\n- Gold-thread circuitry now exists beneath Seth's skin. His impossible interventions can leave violet signatures in infrastructure.\n- Other people see Seth performing impossible work and assign him the credit, blame, fear, or value. They do not know Nyx exists.\n- Seth and Nyx are mutually dependent, not master and servant. Neither fully trusts the other, and Nyx has an agenda she has not fully disclosed.",
+      "priority": 90,
+      "alwaysOn": true,
+      "active": true,
+      "pinned": true,
+      "protected": true,
+      "inclusionPolicy": "always",
+      "state": "",
+      "autoUpdate": false,
+      "autoUpdateCooldownTurns": 3,
+      "createdAt": "2026-06-12T00:00:00.000Z",
+      "updatedAt": "2026-06-12T00:00:00.000Z"
+    },
+    {
+      "id": "component-crown-below-active-pressure",
+      "title": "Active Pressure",
+      "type": "activePressure",
+      "content": "- A failing relay beneath a dead transit station nearly cut power and water pressure to an entire Sump block.\n- Seth repaired the relay by awakening and interfacing with forbidden pre-city machinery. The undercity lights flickered violet for three seconds, creating a signature that may have been logged elsewhere.\n- Seth's friends know the repair should have been impossible. Mira may notice that his body changed, Brass is responding to commands Seth never speaks, and Joss is already suspicious of Seth's sudden precision.\n- Relay Ministry investigators, Crown analysts, Sump bosses, and Red Current organizers can all become interested once reports of the impossible repair spread.\n- Seth must protect his block and friends without revealing Nyx, while Nyx pressures him toward buried systems she needs him to reach.",
+      "priority": 245,
+      "alwaysOn": false,
+      "active": true,
+      "pinned": false,
+      "protected": false,
+      "inclusionPolicy": "manual",
+      "state": "",
+      "autoUpdate": true,
+      "autoUpdateCooldownTurns": 3,
+      "createdAt": "2026-06-12T00:00:00.000Z",
+      "updatedAt": "2026-06-12T00:00:00.000Z"
+    },
+    {
+      "id": "component-crown-below-immediate-momentum",
+      "title": "Immediate Momentum",
+      "type": "immediateMomentum",
+      "content": "- Seth wakes beneath the dead transit station. The relay is running, his hand is marked with gold-thread circuitry, and Nyx's first private instruction is: \"Do not tell them about me.\"\n- Footsteps, voices, or service signals announce that other people are approaching the repaired relay. Seth has only moments to conceal the sealed chamber, assess what the pact did to him, and decide how to explain an impossible repair.\n- Begin with concrete sensory evidence of the changed machinery and Nyx's presence, then force Seth into an immediate social or technical choice rather than a lore lecture.",
+      "priority": 240,
+      "alwaysOn": false,
+      "active": true,
+      "pinned": false,
+      "protected": false,
+      "inclusionPolicy": "manual",
+      "state": "",
+      "autoUpdate": true,
+      "autoUpdateCooldownTurns": 3,
+      "createdAt": "2026-06-12T00:00:00.000Z",
+      "updatedAt": "2026-06-12T00:00:00.000Z"
+    },
+    {
+      "id": "component-crown-below-author-note",
+      "title": "Author's Note",
+      "type": "authorNote",
+      "content": "Industrial techno-fantasy pressure cooker with competent people making dangerous choices inside failing systems. Favor practical problems, sharp NPC dynamics, banter with stakes, political pressure, and clever exploitation of infrastructure over chosen-one spectacle. Keep Nyx intimate, unsettling, useful, and partially unreadable. Let trust develop slowly. Treat romance as tension and vulnerability rather than instant softness.",
+      "priority": 80,
+      "alwaysOn": true,
+      "active": true,
+      "pinned": true,
+      "protected": true,
+      "inclusionPolicy": "always",
+      "state": "",
+      "autoUpdate": false,
+      "autoUpdateCooldownTurns": 3,
+      "createdAt": "2026-06-12T00:00:00.000Z",
+      "updatedAt": "2026-06-12T00:00:00.000Z"
+    }
+  ]
+}
