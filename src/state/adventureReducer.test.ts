@@ -372,6 +372,27 @@ describe("adventureReducer", () => {
     expect(state.brains.some((entry) => entry.id === brain.id)).toBe(false);
   });
 
+  it("accumulates thoughts in append mode and archives the oldest when over budget", () => {
+    let state = baseAdventure();
+    // Tiny budget so two short thoughts already exceed it and the oldest gets archived.
+    const brain = makeBrain({ characterName: "Nyx", condenseThreshold: 30 });
+    state = reduce(state, { type: "UPSERT_BRAIN", brain });
+
+    state = reduce(state, {
+      type: "APPLY_BRAIN_UPDATE", brainId: brain.id, mode: "append", turn: 1,
+      patch: { thoughts: { first: "1 → oldest thought here" } },
+    });
+    state = reduce(state, {
+      type: "APPLY_BRAIN_UPDATE", brainId: brain.id, mode: "append", turn: 2,
+      patch: { thoughts: { second: "2 → newest thought here" } },
+    });
+
+    const updated = state.brains.find((entry) => entry.id === brain.id)!;
+    // Append kept the newest, pruned the oldest into the archive (non-destructive).
+    expect(Object.keys(updated.thoughts)).toEqual(["second"]);
+    expect(updated.archivedThoughts.first).toBe("1 → oldest thought here");
+  });
+
   it("handles every trigger rule action", () => {
     let state = baseAdventure();
     const triggerRule = makeTriggerRule({ name: "Rule C", priority: 7 });

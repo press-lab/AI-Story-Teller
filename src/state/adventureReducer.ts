@@ -104,6 +104,32 @@ function mergeThoughts(
   return { thoughts: nextThoughts, archivedThoughts: nextArchived };
 }
 
+/** Default character budget for a brain's live thought log before old entries get archived. */
+const DEFAULT_THOUGHT_BUDGET = 1600;
+
+/**
+ * Keep a brain's accumulating thought log bounded. While the total thought text
+ * exceeds the budget, move the oldest entries (insertion order) to archivedThoughts.
+ * Always retains at least the most recent thought. Non-destructive — archived thoughts
+ * are preserved, not deleted. Runs on every append so it bounds both the auto-update
+ * path and the approval path, regardless of the semantic engine's LLM condense pass.
+ */
+function pruneThoughtsToBudget(
+  thoughts: Record<string, string>,
+  archived: Record<string, string>,
+  budget: number,
+): { thoughts: Record<string, string>; archivedThoughts: Record<string, string> } {
+  const kept = Object.entries(thoughts);
+  const totalChars = (entries: [string, string][]) => entries.reduce((sum, [, value]) => sum + value.length, 0);
+  if (totalChars(kept) <= budget) return { thoughts, archivedThoughts: archived };
+  const nextArchived = { ...archived };
+  while (kept.length > 1 && totalChars(kept) > budget) {
+    const [oldKey, oldValue] = kept.shift()!;
+    nextArchived[oldKey] = oldValue;
+  }
+  return { thoughts: Object.fromEntries(kept), archivedThoughts: nextArchived };
+}
+
 function applyBrainUpdate(
   brain: BrainEntry,
   patch: BrainPatch,
@@ -128,11 +154,16 @@ function applyBrainUpdate(
         perField[key] = existing ? `${existing}\n${value}` : value;
       }
     }
+    const { thoughts: boundedThoughts, archivedThoughts: boundedArchived } = pruneThoughtsToBudget(
+      nextThoughts,
+      nextArchivedThoughts,
+      brain.condenseThreshold ?? DEFAULT_THOUGHT_BUDGET,
+    );
     return touch({
       ...brain,
       ...perField,
-      thoughts: nextThoughts,
-      archivedThoughts: nextArchivedThoughts,
+      thoughts: boundedThoughts,
+      archivedThoughts: boundedArchived,
       lastUpdatedTurn: turn ?? brain.lastUpdatedTurn,
       lastUpdatedAt: timestamp,
       lastGeneratedUpdatePreview: preview ?? JSON.stringify(patch).slice(0, 500),

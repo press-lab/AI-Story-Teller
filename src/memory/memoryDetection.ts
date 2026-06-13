@@ -59,7 +59,7 @@ function buildSystemPrompt(adventure: Adventure, generateContent: boolean): stri
 Existing story cards (already in memory):
 ${cardList || "(none)"}
 
-Existing tracked characters (character brains are managed separately — do NOT propose brainUpdate):
+Existing tracked characters (these already have their own entries — facts about them, including how they relate to each other, are tracked there, NOT in new cards):
 ${brainList || "(none)"}
 
 If there is a new durable fact, respond with ONLY this JSON (no markdown, no prose):
@@ -69,7 +69,9 @@ If there is a new durable fact, respond with ONLY this JSON (no markdown, no pro
 If nothing is new: respond with the word null
 
 Rules:
-- storyCard: named entities, relationships, secrets, rules, or recurring facts NOT already in existing cards
+- storyCard: ONLY a genuinely NEW named entity not already listed above — a specific person, place, faction, organization, or named object/rule the story just introduced. The title must be that entity's own proper name.
+- DO NOT create a card for a relationship, bond, pact, dynamic, romance, or feeling between characters who already appear above. Those belong on the characters' own entries — return null for them.
+- DO NOT use abstract or descriptive titles like "Dynamic between X and Y", "Pact between X and Y", "Their Bond", or "The Relationship". A card title is always the proper name of a single entity, never a description of a connection.
 - plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — write only the new addition as 1–2 bullets, not a full rewrite
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;

@@ -266,7 +266,10 @@ export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "cha
       overrides.updateCondition ??
       `when ${overrides.characterName} appears in the scene or is meaningfully referenced`,
     updatePrompt: overrides.updatePrompt ?? "",
-    updateMode: overrides.updateMode ?? "replace",
+    // Brains accumulate thoughts by default (Inner Self style). "replace" keeps only
+    // the latest thought and is opt-in via the Brains UI dropdown.
+    updateMode: overrides.updateMode ?? "append",
+    condenseThreshold: overrides.condenseThreshold,
     autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
     lastUpdatedTurn: overrides.lastUpdatedTurn,
     lastUpdatedAt: overrides.lastUpdatedAt,
@@ -329,7 +332,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         ...(adventure.activeState?.nextTurnNote ?? {}),
       },
       rawImports: adventure.activeState?.rawImports ?? [],
-      stateFlags: adventure.activeState?.stateFlags ?? {},
+      stateFlags: { ...(adventure.activeState?.stateFlags ?? {}), brainsAppendMigrated: true },
       triggerLog: adventure.activeState?.triggerLog ?? [],
       forceIncludeNextTurn: adventure.activeState?.forceIncludeNextTurn ?? [],
       // Coerce old string hints ("short"/"medium"/"long") from pre-slider saves to numbers
@@ -366,7 +369,12 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         return old;
       })(),
       updatePrompt: brain.updatePrompt ?? "",
-      updateMode: brain.updateMode ?? "replace",
+      // One-time migration: brains created under the old "replace" default never
+      // accumulated thoughts. Flip them to "append" once (gated by the stateFlag
+      // below) so existing adventures heal; users can still opt back to replace.
+      updateMode: !adventure.activeState?.stateFlags?.brainsAppendMigrated && (brain.updateMode ?? "replace") === "replace"
+        ? "append"
+        : (brain.updateMode ?? "append"),
       thoughts: migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),
       archivedThoughts: brain.archivedThoughts ?? {},
       linkedStoryCardId: brain.linkedStoryCardId,
