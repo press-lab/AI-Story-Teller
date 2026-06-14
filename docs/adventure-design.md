@@ -229,3 +229,36 @@ For a new or existing adventure that should have a climbing arc:
       actually lands.
 - [ ] Pure-loop adventures: skip the arc entirely. Infinite silliness is a valid
       choice — only add pressure if you want a lead-up.
+
+---
+
+## Where this lives in code (for contributors)
+
+The theory above maps onto the **Arc Director**:
+
+- `ArcPacingState` and the `arc*` fields (`arcThreadKeys`, `arcPace`,
+  `arcTriggerMode`, `arcSimmerInstruction`, `arcBreakInstruction`, `arcState`)
+  on `ComponentEntry` — `src/types/adventure.ts`.
+- The phase gate that withholds the break instruction until `phase === "break"`
+  — the `currentArc` block in `src/contextBuilder/contextBuilder.ts`.
+- `ADVANCE_ARC_PACING` (counts engagement, advances phase) and `SET_ARC_PHASE`
+  (manual override / confirm a pending break), plus the pace→threshold table —
+  `src/state/adventureReducer.ts`.
+- The engagement signal (which threads were active in-scene this turn) —
+  `src/state/turnPipeline.ts`.
+- The setup panel — the `ArcDirector` component in `src/pages/ComponentsPage.tsx`.
+- Concept ↔ contract for reviewers: see `AGENTS.md` → "Arc Director" for the
+  invariants.
+
+```ts
+interface ArcPacingState {
+  phase: "simmer" | "escalate" | "break" | "aftermath";
+  tier: number;                              // 0–5, derived from engagement
+  threadEngagement: Record<string, number>;  // counted, never LLM-judged
+  pendingBreak: boolean;                      // ask-mode: gate open, awaiting the player
+  brokeAtTurn?: number;
+}
+```
+
+The non-negotiable: **code owns timing, the break card's text owns outcome, and
+a capable model (V3.2-class) owns whether the cost actually lands.**

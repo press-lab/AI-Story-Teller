@@ -101,6 +101,19 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 - Difference from Plot Essentials: PE = static world constants (rarely touched). Arc = what's actively happening to the protagonist right now (accumulates as story unfolds, then gets retired)
 - Difference from Quests: Arc tracks narrative shape, not task completion. No objective states. Graduated arc becomes referenced backstory via Story Card, not a "quest completed" flag.
 
+### Arc Director (deterministic story pacing)
+
+**Files:** `state/adventureReducer.ts`, `contextBuilder/contextBuilder.ts`, `state/turnPipeline.ts`, `pages/ComponentsPage.tsx` (`ArcDirector`). Concept: `docs/adventure-design.md`.
+
+Optional pacing layer on a `currentArc` component that makes an antagonist's arc climb and *break* on its own. Configured via the Arc Director panel; all state lives on the component.
+
+- **Config fields** (on `ComponentEntry`): `arcThreadKeys` (Story Card / Brain ids that are this arc's "baddie"), `arcPace` (`short`/`medium`/`long`/`epic`), `arcTriggerMode` (`auto` fires the break itself / `ask` surfaces a one-click prompt — the leash), `arcSimmerInstruction`, `arcBreakInstruction` (the cost policy).
+- **Runtime state** (`arcState: ArcPacingState`): `phase` (`simmer → escalate → break → aftermath`), `tier` (0–5), `threadEngagement` (per-thread counts), `pendingBreak`, `brokeAtTurn`.
+- **The gate:** `simmer`/`escalate` inject `arcSimmerInstruction`; `break` injects `arcBreakInstruction`. The break (cost) instruction is **withheld from context entirely until `phase === "break"`** — the model cannot land the climax early on something it never sees.
+- **Driver:** after each turn, `turnPipeline` dispatches `ADVANCE_ARC_PACING` with the ids that triggered in-scene; the reducer increments `threadEngagement` for ids in `arcThreadKeys`, derives the tier, and advances the phase against the pace thresholds (`short` 4/8, `medium` 8/16, `long` 16/32, `epic` 30/60 for escalate/break). **Counted engagement only — never an LLM verdict.**
+- **Break trigger:** at the break threshold, `auto` mode sets `phase = "break"`; `ask` mode sets `pendingBreak` and holds at `escalate` until a `SET_ARC_PHASE` confirm. Break settles to `aftermath` after `ARC_BREAK_DURATION` (6) turns. `SET_ARC_PHASE` also powers the manual "Spring it now" / "Resolve arc" / "Reset to simmer" buttons.
+- **Principle:** code owns *timing*, the break card's text owns *outcome*, and a capable model (V3.2-class) owns whether the cost lands. See `AGENTS.md` → "Arc Director" for the invariants.
+
 ---
 
 ## 4. Story Cards
@@ -121,6 +134,7 @@ Types: `character`, `location`, `lore`, `plot`, `custom`
 - The AI compares the description with existing Story Cards and character entries.
 - The result is one or more pending `storyCard` Memory Proposals, never an immediate active-memory write.
 - Native DeepSeek requests use JSON output with thinking disabled for this schema-driven call.
+- **Related generators** (`ai/generators.ts`, user-initiated ✨ buttons): fresh content for Narration Rules / AI Instructions / Author's Note (preview → Apply), a full Arc Director setup from a one-line concept (premise + simmer + break + pace + trigger mode), and a character Brain from just a name (behavioral voice contract, not trait lists). All are grounded in a compact adventure snapshot. See `AGENTS.md` → "AI Generation Buttons".
 
 ### Auto-update:
 - `autoUpdate: boolean` per card

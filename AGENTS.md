@@ -33,9 +33,10 @@ Do not directly mutate adventure objects in components, trigger engines, importe
 - Keep pure functions pure. Context assembly, matching, trigger mapping, quest progression, token estimation, and import/export should remain unit-testable without React.
 - API keys must not be written into adventure JSON or IndexedDB.
 - **No opaque mega-buckets.** Do not create any section that bundles multiple conceptually distinct context types without individual item visibility. Every token in the model context must belong to a named, inspectable section.
-- Context assembly order is fixed (see `ContextSectionKind`): system -> aiInstructions -> plotEssentials -> components -> storyCards -> brains -> questState -> rollingSummary -> authorNote -> nextTurnNote -> recentMessages.
-- `aiInstructions`, `plotEssentials`, and `authorNote` components each occupy their own section (B, C, D). General always-on or pinned custom components go to section E (`components`).
-- Story Cards and Auto-Cards share section F (`storyCards`). Brains are section G. Quest state is section H. Rolling Summary is section I. Author's Note is placed near recent context for AID-style influence. Next Output Bias is section J. Recent messages are section K.
+- Context assembly order is fixed (see `ContextSectionKind` and the section-order table in `FEATURES.md`): system → aiInstructions → plotEssentials → currentArc → components → storyCards → brains → authorNote → nextTurnNote → challengeMode → recentMessages.
+- `aiInstructions`, `plotEssentials`, and `authorNote` components each occupy their own section (B, C, D). The active `currentArc` component occupies section C2, between Plot Essentials and Components. General always-on or pinned custom components go to section E (`components`).
+- Story Cards and Auto-Cards share section F (`storyCards`). Brains are section G. Author's Note (D) is placed near recent context for AID-style influence. Next Output Bias is section J. The Continuity Challenge instruction is section M (`challengeMode`), injected just before Recent Messages when active. Recent messages are section K.
+- Rolling Summary and Scene State are retained on the adventure object for save-compat but are no longer emitted as their own assembled sections (see `FEATURES.md` §18). Quest state is not part of the default section assembly.
 - Protected means non-droppable during token truncation. Pinned means prioritized, not automatically non-droppable.
 - Only the system shell and user-marked protected context are absolutely non-droppable.
 - Budget cuts are controlled by `memoryPriorityMode`, `allowSystemToPrioritizeMemory`, `allowSystemToDropUnpinnedTriggeredCards`, and `allowSystemToTruncateSummary`.
@@ -78,6 +79,31 @@ The reason direct brain/story-card/plotEssentials updates are allowed as an opti
 Memory Inbox / Memory Proposals is the path for **unstructured AI-suggested new memory** — the `classifyMemory` flow, or future summary-extraction passes — where the source text is arbitrary and the AI is making a freeform durable-memory suggestion that the user has not pre-authorized.
 
 If you want to require user review for all semantic memory writes, set `requireApprovalForAutoUpdates` to `true` in Settings. Keep tests for both modes.
+
+## Arc Director (deterministic story pacing)
+
+The Arc Director makes an antagonist's arc climb and *break* on its own, configured on a single `currentArc` component. The design rationale is in `docs/adventure-design.md`; this is the implementation contract.
+
+**Where it lives**
+- `ArcPacingState` and the `arc*` fields on `ComponentEntry` (`arcThreadKeys`, `arcPace`, `arcTriggerMode`, `arcSimmerInstruction`, `arcBreakInstruction`, `arcState`) — `src/types/adventure.ts`.
+- The phase gate — the `currentArc` block in `src/contextBuilder/contextBuilder.ts`.
+- `ADVANCE_ARC_PACING` (per-turn engagement counter + phase transitions) and `SET_ARC_PHASE` (manual override / confirm a pending break), plus the pace→threshold table — `src/state/adventureReducer.ts`.
+- The engagement signal — `src/state/turnPipeline.ts` dispatches `ADVANCE_ARC_PACING` with the Story Card / Brain ids that triggered in-scene this turn.
+- Setup UI — the `ArcDirector` panel in `src/pages/ComponentsPage.tsx`.
+
+**Phases:** `simmer → escalate → break → aftermath`. `simmer`/`escalate` inject `arcSimmerInstruction`; `break` injects `arcBreakInstruction`; `aftermath` injects neither.
+
+**Invariants — do not break these:**
+- `arcBreakInstruction` (the cost) MUST NOT be assembled into context before `phase === "break"`. This is the core safety property — the model cannot land the climax on something it never sees. Any refactor of the `currentArc` context block must preserve it; a contextBuilder test guards it.
+- Pacing advances on COUNTED engagement (`threadEngagement`), never on an LLM verdict. Do not add a "let the model judge if it's dramatic yet" path — that reintroduces the unmanaged ledger the feature exists to delete.
+- Phase transitions are one-way except an explicit `SET_ARC_PHASE` reset to `simmer` (which clears `threadEngagement`).
+- Engagement counts only ids listed in the arc's `arcThreadKeys`.
+
+**Model-fidelity constraint (system-wide):** the design assumes a model that honors long rule blocks (DeepSeek V3.2 / `deepseek-chat` class). The Arc Director controls only *when* the break instruction appears; whether the model *spends the authored cost* at the climax is a model-capability matter the code does not and cannot enforce. Flash-tier models skim long prompts and will fake the cost.
+
+## AI Generation Buttons (user-initiated)
+
+`src/ai/generators.ts` powers the ✨ Generate buttons: component content (Narration Rules / AI Instructions / Author's Note), a full Arc Director setup from a concept, and a character Brain from a name. These are distinct from autonomous AI memory mutation: they run only on an explicit user click, are grounded in a compact adventure snapshot, and produce content the user reviews (preview → Apply) or that lands via a reducer action the user invoked. They are therefore allowed to populate `narrationRules` / `aiInstructions` / `authorNote` / `currentArc` arc fields / new Brains — which *autonomous* AI memory updates may NOT touch. Keep that distinction: the AI-write boundary in the Memory Placement Policy governs *unprompted* writes, not user-requested generation.
 
 ## Adding a Memory Surface
 
