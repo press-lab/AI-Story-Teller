@@ -418,11 +418,22 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       logExcludedOnce(component.id, component.title, "inactive");
       return [];
     }
-    if (!component.content.trim() && !component.arcPremise?.trim()) return [];
+    // Arc Director phase gate: the simmer instruction is injected while building;
+    // the break (cost) instruction is withheld from context entirely until the phase
+    // reaches "break", so the model cannot land the climax early on something it never sees.
+    const phase = component.arcState?.phase ?? "simmer";
+    const phaseDirection =
+      phase === "break"
+        ? component.arcBreakInstruction?.trim()
+        : phase === "simmer" || phase === "escalate"
+          ? component.arcSimmerInstruction?.trim()
+          : undefined;
+    if (!component.content.trim() && !component.arcPremise?.trim() && !phaseDirection) return [];
     const premiseHeader = component.arcPremise?.trim() ? `[Arc Premise: ${component.arcPremise.trim()}]\n` : "";
-    const arcContent = premiseHeader + (component.content.trim() || "(no entries yet)");
+    const directionBlock = phaseDirection ? `\n\n[ARC DIRECTION — ${phase.toUpperCase()}]\n${phaseDirection}` : "";
+    const arcContent = premiseHeader + (component.content.trim() || "(no entries yet)") + directionBlock;
     const next = item(component.id, "component", component.title, arcContent, component.priority, component.protected, component.pinned, component.active, component.inclusionPolicy, "user");
-    pushIncluded(next, `Current Story Arc loaded; priority=${component.priority}.`);
+    pushIncluded(next, `Current Story Arc loaded; priority=${component.priority}; arcPhase=${phase}.`);
     return [next];
   });
 

@@ -1,5 +1,6 @@
 import type {
   Adventure,
+  ArcPacingState,
   BrainEntry,
   ComponentEntry,
   MemoryDetectionSettings,
@@ -201,6 +202,13 @@ export function makeComponent(
     title: overrides.title,
     type,
     content: overrides.content,
+    arcPremise: overrides.arcPremise,
+    arcThreadKeys: overrides.arcThreadKeys,
+    arcPace: overrides.arcPace,
+    arcTriggerMode: overrides.arcTriggerMode,
+    arcSimmerInstruction: overrides.arcSimmerInstruction,
+    arcBreakInstruction: overrides.arcBreakInstruction,
+    arcState: overrides.arcState ?? (type === "currentArc" ? defaultArcState() : undefined),
     priority: overrides.priority ?? 0,
     alwaysOn,
     active: overrides.active ?? true,
@@ -215,6 +223,10 @@ export function makeComponent(
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };
+}
+
+export function defaultArcState(): ArcPacingState {
+  return { phase: "simmer", tier: 0, threadEngagement: {}, pendingBreak: false };
 }
 
 export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "title" | "content">): StoryCard {
@@ -396,6 +408,9 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
           ...component,
           protected: component.protected ?? defaultProtected,
           inclusionPolicy: component.inclusionPolicy ?? (component.alwaysOn || defaultProtected ? "always" : "manual"),
+          // Arc Director: every Current Arc carries pacing state so the gate has something to read.
+          // No behavior change until the user actually configures threads + a break instruction.
+          arcState: component.type === "currentArc" ? (component.arcState ?? defaultArcState()) : component.arcState,
         };
       });
       // Deduplicate singleton types: keep the first occurrence of each singleton type.

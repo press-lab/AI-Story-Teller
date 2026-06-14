@@ -83,6 +83,8 @@ const testedActionTypes = [
   "ACCUMULATE_BACKGROUND_TOKENS",
   "SET_AUTO_SAVE_SETTINGS",
   "MARK_COMPONENT_UPDATED",
+  "ADVANCE_ARC_PACING",
+  "SET_ARC_PHASE",
 ] as const satisfies AdventureAction["type"][];
 
 type MissingActionCoverage = Exclude<AdventureAction["type"], (typeof testedActionTypes)[number]>;
@@ -573,5 +575,83 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "RESET_RUNTIME_STATE" });
     expect(state.messages).toHaveLength(0);
     expect(state.rollingSummary.lastSummarizedMessageIndex).toBeUndefined();
+  });
+
+  it("advances arc pacing from engagement, auto-fires the break, then settles into aftermath", () => {
+    let state = baseAdventure();
+    const arc = makeComponent({
+      title: "Current Story Arc",
+      type: "currentArc",
+      content: "",
+      arcThreadKeys: ["baddie"],
+      arcPace: "short", // escalate at 4, break at 8
+      arcTriggerMode: "auto",
+      arcBreakInstruction: "force the confrontation",
+    });
+    state = reduce(state, { type: "UPSERT_COMPONENT", component: arc });
+    const get = () => state.components.find((component) => component.id === arc.id)!;
+
+    for (let turn = 1; turn <= 3; turn++) state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["baddie"], turn });
+    expect(get().arcState?.phase).toBe("simmer");
+
+    state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["baddie"], turn: 4 });
+    expect(get().arcState?.phase).toBe("escalate");
+
+    for (let turn = 5; turn <= 8; turn++) state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["baddie"], turn });
+    expect(get().arcState?.phase).toBe("break");
+    expect(get().arcState?.brokeAtTurn).toBe(8);
+
+    // break settles into aftermath after ARC_BREAK_DURATION (6) turns
+    state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: [], turn: 14 });
+    expect(get().arcState?.phase).toBe("aftermath");
+  });
+
+  it("holds the break in ask mode until the player confirms it", () => {
+    let state = baseAdventure();
+    const arc = makeComponent({
+      title: "Current Story Arc",
+      type: "currentArc",
+      content: "",
+      arcThreadKeys: ["baddie"],
+      arcPace: "short",
+      arcTriggerMode: "ask",
+    });
+    state = reduce(state, { type: "UPSERT_COMPONENT", component: arc });
+    const get = () => state.components.find((component) => component.id === arc.id)!;
+
+    for (let turn = 1; turn <= 8; turn++) state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["baddie"], turn });
+    // gate is open but the break has NOT fired — it waits on the player (the leash)
+    expect(get().arcState?.phase).toBe("escalate");
+    expect(get().arcState?.pendingBreak).toBe(true);
+
+    state = reduce(state, { type: "SET_ARC_PHASE", componentId: arc.id, phase: "break", turn: 9 });
+    expect(get().arcState?.phase).toBe("break");
+    expect(get().arcState?.pendingBreak).toBe(false);
+  });
+
+  it("counts only configured threads and resets engagement when returned to simmer", () => {
+    let state = baseAdventure();
+    const arc = makeComponent({
+      title: "Current Story Arc",
+      type: "currentArc",
+      content: "",
+      arcThreadKeys: ["baddie"],
+      arcPace: "short",
+      arcTriggerMode: "auto",
+    });
+    state = reduce(state, { type: "UPSERT_COMPONENT", component: arc });
+    const get = () => state.components.find((component) => component.id === arc.id)!;
+
+    // unrelated triggers never move the arc
+    for (let turn = 1; turn <= 10; turn++) state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["someone-else"], turn });
+    expect(get().arcState?.phase).toBe("simmer");
+    expect(get().arcState?.threadEngagement.baddie ?? 0).toBe(0);
+
+    for (let turn = 11; turn <= 14; turn++) state = reduce(state, { type: "ADVANCE_ARC_PACING", triggeredIds: ["baddie"], turn });
+    expect(get().arcState?.threadEngagement.baddie).toBe(4);
+
+    state = reduce(state, { type: "SET_ARC_PHASE", componentId: arc.id, phase: "simmer", turn: 15 });
+    expect(get().arcState?.threadEngagement).toEqual({});
+    expect(get().arcState?.tier).toBe(0);
   });
 });

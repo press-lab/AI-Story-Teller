@@ -26,6 +26,24 @@ export type ComponentType =
   | "memory"
   | "custom";
 
+/** Arc Director runtime state — lives on a `currentArc` component. Deterministic; never set by an LLM. */
+export type ArcPhase = "simmer" | "escalate" | "break" | "aftermath";
+
+export interface ArcPacingState {
+  phase: ArcPhase;
+  /** Display tier 0–5, derived from total engagement vs the break threshold. */
+  tier: number;
+  /** Per-thread engagement counts, keyed by Story Card / Brain id. Incremented when a thread triggers in-scene. */
+  threadEngagement: Record<string, number>;
+  /** Ask-mode: the break gate has opened and is awaiting the player's confirmation. */
+  pendingBreak: boolean;
+  /** Turn the arc entered the break phase, used to time the transition to aftermath. */
+  brokeAtTurn?: number;
+}
+
+export type ArcPace = "short" | "medium" | "long" | "epic";
+export type ArcTriggerMode = "auto" | "ask";
+
 export interface ComponentEntry {
   id: string;
   title: string;
@@ -33,6 +51,18 @@ export interface ComponentEntry {
   content: string;
   /** Current Story Arc only — the one-line premise seeding this arc's auto-update filter. */
   arcPremise?: string;
+  /** Arc Director (currentArc only) — Story Card / Brain ids that are this arc's "baddie" threads. */
+  arcThreadKeys?: string[];
+  /** Arc Director — how long the arc simmers before it can break. */
+  arcPace?: ArcPace;
+  /** Arc Director — who springs the break: the AI (auto) or the player via a prompt (ask). */
+  arcTriggerMode?: ArcTriggerMode;
+  /** Arc Director — instruction injected while simmering/escalating (recur, hint, stay off-screen). */
+  arcSimmerInstruction?: string;
+  /** Arc Director — the cost policy, injected only once the arc reaches the break phase. */
+  arcBreakInstruction?: string;
+  /** Arc Director — deterministic pacing state. */
+  arcState?: ArcPacingState;
   priority: number;
   alwaysOn: boolean;
   active: boolean;
@@ -599,6 +629,8 @@ export type AdventureAction =
   | { type: "APPLY_STORY_CARD_UPDATE"; storyCardId: string; content: string }
   | { type: "MARK_STORY_CARD_UPDATED"; storyCardId: string; turn: number }
   | { type: "MARK_COMPONENT_UPDATED"; componentId: string; turn: number }
+  | { type: "ADVANCE_ARC_PACING"; triggeredIds: string[]; turn: number }
+  | { type: "SET_ARC_PHASE"; componentId: string; phase: ArcPhase; turn?: number }
   | { type: "REORDER_STORY_CARD"; storyCardId: string; direction: "up" | "down" }
   | { type: "UPSERT_BRAIN"; brain: BrainEntry }
   | { type: "DELETE_BRAIN"; brainId: string }

@@ -1,8 +1,127 @@
 import { useState } from "react";
-import type { ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
+import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, contentSnippet } from "./shared";
+
+const ARC_PACE_LABELS: Record<ArcPace, string> = {
+  short: "Short — breaks quickly",
+  medium: "Medium",
+  long: "Long",
+  epic: "Epic — a slow, season-long burn",
+};
+
+/**
+ * Arc Director — set the antagonist ("the Baddie"), the pace ("the Timer"), the cost,
+ * and who springs the climax. Pacing is deterministic; the break instruction is withheld
+ * from the AI's context until the arc actually reaches the break phase.
+ */
+function ArcDirector({
+  adventure,
+  component,
+  dispatch,
+}: {
+  adventure: Adventure;
+  component: ComponentEntry;
+  dispatch: (action: AdventureAction) => void;
+}) {
+  const arc = component.arcState ?? { phase: "simmer" as ArcPhase, tier: 0, threadEngagement: {}, pendingBreak: false };
+  const threadKeys = component.arcThreadKeys ?? [];
+  const threadSet = new Set(threadKeys);
+  const turn = adventure.activeState.turn;
+  const configured = threadKeys.length > 0;
+  const totalEngagement = threadKeys.reduce((sum, key) => sum + (arc.threadEngagement[key] ?? 0), 0);
+
+  const candidates = [
+    ...adventure.storyCards.map((card) => ({ id: card.id, label: card.title, kind: "Card" })),
+    ...adventure.brains.map((brain) => ({ id: brain.id, label: brain.characterName, kind: "Brain" })),
+  ];
+
+  const patch = (next: Partial<ComponentEntry>) =>
+    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: next });
+  const setPhase = (phase: ArcPhase) =>
+    dispatch({ type: "SET_ARC_PHASE", componentId: component.id, phase, turn });
+  const toggleThread = (id: string, on: boolean) =>
+    patch({ arcThreadKeys: on ? [...threadKeys, id] : threadKeys.filter((key) => key !== id) });
+
+  return (
+    <div className="editor-card" style={{ borderLeft: "3px solid #b9770e", marginBottom: "0.75rem" }}>
+      <strong>🎬 Arc Director</strong>
+      <p className="muted" style={{ fontSize: "0.85em", marginTop: "0.25rem" }}>
+        Make the antagonist's arc climb out of the loop and actually break. Pacing is automatic and
+        deterministic — the cost instruction is withheld from the AI until the arc is ripe, so it can't
+        land the climax early. See <code>docs/adventure-design.md</code>.
+      </p>
+
+      <div className="row" style={{ alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
+        <span className="badge badge-priority">{arc.phase.toUpperCase()}</span>
+        <span className="muted">Tier {arc.tier}/5 · engagement {totalEngagement}</span>
+        {arc.pendingBreak && <span className="badge badge-protected">Ready to break</span>}
+      </div>
+
+      {arc.pendingBreak && (
+        <div className="row" style={{ gap: "0.5rem", margin: "0.5rem 0", alignItems: "center" }}>
+          <span>The arc is ripe — let it break?</span>
+          <button type="button" className="danger" onClick={() => setPhase("break")}>Let it break</button>
+          <button type="button" onClick={() => patch({ arcState: { ...arc, pendingBreak: false } })}>Not yet</button>
+        </div>
+      )}
+
+      <Field label="The Baddie — which Story Cards / Brains is this arc about?">
+        <div style={{ maxHeight: "9rem", overflowY: "auto", border: "1px solid #444", borderRadius: "4px", padding: "0.4rem" }}>
+          {candidates.length === 0 && <p className="muted" style={{ margin: 0 }}>Create Story Cards or Brains first.</p>}
+          {candidates.map((candidate) => (
+            <label key={candidate.id} style={{ display: "block", fontSize: "0.9em" }}>
+              <input type="checkbox" checked={threadSet.has(candidate.id)} onChange={(event) => toggleThread(candidate.id, event.target.checked)} />{" "}
+              {candidate.label} <span className="muted">({candidate.kind})</span>
+            </label>
+          ))}
+        </div>
+      </Field>
+
+      <div className="grid two">
+        <Field label="The Timer — how long should it simmer?">
+          <select value={component.arcPace ?? "medium"} onChange={(event) => patch({ arcPace: event.target.value as ArcPace })}>
+            {(["short", "medium", "long", "epic"] as ArcPace[]).map((pace) => (
+              <option key={pace} value={pace}>{ARC_PACE_LABELS[pace]}</option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Who springs the break?">
+          <select value={component.arcTriggerMode ?? "ask"} onChange={(event) => patch({ arcTriggerMode: event.target.value as ArcTriggerMode })}>
+            <option value="ask">Ask me first (leash)</option>
+            <option value="auto">Let the AI spring it (auto)</option>
+          </select>
+        </Field>
+      </div>
+
+      <Field label="How the baddie behaves while building (simmer)">
+        <textarea
+          rows={3}
+          placeholder="Recur through traps, hostage plays, near-misses. Stay off-screen — glimpses, not monologues. Always connected to the larger plan."
+          value={component.arcSimmerInstruction ?? ""}
+          onChange={(event) => patch({ arcSimmerInstruction: event.target.value })}
+        />
+      </Field>
+      <Field label="How the confrontation lands — the cost (only injected at break)">
+        <textarea
+          rows={3}
+          placeholder="The antagonist forces a confrontation that can't be deferred. It is allowed to cost the cast — named allies can die, ground can be lost. The player stays the strongest; the win is just expensive."
+          value={component.arcBreakInstruction ?? ""}
+          onChange={(event) => patch({ arcBreakInstruction: event.target.value })}
+        />
+      </Field>
+
+      {configured && (
+        <div className="row" style={{ gap: "0.5rem", marginTop: "0.5rem" }}>
+          <button type="button" onClick={() => setPhase("break")} title="Force the climax now, regardless of pacing.">Spring it now</button>
+          <button type="button" onClick={() => setPhase("aftermath")} title="Mark the arc resolved.">Resolve arc</button>
+          <button type="button" onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "authorNote"]);
 
@@ -187,6 +306,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     The AI auto-appends arc entries only when events meaningfully advance <em>this specific premise</em>. Without a premise, auto-update is disabled.
                   </p>
                 </Field>
+              )}
+              {component.type === "currentArc" && (
+                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} />
               )}
               <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
                 <textarea

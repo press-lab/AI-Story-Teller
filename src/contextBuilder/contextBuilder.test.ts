@@ -720,4 +720,27 @@ describe("buildContext", () => {
     expect(result.messages[0].content).toContain("# E. Components");
     expect(result.messages[0].content).toContain("Rain makes the city smell like iron.");
   });
+
+  it("withholds the arc break instruction from context until the phase reaches break", () => {
+    const arc = {
+      ...makeComponent({ title: "Current Story Arc", type: "currentArc", content: "The Red Ring tightens its grip.", active: true, priority: 50 }),
+      arcThreadKeys: ["baddie"],
+      arcSimmerInstruction: "Shroud stays off-screen, glimpses only.",
+      arcBreakInstruction: "Shroud forces the confrontation; allies can die.",
+      arcState: { phase: "simmer" as const, tier: 0, threadEngagement: {}, pendingBreak: false },
+    };
+    const adventure: Adventure = { ...createDefaultAdventure("Arc Gate"), components: [arc] };
+    const arcText = (a: Adventure) =>
+      buildContext(a, {}).sections.find((section) => section.id === "currentArc")?.items.map((item) => item.content).join("\n") ?? "";
+
+    // Simmering: the simmer instruction is present and the break (cost) instruction is absent.
+    const simmering = arcText(adventure);
+    expect(simmering).toContain("stays off-screen");
+    expect(simmering).not.toContain("forces the confrontation");
+
+    // Broken: the break instruction is now injected; the simmer instruction is gone.
+    const broken = arcText({ ...adventure, components: [{ ...arc, arcState: { ...arc.arcState, phase: "break" } }] });
+    expect(broken).toContain("forces the confrontation");
+    expect(broken).not.toContain("stays off-screen");
+  });
 });

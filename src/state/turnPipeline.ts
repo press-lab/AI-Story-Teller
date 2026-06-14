@@ -170,6 +170,16 @@ export async function runTurnPipeline({
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
   next = applyRuntimeEngines(next, { source: "output", text: response.content });
+
+  // Arc Director: count engagement for any arc threads (Story Cards / Brains) that were
+  // active in-scene this turn. Deterministic — drives arc pacing without an extra LLM call.
+  const triggeredIds = preProviderContext.sections
+    .filter((sectionEntry) => sectionEntry.id === "storyCards" || sectionEntry.id === "brains")
+    .flatMap((sectionEntry) => sectionEntry.items.map((entry) => entry.id));
+  if (triggeredIds.length > 0) {
+    next = adventureReducer(next, { type: "ADVANCE_ARC_PACING", triggeredIds, turn: next.activeState.turn });
+  }
+
   next = adventureReducer(next, { type: "INCREMENT_TURN" });
 
   return {

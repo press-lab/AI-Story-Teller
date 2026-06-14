@@ -1,6 +1,9 @@
 import type {
   Adventure,
   AdventureAction,
+  ArcPace,
+  ArcPacingState,
+  ArcPhase,
   BrainEntry,
   BrainPatch,
   BrainStateField,
@@ -76,6 +79,91 @@ function mergePatch<T extends { updatedAt: string }>(item: T, patch: Partial<T>)
   const sanitizedPatch = { ...patch };
   delete sanitizedPatch.updatedAt;
   return touch({ ...item, ...sanitizedPatch });
+}
+
+// ---- Arc Director: deterministic story pacing ----
+// Tier/phase advance purely on counted player engagement with an arc's threads —
+// never on an LLM verdict. The code owns *timing* (when the break instruction is
+// allowed into context); it never owns *outcome* (that is the break card's text).
+
+const ARC_PACE_THRESHOLDS: Record<ArcPace, { escalate: number; break: number }> = {
+  short: { escalate: 4, break: 8 },
+  medium: { escalate: 8, break: 16 },
+  long: { escalate: 16, break: 32 },
+  epic: { escalate: 30, break: 60 },
+};
+
+/** Turns the arc holds in the break phase before settling into aftermath. */
+const ARC_BREAK_DURATION = 6;
+
+function emptyArcState(): ArcPacingState {
+  return { phase: "simmer", tier: 0, threadEngagement: {}, pendingBreak: false };
+}
+
+function arcTier(total: number, breakThreshold: number): number {
+  if (breakThreshold <= 0) return 0;
+  return Math.max(0, Math.min(5, Math.floor((total / breakThreshold) * 5)));
+}
+
+/**
+ * Advance one Current Arc after a turn: count engagement from the threads that were
+ * active in-scene, derive the display tier, and move the phase forward one-way.
+ * In "ask" mode the break gate opens a pending prompt instead of firing.
+ */
+function advanceArcComponent(component: ComponentEntry, triggeredIds: string[], turn: number): ComponentEntry {
+  const threadKeys = component.arcThreadKeys ?? [];
+  if (component.type !== "currentArc" || threadKeys.length === 0) return component;
+  const state = component.arcState ?? emptyArcState();
+
+  // 1. Count engagement for any of this arc's threads triggered this turn.
+  const triggered = new Set(triggeredIds);
+  const nextEngagement = { ...state.threadEngagement };
+  let changed = false;
+  for (const key of threadKeys) {
+    if (triggered.has(key)) {
+      nextEngagement[key] = (nextEngagement[key] ?? 0) + 1;
+      changed = true;
+    }
+  }
+
+  const { escalate, break: breakAt } = ARC_PACE_THRESHOLDS[component.arcPace ?? "medium"];
+  const total = threadKeys.reduce((sum, key) => sum + (nextEngagement[key] ?? 0), 0);
+  const tier = arcTier(total, breakAt);
+
+  let phase = state.phase;
+  let pendingBreak = state.pendingBreak;
+  let brokeAtTurn = state.brokeAtTurn;
+
+  // 2. One-way phase transitions.
+  if (phase === "simmer" && total >= escalate) phase = "escalate";
+  if (phase === "escalate" && total >= breakAt) {
+    if ((component.arcTriggerMode ?? "ask") === "auto") {
+      phase = "break";
+      brokeAtTurn = turn;
+      pendingBreak = false;
+    } else {
+      pendingBreak = true; // leash: hold at escalate, surface the "let it break?" prompt
+    }
+  }
+  // 3. The break settles into aftermath so the arc resolves and the next can seed.
+  if (phase === "break" && brokeAtTurn !== undefined && turn - brokeAtTurn >= ARC_BREAK_DURATION) {
+    phase = "aftermath";
+  }
+
+  const unchanged =
+    !changed && phase === state.phase && pendingBreak === state.pendingBreak && brokeAtTurn === state.brokeAtTurn && tier === state.tier;
+  if (unchanged) return component;
+  return touch({ ...component, arcState: { phase, tier, threadEngagement: nextEngagement, pendingBreak, brokeAtTurn } });
+}
+
+/** Manual phase override (UI: "Spring it now", confirm a pending break, "Resolve arc", "Reset"). */
+function setArcPhase(component: ComponentEntry, phase: ArcPhase, turn: number | undefined): ComponentEntry {
+  const state = component.arcState ?? emptyArcState();
+  const brokeAtTurn = phase === "break" ? (turn ?? state.brokeAtTurn ?? 0) : state.brokeAtTurn;
+  // Resetting to simmer clears the counters so the next arc climbs fresh.
+  const threadEngagement = phase === "simmer" ? {} : state.threadEngagement;
+  const tier = phase === "simmer" ? 0 : state.tier;
+  return touch({ ...component, arcState: { ...state, phase, pendingBreak: false, brokeAtTurn, threadEngagement, tier } });
 }
 
 function updateBrainField(brain: BrainEntry, field: BrainStateField | undefined, text: string, mode: "append" | "replace"): BrainEntry {
@@ -616,6 +704,16 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "MARK_COMPONENT_UPDATED":
       return touchAdventure(state, {
         components: updateById(state.components, action.componentId, (item) => touch({ ...item, lastAutoUpdateTurn: action.turn })),
+      });
+    case "ADVANCE_ARC_PACING":
+      return touchAdventure(state, {
+        components: state.components.map((component) =>
+          component.type === "currentArc" ? advanceArcComponent(component, action.triggeredIds, action.turn) : component,
+        ),
+      });
+    case "SET_ARC_PHASE":
+      return touchAdventure(state, {
+        components: updateById(state.components, action.componentId, (item) => setArcPhase(item, action.phase, action.turn)),
       });
     case "REORDER_STORY_CARD":
       return touchAdventure(state, { storyCards: moveByPriority(state.storyCards, action.storyCardId, action.direction) });
