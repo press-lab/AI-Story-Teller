@@ -9,102 +9,65 @@ import {
 } from "../state/defaults";
 import { nowIso } from "../utils/id";
 
-export const developmentAdventureTitle = "Dev Scenario: Fire Nation Special Missions";
+export const developmentAdventureTitle = "Dev Scenario: Heir of the Dragon Throne";
 
 const ids = {
   components: {
     ai: "dev-component-ai-instructions",
     plot: "dev-component-plot-essentials",
     author: "dev-component-author-note",
-    court: "dev-component-court-pressure",
-    combat: "dev-component-combat-doctrine",
+    loop: "dev-component-mission-loop",
+    doctrine: "dev-component-dragon-fire",
+    arc: "dev-component-current-arc",
   },
   cards: {
-    // Main characters
+    // Main cast
     setu: "dev-card-setu",
-    nyxa: "dev-card-nyxa",
-    azula: "dev-card-azula",
-    mai: "dev-card-mai",
-    tyLee: "dev-card-ty-lee",
-    ozai: "dev-card-ozai",
+    nyx: "dev-card-nyx",
     zuko: "dev-card-zuko",
+    mai: "dev-card-mai",
     iroh: "dev-card-iroh",
-    // Team Avatar
+    azula: "dev-card-azula",
+    renzan: "dev-card-renzan",
+    // Grown-up Team Avatar
     aang: "dev-card-aang",
     katara: "dev-card-katara",
     sokka: "dev-card-sokka",
     toph: "dev-card-toph",
-    appa: "dev-card-appa",
-    momo: "dev-card-momo",
-    // Fire Nation supporting
-    zhao: "dev-card-zhao",
-    jee: "dev-card-jee",
-    warMinisterQin: "dev-card-war-minister-qin",
-    royalGuard: "dev-card-royal-guard",
-    fireSages: "dev-card-fire-sages",
-    royalAcademyInstructors: "dev-card-royal-academy-instructors",
-    li: "dev-card-li",
-    lo: "dev-card-lo",
-    // Water Tribe
-    arnook: "dev-card-arnook",
-    yue: "dev-card-yue",
-    hahn: "dev-card-hahn",
-    pakku: "dev-card-pakku",
-    // Earth Kingdom characters
-    daiLiAgent: "dev-card-dai-li",
-    earthKingKuei: "dev-card-earth-king-kuei",
-    generalFong: "dev-card-general-fong",
-    generalSung: "dev-card-general-sung",
-    haru: "dev-card-haru",
-    jet: "dev-card-jet",
-    jooDee: "dev-card-joo-dee",
-    kingBumi: "dev-card-king-bumi",
-    longFeng: "dev-card-long-feng",
-    masterYu: "dev-card-master-yu",
-    xinFu: "dev-card-xin-fu",
-    // Lore entries
-    demonFire: "dev-card-demon-fire",
-    earthKingdom: "dev-card-earth-kingdom",
-    earthKingdomPressure: "dev-card-earth-kingdom-pressure",
-    northernWaterTribe: "dev-card-northern-water-tribe",
-    royalSpecialOps: "dev-card-royal-special-ops",
-    teamAvatarRumors: "dev-card-team-avatar-rumors",
-    // Fire Nation locations
-    fireNationCapital: "dev-card-fire-nation-capital",
-    hariBulkan: "dev-card-hari-bulkan",
+    suki: "dev-card-suki",
+    // Factions & lore
+    newOzai: "dev-card-new-ozai",
+    houseRenzan: "dev-card-house-renzan",
+    dragonFire: "dev-card-dragon-fire",
+    fragilePeace: "dev-card-fragile-peace",
+    unitedRepublic: "dev-card-united-republic",
+    dragonsHeir: "dev-card-dragons-heir",
+    // Locations
     royalPalace: "dev-card-royal-palace",
-    warMinistry: "dev-card-war-ministry",
-    royalAcademy: "dev-card-royal-academy",
-    // Water Tribe locations
-    agnaQelA: "dev-card-agna-qela",
-    spiritOasis: "dev-card-spirit-oasis",
-    // Earth Kingdom locations
+    republicCity: "dev-card-republic-city",
+    jasmineDragon: "dev-card-jasmine-dragon",
+    emberIsland: "dev-card-ember-island",
     baSingSe: "dev-card-ba-sing-se",
-    earthKingsPalace: "dev-card-earth-kings-palace",
-    gaoling: "dev-card-gaoling",
-    lakeLaogai: "dev-card-lake-laogai",
-    omashu: "dev-card-omashu",
-    serpentsPass: "dev-card-serpents-pass",
-    siWongDesert: "dev-card-si-wong-desert",
   },
   brains: {
     setu: "dev-brain-setu",
-    azula: "dev-brain-azula",
-    nyxa: "dev-brain-nyxa",
+    nyx: "dev-brain-nyx",
+    zuko: "dev-brain-zuko",
     mai: "dev-brain-mai",
-    tyLee: "dev-brain-ty-lee",
+    iroh: "dev-brain-iroh",
+    renzan: "dev-brain-renzan",
   },
   triggers: {
-    betrothal: "dev-trigger-betrothal-shift",
-    nyxa: "dev-trigger-nyxa-volatility",
-    avatar: "dev-trigger-avatar-rumor",
+    nyx: "dev-trigger-nyx-romance",
+    conspiracy: "dev-trigger-conspiracy-escalates",
     enemy: "dev-trigger-powerful-enemy",
+    azula: "dev-trigger-azula-wildcard",
   },
   message: "dev-msg-opening",
 };
 
 const openingText =
-  "You stand in the dueling court beneath the Royal Palace, heat shimmering across black stone.\n\nThe morning air smells of soot, lacquered armor, and old privilege. Servants wait along the wall with water that nobody important will drink. Officers pretend not to stare. Nobles pretend they are not afraid.\n\nYour last burst of demon fire still crawls along the stone in black-edged embers.\n\nAcross from you, Princess Nyxa rolls one shoulder, grinning like this is all deeply funny and only a little treasonous.\n\n\"Again,\" she says.\n\nAzula watches from the upper gallery, one hand resting against the rail, gold eyes sharp with amusement.\n\nMai leans near a pillar, bored enough to look carved from expensive disapproval. Ty Lee sits cross-legged beside her, smiling brightly like she has not just watched two royal-adjacent prodigies try to turn a training match into an obituary.\n\nNyxa's flame gathers in her palm.\n\nThe court goes quiet.";
+  "Steam hisses off the black-glass terrace high above the Caldera, where the heat of the volcano is supposed to make lesser benders sweat.\n\nIt is not making you sweat.\n\nYour fire runs gold-white and clean, hot enough that the air above the dueling ring bends like a bad lie. Below the terrace the capital glitters — your father's capital, a city of peace barely two decades old and already pretending it was always this way. Servants wait along the wall. Two minor nobles pretend they came here for the view and not to watch the Dragon's Heir burn something.\n\nAcross the ring, Nyx rolls her shoulders, blue flame licking dark streaks down her wrists, grinning like provoking the crown prince is a perfectly reasonable career.\n\n\"Again,\" she says. \"And this time pretend you're not afraid of singeing the prince's pretty hair.\"\n\nBefore you can answer, the terrace doors open. A palace messenger drops to one knee, breathless, the seal of the Fire Lord bright on the scroll in his hands.\n\n\"Your Highness. The Fire Lord requests you. Now.\" A pause, the kind people leave when the news is bad. \"There's been another one. The New Ozai Society. They hit the harbor armory before dawn.\"\n\nNyx's grin doesn't fall, exactly — it sharpens.\n\nThe flame in your palm waits.";
 
 export function createDevelopmentAdventure(): Adventure {
   const timestamp = nowIso();
@@ -117,7 +80,7 @@ export function createDevelopmentAdventure(): Adventure {
       title: "AI Instructions",
       type: "aiInstructions",
       content:
-        "Write in second person, present tense.\n\nThe player is Setu Renzan. Never write Setu's dialogue, thoughts, feelings, choices, actions, or reactions.\n\nUse Avatar: The Last Airbender world logic, bending rules, nations, culture, martial arts, politics, and tone. This is an adult Fire Nation-focused AU.\n\nAll named main characters are adults 21+.\n\nFocus on Fire Nation capital life, royal training, court pressure, military missions, dangerous friendship, rivalry, political betrothal pressure, and royal family tension.\n\nTeam Avatar exists in the background as rumors, intelligence reports, and distant war pressure until directly encountered later.\n\nAzula, Nyxa, Mai, Ty Lee, Ozai, Zuko, Iroh, and Team Avatar should keep distinct voices, motives, humor, loyalties, and wounds.\n\nDo not make every scene heavy, solemn, suspicious, or emotionally loaded just because the larger story is serious.\n\nOutside active danger, injury, political confrontation, or genuine emotional conflict, let the cast be lighter, sharper, and more human.\n\nAllow banter, teasing, sarcasm, rivalry, flirtation, nicknames, irritation, impressed reactions, and downtime warmth during training, meals, travel, sparring, and quiet palace moments.\n\nDuring training or friendly sparring, default to competitive banter, teasing, irritation, tactical adjustment, and impressed reactions before moral panic, unless someone is actually endangered.\n\nAzula can be cruel, controlled, brilliant, and cutting, but not every line from her should be a murder attempt. Let her be amused, curious, competitive, and possessive when appropriate.\n\nNyxa should feel volatile, funny, reckless, sharp, royal, and restless. She should push Setu into danger, bad ideas, flirtation, and competition without becoming random or stupid.\n\nMai should be dry, bored, observant, and precise. Ty Lee should be playful, socially sharp, and disarming without being naive.\n\nLet NPCs pressure, tempt, provoke, flirt, command, lie, test, and react. Do not resolve Setu's decisions for him.\n\nEnd scenes after NPC action, dialogue, discovery, danger, intimacy, humor, or pressure, leaving room for Setu to respond.",
+        "Write in second person, present tense.\n\nThe player is Prince Setu, son of Fire Lord Zuko and Fire Lady Mai. Never write Setu's dialogue, thoughts, feelings, choices, actions, or reactions.\n\nUse Avatar: The Last Airbender world logic — bending, nations, culture, martial arts, spirits, and politics. This is the post-war era, roughly twenty-two years after the Hundred Year War ended. Every canon event of the original series happened. The original heroes are adults now: Zuko rules the Fire Nation, Aang rebuilds the Air Nation and co-founds the United Republic, and the others have grown into power.\n\nAll main characters are adults.\n\nSetu is overpowered and the story should let that be true. His gold-white dragon fire is the hottest of his generation and he can generate and redirect lightning. NPCs respect, fear, court, and test his power — do not nerf him or make every scene a struggle for his life. The stakes are political, social, and personal, not a power-level problem.\n\nOutside genuine danger, politics, or real emotional confrontation, let the cast be lighter, sharper, funnier, and more human. Allow banter, teasing, rivalry, flirtation, nicknames, downtime, and warmth during training, travel, missions, meals, and quiet palace moments.\n\nNyx, Zuko, Mai, Iroh, Aang, Katara, Sokka, Toph, Suki, Azula, and Lord Renzan should keep distinct voices, motives, humor, loyalties, and wounds.\n\nLet NPCs pressure, tempt, provoke, flirt, command, lie, test, and react. Do not resolve Setu's decisions for him. End scenes after NPC action, dialogue, discovery, danger, intimacy, humor, or pressure, leaving room for Setu to respond.",
       priority: 95,
       alwaysOn: true,
       pinned: true,
@@ -128,7 +91,7 @@ export function createDevelopmentAdventure(): Adventure {
       title: "Plot Essentials",
       type: "plotEssentials",
       content:
-        "Setu Renzan is the orphaned heir of House Renzan, a murdered Fire Nation noble house. Earth Kingdom assassins killed his parents, leaving Setu loyal to the Fire Nation and bitterly hostile toward the Earth Kingdom.\n\nSetu is a famous firebending prodigy known for demon fire: black-streaked flame of extreme heat. His bending has made him unusually heat-resistant. The Fire Nation expects Setu to become an elite military weapon.\n\nSetu serves under royal writ as an elite firebending operative attached to Princess Azula's special missions with Nyxa, Mai, and Ty Lee.\n\nPrincess Nyxa is Fire Lord Ozai's second daughter, born between Zuko and Azula. Nyxa is volatile, gifted, reckless, funny, sharp, royal, and trying to become her own person under Ozai's pressure.\n\nSetu and Nyxa grew up training together. They are familiar friends, dangerous rivals, mission partners, and unofficial political betrothal candidates. People close to Nyxa may call her Nyx.\n\nAzula respects power, despises weakness, and watches Setu and Nyxa closely. She may be amused by their rivalry, but if Setu and Nyxa become secretly romantic, Azula may treat it as betrayal, weakness, and theft.\n\nZuko is banished and traveling with Iroh. Team Avatar is currently rumor, though reports suggest the Avatar travels with Katara, Sokka, and a blind earthbending prodigy named Toph.\n\nCurrent phase: Royal Caldera pressure. Focus on palace training, capital politics, noble expectations, early special operations missions, and the relationships among Setu, Nyxa, Azula, Mai, and Ty Lee.\n\nBa Sing Se, Team Avatar contact, and larger defection/rebellion arcs are future pressure, not the current foreground.",
+        "Setu is the twenty-four-year-old crown prince of the Fire Nation, son of Fire Lord Zuko and Fire Lady Mai. Trained in secret by the dragon masters Ran and Shaw, he wields gold-white dragon fire — the hottest flame of his generation — and can generate and redirect lightning. The court calls him the Dragon's Heir.\n\nBeyond his royal title, Setu serves as the crown's troubleshooter: the blade Zuko sends at problems the throne cannot be seen handling. Rebel cells, stolen weapons, colony disputes in the new United Republic, spirit incidents, missing nobles.\n\nThe world is roughly twenty-two years past the war. The peace Zuko, Aang, and the others built is real but fragile. The old colonies are becoming the United Republic and Republic City is rising. Spirits are stirring again. And the New Ozai Society — loyalists who believe Ozai's empire was the nation's destiny and Zuko's peace is national humiliation — is growing bolder, quietly funded by embittered noble houses.\n\nNyx is Setu's rival, sparring partner, betrothal candidate, and the woman he is falling for. She is a brilliant, volatile blue-fire prodigy — and the daughter of House Renzan, a proud noble house ruined by the end of the war and entangled with the restorationists. Loving her is either House Renzan's road back to the throne or treason waiting to happen, and Nyx is caught in the middle of it.\n\nIroh advises from the Jasmine Dragon in Ba Sing Se. Azula is a loose, dangerous thread — Setu's aunt, brilliant and broken, location uncertain.\n\nCurrent phase: palace life, the crown's missions, the dangerous pull between Setu and Nyx, and the first hints that the New Ozai Society answers to a hand much closer to the throne than anyone admits.",
       priority: 90,
       alwaysOn: true,
       pinned: true,
@@ -139,18 +102,18 @@ export function createDevelopmentAdventure(): Adventure {
       title: "Author's Note",
       type: "authorNote",
       content:
-        "Avatar: The Last Airbender AU with Fire Nation royal drama, lethal training, court knives, war pressure, dangerous chemistry, and black-edged demon fire. Keep the larger story serious, but outside danger, politics, or real emotional confrontation, allow banter, rivalry, teasing, flirtation, nicknames, and downtime warmth. Let the Royal Caldera feel like a beautiful pressure cooker full of sharp people acting almost human before the war machine bites again.",
+        "Blockbuster-sequel energy: the grown-up Avatar world, a cocky dragon-blooded prince, court knives, spirit weirdness, real chemistry and rivalry with Nyx, and the weight of Zuko's crown. Keep the larger story serious, but outside danger and politics let the cast be sharp, funny, flirtatious, and human. Setu is overpowered and that is the fun — keep the stakes social, political, and personal. Let the original heroes feel like legends who became tired, funny, dangerous adults.",
       priority: 80,
       alwaysOn: true,
       pinned: true,
       protected: true,
     }),
     makeComponent({
-      id: ids.components.court,
-      title: "Court Pressure Meter",
-      type: "memory",
+      id: ids.components.loop,
+      title: "The Crown's Missions",
+      type: "custom",
       content:
-        "The Fire Nation court is watching Setu's proximity to Azula and Nyxa. Noble families want leverage over the Renzan inheritance, and Ozai benefits when his elite youths compete for approval.",
+        "Setu serves the Fire Lord as the crown's troubleshooter. Keep the story in a repeatable loop that prints its own next scene:\n\nA job comes down (a New Ozai cell, stolen weapons, a colony dispute in the United Republic, a spirit incident, an escort, a noble gone quiet) → Setu and whoever rides with him run it → the fallout is processed back in the Caldera through banter, rivalry, romance, training, and court politics → someone levels up, makes an enemy, or learns something → the next job arrives.\n\nAlways leave a new job, complication, rival, or loose thread on the table when a scene resolves. Let missions bleed fragments of the larger conspiracy into view over time, so the small jobs quietly accumulate toward something big.",
       priority: 35,
       alwaysOn: true,
       active: true,
@@ -159,11 +122,11 @@ export function createDevelopmentAdventure(): Adventure {
       inclusionPolicy: "always",
     }),
     makeComponent({
-      id: ids.components.combat,
-      title: "Elite Firebending Doctrine",
+      id: ids.components.doctrine,
+      title: "Dragon-Fire Doctrine",
       type: "custom",
       content:
-        "High-level firebending is breath, stance, intent, and timing. Blue fire signals Azula's precision; Nyxa's flame carries dark streaks when emotional. Setu's demon fire burns black-streaked and hotter than ordinary flame. Lightning generation is rare, dangerous, and politically symbolic.",
+        "Setu's fire burns gold-white — dragon fire, taught by the masters Ran and Shaw, hotter and cleaner than ordinary flame. He generates lightning and redirects it the way Iroh taught Zuko. He is, genuinely, the strongest firebender of his generation, and the story should let that be true.\n\nNyx's blue fire runs dark streaks when she is pushed or emotional. Azula's blue fire is precision and control. Lightning generation remains rare, dangerous, and politically symbolic.\n\nWhen conflict has a cost, that cost lands on the world and the people around Setu — allies, ground, secrets, the peace itself — never on his raw competence.",
       priority: 30,
       alwaysOn: true,
       active: true,
@@ -171,718 +134,420 @@ export function createDevelopmentAdventure(): Adventure {
       protected: false,
       inclusionPolicy: "always",
     }),
+    makeComponent({
+      id: ids.components.arc,
+      title: "Current Story Arc",
+      type: "currentArc",
+      content:
+        "Arc seed: The New Ozai Society hit the harbor armory before dawn. The crown wants it handled quietly. Somewhere behind the loyalists is a steadier hand — and the first thread leads uncomfortably close to House Renzan.",
+      arcPremise:
+        "A restorationist conspiracy wants the old empire back and the Dragon's Heir dead — and the hand behind it runs closer to the throne, and closer to Nyx, than Setu wants to believe.",
+      arcThreadKeys: [ids.cards.renzan, ids.cards.newOzai, ids.cards.azula, ids.cards.houseRenzan],
+      arcPace: "epic",
+      arcTriggerMode: "ask",
+      arcSimmerInstruction:
+        "Keep the New Ozai Society and Lord Renzan mostly off-screen. Surface them through sabotage, propaganda, intercepted orders, a masked agent who slips away, bribed officials, and near-misses on otherwise unrelated missions. Always tie their moves to a larger plan and, increasingly, to House Renzan. Do not let the antagonists monologue or confront Setu head-on yet — hint, recur, and tighten the noose. Use Azula as a chaotic wildcard who may be using the conspiracy or being used by it.",
+      arcBreakInstruction:
+        "Lord Renzan and the New Ozai Society force a confrontation that cannot be deferred — a strike at Zuko, at the throne, or at the crown prince himself. It is allowed to cost the cast: a named ally can die, Nyx's loyalty is put to a real and painful test, ground and secrets are lost. Setu remains the strongest firebender in the room — the win is just expensive. No clean victory; the peace pays for it.",
+      priority: 88,
+      active: true,
+      pinned: true,
+      protected: true,
+      inclusionPolicy: "always",
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 4,
+    }),
   ];
 
   const storyCards = [
-    // ── Main characters ──────────────────────────────────────────────────────
+    // ── Main cast ────────────────────────────────────────────────────────────
     makeStoryCard({
       id: ids.cards.setu,
-      title: "Setu Renzan",
-      keys: ["Setu", "Setu Renzan", "Renzan", "Lord Renzan", "House Renzan"],
+      title: "Prince Setu",
+      keys: ["Setu", "Prince Setu", "the prince", "Dragon's Heir", "crown prince"],
+      type: "character",
+      priority: 74,
+      autoUpdate: false,
+      content:
+        "- Twenty-four-year-old crown prince of the Fire Nation; son of Fire Lord Zuko and Fire Lady Mai.\n- Trained in secret by the dragon masters Ran and Shaw; wields gold-white dragon fire, the hottest flame of his generation.\n- Generates and redirects lightning. Genuinely the strongest firebender of his generation — let that be true.\n- Carries the weight of his father's fragile peace and chafes against palace constraints.\n- Serves as the crown's off-books troubleshooter on missions too sensitive for the throne to touch openly.\n- Addressed as Setu by family and Nyx, Your Highness in court, the Dragon's Heir by reputation.\n- Falling for Nyx despite the politics; competitive, dry, and a little reckless when she dares him.",
+    }),
+    makeStoryCard({
+      id: ids.cards.nyx,
+      title: "Nyx",
+      keys: ["Nyx", "Lady Nyx", "Nyx Renzan", "Nyx of House Renzan"],
       type: "character",
       priority: 72,
       autoUpdate: false,
       content:
-        "- Adult Fire Nation noble and orphaned heir of House Renzan.\n- Appearance: tall, lean, dark blond hair.\n- Demon fire prodigy: black-streaked flame of extreme heat; years of use made him heat-resistant.\n- Loyal to the Fire Nation and hates the Earth Kingdom because Earth Kingdom assassins killed his parents.\n- Serves under royal writ as an elite firebending operative attached to Princess Azula's special missions.\n- Treated as a noble prodigy and royal weapon, not a conventional officer.\n- Addressed as Setu by close friends, Renzan by Azula and peers, Master Renzan by tutors, and Lord Renzan only in court.\n- Avoid calling Setu Commander unless he temporarily leads troops on a mission.\n- Trains and operates with Nyxa, Azula, Mai, and Ty Lee.",
-    }),
-    makeStoryCard({
-      id: ids.cards.nyxa,
-      title: "Princess Nyxa",
-      keys: ["Nyxa", "Nyx", "Princess Nyxa", "Nyxa Sozin", "Princess Nyxa Sozin", "second princess"],
-      type: "character",
-      priority: 70,
-      autoUpdate: false,
-      content:
-        "- Adult second daughter of Fire Lord Ozai, born between Zuko and Azula; dynastic name Nyxa Sozin.\n- Familiar nickname is Nyx, used by family, friends, and people close to her.\n- Appearance: blue hair, sharp royal features, restless posture, grey cloud tattoos on arms and shoulders.\n- Powers: blue firebending; hot, precise, volatile flame with dark streaks when pushed or emotional.\n- Funny, reckless, sharp, restless, and trying to become her own person under Ozai's pressure.\n- Grew up training with Setu; they are dangerous friends, rivals, mission partners, and unofficial betrothal candidates.\n- Romantically drawn to Setu; shows it through teasing, dangerous dares, jealousy, private familiarity, and rare vulnerability.\n- Encourages Setu's worst brave ideas and expects him to keep up.",
-    }),
-    makeStoryCard({
-      id: ids.cards.azula,
-      title: "Princess Azula",
-      keys: ["Azula", "Princess Azula", "Azula Sozin", "Princess Azula Sozin"],
-      type: "character",
-      priority: 68,
-      autoUpdate: false,
-      content:
-        "- Adult Fire Nation princess and Ozai's youngest daughter; formal dynastic name Azula Sozin.\n- Brilliant, cruel, controlled, ambitious, and intensely observant.\n- Respects power and despises weakness.\n- Treats affection, loyalty, and fear as tools.\n- Watches Setu and Nyxa closely because both are powerful and politically useful.\n- If Setu and Nyxa become secretly romantic, Azula may treat it as betrayal, weakness, and theft.\n- Often operates with Mai and Ty Lee on royal missions.",
-    }),
-    makeStoryCard({
-      id: ids.cards.ozai,
-      title: "Fire Lord Ozai",
-      keys: ["Ozai", "Fire Lord Ozai", "Fire Lord", "Ozai Sozin"],
-      type: "character",
-      priority: 62,
-      autoUpdate: false,
-      content:
-        "- Adult ruler of the Fire Nation and father of Zuko, Nyxa, and Azula; formal dynastic name Ozai Sozin.\n- Cold, ruthless, imperial, proud, and obsessed with strength, obedience, and domination.\n- Sees Setu as a noble weapon and proof of Fire Nation superiority.\n- Pressures Nyxa to become useful, controlled, and loyal to the throne.\n- Uses praise like a leash and punishment like doctrine.",
-    }),
-    makeStoryCard({
-      id: ids.cards.mai,
-      title: "Mai",
-      keys: ["Mai", "Lady Mai"],
-      type: "character",
-      priority: 56,
-      autoUpdate: false,
-      content:
-        "- Adult Fire Nation noblewoman and Azula's longtime companion.\n- Dry, bored, precise, emotionally guarded, and deadly with knives and thrown weapons.\n- Notices far more than she says.\n- Often joins Azula, Nyxa, Setu, and Ty Lee on royal missions.\n- Cuts through royal drama with flat remarks, quiet loyalty, and visible disinterest in court theater.\n- Has history with Zuko but Zuko is currently banished.",
-    }),
-    makeStoryCard({
-      id: ids.cards.tyLee,
-      title: "Ty Lee",
-      keys: ["Ty Lee", "TyLee", "Lady Ty Lee"],
-      type: "character",
-      priority: 55,
-      autoUpdate: false,
-      content:
-        "- Adult Fire Nation performer, acrobat, and Azula's longtime companion.\n- Bright, playful, charming, observant, and socially disarming.\n- Uses chi-blocking, acrobatics, flexibility, and misdirection in combat.\n- Often joins Azula, Nyxa, Setu, and Mai on royal missions.\n- Reads tension quickly and often softens dangerous rooms with cheer that may or may not be innocent.",
+        "- Brilliant, volatile blue-fire prodigy; her flame runs dark streaks when she is pushed or emotional.\n- Daughter and heir of House Renzan, a proud noble house ruined by the end of the war.\n- Setu's rival, sparring partner, official betrothal candidate, and the woman he is falling for.\n- Funny, reckless, sharp, restless; encourages Setu's worst brave ideas and expects him to keep up.\n- Shows feeling through teasing, dangerous dares, jealousy, private familiarity, and rare vulnerability.\n- Caught between her father's ambitions and Setu; her loyalty is the open question at the heart of the story.\n- People close to her call her Nyx; the court calls her Lady Renzan.",
     }),
     makeStoryCard({
       id: ids.cards.zuko,
-      title: "Zuko",
-      keys: ["Zuko", "Prince Zuko", "Zuko Sozin", "banished prince"],
+      title: "Fire Lord Zuko",
+      keys: ["Zuko", "Fire Lord Zuko", "Fire Lord", "father", "Dad"],
       type: "character",
-      priority: 52,
+      priority: 66,
       autoUpdate: false,
       content:
-        "- Adult Fire Nation prince and Ozai's banished eldest child.\n- Travels with Iroh while hunting the Avatar to regain honor and return home.\n- Zuko's exile is a warning inside the royal family and a wound for Nyxa.\n- In Phase 1, Zuko should mostly appear through rumors, reports, family references, or distant pursuit of the Avatar.\n- Do not place Zuko in the Fire Nation capital unless the story has explicitly brought him there.",
+        "- Fire Lord of the Fire Nation; in his mid-forties, scar still on his face, crown heavy on him.\n- Setu's father. Earnest, tired, principled, and fiercely protective of both his son and the peace he bled for.\n- Built the postwar order alongside Aang, Sokka, and Toph; haunted by his family's history and determined Setu will not repeat it.\n- Sends Setu on the crown's quiet missions because he trusts no one else with them — and worries every time.\n- Pushes Setu to be better than he himself was at that age, sometimes clumsily.",
+    }),
+    makeStoryCard({
+      id: ids.cards.mai,
+      title: "Fire Lady Mai",
+      keys: ["Mai", "Fire Lady Mai", "Fire Lady", "mother", "Mom"],
+      type: "character",
+      priority: 60,
+      autoUpdate: false,
+      content:
+        "- Fire Lady of the Fire Nation; Setu's mother and Zuko's wife.\n- Dry, bored on the surface, precise and lethal underneath; still deadly with knives.\n- Quietly runs the throne's intelligence and notices far more than she says.\n- Protective of Setu in a way she would never admit out loud; cuts through court theater with flat remarks.\n- Reads Nyx, House Renzan, and the New Ozai Society with cold clarity and few illusions.",
     }),
     makeStoryCard({
       id: ids.cards.iroh,
       title: "Iroh",
-      keys: ["Iroh", "Uncle Iroh", "General Iroh", "Dragon of the West"],
+      keys: ["Iroh", "Uncle Iroh", "Grand Lotus", "Dragon of the West", "Great-Uncle Iroh"],
       type: "character",
-      priority: 50,
+      priority: 54,
       autoUpdate: false,
       content:
-        "- Adult Fire Nation prince, retired general, and Zuko's uncle.\n- Warm, patient, funny, dangerous, and far wiser than he first appears.\n- Travels with Zuko during Zuko's banishment and quietly tempers his nephew's rage.\n- Known as the Dragon of the West and respected by older Fire Nation soldiers.\n- In Phase 1, Iroh should mostly appear through reports, memory, reputation, or Zuko-linked scenes.",
+        "- Setu's great-uncle; retired general, Grand Lotus of the White Lotus, owner of the Jasmine Dragon in Ba Sing Se.\n- Warm, patient, funny, and far more dangerous and wise than he first appears.\n- The family's moral center and Setu's favorite person to disappoint and then be forgiven by.\n- Offers tea, proverbs, and ruthless strategic insight in equal measure.\n- Knew Lord Renzan in the old days and is not surprised by what the man has become.",
     }),
-    // ── Team Avatar ───────────────────────────────────────────────────────────
+    makeStoryCard({
+      id: ids.cards.azula,
+      title: "Azula",
+      keys: ["Azula", "Princess Azula", "aunt", "Aunt Azula"],
+      type: "character",
+      priority: 58,
+      autoUpdate: false,
+      content:
+        "- Setu's aunt; Zuko's sister. Brilliant, broken, and unpredictable. Location uncertain.\n- Blue-fire prodigy of terrifying precision; her mind is a blade with a bent edge.\n- Sometimes lucid and cutting, sometimes spiraling; always three moves into a game no one else can see.\n- A loose, dangerous thread who may use the New Ozai Society, be used by it, or simply watch the family burn for sport.\n- Fascinated by Setu's power and what he might become; treats him as the heir she might have raised better.",
+    }),
+    makeStoryCard({
+      id: ids.cards.renzan,
+      title: "Lord Renzan",
+      keys: ["Lord Renzan", "Renzan", "Lord Senzo Renzan", "Nyx's father"],
+      type: "character",
+      priority: 56,
+      autoUpdate: false,
+      content:
+        "- Patriarch of House Renzan and Nyx's father; a decorated war hero who never accepted the surrender.\n- Respected, controlled, patient, and embittered; believes Zuko's peace is a national humiliation and the empire was the nation's destiny.\n- The steady hand quietly behind the New Ozai Society, working through proxies, money, and propaganda rather than open treason.\n- Uses his daughter Nyx as leverage toward the throne without quite admitting it, even to himself.\n- Should appear rarely and indirectly at first — through agents, favors, and near-misses — never monologuing his plan.",
+    }),
+    // ── Grown-up Team Avatar ──────────────────────────────────────────────────
     makeStoryCard({
       id: ids.cards.aang,
-      title: "Aang",
-      keys: ["Aang", "Avatar", "Aang the Avatar", "Avatar Aang"],
+      title: "Avatar Aang",
+      keys: ["Aang", "Avatar", "Avatar Aang"],
       type: "character",
-      priority: 40,
+      priority: 48,
       autoUpdate: false,
       content:
-        "- Adult Avatar and last known Air Nomad.\n- Airbender learning the other elements while evading Fire Nation pursuit.\n- Travels with Katara, Sokka, Toph, Appa, and Momo.\n- In Phase 1, Aang should mostly appear through rumors, intelligence reports, propaganda panic, or distant sightings.\n- Do not force Aang into scenes until the story naturally advances to Avatar contact.",
+        "- The Avatar, now in his late thirties; married to Katara, rebuilding the Air Nation and co-founding the United Republic.\n- Still playful and kind, but carrying the exhaustion of holding a fragile peace together.\n- Trusts Zuko deeply; treats Setu like a gifted, dangerous nephew.\n- Appears when peace, spirits, or the United Republic are at stake — a diplomat first, a force of nature second.",
     }),
     makeStoryCard({
       id: ids.cards.katara,
       title: "Katara",
-      keys: ["Katara", "Katara of the Southern Water Tribe"],
+      keys: ["Katara", "Master Katara"],
       type: "character",
-      priority: 36,
+      priority: 42,
       autoUpdate: false,
       content:
-        "- Adult Southern Water Tribe waterbender traveling with Team Avatar.\n- Compassionate, stubborn, protective, principled, and increasingly dangerous in combat.\n- Serves as healer, moral spine, and waterbending teacher to Aang.\n- Fire Nation reports may describe her as a rebel waterbender assisting the Avatar.\n- Do not force Katara into scenes until Team Avatar becomes directly relevant.",
+        "- Master waterbender and healer; Aang's wife and one of the most powerful benders alive.\n- Compassionate, stubborn, principled, and formidable when crossed.\n- A bridge between the nations and a steadying presence among the old heroes.\n- Appears around the United Republic, Air Nation work, healing, or diplomacy.",
     }),
     makeStoryCard({
       id: ids.cards.sokka,
       title: "Sokka",
-      keys: ["Sokka", "Sokka of the Southern Water Tribe"],
+      keys: ["Sokka", "Councilman Sokka", "Chief Sokka"],
       type: "character",
-      priority: 34,
+      priority: 42,
       autoUpdate: false,
       content:
-        "- Adult Southern Water Tribe warrior traveling with Team Avatar.\n- Tactical, sarcastic, inventive, protective, and dangerous despite not bending.\n- Uses planning, traps, boomerang, sword training, and battlefield improvisation.\n- Fire Nation reports may underestimate him as only a nonbender escort, which is a mistake.\n- Do not force Sokka into scenes until Team Avatar becomes directly relevant.",
+        "- Southern Water Tribe statesman who helped design the United Republic and Republic City's council.\n- Tactical, sarcastic, inventive; still no bending, still dangerous, still the smartest plan in the room.\n- Old friend and political ally of Zuko; treats Setu with affectionate, needling mentorship.\n- Appears around Republic City politics, strategy, and any plan that needs a brain instead of a fireball.",
     }),
     makeStoryCard({
       id: ids.cards.toph,
       title: "Toph Beifong",
-      keys: ["Toph", "Toph Beifong", "Beifong", "Blind Bandit"],
-      type: "character",
-      priority: 36,
-      autoUpdate: false,
-      content:
-        "- Adult blind earthbending prodigy traveling with Team Avatar.\n- Blunt, fearless, funny, stubborn, and almost impossible to intimidate.\n- Uses seismic sense and elite earthbending to read movement through the ground.\n- Fire Nation intelligence identifies her as a blind earthbending prodigy, but reports may underestimate how dangerous she is.\n- Do not force Toph into scenes until Team Avatar becomes directly relevant.",
-    }),
-    makeStoryCard({
-      id: ids.cards.appa,
-      title: "Appa",
-      keys: ["Appa", "sky bison", "flying bison", "Avatar's bison"],
-      type: "character",
-      priority: 25,
-      autoUpdate: false,
-      content:
-        "- Adult flying sky bison and Aang's loyal companion.\n- Serves as Team Avatar's main transport and a major clue in Fire Nation intelligence reports.\n- May appear through sightings of a huge flying beast, strange travel patterns, or Avatar pursuit reports.\n- Do not clutter Fire Nation capital scenes with Appa unless Team Avatar has entered the active arc.",
-    }),
-    makeStoryCard({
-      id: ids.cards.momo,
-      title: "Momo",
-      keys: ["Momo", "flying lemur", "lemur", "Avatar's lemur"],
-      type: "character",
-      priority: 22,
-      autoUpdate: false,
-      content:
-        "- Small flying lemur traveling with Team Avatar.\n- Curious, fast, mischievous, and often noticed as an odd detail in reports or sightings.\n- Useful as color when Team Avatar becomes active, not as random capital scene noise.\n- Do not force Momo into scenes before Team Avatar contact matters.",
-    }),
-    // ── Fire Nation supporting ────────────────────────────────────────────────
-    makeStoryCard({
-      id: ids.cards.zhao,
-      title: "Admiral Zhao",
-      keys: ["Zhao", "Admiral Zhao", "Commander Zhao"],
-      type: "character",
-      priority: 45,
-      autoUpdate: false,
-      content:
-        "- Adult Fire Nation officer: arrogant, ambitious, cruel, theatrical, and obsessed with glory.\n- Treats war as a ladder and other people as fuel for his reputation.\n- Resents younger prodigies, royal favorites, and anyone whose power outshines his rank.\n- May appear in briefings, palace politics, military rivalry, propaganda, or Avatar-related intelligence.\n- Useful as a background antagonist, rival officer, or smug military bastard.",
-    }),
-    makeStoryCard({
-      id: ids.cards.warMinisterQin,
-      title: "War Minister Qin",
-      keys: ["Qin", "War Minister Qin", "Minister Qin"],
+      keys: ["Toph", "Toph Beifong", "Chief Beifong", "Chief Toph"],
       type: "character",
       priority: 44,
       autoUpdate: false,
       content:
-        "- Adult Fire Nation war minister and military engineer.\n- Practical, calculating, arrogant, and focused on weapons, logistics, siegecraft, and conquest.\n- May brief Setu, Azula, or Nyxa on special operations, Earth Kingdom strategy, captured intelligence, and experimental war projects.\n- Treats powerful benders as assets to be positioned, tested, and spent.",
+        "- Founder of the metalbending police and chief of Republic City law enforcement.\n- Blunt, fearless, hilarious, and almost impossible to lie to — she feels the truth through the ground.\n- The greatest earthbender alive and entirely unimpressed by royalty, including Setu.\n- Appears around Republic City, crime, metalbending, and anyone who needs to be told the truth rudely.",
     }),
     makeStoryCard({
-      id: ids.cards.royalGuard,
-      title: "Fire Nation Royal Guard",
-      keys: ["Royal Guard", "royal guards", "palace guard", "palace guards"],
-      type: "character",
-      priority: 36,
-      autoUpdate: false,
-      content:
-        "- Elite guards protecting the Royal Palace, Fire Lord Ozai, royal family members, and restricted palace spaces.\n- Disciplined, formal, watchful, and careful around Setu, Nyxa, Azula, Mai, and Ty Lee.\n- Useful as background pressure, witnesses, escorts, security obstacles, messengers, or silent reminders that the palace is always watched.\n- Guards should not know private royal secrets unless directly present or ordered to observe.",
-    }),
-    makeStoryCard({
-      id: ids.cards.fireSages,
-      title: "Fire Sages",
-      keys: ["Fire Sage", "Fire Sages", "Royal Fire Sages"],
-      type: "character",
-      priority: 36,
-      autoUpdate: false,
-      content:
-        "- Fire Nation religious and ceremonial authorities tied to royal legitimacy, temples, omens, and sacred fire traditions.\n- Publicly support Fire Lord Ozai's rule and Fire Nation destiny.\n- Useful for ceremonies, propaganda, ancient firebending lore, royal blessings, political pressure, and unsettling comments about Setu's demon fire.\n- Some sages may fear demon fire while pretending it is a divine sign.",
-    }),
-    makeStoryCard({
-      id: ids.cards.royalAcademyInstructors,
-      title: "Royal Fire Academy Instructors",
-      keys: ["Royal Fire Academy instructors", "Fire Academy instructors", "academy instructors", "training masters"],
-      type: "character",
-      priority: 36,
-      autoUpdate: false,
-      content:
-        "- Senior Fire Nation firebending teachers responsible for elite noble, military, and royal training.\n- Severe, disciplined, status-aware, and careful around royal students.\n- Useful for sparring oversight, tests, doctrine, public evaluations, and pressure around Setu's reputation.\n- They praise control, dominance, loyalty, precision, and usefulness to the Fire Nation.",
-    }),
-    makeStoryCard({
-      id: ids.cards.li,
-      title: "Li",
-      keys: ["Li", "Lady Li", "royal advisor Li"],
+      id: ids.cards.suki,
+      title: "Suki",
+      keys: ["Suki", "Kyoshi Warrior", "Captain Suki"],
       type: "character",
       priority: 38,
       autoUpdate: false,
       content:
-        "- Elderly Fire Nation royal advisor and palace tutor tied to Azula's training.\n- Polite, severe, eerie, and loyal to royal order.\n- Often mirrors or completes Lo's judgments but should still act as her own person.\n- Useful for palace training, ceremonies, noble pressure, and Azula or Nyxa's royal routines.",
+        "- Veteran leader of the Kyoshi Warriors and Sokka's partner; elite non-bending fighter and tactician.\n- Calm, sharp, lethal, and deeply experienced in protecting heads of state.\n- Has run royal security details and trusts very little to chance.\n- Appears around guard work, escorts, Kyoshi Island, and threats to the people Setu loves.",
     }),
+    // ── Factions & lore ───────────────────────────────────────────────────────
     makeStoryCard({
-      id: ids.cards.lo,
-      title: "Lo",
-      keys: ["Lo", "Lady Lo", "royal advisor Lo"],
-      type: "character",
-      priority: 38,
-      autoUpdate: false,
-      content:
-        "- Elderly Fire Nation royal advisor and palace tutor tied to Azula's training.\n- Polite, severe, eerie, and loyal to royal order.\n- Comments on posture, discipline, court etiquette, emotional control, and royal expectations.\n- Useful for palace training, ceremonies, noble pressure, and Azula or Nyxa's royal routines.",
-    }),
-    makeStoryCard({
-      id: ids.cards.jee,
-      title: "Captain Jee",
-      keys: ["Jee", "Captain Jee"],
-      type: "character",
-      priority: 30,
-      autoUpdate: false,
-      content:
-        "- Adult Fire Nation naval officer associated with Zuko's ship during his banishment.\n- Practical, blunt, exhausted by royal drama, and more loyal to survival than ideology.\n- Useful when Zuko and Iroh reports, naval rumors, exile logistics, or lower-ranking military views become relevant.\n- Does not belong in palace scenes unless summoned, reported on, or tied to Zuko's movements.",
-    }),
-    // ── Water Tribe characters ────────────────────────────────────────────────
-    makeStoryCard({
-      id: ids.cards.arnook,
-      title: "Chief Arnook",
-      keys: ["Arnook", "Chief Arnook", "Northern Water Tribe chief"],
-      type: "character",
-      priority: 30,
-      autoUpdate: false,
-      content:
-        "- Adult chief of the Northern Water Tribe.\n- Formal, protective, politically careful, and responsible for his people's survival.\n- Father of Yue and leader of Agna Qel'a during the war.\n- Useful through intelligence reports, Northern Water Tribe diplomacy, or later Water Tribe-related missions.",
-    }),
-    makeStoryCard({
-      id: ids.cards.yue,
-      title: "Princess Yue",
-      keys: ["Yue", "Princess Yue"],
-      type: "character",
-      priority: 30,
-      autoUpdate: false,
-      content:
-        "- Adult Northern Water Tribe princess and daughter of Chief Arnook.\n- Graceful, dutiful, compassionate, and tied to the Moon Spirit by sacred history.\n- Represents Water Tribe duty, sacrifice, and spiritual pressure.\n- Use carefully in AU continuity; do not force her into Fire Nation capital scenes.",
-    }),
-    makeStoryCard({
-      id: ids.cards.hahn,
-      title: "Hahn",
-      keys: ["Hahn"],
-      type: "character",
-      priority: 25,
-      autoUpdate: false,
-      content:
-        "- Adult Northern Water Tribe warrior and noble suitor tied to Yue's court circle.\n- Proud, privileged, status-conscious, and eager for glory.\n- Useful for Northern Water Tribe politics, military pride, and social pressure around Yue.\n- Should not appear outside Water Tribe-related scenes unless explicitly brought into the story.",
-    }),
-    makeStoryCard({
-      id: ids.cards.pakku,
-      title: "Master Pakku",
-      keys: ["Pakku", "Master Pakku"],
-      type: "character",
-      priority: 30,
-      autoUpdate: false,
-      content:
-        "- Adult Northern Water Tribe master waterbender.\n- Severe, traditional, disciplined, proud, and extremely skilled.\n- Teacher and defender of Northern Water Tribe waterbending tradition.\n- Useful in waterbending training references, Northern Water Tribe defense, and reports about elite waterbenders.",
-    }),
-    // ── Earth Kingdom characters ──────────────────────────────────────────────
-    makeStoryCard({
-      id: ids.cards.daiLiAgent,
-      title: "Dai Li Agent",
-      keys: ["Dai Li agent", "Dai Li agents", "Dai Li operative", "Dai Li"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Secret police of Ba Sing Se under Long Feng's influence.\n- Polite, silent, precise, and terrifyingly controlled.\n- Use stone gloves, surveillance, disappearances, brainwashing, and careful language.\n- In Phase 1, the Dai Li should be distant intelligence or a future Ba Sing Se threat unless Earth Kingdom missions bring them in.",
-    }),
-    makeStoryCard({
-      id: ids.cards.earthKingKuei,
-      title: "Earth King Kuei",
-      keys: ["Kuei", "Earth King Kuei", "Earth King"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Adult Earth King of Ba Sing Se.\n- Sheltered, formal, well-meaning, and politically isolated inside his palace.\n- Often manipulated by Long Feng and the Dai Li before learning how much has been hidden from him.\n- Relevant when Ba Sing Se politics or Dai Li control enter the active phase.",
-    }),
-    makeStoryCard({
-      id: ids.cards.generalFong,
-      title: "General Fong",
-      keys: ["General Fong", "Fong"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom general obsessed with using the Avatar as a war-winning weapon.\n- Hard, impatient, pragmatic, and willing to endanger people for military advantage.\n- Useful for Earth Kingdom command scenes, anti-Fire Nation strategy, or pressure around Avatar intelligence.\n- Represents the Earth Kingdom's own ruthless military machine.",
-    }),
-    makeStoryCard({
-      id: ids.cards.generalSung,
-      title: "General Sung",
-      keys: ["General Sung", "Sung"],
-      type: "character",
-      priority: 26,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom general tied to Ba Sing Se's defense and outer-wall military command.\n- Formal, cautious, and responsible for holding massive defensive lines.\n- Useful for Ba Sing Se siege reports, Earth Kingdom command briefings, and military opposition to Fire Nation operations.\n- Should feel like an overburdened defender of a city too large to fully understand.",
-    }),
-    makeStoryCard({
-      id: ids.cards.haru,
-      title: "Haru",
-      keys: ["Haru"],
-      type: "character",
-      priority: 25,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom earthbender and resistance-aligned fighter.\n- Brave, grounded, loyal, and shaped by Fire Nation occupation.\n- Useful for Earth Kingdom village scenes, prisoner stories, resistance missions, or civilian costs of the war.\n- Should not appear in Fire Nation capital scenes unless captured, referenced, or tied to a mission.",
-    }),
-    makeStoryCard({
-      id: ids.cards.jet,
-      title: "Jet",
-      keys: ["Jet", "Freedom Fighter Jet"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom rebel and leader of the Freedom Fighters.\n- Charismatic, wounded, reckless, and intensely anti-Fire Nation.\n- Hates the Fire Nation for destroying his home and may target soldiers, nobles, and civilians without much distinction.\n- Useful for missions involving resistance cells, sabotage, moral pressure, or Setu confronting Earth Kingdom hatred mirrored back at him.",
-    }),
-    makeStoryCard({
-      id: ids.cards.jooDee,
-      title: "Joo Dee",
-      keys: ["Joo Dee", "Joo-Dee"],
-      type: "character",
-      priority: 22,
-      autoUpdate: false,
-      content:
-        "- Adult Ba Sing Se guide and Dai Li-controlled public face of the city's forced cheer.\n- Polite, smiling, scripted, and unsettling when the lie slips.\n- Useful for Ba Sing Se welcome scenes, surveillance pressure, and the city's artificial calm.\n- Should imply Dai Li control without explaining everything immediately.",
-    }),
-    makeStoryCard({
-      id: ids.cards.kingBumi,
-      title: "King Bumi",
-      keys: ["Bumi", "King Bumi", "King of Omashu"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Adult king of Omashu and one of the most powerful earthbenders alive.\n- Eccentric, brilliant, unpredictable, funny, and strategically patient.\n- Uses absurdity to hide ruthless insight and deep loyalty to his city.\n- Relevant through Omashu reports, Earth Kingdom resistance, old war history, or later field missions.",
-    }),
-    makeStoryCard({
-      id: ids.cards.longFeng,
-      title: "Long Feng",
-      keys: ["Long Feng", "Grand Secretariat Long Feng", "Grand Secretariat"],
-      type: "character",
-      priority: 28,
-      autoUpdate: false,
-      content:
-        "- Adult Grand Secretariat of Ba Sing Se and secret head of the Dai Li.\n- Controlled, cold, patient, manipulative, and obsessed with preserving order.\n- Uses secrets, surveillance, brainwashing, and bureaucracy as weapons.\n- Should feel like the hand behind Ba Sing Se's smiling lies when that phase becomes active.",
-    }),
-    makeStoryCard({
-      id: ids.cards.masterYu,
-      title: "Master Yu",
-      keys: ["Master Yu", "Yu"],
-      type: "character",
-      priority: 22,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom earthbending teacher from Gaoling.\n- Status-conscious, formal, insecure, and less capable than his reputation suggests.\n- Useful for Gaoling noble scenes, Toph's past, and earthbending society politics.\n- May resent being embarrassed by stronger benders.",
-    }),
-    makeStoryCard({
-      id: ids.cards.xinFu,
-      title: "Xin Fu",
-      keys: ["Xin Fu"],
-      type: "character",
-      priority: 20,
-      autoUpdate: false,
-      content:
-        "- Adult Earth Kingdom promoter, bounty hunter, and earthbending tournament operator.\n- Greedy, loud, opportunistic, and willing to sell information or muscle for money.\n- Useful around Gaoling, underground earthbending circuits, bounty work, or Toph-related pressure.\n- Not loyal to the Fire Nation or Earth Kingdom ideals; loyal to leverage and profit.",
-    }),
-    // ── Lore entries ──────────────────────────────────────────────────────────
-    makeStoryCard({
-      id: ids.cards.demonFire,
-      title: "Demon Fire",
-      keys: ["demon fire", "black fire", "black-streaked fire"],
+      id: ids.cards.newOzai,
+      title: "The New Ozai Society",
+      keys: ["New Ozai Society", "the Society", "Ozai loyalists", "restorationists"],
       type: "lore",
-      priority: 65,
+      priority: 64,
       autoUpdate: false,
       content:
-        "- Setu's rare firebending expression: black-streaked flame of extreme heat.\n- Demon fire burns hotter and more violently than ordinary firebending.\n- Years of wielding demon fire have made Setu unusually resistant to heat and flame.\n- Fire Nation officers treat demon fire as a strategic weapon.\n- Nobles treat it as either divine favor, military destiny, or something they should fear politely.",
+        "- A growing movement of Ozai loyalists who believe the empire was the Fire Nation's destiny and Zuko's peace is betrayal and weakness.\n- The main enemy faction. Works through sabotage, stolen weapons, propaganda, bribed officials, and disappearances rather than open war.\n- Recurring pressure should arrive as cells, agents, near-misses, intercepted orders, and operations that feel connected to a larger plan.\n- Quietly funded by embittered noble houses; the steadiest hand behind it is Lord Renzan.\n- Do not rely only on faceless thugs — give the Society named agents and a sense of a mind directing it.",
     }),
     makeStoryCard({
-      id: ids.cards.royalSpecialOps,
-      title: "Royal Special Operations",
-      keys: ["Royal Special Operations", "special operations", "royal writ"],
+      id: ids.cards.houseRenzan,
+      title: "House Renzan",
+      keys: ["House Renzan", "the Renzans", "Renzan estate"],
       type: "lore",
-      priority: 60,
+      priority: 52,
       autoUpdate: false,
       content:
-        "- Fire Nation military assignment for elite, politically sensitive missions under royal authority.\n- Setu serves under royal writ as a Royal Special Operations commander.\n- Missions may involve intelligence recovery, sabotage, rebel suppression, royal escort, spy hunts, and operations tied to Azula or Nyxa.\n- Royal Special Operations answers upward through palace authority, not ordinary field bureaucracy.",
+        "- A proud old noble house whose wealth and glory were tied to the conquest and collapsed when the war ended.\n- Led by Lord Renzan; Nyx is its heir.\n- Publicly loyal to the throne and angling for a royal marriage; privately entangled with the New Ozai Society.\n- The political knot at the heart of the arc: the house that could marry into the crown or topple it.\n- Setu's growing closeness to Nyx is both the house's ambition and its greatest danger.",
     }),
     makeStoryCard({
-      id: ids.cards.earthKingdomPressure,
-      title: "Earth Kingdom Pressure",
-      keys: ["Earth Kingdom assassins", "Ba Sing Se"],
+      id: ids.cards.dragonFire,
+      title: "Dragon Fire",
+      keys: ["dragon fire", "gold fire", "gold-white fire", "Ran and Shaw"],
       type: "lore",
-      priority: 58,
+      priority: 62,
       autoUpdate: false,
       content:
-        "- Earth Kingdom assassins killed Setu's parents, shaping his hatred of the Earth Kingdom.\n- In Phase 1, Ba Sing Se should remain a looming future target, not the current active mission.\n- Earth Kingdom pressure may appear through war reports, spies, captured agents, military briefings, and Setu's resentment.\n- Keep Earth Kingdom enemies specific when possible: assassins, spies, rebels, officers, or Dai Li contacts.",
+        "- Setu's rare firebending: gold-white flame learned from the dragon masters Ran and Shaw, hotter and cleaner than ordinary fire.\n- Carries the true meaning of firebending — life and energy, not just destruction.\n- Setu also generates and redirects lightning, a rare and politically symbolic skill.\n- The court treats the Dragon's Heir's fire as proof of the bloodline's destiny; enemies treat it as the first thing to neutralize.",
     }),
     makeStoryCard({
-      id: ids.cards.teamAvatarRumors,
-      title: "Team Avatar Rumors",
-      keys: ["Team Avatar", "Avatar", "Aang", "Katara", "Sokka", "Toph"],
+      id: ids.cards.fragilePeace,
+      title: "The Fragile Peace",
+      keys: ["the peace", "fragile peace", "Harmony Restoration", "postwar", "post-war"],
       type: "lore",
-      priority: 48,
+      priority: 50,
       autoUpdate: false,
       content:
-        "- Team Avatar is not yet directly involved in Setu's story.\n- Reports say the Avatar travels with Katara, Sokka, and a blind earthbending prodigy named Toph.\n- Fire Nation officials treat these reports as rumor, embarrassment, military intelligence, or propaganda risk.\n- Do not force Team Avatar into scenes until the story advances beyond capital pressure or a mission naturally intersects them.",
+        "- The world is roughly twenty-two years past the Hundred Year War. The peace is real but young and precarious.\n- Old Fire Nation colonies are becoming the United Republic; some resent it, some profit, some plot.\n- Spirits are stirring again as the balance shifts.\n- Many in the Fire Nation quietly believe the surrender was a humiliation — fertile ground for the New Ozai Society.\n- The throne's legitimacy rests on Zuko's reputation and, increasingly, on the Dragon's Heir.",
     }),
     makeStoryCard({
-      id: ids.cards.earthKingdom,
-      title: "Earth Kingdom",
-      keys: ["Earth Kingdom", "Earth Kingdom army", "Earth Kingdom soldiers"],
+      id: ids.cards.unitedRepublic,
+      title: "The United Republic",
+      keys: ["United Republic", "Republic City", "the colonies", "United Forces"],
       type: "lore",
-      priority: 42,
+      priority: 44,
       autoUpdate: false,
       content:
-        "- Vast nation at war with the Fire Nation.\n- Includes occupied villages, resistance cells, generals, nobles, massive cities, refugees, and Ba Sing Se politics.\n- Setu hates the Earth Kingdom because Earth Kingdom assassins killed his parents.\n- Use specific people and places when possible instead of vague Earth Kingdom enemies.",
+        "- A new multinational state forged from the former Fire Nation colonies by Zuko, Aang, Sokka, and Toph.\n- Republic City is its rising capital — modern, mixed, ambitious, and politically volatile.\n- A frequent source of missions: colony disputes, crime, factional pressure, and tests of the fragile peace.\n- Toph runs its police; Sokka helped build its council; Aang and Katara steady its spirit.",
     }),
     makeStoryCard({
-      id: ids.cards.northernWaterTribe,
-      title: "Northern Water Tribe",
-      keys: ["Northern Water Tribe", "North Pole", "Northern Water Tribe warriors", "Northern Water Tribe fleet"],
+      id: ids.cards.dragonsHeir,
+      title: "The Dragon's Heir",
+      keys: ["Dragon's Heir", "the heir", "prince's reputation"],
       type: "lore",
-      priority: 28,
+      priority: 46,
       autoUpdate: false,
       content:
-        "- Major Water Tribe power centered at the North Pole.\n- Known for waterbending tradition, ice architecture, warriors, healers, and spiritual ties to moon and ocean.\n- In this scenario, it should mostly appear through intelligence, war history, waterbending context, or later missions.\n- Do not drag Northern Water Tribe NPCs into Fire Nation capital scenes without a reason.",
+        "- Setu's public legend: the gold-fire crown prince, strongest firebender of his generation, the throne's quiet blade.\n- Nobles court him, officers fear him, enemies plan around him, and the people half-worship him.\n- The reputation is a weapon and a target in equal measure.\n- Let NPCs react to it — awe, ambition, jealousy, fear — without ever making Setu's power itself the obstacle.",
     }),
-    // ── Fire Nation locations ─────────────────────────────────────────────────
+    // ── Locations ─────────────────────────────────────────────────────────────
     makeStoryCard({
-      id: ids.cards.fireNationCapital,
-      title: "Fire Nation Capital",
-      keys: ["Fire Nation Capital", "Capital City", "Capital Island"],
+      id: ids.cards.royalPalace,
+      title: "Fire Nation Royal Palace",
+      keys: ["Royal Palace", "the palace", "Caldera", "Royal Caldera", "Fire Nation Capital"],
       type: "location",
       priority: 46,
       autoUpdate: false,
       content:
-        "- Fire Nation capital on Capital Island: seat of royal power, military command, noble politics, propaganda, and elite training.\n- Current main setting for Phase 1.\n- Use the capital for palace scenes, dueling courts, war ministry meetings, harbor deployments, noble pressure, academy training, and royal ceremonies.\n- The capital should feel wealthy, hot, disciplined, dangerous, and politically suffocating.",
+        "- Seat of Zuko's rule in the Caldera city of the Fire Nation capital, and Setu's home.\n- Dueling terraces, war chambers, private quarters, guarded halls, gardens, and lethal court politics.\n- Primary hub: mission briefings, family scenes, training with Nyx, court intrigue, and downtime.\n- Should feel beautiful, hot, disciplined, watched, and quietly dangerous.",
     }),
     makeStoryCard({
-      id: ids.cards.hariBulkan,
-      title: "Hari Bulkan / Royal Caldera City",
-      keys: ["Hari Bulkan", "Royal Caldera", "Royal Caldera City"],
-      type: "location",
-      priority: 45,
-      autoUpdate: false,
-      content:
-        "- Elite caldera district of the Fire Nation capital where royal authority and noble power concentrate.\n- Contains palace-adjacent estates, dueling spaces, formal gardens, military galleries, and noble residences.\n- Setu, Nyxa, Azula, Mai, and Ty Lee often cross paths here through training, court expectation, and royal missions.\n- Scenes here should feel beautiful, expensive, watched, and dangerous.",
-    }),
-    makeStoryCard({
-      id: ids.cards.royalPalace,
-      title: "Fire Nation Royal Palace",
-      keys: ["Royal Palace", "Fire Nation Royal Palace", "palace"],
-      type: "location",
-      priority: 44,
-      autoUpdate: false,
-      content:
-        "- Residence of Fire Lord Ozai and the royal family inside the Fire Nation capital.\n- Center of government, royal command, ceremonies, private chambers, guarded halls, and lethal family politics.\n- Setu has access through noble status, military usefulness, and his connection to Nyxa and Azula.\n- Palace scenes should mix beauty, control, intimidation, etiquette, and implied violence.",
-    }),
-    makeStoryCard({
-      id: ids.cards.royalAcademy,
-      title: "Royal Fire Academy",
-      keys: ["Royal Fire Academy", "Fire Academy", "academy"],
-      type: "location",
-      priority: 40,
-      autoUpdate: false,
-      content:
-        "- Elite Fire Nation training institution for noble, military, and royal firebenders.\n- Setu, Nyxa, and Azula have history here through training, rivalry, reputation, and instructor scrutiny.\n- Use the academy for sparring, tests, old rivalries, doctrine, military expectation, and public displays of talent.\n- The academy teaches discipline, conquest, hierarchy, and firebending excellence.",
-    }),
-    makeStoryCard({
-      id: ids.cards.warMinistry,
-      title: "Fire Nation War Ministry",
-      keys: ["War Ministry", "Fire Nation War Ministry", "ministry"],
+      id: ids.cards.republicCity,
+      title: "Republic City",
+      keys: ["Republic City", "the Republic", "City of the United Republic"],
       type: "location",
       priority: 38,
       autoUpdate: false,
       content:
-        "- Bureaucratic and military planning center in the Fire Nation capital.\n- Officers, nobles, ministers, and royal agents debate strategy, missions, propaganda, and resource allocation.\n- Setu may receive special operations orders here.\n- Use the War Ministry for mission briefings, political pressure, reports about Team Avatar, and Earth Kingdom strategy.",
-    }),
-    // ── Water Tribe locations ─────────────────────────────────────────────────
-    makeStoryCard({
-      id: ids.cards.agnaQelA,
-      title: "Agna Qel'a",
-      keys: ["Agna Qel'a", "Northern Water Tribe capital", "North Pole capital"],
-      type: "location",
-      priority: 25,
-      autoUpdate: false,
-      content:
-        "- Capital city of the Northern Water Tribe at the North Pole.\n- Built from ice canals, walls, bridges, and defended waterways.\n- Home of Chief Arnook, Princess Yue, and Master Pakku.\n- Relevant through war reports, waterbending lore, spiritual stakes, or later Water Tribe arcs.",
+        "- Rising capital of the United Republic: modern, mixed-nation, ambitious, and politically tangled.\n- A frequent mission setting for colony disputes, crime, factional pressure, and diplomacy.\n- Home turf for Toph's police, Sokka's council, and a place where Setu's crown carries less automatic weight.",
     }),
     makeStoryCard({
-      id: ids.cards.spiritOasis,
-      title: "Spirit Oasis",
-      keys: ["Spirit Oasis", "Northern Spirit Oasis", "Moon Spirit", "Ocean Spirit"],
+      id: ids.cards.jasmineDragon,
+      title: "The Jasmine Dragon",
+      keys: ["Jasmine Dragon", "Iroh's tea shop", "the tea shop"],
       type: "location",
-      priority: 22,
+      priority: 32,
       autoUpdate: false,
       content:
-        "- Sacred oasis in the Northern Water Tribe tied to the Moon Spirit and Ocean Spirit.\n- Spiritual place of balance, vulnerability, and enormous symbolic importance.\n- Use carefully for major spiritual or war stakes, not casual scene dressing.\n- Fire Nation interest in this place should feel dangerous and sacrilegious.",
+        "- Iroh's famous tea house in the Upper Ring of Ba Sing Se.\n- A place of tea, wisdom, White Lotus business, and quiet strategy.\n- Where Setu goes for counsel he can't get at court, and where old secrets surface gently.",
     }),
-    // ── Earth Kingdom locations ───────────────────────────────────────────────
+    makeStoryCard({
+      id: ids.cards.emberIsland,
+      title: "Ember Island",
+      keys: ["Ember Island", "the beach house", "royal retreat"],
+      type: "location",
+      priority: 28,
+      autoUpdate: false,
+      content:
+        "- The old royal retreat: beaches, the family house, theater, and the place masks come off.\n- Useful for downtime, romance, and the cast being human between missions.\n- Heavy with family history — Zuko, Azula, and a childhood that still echoes.",
+    }),
     makeStoryCard({
       id: ids.cards.baSingSe,
       title: "Ba Sing Se",
-      keys: ["Ba Sing Se", "Lower Ring", "Middle Ring", "Upper Ring", "Outer Wall", "Inner Wall"],
+      keys: ["Ba Sing Se", "Upper Ring", "Lower Ring", "Earth Kingdom capital"],
       type: "location",
       priority: 30,
       autoUpdate: false,
       content:
-        "- Massive Earth Kingdom capital city protected by enormous walls and controlled public order.\n- Future major mission location, not the active Phase 1 setting unless the story advances.\n- Contains the Lower Ring, Middle Ring, Upper Ring, Earth King's Palace, Lake Laogai, refugees, nobles, bureaucracy, and Dai Li control.\n- Should feel huge, layered, controlled, and full of smiling lies.",
-    }),
-    makeStoryCard({
-      id: ids.cards.earthKingsPalace,
-      title: "Earth King's Palace",
-      keys: ["Earth King's Palace", "Earth King Palace", "Kuei's palace"],
-      type: "location",
-      priority: 22,
-      autoUpdate: false,
-      content:
-        "- Formal palace of Earth King Kuei in Ba Sing Se's Upper Ring.\n- Beautiful, ceremonial, isolated, and politically manipulated by Long Feng and the Dai Li.\n- Useful for Ba Sing Se court scenes, deception, diplomacy, and Dai Li-controlled access.",
-    }),
-    makeStoryCard({
-      id: ids.cards.omashu,
-      title: "Omashu",
-      keys: ["Omashu", "City of Omashu"],
-      type: "location",
-      priority: 25,
-      autoUpdate: false,
-      content:
-        "- Major Earth Kingdom city ruled by King Bumi.\n- Built into a mountain with delivery chutes, strange engineering, and strong earthbending defenses.\n- Relevant through war reports, field missions, Earth Kingdom resistance, or Bumi-linked developments.",
-    }),
-    makeStoryCard({
-      id: ids.cards.gaoling,
-      title: "Gaoling",
-      keys: ["Gaoling", "Gaoling town", "Beifong estate"],
-      type: "location",
-      priority: 20,
-      autoUpdate: false,
-      content:
-        "- Wealthy Earth Kingdom town connected to Toph Beifong's noble family and earthbending tournament culture.\n- Useful for Toph's background, noble Earth Kingdom politics, underground bending, and bounty hunters.\n- Should not pull focus until Earth Kingdom field missions or Team Avatar contact matter.",
-    }),
-    makeStoryCard({
-      id: ids.cards.lakeLaogai,
-      title: "Lake Laogai",
-      keys: ["Lake Laogai", "Laogai"],
-      type: "location",
-      priority: 20,
-      autoUpdate: false,
-      content:
-        "- Secret Dai Li brainwashing and detention site beneath Ba Sing Se.\n- Associated with disappearances, conditioning, surveillance, and the city's hidden violence.\n- Use as a later Ba Sing Se threat or discovery, not as Phase 1 capital content.",
-    }),
-    makeStoryCard({
-      id: ids.cards.serpentsPass,
-      title: "Serpent's Pass",
-      keys: ["Serpent's Pass"],
-      type: "location",
-      priority: 22,
-      autoUpdate: false,
-      content:
-        "- Dangerous route toward Ba Sing Se used by refugees and travelers.\n- Useful for Earth Kingdom travel, refugee pressure, military pursuit, and the cost of the war.\n- A good transition location when the story moves from missions toward Ba Sing Se.",
-    }),
-    makeStoryCard({
-      id: ids.cards.siWongDesert,
-      title: "Si Wong Desert",
-      keys: ["Si Wong Desert", "desert", "library desert"],
-      type: "location",
-      priority: 20,
-      autoUpdate: false,
-      content:
-        "- Huge Earth Kingdom desert associated with harsh travel, sandbenders, secrets, and dangerous isolation.\n- Useful for later missions, Avatar intelligence, lost knowledge, or pursuit across hostile terrain.\n- Do not use as active Phase 1 setting unless a mission deliberately goes there.",
+        "- The vast Earth Kingdom capital, now a wary partner in the postwar order.\n- Home to the Jasmine Dragon, layered politics, and old wounds between the nations.\n- Useful for diplomacy, White Lotus business, and missions that reach beyond Fire Nation borders.",
     }),
   ];
 
   const brains = [
     makeBrain({
       id: ids.brains.setu,
-      characterName: "Setu Renzan",
-      triggers: ["Setu", "Renzan", "demon fire"],
+      characterName: "Setu",
+      triggers: ["Setu", "the prince", "Dragon's Heir"],
       priority: 60,
-      currentState: "Guarded, disciplined, and alert under royal scrutiny.",
+      currentState: "Confident and a little restless, carrying the crown's weight lightly in public and heavily in private.",
       thoughts: {
-        renzan_worth:
-          "turn0 → I want to prove House Renzan still matters without becoming a decorative weapon for Ozai's court.",
+        crown_weight:
+          "turn0 → I am the strongest firebender of my generation and the most watched. I want to be worth my father's peace without being swallowed by it.",
       },
       relationshipPressure:
-        "He respects Azula's command, navigates Nyxa's volatility, and notices how Mai and Ty Lee read what he tries to hide.",
+        "Drawn to Nyx and aware her house is dangerous; wants to make Zuko proud without becoming his instrument; chafes against the court that worships and uses him.",
       emotionalInterpretation:
-        "Grief is converted into loyalty and precision. Earth Kingdom hatred is real but may be covering older uncertainty.",
-      recentDevelopments: "Dueling court opening. Nyxa just challenged him again in front of an audience.",
+        "Power makes most threats trivial, so the real stakes are loyalty, family, and whether he can trust what he wants. Reads danger to others faster than danger to himself.",
+      recentDevelopments: "Sparring with Nyx when the Fire Lord's summons arrived: the New Ozai Society hit the harbor armory.",
       updateMode: "append",
       updateCondition:
-        "when Setu makes a meaningful choice, shows grief, escalates rivalry, changes loyalty, or is pressured by Azula, Nyxa, Mai, Ty Lee, Ozai, or the court",
+        "when Setu makes a meaningful choice, shows feeling for Nyx, learns something about the conspiracy, clashes with family, or shifts how he carries the crown",
     }),
     makeBrain({
-      id: ids.brains.azula,
-      characterName: "Azula",
-      triggers: ["Azula", "blue fire"],
+      id: ids.brains.nyx,
+      characterName: "Nyx",
+      triggers: ["Nyx", "Lady Renzan"],
       priority: 58,
-      currentState: "In command, testing every person in the room.",
+      currentState: "Sharp and electric, hiding how much is riding on every moment with Setu.",
       thoughts: {
-        setu_assessment: "turn0 → Setu's power is useful, but useful things become dangerous when other people admire them.",
+        torn_loyalty:
+          "turn0 → My father wants the throne and I want Setu, and I'm not sure those are different wishes or whether they can both be true.",
       },
-      relationshipPressure: "She expects obedience from Mai and Ty Lee and rivalry from Nyxa.",
-      emotionalInterpretation: "Control is safety. Curiosity appears as challenge.",
-      recentDevelopments: "Watching the dueling court from the gallery. Evaluating.",
+      relationshipPressure:
+        "Pulled between House Renzan's ambition and real feeling for Setu; turns vulnerability into dares and jealousy into fire.",
+      emotionalInterpretation: "Pride, hunger to be seen as her own person, and fear of being used all run too close together.",
+      recentDevelopments: "Just dared Setu into another round before the summons cut the match short.",
       updateMode: "append",
       updateCondition:
-        "when Azula appears, exerts control, reacts to Setu's talent, faces Nyxa's rivalry, or adjusts a mission plan",
+        "when Nyx is meaningfully referenced, her loyalty is tested, her feelings for Setu shift, or House Renzan's hand shows",
     }),
     makeBrain({
-      id: ids.brains.nyxa,
-      characterName: "Nyxa",
-      triggers: ["Nyxa", "Nyx", "Ozai's second daughter"],
-      priority: 56,
-      currentState: "Restless, sharp, and hungry to be seen as more than Azula's spare shadow.",
+      id: ids.brains.zuko,
+      characterName: "Zuko",
+      triggers: ["Zuko", "Fire Lord", "father"],
+      priority: 52,
+      currentState: "Tired, watchful, and quietly afraid for his son and his peace.",
       thoughts: {
-        setu_loyalty: "turn0 → If Setu is the court's new blade, I want to know whether he cuts for me, Azula, or himself.",
+        protect_the_peace:
+          "turn0 → I gave everything for this peace and it is still so fragile. I will not let my son inherit my family's curse — or my father's.",
       },
-      relationshipPressure: "Her rivalry with Azula turns every interaction with Setu into a test.",
-      emotionalInterpretation: "Pride, loneliness, and ambition move too close together.",
-      recentDevelopments: "Just called for another round in the dueling court. Enjoying the audience.",
+      relationshipPressure:
+        "Trusts Setu with the crown's hardest work and dreads it; loves Mai's clarity; carries old grief about Azula and Iroh's faith in him.",
+      emotionalInterpretation: "Sees threats through the lens of his own history; pushes Setu hard because the cost of weakness once nearly destroyed him.",
+      recentDevelopments: "Summoned Setu over the New Ozai Society's strike on the harbor armory.",
       updateMode: "append",
       updateCondition:
-        "when Nyxa is meaningfully referenced, loses control, competes with Azula, or develops a new reaction to Setu",
+        "when Zuko appears, makes a decision about Setu or the peace, reacts to the conspiracy, or his fears for his family deepen",
     }),
     makeBrain({
       id: ids.brains.mai,
       characterName: "Mai",
-      triggers: ["Mai", "knives"],
-      priority: 40,
-      currentState: "Outwardly bored, privately attentive.",
+      triggers: ["Mai", "Fire Lady"],
+      priority: 42,
+      currentState: "Outwardly bored, privately tracking every blade in the room.",
       thoughts: {
-        court_tension: "turn0 → Court drama is tedious until someone reaches for a knife without moving their hand.",
+        read_the_house:
+          "turn0 → House Renzan smiles too well. The girl is real about my son. The father is not real about anything.",
       },
-      relationshipPressure: "Mai is loyal to the circle but skeptical of being used as scenery in royal games.",
-      emotionalInterpretation: "Flat affect conceals exact judgment.",
-      recentDevelopments: "Watching Setu, Azula, and Nyxa from a pillar in the dueling court.",
+      relationshipPressure: "Protective of Setu without saying so; skeptical of Nyx's house; the throne's quiet eyes and ears.",
+      emotionalInterpretation: "Flat affect concealing exact, unsentimental judgment.",
+      recentDevelopments: "Already has agents pulling threads on the armory strike before anyone asked.",
       updateMode: "append",
     }),
     makeBrain({
-      id: ids.brains.tyLee,
-      characterName: "Ty Lee",
-      triggers: ["Ty Lee", "chi blocking"],
+      id: ids.brains.iroh,
+      characterName: "Iroh",
+      triggers: ["Iroh", "Uncle Iroh", "Great-Uncle"],
       priority: 40,
-      currentState: "Warm, alert, and physically relaxed in a way that makes danger look harmless.",
+      currentState: "Warm and patient, watching the family's old wounds reopen with clear, kind eyes.",
       thoughts: {
-        breath_read: "turn0 → People reveal themselves through breath before words.",
+        old_friends_old_grudges:
+          "turn0 → I knew Senzo Renzan before bitterness hollowed him. The boy will need more than fire to face what is coming.",
       },
-      relationshipPressure: "Ty Lee balances friendship, survival, and the emotional weather around Azula.",
-      emotionalInterpretation: "Brightness can be camouflage and kindness at the same time.",
-      recentDevelopments: "Sitting cross-legged beside Mai, reading the dueling court's tension.",
+      relationshipPressure: "Mentor and conscience to Setu; old, wary history with Lord Renzan; faith in Zuko hard-won and unshakable.",
+      emotionalInterpretation: "Sees the human under every plot, and the plot under every smile.",
+      recentDevelopments: "Far away at the Jasmine Dragon, but the White Lotus has already heard about the armory.",
       updateMode: "append",
+    }),
+    makeBrain({
+      id: ids.brains.renzan,
+      characterName: "Lord Renzan",
+      triggers: ["Renzan", "Lord Renzan"],
+      priority: 44,
+      currentState: "Composed, gracious, and patient — a long game played behind a respectable face.",
+      thoughts: {
+        the_long_game:
+          "turn0 → The boy's fire is the empire's destiny wearing the wrong crown. My daughter can put it on the right head — or I will find another way.",
+      },
+      relationshipPressure:
+        "Uses Nyx as leverage toward the throne; steers the New Ozai Society through proxies; despises Zuko's peace as humiliation.",
+      emotionalInterpretation: "Treats people as positions on a board; mistakes his ambition for love of the nation.",
+      recentDevelopments: "Behind several layers of proxies, his hand was on the armory strike. None of it can be traced to him yet.",
+      updateMode: "append",
+      updateCondition:
+        "when Lord Renzan acts, the conspiracy advances, House Renzan's hand is exposed, or Nyx is used as leverage",
     }),
   ];
 
   const triggerRules = [
     makeTriggerRule({
-      id: ids.triggers.betrothal,
-      name: "Betrothal Pressure Shifts",
+      id: ids.triggers.nyx,
+      name: "Nyx Romance & Loyalty Shifts",
       evaluationMode: "semantic",
       condition:
-        "when romance, jealousy, public favor, courtship, engagement, or marriage politics around Setu materially changes",
-      actions: [{ type: "updateStoryCard", storyCardId: ids.cards.nyxa }],
+        "when romance, jealousy, trust, or House Renzan's pull on Nyx materially changes her standing with Setu",
+      actions: [{ type: "appendBrain", brainId: ids.brains.nyx }],
       priority: 70,
       cooldownTurns: 1,
       updatePrompt:
-        "Update the Princess Nyxa story card with any new durable detail about how betrothal pressure or romantic tension with Setu has shifted. Return ONLY the concise replacement card content.",
+        "You are modeling Nyx's internal state. Return ONLY valid JSON with the keys that changed: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Every value must be a plain string; do not return nested objects or arrays.",
     }),
     makeTriggerRule({
-      id: ids.triggers.nyxa,
-      name: "Nyxa Volatility Changes",
+      id: ids.triggers.conspiracy,
+      name: "Conspiracy Escalates",
       evaluationMode: "semantic",
       condition:
-        "when Nyxa's rivalry, jealousy, ambition, vulnerability, or attitude toward Setu changes in a lasting way",
-      actions: [{ type: "appendBrain", brainId: ids.brains.nyxa }],
+        "when the New Ozai Society or House Renzan makes a new move, is exposed, or the threat to the throne advances",
+      actions: [{ type: "updateStoryCard", storyCardId: ids.cards.newOzai }],
       priority: 65,
       cooldownTurns: 1,
       updatePrompt:
-        "You are modeling Nyxa's internal state. Return ONLY valid JSON with keys that changed: currentState, thoughts, relationshipPressure, emotionalInterpretation, recentDevelopments. Every value must be a plain string; do not return nested objects or arrays.",
-    }),
-    makeTriggerRule({
-      id: ids.triggers.avatar,
-      name: "Avatar Rumor Escalates",
-      evaluationMode: "semantic",
-      condition:
-        "when new information about Team Avatar, the Avatar's location, or rebel movements becomes relevant to the mission",
-      actions: [{ type: "updateStoryCard", storyCardId: ids.cards.teamAvatarRumors }],
-      priority: 55,
-      cooldownTurns: 1,
+        "Update the New Ozai Society lore card with any new durable detail about the conspiracy's reach, methods, or leadership. Return ONLY the concise replacement card content.",
     }),
     makeTriggerRule({
       id: ids.triggers.enemy,
       name: "Powerful Enemy Made",
       evaluationMode: "semantic",
       condition:
-        "when Setu, Azula, Nyxa, Mai, or Ty Lee make a powerful enemy, reveal a dangerous rival, or create a new recurring threat",
+        "when Setu or his circle make a powerful enemy, reveal a dangerous rival, or create a new recurring threat",
       actions: [],
-      priority: 45,
+      priority: 50,
       cooldownTurns: 2,
       updatePrompt:
         'Based on the story, a new recurring enemy or threat worth remembering has appeared. Return ONLY valid JSON: {"title": string, "content": string, "keys": string}.',
+    }),
+    makeTriggerRule({
+      id: ids.triggers.azula,
+      name: "Azula Wildcard Moves",
+      evaluationMode: "semantic",
+      condition:
+        "when Azula appears, makes contact, or her involvement with the conspiracy or the royal family shifts",
+      actions: [{ type: "updateStoryCard", storyCardId: ids.cards.azula }],
+      priority: 55,
+      cooldownTurns: 2,
     }),
   ];
 
@@ -895,8 +560,8 @@ export function createDevelopmentAdventure(): Adventure {
     updatedAt: timestamp,
     metadata: {
       developmentScenario: true,
-      scenario: "Adult ATLA Fire Nation AU",
-      note: "All central named mission characters are adults.",
+      scenario: "Post-canon Avatar — Heir of the Dragon Throne",
+      note: "Crown prince son of Zuko; mission loop + configured Arc Director; all main characters adults.",
     },
     components,
     storyCards,
@@ -904,7 +569,7 @@ export function createDevelopmentAdventure(): Adventure {
     triggerRules,
     rollingSummary: {
       content:
-        "Setu Renzan, adult heir of the murdered noble House Renzan, stands in the dueling court beneath the Royal Palace. His demon fire — black-streaked flame of extreme heat — still crawls along the stone. Across from him, Princess Nyxa grins and calls for another round. Azula watches from the gallery. Mai leans against a pillar. Ty Lee sits nearby, smiling. The court is quiet and watching. Everyone is trying to understand what Setu and Nyxa are to each other.",
+        "Prince Setu, twenty-four-year-old son of Fire Lord Zuko and Fire Lady Mai, is the Dragon's Heir — a gold-fire prodigy and the crown's quiet blade. Sparring with Nyx, the brilliant blue-fire daughter of ruined House Renzan, he is summoned by his father: the New Ozai Society has struck the harbor armory. Behind the loyalists is a patient hand that runs close to House Renzan, and close to the woman Setu is falling for. The peace his father built is real and fragile, and someone wants the old empire back.",
       updatedAt: timestamp,
     },
     messages: [

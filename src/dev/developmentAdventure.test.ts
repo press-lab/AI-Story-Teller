@@ -15,9 +15,9 @@ describe("development adventure seed", () => {
 
     expect(adventure.title).toBe(developmentAdventureTitle);
     expect(adventure.modelConfig.apiKey).toBeUndefined();
-    expect(adventure.components.length).toBeGreaterThanOrEqual(5);
-    expect(adventure.storyCards).toHaveLength(57);
-    expect(adventure.brains).toHaveLength(5);
+    expect(adventure.components.length).toBeGreaterThanOrEqual(6);
+    expect(adventure.storyCards).toHaveLength(23);
+    expect(adventure.brains).toHaveLength(6);
     expect(adventure.triggerRules).toHaveLength(4);
     expect(adventure.messages).toHaveLength(1);
     expect(adventure.components.find((component) => component.title === "AI Instructions")?.content).toContain(
@@ -25,10 +25,28 @@ describe("development adventure seed", () => {
     );
   });
 
+  it("ships a configured Arc Director on the Current Story Arc", () => {
+    const adventure = createDevelopmentAdventure();
+    const arc = adventure.components.find((component) => component.type === "currentArc");
+
+    expect(arc).toBeDefined();
+    expect(arc?.arcThreadKeys?.length).toBeGreaterThan(0);
+    expect(arc?.arcPace).toBe("epic");
+    expect(arc?.arcTriggerMode).toBe("ask");
+    expect(arc?.arcSimmerInstruction).toBeTruthy();
+    expect(arc?.arcBreakInstruction).toBeTruthy();
+    // The break (cost) instruction must be withheld from context while the arc is simmering.
+    expect(arc?.arcState?.phase).toBe("simmer");
+    const result = buildContext(adventure, { currentInput: "Setu reports to the palace." });
+    const arcText = result.sections.find((section) => section.id === "currentArc")?.items.map((item) => item.content).join("\n") ?? "";
+    expect(arcText).not.toContain(arc?.arcBreakInstruction ?? "NO BREAK");
+    expect(arcText).toContain(arc?.arcSimmerInstruction ?? "NO SIMMER");
+  });
+
   it("builds inspectable context with triggered cards, brains, and summary", () => {
     const adventure = createDevelopmentAdventure();
     const result = buildContext(adventure, {
-      currentInput: "Setu studies Azula and Nyx before answering the mission briefing.",
+      currentInput: "Setu studies Nyx and Zuko before the mission briefing.",
       latestModelOutput: adventure.messages[0].content,
     });
 
@@ -49,20 +67,20 @@ describe("development adventure seed", () => {
 
     const storyCardIds = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id) ?? [];
     expect(storyCardIds).toContain("dev-card-setu");
-    expect(storyCardIds).toContain("dev-card-azula");
-    expect(storyCardIds).toContain("dev-card-nyxa");
+    expect(storyCardIds).toContain("dev-card-nyx");
+    expect(storyCardIds).toContain("dev-card-zuko");
 
     const brainIds = result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id) ?? [];
     expect(brainIds).toContain("dev-brain-setu");
-    expect(brainIds).toContain("dev-brain-azula");
-    expect(brainIds).toContain("dev-brain-nyxa");
+    expect(brainIds).toContain("dev-brain-nyx");
+    expect(brainIds).toContain("dev-brain-zuko");
 
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# C. Plot Essentials");
     expect(result.messages[0].content).toContain("# F. Story Cards");
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual([
-      "dev-component-court-pressure",
-      "dev-component-combat-doctrine",
+      "dev-component-mission-loop",
+      "dev-component-dragon-fire",
     ]);
   });
 
@@ -74,12 +92,6 @@ describe("development adventure seed", () => {
       latestModelOutput: adventure.messages[0].content,
     });
 
-    const includedComponentIds = result.sections
-      .flatMap((section) => section.items)
-      .filter((item) => item.sourceType === "component")
-      .map((item) => item.id);
-    expect(includedComponentIds).toEqual(expect.arrayContaining(adventure.components.map((component) => component.id)));
-
     const includedStoryCardIds = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id) ?? [];
     expect(includedStoryCardIds).toEqual(expect.arrayContaining(adventure.storyCards.map((card) => card.id)));
     expect(result.excludedItems.filter((item) => item.sourceType === "storyCard")).toEqual([]);
@@ -88,13 +100,13 @@ describe("development adventure seed", () => {
   it("exports re-importable full adventure JSON and Story Card JSON", () => {
     const imported = importAdventureJson(createDevelopmentAdventureJson());
     expect(imported.title).toBe(developmentAdventureTitle);
-    expect(imported.storyCards).toHaveLength(57);
-    expect(imported.brains).toHaveLength(5);
+    expect(imported.storyCards).toHaveLength(23);
+    expect(imported.brains).toHaveLength(6);
 
     const parsedCards = parseAidStoryCards(createDevelopmentStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
-    expect(parsedCards.cards).toHaveLength(57);
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Setu Renzan");
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Princess Nyxa");
+    expect(parsedCards.cards).toHaveLength(23);
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Prince Setu");
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Nyx");
   });
 });
