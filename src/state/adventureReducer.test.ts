@@ -528,6 +528,24 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
+  it("dedups memory proposals — skips a duplicate pending suggestion or an existing card title", () => {
+    let state = baseAdventure();
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p1", title: "The Harbormaster", proposedType: "storyCard", status: "pending" }) });
+    // Same entity re-suggested next turn → dropped (case-insensitive); no duplicate proposal.
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p2", title: "the harbormaster", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.filter((p) => p.title.toLowerCase() === "the harbormaster")).toHaveLength(1);
+    expect(state.activeState.memoryProposals.some((p) => p.id === "p2")).toBe(false);
+
+    // New story card proposal whose title already exists as a card → dropped.
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p3", title: "Story A", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "p3")).toBe(false);
+
+    // A genuinely new entity still gets through.
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p4", title: "The Masked Agent", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "p4")).toBe(true);
+  });
+
   it("tracks story text undo and redo for adds, edits, erases, and opening scene edits", () => {
     let state = baseAdventure();
 

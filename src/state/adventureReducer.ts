@@ -817,6 +817,23 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "ADD_MEMORY_PROPOSAL": {
       const clean = sanitizeProposal(action.proposal);
       if (!clean) return state;
+      // Dedup: drop a proposal that duplicates one already pending (same type, title,
+      // and target), or a NEW story card whose title already exists as a card. Without
+      // this, the model re-suggesting the same not-yet-approved entity each turn spawns
+      // a fresh duplicate proposal every time.
+      const normTitle = clean.title.trim().toLowerCase();
+      const duplicatesPending = state.activeState.memoryProposals.some(
+        (p) =>
+          p.status === "pending" &&
+          p.proposedType === clean.proposedType &&
+          p.title.trim().toLowerCase() === normTitle &&
+          (p.targetId ?? "") === (clean.targetId ?? ""),
+      );
+      const duplicatesCard =
+        clean.proposedType === "storyCard" &&
+        !clean.targetId &&
+        state.storyCards.some((c) => c.title.trim().toLowerCase() === normTitle);
+      if (duplicatesPending || duplicatesCard) return state;
       const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {
         const approved = updateMemoryProposal(clean, { status: "approved" });
