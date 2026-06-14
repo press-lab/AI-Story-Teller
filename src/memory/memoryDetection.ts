@@ -51,7 +51,7 @@ function buildSystemPrompt(adventure: Adventure, generateContent: boolean): stri
     .join("\n");
 
   const storyCardContentField = generateContent
-    ? `"content": "bullet points using • character, one per line, no title in the body",`
+    ? `"content": "bullet points using • character, one per line, no title in the body; if the entity is a character, append a VOICE CONTRACT block after the bullets (see rules)",`
     : "";
 
   return `You are a world-memory assistant for an interactive fiction game. Detect if the story response establishes a NEW durable fact worth storing permanently.
@@ -71,7 +71,7 @@ If nothing is new: respond with the word null
 Rules:
 - storyCard: ONLY a genuinely NEW named entity not already listed above — a specific person, place, faction, organization, or named object/rule the story just introduced. The title must be that entity's own proper name.
 - DO NOT create a card for a relationship, bond, pact, dynamic, romance, or feeling between characters who already appear above. Those belong on the characters' own entries — return null for them.
-- DO NOT use abstract or descriptive titles like "Dynamic between X and Y", "Pact between X and Y", "Their Bond", or "The Relationship". A card title is always the proper name of a single entity, never a description of a connection.
+- DO NOT use abstract or descriptive titles like "Dynamic between X and Y", "Pact between X and Y", "Their Bond", or "The Relationship". A card title is always the proper name of a single entity, never a description of a connection.${generateContent ? `\n- VOICE CONTRACT: if the new entity is a character (a person the story will voice), the content MUST end with a VOICE CONTRACT block after the bullets, written in their actual voice:\\nVOICE CONTRACT\\nRhythm: <pace, sentence structure>\\nDefault move: <what they reach for under pressure>\\nEmotional defense: <how they deflect or armor up>\\nNever sounds like: <what to avoid — generic, "I feel…", offering choices>\\nExample lines: "<line>" / "<line>"` : ""}
 - plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — write only the new addition as 1–2 bullets, not a full rewrite
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;
@@ -152,7 +152,7 @@ export async function regenerateProposalContent(
 The user has a memory suggestion they want better content for.
 Write improved content for the suggestion titled "${proposal.title}" (type: ${proposal.proposedType}).
 Source text from the story: ${proposal.sourceText}
-${proposal.proposedType === "storyCard" ? 'Format: bullet points using the • character, one per line, no title in the body.' : 'Format: 1–2 bullet points capturing only the NEW constraint or development to append. Do not rewrite the full block.'}
+${proposal.proposedType === "storyCard" ? 'Format: bullet points using the • character, one per line, no title in the body. If this card is a character (a person the story will voice), append a VOICE CONTRACT block after the bullets, written in their actual voice:\nVOICE CONTRACT\nRhythm: <pace, sentence structure>\nDefault move: <what they reach for under pressure>\nEmotional defense: <how they deflect or armor up>\nNever sounds like: <what to avoid — generic, "I feel…", offering choices>\nExample lines: "<line>" / "<line>"' : 'Format: 1–2 bullet points capturing only the NEW constraint or development to append. Do not rewrite the full block.'}
 Respond with ONLY the content — no JSON, no preamble, no labels.`;
 
   const response = await sendOpenAICompatibleChatCompletion({
