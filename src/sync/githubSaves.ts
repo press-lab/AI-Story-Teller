@@ -202,16 +202,29 @@ export async function deleteGitHubSave(
   assertSettings(cloudSettings);
   const owner = await resolveOwner(cloudSettings);
   const path = saveFilePath(cloudSettings, saveSettings, owner, slot.adventureId, slot.saveId);
-  const meta = await githubRequest<{ sha: string }>(cloudSettings, `${path}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`);
-  await githubRequest(cloudSettings, path, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: `Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})`,
-      sha: meta.sha,
-      branch: cloudSettings.branch.trim(),
-    }),
-  });
+
+  // Delete the save file if it still exists. Tolerate a missing file (404): a
+  // slot can outlive its file when auto-save pruning removed the file, or when a
+  // previous delete partially failed. Without this, fetching the file SHA throws
+  // and the slot is stuck in the list, permanently undeletable. Cleaning the
+  // index below is what actually removes it from the UI.
+  try {
+    const meta = await githubRequest<{ sha: string }>(cloudSettings, `${path}?ref=${encodeURIComponent(cloudSettings.branch.trim())}`);
+    await githubRequest(cloudSettings, path, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})`,
+        sha: meta.sha,
+        branch: cloudSettings.branch.trim(),
+      }),
+    });
+  } catch (error) {
+    if (!(error instanceof Error && /not found/i.test(error.message))) throw error;
+    // File already gone — fall through and clean the index entry.
+  }
+
+  // Always drop the slot from the index so the deletion is reflected in the UI.
   const { index, sha } = await fetchIndex(cloudSettings, saveSettings, owner);
   await writeIndex(cloudSettings, saveSettings, owner, {
     ...index,

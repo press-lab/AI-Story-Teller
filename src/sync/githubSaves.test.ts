@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
 import type { Adventure, CloudSyncSettings, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
-import { listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "./githubSaves";
+import { deleteGitHubSave, listGitHubSaves, loadGitHubSave, saveToGitHub, shouldAutoSave } from "./githubSaves";
 
 const cloudSettings: CloudSyncSettings = {
   token: "github-test-token",
@@ -266,5 +266,59 @@ describe("loadGitHubSave", () => {
     await expect(loadGitHubSave(cloudSettings, saveSettings, slot)).rejects.toThrow(
       "Not a valid AI Story Teller save file.",
     );
+  });
+});
+
+describe("deleteGitHubSave", () => {
+  const slots: GitHubSaveSlot[] = [
+    { saveId: "ghost", adventureId: "adv1", title: "Adventure", savedAt: "2026-01-01T00:00:00.000Z", turnCount: 3, saveType: "auto" },
+    { saveId: "keep", adventureId: "adv1", title: "Adventure", savedAt: "2026-01-02T00:00:00.000Z", turnCount: 8, saveType: "manual" },
+  ];
+
+  it("deletes the file and drops the slot from the index", async () => {
+    const index = { app: "ai-story-teller", version: 1, updatedAt: "2026-01-02T00:00:00.000Z", slots };
+    let indexPutBody: { content: string } | undefined;
+    let deletedFile = false;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const u = String(url);
+      if (u.includes("/repos/fieldnote11/ai-story-teller-sync") && !u.includes("/contents")) return response(200, {});
+      if (u.includes("/sync/saves/adv1/ghost.json")) {
+        if (init?.method === "DELETE") { deletedFile = true; return response(200, {}); }
+        return response(200, { sha: "file-sha", content: "" }); // file metadata
+      }
+      if (u.includes("/sync/saves/index.json")) {
+        if (init?.method === "PUT") { indexPutBody = JSON.parse(init.body as string); return response(200, { content: { sha: "new" } }); }
+        return response(200, { sha: "index-sha", content: encode(JSON.stringify(index)) });
+      }
+      return response(404, { message: "Not Found" });
+    });
+
+    await deleteGitHubSave(cloudSettings, saveSettings, slots[0]);
+
+    expect(deletedFile).toBe(true);
+    const written = JSON.parse(atob(indexPutBody!.content));
+    expect(written.slots.map((s: GitHubSaveSlot) => s.saveId)).toEqual(["keep"]);
+  });
+
+  it("still cleans the index when the save file is already gone (404) — so stale slots are deletable", async () => {
+    const index = { app: "ai-story-teller", version: 1, updatedAt: "2026-01-02T00:00:00.000Z", slots };
+    let indexPutBody: { content: string } | undefined;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      const u = String(url);
+      if (u.includes("/repos/fieldnote11/ai-story-teller-sync") && !u.includes("/contents")) return response(200, {});
+      if (u.includes("/sync/saves/adv1/ghost.json")) return response(404, { message: "Not Found" }); // file already gone
+      if (u.includes("/sync/saves/index.json")) {
+        if (init?.method === "PUT") { indexPutBody = JSON.parse(init.body as string); return response(200, { content: { sha: "new" } }); }
+        return response(200, { sha: "index-sha", content: encode(JSON.stringify(index)) });
+      }
+      return response(404, { message: "Not Found" });
+    });
+
+    await expect(deleteGitHubSave(cloudSettings, saveSettings, slots[0])).resolves.toBeUndefined();
+
+    const written = JSON.parse(atob(indexPutBody!.content));
+    expect(written.slots.map((s: GitHubSaveSlot) => s.saveId)).toEqual(["keep"]);
   });
 });
