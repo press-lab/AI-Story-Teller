@@ -31,14 +31,13 @@ describe("development adventure seed", () => {
 
     expect(arc).toBeDefined();
     expect(arc?.arcThreadKeys?.length).toBeGreaterThan(0);
-    expect(arc?.arcPace).toBe("short");
+    expect(arc?.arcPace).toBe("epic");
     expect(arc?.arcTriggerMode).toBe("ask");
     expect(arc?.arcSimmerInstruction).toBeTruthy();
     expect(arc?.arcBreakInstruction).toBeTruthy();
-    // Preloaded mid-climb: the arc starts in escalate with some engagement, but the break
-    // (cost) instruction is still withheld from context until the phase actually reaches break.
-    expect(arc?.arcState?.phase).toBe("escalate");
-    expect(Object.keys(arc?.arcState?.threadEngagement ?? {}).length).toBeGreaterThan(0);
+    // Starts simmering (slow burn). The break (cost) instruction stays withheld from
+    // context until the phase actually reaches break.
+    expect(arc?.arcState?.phase).toBe("simmer");
     const result = buildContext(adventure, { currentInput: "Setu reports to the palace." });
     const arcText = result.sections.find((section) => section.id === "currentArc")?.items.map((item) => item.content).join("\n") ?? "";
     expect(arcText).not.toContain(arc?.arcBreakInstruction ?? "NO BREAK");

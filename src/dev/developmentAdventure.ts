@@ -143,17 +143,11 @@ export function createDevelopmentAdventure(): Adventure {
       arcPremise:
         "A restorationist conspiracy wants the old empire back and the Dragon's Heir dead — and the hand behind it runs closer to the throne, and closer to Nyxa, than Setu wants to believe.",
       arcThreadKeys: [ids.cards.renzan, ids.cards.newOzai, ids.cards.azula, ids.cards.houseRenzan],
-      // Preloaded mid-climb so the Arc Director is visibly active on load. "short" pace
-      // (escalate at 4, break at 8) keeps it testable — a couple of conspiracy-focused turns
-      // reach the "let it break?" prompt. Bump arcPace back to "epic" for a long real playthrough.
-      arcPace: "short",
+      // Epic pace (escalate at 30, break at 60) — a slow burn. The conspiracy stays a
+      // background simmer while the mission loop and the Setu/Nyxa dynamic run; it builds
+      // toward the break only as the player keeps engaging the New Ozai / House Renzan thread.
+      arcPace: "epic",
       arcTriggerMode: "ask",
-      arcState: {
-        phase: "escalate",
-        tier: 3,
-        threadEngagement: { [ids.cards.newOzai]: 4, [ids.cards.houseRenzan]: 2 },
-        pendingBreak: false,
-      },
       arcSimmerInstruction:
         "Keep the New Ozai Society and Lord Renzan mostly off-screen. Surface them through sabotage, propaganda, intercepted orders, a masked agent who slips away, bribed officials, and near-misses on otherwise unrelated missions. Always tie their moves to a larger plan and, increasingly, to House Renzan. Do not let the antagonists monologue or confront Setu head-on yet — hint, recur, and tighten the noose. Use Azula as a chaotic wildcard who may be using the conspiracy or being used by it.",
       arcBreakInstruction:
