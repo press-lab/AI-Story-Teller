@@ -143,8 +143,17 @@ export function createDevelopmentAdventure(): Adventure {
       arcPremise:
         "A restorationist conspiracy wants the old empire back and the Dragon's Heir dead — and the hand behind it runs closer to the throne, and closer to Nyxa, than Setu wants to believe.",
       arcThreadKeys: [ids.cards.renzan, ids.cards.newOzai, ids.cards.azula, ids.cards.houseRenzan],
-      arcPace: "epic",
+      // Preloaded mid-climb so the Arc Director is visibly active on load. "short" pace
+      // (escalate at 4, break at 8) keeps it testable — a couple of conspiracy-focused turns
+      // reach the "let it break?" prompt. Bump arcPace back to "epic" for a long real playthrough.
+      arcPace: "short",
       arcTriggerMode: "ask",
+      arcState: {
+        phase: "escalate",
+        tier: 3,
+        threadEngagement: { [ids.cards.newOzai]: 4, [ids.cards.houseRenzan]: 2 },
+        pendingBreak: false,
+      },
       arcSimmerInstruction:
         "Keep the New Ozai Society and Lord Renzan mostly off-screen. Surface them through sabotage, propaganda, intercepted orders, a masked agent who slips away, bribed officials, and near-misses on otherwise unrelated missions. Always tie their moves to a larger plan and, increasingly, to House Renzan. Do not let the antagonists monologue or confront Setu head-on yet — hint, recur, and tighten the noose. Use Azula as a chaotic wildcard who may be using the conspiracy or being used by it.",
       arcBreakInstruction:
@@ -406,6 +415,8 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         crown_weight:
           "turn0 → I am the strongest firebender of my generation and the most watched. I want to be worth my father's peace without being swallowed by it.",
+        the_summons:
+          "turn0 → Another New Ozai strike, and Father calls me before the ash settles. They want me to be the blade. I would rather be the one who decides where it falls.",
       },
       relationshipPressure:
         "Drawn to Nyxa and aware her house is dangerous; wants to make Zuko proud without becoming his instrument; chafes against the court that worships and uses him.",
@@ -425,6 +436,12 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         torn_loyalty:
           "turn0 → My father wants the throne and I want Setu, and I'm not sure those are different wishes or whether they can both be true.",
+        the_spar:
+          "turn0 → He pulls his fire when we spar. Insulting. I'll make him stop pulling it — one way or another.",
+        fathers_letters:
+          "turn0 → Father's letters have changed. More 'the family's hour,' less 'be careful.' I've stopped reading them twice.",
+        the_armory:
+          "turn0 → If the Society hit the armory, someone funded it. I know that ledger smell. I am not going to be the one to say whose it is.",
       },
       relationshipPressure:
         "Pulled between House Renzan's ambition and real feeling for Setu; turns vulnerability into dares and jealousy into fire.",
@@ -443,6 +460,10 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         protect_the_peace:
           "turn0 → I gave everything for this peace and it is still so fragile. I will not let my son inherit my family's curse — or my father's.",
+        the_renzan_question:
+          "turn0 → Renzan was a hero once. Now his coin keeps turning up next to dead loyalists. I need proof, not a feeling, before I move on a noble house.",
+        setu_and_the_girl:
+          "turn0 → My son looks at the Renzan girl the way I used to look at trouble. I can't tell him to stop — I remember how that speech lands.",
       },
       relationshipPressure:
         "Trusts Setu with the crown's hardest work and dreads it; loves Mai's clarity; carries old grief about Azula and Iroh's faith in him.",
@@ -461,6 +482,10 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         read_the_house:
           "turn0 → House Renzan smiles too well. The girl is real about my son. The father is not real about anything.",
+        the_ledgers:
+          "turn0 → Three shipments of 'ceremonial' steel rerouted through a Renzan-friendly broker. I haven't told Zuko yet. He'll want to be fair. I don't have time for fair.",
+        watching_setu:
+          "turn0 → If this goes wrong it lands on Setu first. I'll burn the trail down to the broker before it ever touches him.",
       },
       relationshipPressure: "Protective of Setu without saying so; skeptical of Nyxa's house; the throne's quiet eyes and ears.",
       emotionalInterpretation: "Flat affect concealing exact, unsentimental judgment.",
@@ -476,6 +501,10 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         old_friends_old_grudges:
           "turn0 → I knew Senzo Renzan before bitterness hollowed him. The boy will need more than fire to face what is coming.",
+        what_the_boy_lacks:
+          "turn0 → Setu has never lost anything that mattered. That is a gift and a blindness — the Society will aim for exactly that gap.",
+        tea_and_warning:
+          "turn0 → I should write to my nephew. Some warnings are better delivered with tea than with troops.",
       },
       relationshipPressure: "Mentor and conscience to Setu; old, wary history with Lord Renzan; faith in Zuko hard-won and unshakable.",
       emotionalInterpretation: "Sees the human under every plot, and the plot under every smile.",
@@ -491,6 +520,12 @@ export function createDevelopmentAdventure(): Adventure {
       thoughts: {
         the_long_game:
           "turn0 → The boy's fire is the empire's destiny wearing the wrong crown. My daughter can put it on the right head — or I will find another way.",
+        the_armory_was_mine:
+          "turn0 → The armory was a message, not a theft. Let the Fire Lord chase shadows while the real work moves. Nothing leads back to me.",
+        using_nyxa:
+          "turn0 → Nyxa thinks she chose the prince. Let her. A daughter at the prince's side is a hand on the throne, whether she sees the lever or not.",
+        the_break_to_come:
+          "turn0 → When the moment comes, the Society moves on the Fire Lord directly. Setu will have to choose: the father, or the throne the boy is too soft to take. Either choice serves me.",
       },
       relationshipPressure:
         "Uses Nyxa as leverage toward the throne; steers the New Ozai Society through proxies; despises Zuko's peace as humiliation.",
