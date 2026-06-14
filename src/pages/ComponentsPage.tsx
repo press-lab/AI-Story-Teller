@@ -93,6 +93,27 @@ function ArcDirector({
         </div>
       )}
 
+      {arc.phase === "aftermath" && (component.arcContinuationOptions?.length ?? 0) > 0 && (
+        <div className="editor-card" style={{ borderLeft: "3px solid #2e7d32", margin: "0.5rem 0" }}>
+          <strong>This arc resolved — where does it go next?</strong>
+          <p className="muted" style={{ fontSize: "0.85em", margin: "0.25rem 0" }}>
+            Picking one banks the finished arc as a Story Card and starts the next arc fresh (simmering). Or write your own below.
+          </p>
+          {component.arcContinuationOptions!.map((opt, index) => (
+            <div key={index} style={{ marginTop: "0.4rem" }}>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: "APPLY_ARC_CONTINUATION", componentId: component.id, option: opt })}
+                title={opt.premise}
+              >
+                {opt.label}
+              </button>
+              <span className="muted" style={{ fontSize: "0.85em", marginLeft: "0.5rem" }}>{opt.premise}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Field label="The Baddie — which Story Cards / Brains is this arc about?">
         <div style={{ maxHeight: "9rem", overflowY: "auto", border: "1px solid #444", borderRadius: "4px", padding: "0.4rem" }}>
           {candidates.length === 0 && <p className="muted" style={{ margin: 0 }}>Create Story Cards or Brains first.</p>}

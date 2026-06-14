@@ -715,6 +715,40 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         components: updateById(state.components, action.componentId, (item) => setArcPhase(item, action.phase, action.turn)),
       });
+    case "SET_ARC_CONTINUATIONS":
+      return touchAdventure(state, {
+        components: updateById(state.components, action.componentId, (item) => touch({ ...item, arcContinuationOptions: action.options })),
+      });
+    case "APPLY_ARC_CONTINUATION": {
+      const comp = state.components.find((c) => c.id === action.componentId);
+      if (!comp) return state;
+      const opt = action.option;
+      // Bank the resolved arc as a Story Card so previous arcs are preserved, then reseed
+      // this component as the next arc and start its climb fresh.
+      const cardTitle = comp.arcPremise?.trim() || comp.title;
+      const cardBody = [comp.arcPremise?.trim() ? `Arc: ${comp.arcPremise.trim()}` : "", comp.content.trim()]
+        .filter(Boolean)
+        .join("\n");
+      const archived = cardBody.trim()
+        ? [makeStoryCard({ title: cardTitle, content: cardBody, type: "plot", active: true })]
+        : [];
+      return touchAdventure(state, {
+        storyCards: [...state.storyCards, ...archived],
+        components: updateById(state.components, action.componentId, (item) =>
+          touch({
+            ...item,
+            arcPremise: opt.premise,
+            content: "",
+            arcThreadKeys: opt.threadKeys,
+            arcSimmerInstruction: opt.simmerInstruction,
+            arcBreakInstruction: opt.breakInstruction,
+            arcPace: opt.pace,
+            arcContinuationOptions: undefined,
+            arcState: { phase: "simmer", tier: 0, threadEngagement: {}, pendingBreak: false },
+          }),
+        ),
+      });
+    }
     case "REORDER_STORY_CARD":
       return touchAdventure(state, { storyCards: moveByPriority(state.storyCards, action.storyCardId, action.direction) });
     case "UPSERT_BRAIN":

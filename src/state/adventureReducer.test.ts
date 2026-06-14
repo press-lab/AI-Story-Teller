@@ -85,6 +85,8 @@ const testedActionTypes = [
   "MARK_COMPONENT_UPDATED",
   "ADVANCE_ARC_PACING",
   "SET_ARC_PHASE",
+  "SET_ARC_CONTINUATIONS",
+  "APPLY_ARC_CONTINUATION",
 ] as const satisfies AdventureAction["type"][];
 
 type MissingActionCoverage = Exclude<AdventureAction["type"], (typeof testedActionTypes)[number]>;
@@ -544,6 +546,48 @@ describe("adventureReducer", () => {
     // A genuinely new entity still gets through.
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p4", title: "The Masked Agent", proposedType: "storyCard", status: "pending" }) });
     expect(state.activeState.memoryProposals.some((p) => p.id === "p4")).toBe(true);
+  });
+
+  it("stores arc continuations, then applies one — banking the old arc and reseeding the next", () => {
+    let state = baseAdventure();
+    const arc = makeComponent({
+      title: "Current Story Arc",
+      type: "currentArc",
+      content: "Renzan fell; the Society survived.",
+      arcPremise: "Take down Lord Renzan.",
+      arcThreadKeys: ["thread-renzan"],
+      arcPace: "short",
+      arcTriggerMode: "ask",
+    });
+    state = reduce(state, { type: "UPSERT_COMPONENT", component: arc });
+    const get = () => state.components.find((component) => component.id === arc.id)!;
+
+    const option = {
+      label: "Azula takes the Society",
+      premise: "With Renzan gone, Azula seizes the New Ozai Society.",
+      threadKeys: ["thread-azula"],
+      simmerInstruction: "Azula moves through proxies.",
+      breakInstruction: "Azula forces a reckoning; it costs the cast.",
+      pace: "epic" as const,
+    };
+
+    state = reduce(state, { type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options: [option] });
+    expect(get().arcContinuationOptions).toHaveLength(1);
+
+    const cardsBefore = state.storyCards.length;
+    state = reduce(state, { type: "APPLY_ARC_CONTINUATION", componentId: arc.id, option });
+
+    // The finished arc is banked as a Story Card.
+    expect(state.storyCards.length).toBe(cardsBefore + 1);
+    expect(state.storyCards.some((card) => card.content.includes("Renzan fell"))).toBe(true);
+
+    // The component is reseeded as the next arc, simmering and fresh.
+    expect(get().arcPremise).toBe(option.premise);
+    expect(get().arcThreadKeys).toEqual(["thread-azula"]);
+    expect(get().arcPace).toBe("epic");
+    expect(get().content).toBe("");
+    expect(get().arcState?.phase).toBe("simmer");
+    expect(get().arcContinuationOptions).toBeUndefined();
   });
 
   it("tracks story text undo and redo for adds, edits, erases, and opening scene edits", () => {

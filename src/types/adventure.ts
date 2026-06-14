@@ -44,6 +44,18 @@ export interface ArcPacingState {
 export type ArcPace = "short" | "medium" | "long" | "epic";
 export type ArcTriggerMode = "auto" | "ask";
 
+/** A generated "where the story goes next" direction, offered when an arc resolves. */
+export interface ArcContinuationOption {
+  /** Short button label, e.g. "Azula takes the Society". */
+  label: string;
+  premise: string;
+  /** Story Card / Brain ids carried forward as the next arc's threads. */
+  threadKeys: string[];
+  simmerInstruction: string;
+  breakInstruction: string;
+  pace: ArcPace;
+}
+
 export interface ComponentEntry {
   id: string;
   title: string;
@@ -63,6 +75,8 @@ export interface ComponentEntry {
   arcBreakInstruction?: string;
   /** Arc Director — deterministic pacing state. */
   arcState?: ArcPacingState;
+  /** Arc Director — generated next-arc directions, offered once this arc reaches aftermath. */
+  arcContinuationOptions?: ArcContinuationOption[];
   priority: number;
   alwaysOn: boolean;
   active: boolean;
@@ -631,6 +645,8 @@ export type AdventureAction =
   | { type: "MARK_COMPONENT_UPDATED"; componentId: string; turn: number }
   | { type: "ADVANCE_ARC_PACING"; triggeredIds: string[]; turn: number }
   | { type: "SET_ARC_PHASE"; componentId: string; phase: ArcPhase; turn?: number }
+  | { type: "SET_ARC_CONTINUATIONS"; componentId: string; options: ArcContinuationOption[] }
+  | { type: "APPLY_ARC_CONTINUATION"; componentId: string; option: ArcContinuationOption }
   | { type: "REORDER_STORY_CARD"; storyCardId: string; direction: "up" | "down" }
   | { type: "UPSERT_BRAIN"; brain: BrainEntry }
   | { type: "DELETE_BRAIN"; brainId: string }

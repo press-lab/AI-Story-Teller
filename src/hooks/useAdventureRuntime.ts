@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
-import { generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent } from "../ai/generators";
+import { generateArcContinuations, generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent } from "../ai/generators";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -197,6 +197,26 @@ export function useAdventureRuntime(
     setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
   }, [adventure, setContextResult]);
 
+  // When an arc reaches aftermath, draft next-arc directions once so the player can pick
+  // where the story goes next without architecting it. Gated by arcContinuationOptions
+  // being undefined so it runs a single time per resolution.
+  async function checkArcContinuation(snapshot: Adventure) {
+    const arc = snapshot.components.find(
+      (c) =>
+        c.type === "currentArc" &&
+        c.arcState?.phase === "aftermath" &&
+        c.arcContinuationOptions === undefined &&
+        (c.arcThreadKeys?.length ?? 0) > 0,
+    );
+    if (!arc) return;
+    try {
+      const options = await generateArcContinuations(snapshot, activeProviderConfig, arc);
+      applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options }]);
+    } catch {
+      // non-fatal — options stay ungenerated and we retry next turn
+    }
+  }
+
   async function submitTurn(text: string, mode: InputMode = "story") {
     if (!adventure || loading) return;
     isSubmittingRef.current = true;
@@ -233,6 +253,7 @@ export function useAdventureRuntime(
       if (mode !== "comms") {
         void startSemanticEvaluation(next);
           checkMemoryCycle(next);
+        void checkArcContinuation(next);
       }
     } catch (providerError) {
       const errMsg = providerError instanceof Error ? providerError.message : "Provider request failed.";

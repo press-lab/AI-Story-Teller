@@ -1,5 +1,6 @@
 import type {
   Adventure,
+  ArcContinuationOption,
   ArcPace,
   ArcTriggerMode,
   BrainEntry,
@@ -123,6 +124,68 @@ Respond with ONLY this JSON (no markdown, no prose):
     arcPace: pace,
     arcTriggerMode: trigger,
   };
+}
+
+/**
+ * When an arc resolves (aftermath), draft 2–3 "where the story goes next" directions that
+ * continue from how it ended — escalating or converging on threats that survived, not new
+ * strangers. The player picks one; it becomes the next arc.
+ */
+export async function generateArcContinuations(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+  arc: ComponentEntry,
+): Promise<ArcContinuationOption[]> {
+  const threads = [
+    ...adventure.storyCards.filter((card) => card.active).map((card) => ({ id: card.id, label: card.title })),
+    ...adventure.brains.filter((brain) => brain.active).map((brain) => ({ id: brain.id, label: brain.characterName })),
+  ];
+  const validIds = new Set(threads.map((t) => t.id));
+  const recent = adventure.messages.slice(-12).map((m) => `${m.role}: ${m.content}`).join("\n").slice(0, 2500);
+
+  const systemPrompt = `You are the story director for an interactive-fiction adventure. An arc just resolved — propose where the story goes next.
+
+Resolved arc premise: ${arc.arcPremise?.trim() || "(none)"}
+What built up over the arc:
+${(arc.content ?? "").slice(0, 1500) || "(none)"}
+
+Recent story:
+${recent || "(none)"}
+
+Threads you may carry forward (use these exact ids in threadKeys):
+${threads.map((t) => `[${t.id}] ${t.label}`).join("\n") || "(none)"}
+
+Propose 2-3 DISTINCT next-arc directions that CONTINUE from how this resolved — escalate or converge on a threat that survived (the antagonist's organization, an ally turned, a seeded wildcard rising), never a brand-new stranger. Each should be a tier up: bigger, more personal, or more dangerous than what just ended.
+Follow the break-license rule: the cost lands on the world and the cast (allies can die, loyalties are tested); the player stays the strongest — victory is just expensive.
+
+Respond with ONLY this JSON:
+{"options":[{"label":"<6 words or fewer>","premise":"<one line>","threadKeys":["<id>","<id>"],"simmerInstruction":"<how the threat behaves while building — off-screen, hinting, recurring>","breakInstruction":"<the eventual confrontation and what it costs>","pace":"short|medium|long|epic"}]}`;
+
+  const response = await sendOpenAICompatibleChatCompletion({
+    config: providerConfig,
+    messages: [{ role: "user", content: systemPrompt }],
+  });
+  const parsed = parseJsonObject(response.content);
+  const raw = Array.isArray((parsed as { options?: unknown })?.options) ? (parsed as { options: unknown[] }).options : [];
+  const options: ArcContinuationOption[] = [];
+  for (const item of raw.slice(0, 3)) {
+    const o = item as Record<string, unknown>;
+    const label = String(o.label ?? "").trim();
+    const premise = String(o.premise ?? "").trim();
+    if (!label || !premise) continue;
+    const threadKeys = Array.isArray(o.threadKeys)
+      ? (o.threadKeys as unknown[]).filter((k): k is string => typeof k === "string" && validIds.has(k))
+      : [];
+    options.push({
+      label,
+      premise,
+      threadKeys: threadKeys.length > 0 ? threadKeys : (arc.arcThreadKeys ?? []),
+      simmerInstruction: String(o.simmerInstruction ?? "").trim(),
+      breakInstruction: String(o.breakInstruction ?? "").trim(),
+      pace: ARC_PACES.includes(o.pace as ArcPace) ? (o.pace as ArcPace) : "long",
+    });
+  }
+  return options;
 }
 
 /** Generate a character Brain from just a name — behavioral voice contract, not adjectives. */
