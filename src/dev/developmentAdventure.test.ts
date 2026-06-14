@@ -107,6 +107,16 @@ describe("development adventure seed", () => {
     expect(parsedCards.error).toBeUndefined();
     expect(parsedCards.cards).toHaveLength(23);
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Prince Setu");
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Nyx");
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Nyxa");
+  });
+
+  it("gives every non-player character card a VOICE CONTRACT", () => {
+    const adventure = createDevelopmentAdventure();
+    const characterCards = adventure.storyCards.filter((card) => card.type === "character" && card.id !== "dev-card-setu");
+    expect(characterCards.length).toBeGreaterThan(0);
+    for (const card of characterCards) {
+      expect(card.content, `${card.title} should have a VOICE CONTRACT`).toContain("VOICE CONTRACT");
+      expect(card.content, `${card.title} should have example lines`).toContain("Example lines:");
+    }
   });
 });

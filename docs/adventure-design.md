@@ -60,6 +60,29 @@ across the loop instead of resetting every scene.
 > characters' Brains**, never as their own standalone Story Cards. A card title
 > is always the proper name of a single entity, never "Dynamic between X and Y."
 
+### The Voice Contract
+
+Trait lists ("sarcastic, loyal, brave") *describe* a character but don't
+*demonstrate* them — the model flattens descriptions into generic helpful-
+assistant prose. A **Voice Contract** demonstrates. Put one at the bottom of
+every non-player character's Story Card:
+
+```
+VOICE CONTRACT
+Rhythm: how they speak — pace, sentence structure
+Default move: what they reach for under pressure
+Emotional defense: how they deflect or armor up
+Never sounds like: what to avoid — generic, "I feel…", offering choices
+Example lines: "…" / "…" / "…"
+```
+
+The **Example lines** are the load-bearing part — two to four direct quotes in
+the character's actual voice. They give the model something to match instead of
+interpret, and they hold the voice steady across hundreds of turns. The
+"Create a Story Card with AI" generator produces this shape automatically for
+character cards, and card auto-updates preserve it. Skip the contract for the
+player character — the model never writes their lines.
+
 ---
 
 ## The scene loop: why it self-feeds

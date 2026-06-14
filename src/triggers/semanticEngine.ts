@@ -117,6 +117,8 @@ ${card.content}
 
 Based on what just happened, rewrite or extend this card. Format the content as concise bullet points, one per line, using the • character. Each bullet should be a single self-contained fact, trait, or rule. Preserve all existing facts that are still true; update or remove only what has changed.
 
+If this is a character card with a VOICE CONTRACT section, keep that section after the bullets — preserve it verbatim unless the character's voice has genuinely shifted, in which case refine it in place (keep the Rhythm / Default move / Emotional defense / Never sounds like / Example lines shape).
+
 Do NOT include: current location, who is currently present in a scene, active mission status, or any "currently X" state. These are temporary and belong in Scene State, not a Story Card. Only record facts that are durably true regardless of which scene is happening.
 
 Example format:
@@ -887,7 +889,14 @@ Respond ONLY with valid JSON:
 }
 
 The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.
-For a character, include a VOICE CONTRACT when the description provides enough voice information to do so.`;
+For a CHARACTER card, after the bullets append a VOICE CONTRACT so the model can voice them consistently. Use exactly this shape:
+VOICE CONTRACT
+Rhythm: <how they speak — pace, sentence structure>
+Default move: <what they reach for under pressure>
+Emotional defense: <how they deflect or armor up>
+Never sounds like: <what to avoid — generic, "I feel…" statements, offering choices>
+Example lines: "<line>" / "<line>" / "<line>"
+Write the example lines in the character's actual voice. Omit the VOICE CONTRACT only if there is no usable sense of how they speak.`;
 
   const userPrompt = `Description to turn into durable Story Card memory:\n${fact.trim()}\n\nExisting Story Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
 
