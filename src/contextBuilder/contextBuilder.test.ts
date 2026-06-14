@@ -78,7 +78,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
   const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
-  const lengthHint = `RESPONSE LENGTH LIMIT: Write no more than ${wordTarget} words. Stop at the nearest sentence boundary before reaching this limit. Do not continue writing past ${wordTarget} words regardless of narrative completeness.`;
+  const lengthHint = `RESPONSE LENGTH TARGET: Aim for roughly ${wordTarget} words. This is a target to write toward, not a hard limit — a little over or under is fine to finish a thought naturally, but do not stop well short of it. Keep the scene substantive without padding.`;
   const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {
