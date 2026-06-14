@@ -8,6 +8,7 @@ import {
 } from "../db/adventureDb";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { createDevelopmentAdventure } from "../dev/developmentAdventure";
+import { createDispatchAdventure } from "../dev/dispatchAdventure";
 import { createDefaultAdventure } from "../state/defaults";
 import { latestAssistantOutput } from "../state/turnPipeline";
 import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/adventure";
@@ -111,14 +112,21 @@ export function useAdventureLibrary(
     await refreshAdventures();
   }
 
-  async function loadDevelopmentAdventure() {
-    const next = createDevelopmentAdventure();
+  async function loadDevScenario(next: Awaited<ReturnType<typeof createDevelopmentAdventure>>) {
     await saveAdventure(next);
     setAdventure(next);
     setContextResult(buildContext(next, { latestModelOutput: latestAssistantOutput(next) }));
     onModalClose();
     onNavigate("dashboard");
     await refreshAdventures();
+  }
+
+  async function loadDevelopmentAdventure() {
+    await loadDevScenario(createDevelopmentAdventure());
+  }
+
+  async function loadDispatchAdventure() {
+    await loadDevScenario(createDispatchAdventure());
   }
 
   return {
@@ -132,5 +140,6 @@ export function useAdventureLibrary(
     importAdventure,
     createAdventureFromImport,
     loadDevelopmentAdventure,
+    loadDispatchAdventure,
   };
 }

@@ -378,7 +378,7 @@ export default function App() {
             onCloudSyncSettingsChange={setCloudSyncSettings}
             onPushCloudSync={pushCloudSync}
             onPullCloudSync={pullCloudSync}
-            onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
+            onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
           />
         );
       case "importExport":
@@ -447,7 +447,7 @@ export default function App() {
           onCloudSyncSettingsChange={setCloudSyncSettings}
           onPushCloudSync={pushCloudSync}
           onPullCloudSync={pullCloudSync}
-          onLoadDevelopmentAdventure={library.loadDevelopmentAdventure}
+          onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
         />
       );
     }

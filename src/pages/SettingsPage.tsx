@@ -24,6 +24,11 @@ import {
   createDevelopmentStoryCardsJson,
   developmentAdventureTitle,
 } from "../dev/developmentAdventure";
+import {
+  createDispatchAdventureJson,
+  createDispatchStoryCardsJson,
+  dispatchAdventureTitle,
+} from "../dev/dispatchAdventure";
 
 function downloadJson(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -58,6 +63,7 @@ interface SettingsPageProps {
   onPushCloudSync?: () => Promise<void>;
   onPullCloudSync?: () => Promise<void>;
   onLoadDevelopmentAdventure?: () => Promise<void>;
+  onLoadDispatchAdventure?: () => Promise<void>;
 }
 
 export function SettingsPage({
@@ -77,6 +83,7 @@ export function SettingsPage({
   onPushCloudSync,
   onPullCloudSync,
   onLoadDevelopmentAdventure,
+  onLoadDispatchAdventure,
 }: SettingsPageProps) {
   const advanced = uiPreferences.showAdvancedSettings;
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(activePresetId || null);
@@ -708,6 +715,44 @@ export function SettingsPage({
               <button
                 type="button"
                 onClick={() => downloadJson("ai-story-teller-dev-story-cards.json", createDevelopmentStoryCardsJson())}
+              >
+                Download Story Cards JSON
+              </button>
+            </div>
+            <p className="notice">
+              The full adventure JSON can be re-uploaded through Import / Export. The Story Cards JSON can be
+              pasted or uploaded in New Adventure setup or the Story Cards editor.
+            </p>
+          </details>
+        )}
+
+        {advanced && onLoadDispatchAdventure && (
+          <details className="panel dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
+            <summary>Developer Test Adventure — Dispatch (Supers)</summary>
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Playtest Seed</p>
+                <h3>{dispatchAdventureTitle}</h3>
+                <p className="muted">
+                  Loads the SDN superhero dispatch scenario: Seth / Titan (Absolute Adaptation), Z-Team, a
+                  five-way romantic tangle, a mission loop, preloaded brains, and a configured Arc Director
+                  pointed at Shroud and the Red Ring.
+                </p>
+              </div>
+            </div>
+            <div className="toolbar">
+              <button type="button" onClick={onLoadDispatchAdventure}>
+                Load Dispatch Adventure
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadJson("ai-story-teller-dispatch-adventure.json", createDispatchAdventureJson())}
+              >
+                Download Adventure JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => downloadJson("ai-story-teller-dispatch-story-cards.json", createDispatchStoryCardsJson())}
               >
                 Download Story Cards JSON
               </button>
