@@ -9,6 +9,8 @@ const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "man
 interface BrainsPageProps extends AdventurePageProps {
   loading: boolean;
   onUpdateBrainNow: (brainId: string) => Promise<void>;
+  /** Generate a character Brain from just a name, with a behavioral voice contract. */
+  onGenerateBrain?: (name: string) => Promise<void>;
 }
 
 function ThoughtArchive({ archivedThoughts }: { archivedThoughts: Record<string, string> }) {
@@ -36,7 +38,8 @@ function ThoughtArchive({ archivedThoughts }: { archivedThoughts: Record<string,
   );
 }
 
-export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: BrainsPageProps) {
+export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onGenerateBrain }: BrainsPageProps) {
+  const [newName, setNewName] = useState("");
   return (
     <section className="page">
       <p className="muted" style={{ margin: 0 }}>
@@ -45,10 +48,28 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow }: B
         an update to a linked story card via the Memory Inbox.
       </p>
 
-      <div className="toolbar">
+      <div className="toolbar" style={{ flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
         <button type="button" onClick={() => dispatch({ type: "UPSERT_BRAIN", brain: makeBrain({ characterName: "New Character" }) })}>
           Create Character Self
         </button>
+        {onGenerateBrain && (
+          <>
+            <input
+              placeholder="Character name…"
+              value={newName}
+              onChange={(event) => setNewName(event.target.value)}
+              style={{ minWidth: "12rem" }}
+            />
+            <button
+              type="button"
+              disabled={loading || !newName.trim()}
+              onClick={() => void onGenerateBrain(newName.trim()).then(() => setNewName(""))}
+              title="Enter a name and let the AI build a behavioral voice contract for this character."
+            >
+              {loading ? "Generating…" : "✨ Generate from name"}
+            </button>
+          </>
+        )}
       </div>
 
       <div className="list">

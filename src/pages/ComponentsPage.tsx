@@ -20,11 +20,16 @@ function ArcDirector({
   adventure,
   component,
   dispatch,
+  onGenerateArc,
+  loading,
 }: {
   adventure: Adventure;
   component: ComponentEntry;
   dispatch: (action: AdventureAction) => void;
+  onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
+  loading?: boolean;
 }) {
+  const [concept, setConcept] = useState("");
   const arc = component.arcState ?? { phase: "simmer" as ArcPhase, tier: 0, threadEngagement: {}, pendingBreak: false };
   const threadKeys = component.arcThreadKeys ?? [];
   const threadSet = new Set(threadKeys);
@@ -52,6 +57,27 @@ function ArcDirector({
         deterministic — the cost instruction is withheld from the AI until the arc is ripe, so it can't
         land the climax early. See <code>docs/adventure-design.md</code>.
       </p>
+
+      {onGenerateArc && (
+        <Field label="✨ Generate this arc from a concept">
+          <div className="row" style={{ gap: "0.5rem", alignItems: "stretch" }}>
+            <input
+              style={{ flex: 1 }}
+              placeholder="e.g. a gang leader who killed my father runs the city's underworld"
+              value={concept}
+              onChange={(event) => setConcept(event.target.value)}
+            />
+            <button
+              type="button"
+              disabled={loading || !concept.trim()}
+              onClick={() => void onGenerateArc(component.id, concept.trim()).then(() => setConcept(""))}
+              title="Write the premise, simmer behavior, cost, pace, and trigger mode following best practices. You still pick the threads below."
+            >
+              {loading ? "Generating…" : "Generate Arc"}
+            </button>
+          </div>
+        </Field>
+      )}
 
       <div className="row" style={{ alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
         <span className="badge badge-priority">{arc.phase.toUpperCase()}</span>
@@ -173,9 +199,15 @@ interface ComponentsPageProps extends AdventurePageProps {
   onSuggestPlotUpdates?: () => Promise<void>;
   onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
   onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
+  /** Generate fresh content for Narration Rules / AI Instructions / Author's Note. Returns a string for review. */
+  onGenerateComponent?: (componentId: string) => Promise<string>;
+  /** Generate an Arc Director setup from a concept and apply it to the Current Arc component. */
+  onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
 }
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow }: ComponentsPageProps) {
+const GENERATABLE_COMPONENT_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "authorNote"]);
+
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
@@ -203,6 +235,19 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     setPeRegenerating(componentId);
     try {
       const result = await onRegeneratePlotEssentials(componentId);
+      setPePreview((prev) => ({ ...prev, [componentId]: result }));
+    } catch {
+      // silent — user can retry
+    } finally {
+      setPeRegenerating(null);
+    }
+  }
+
+  async function handleGenerateComponent(componentId: string) {
+    if (!onGenerateComponent || peRegenerating) return;
+    setPeRegenerating(componentId);
+    try {
+      const result = await onGenerateComponent(componentId);
       setPePreview((prev) => ({ ...prev, [componentId]: result }));
     } catch {
       // silent — user can retry
@@ -308,7 +353,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </Field>
               )}
               {component.type === "currentArc" && (
-                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} />
+                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} loading={loading} />
               )}
               <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
                 <textarea
@@ -446,6 +491,16 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     title="Ask the AI to consolidate and rewrite Plot Essentials, removing resolved events and keeping active state."
                   >
                     {peRegenerating === component.id ? "Generating…" : "Regenerate"}
+                  </button>
+                )}
+                {GENERATABLE_COMPONENT_TYPES.has(component.type) && onGenerateComponent && (
+                  <button
+                    type="button"
+                    disabled={!!peRegenerating}
+                    onClick={() => handleGenerateComponent(component.id)}
+                    title="Ask the AI to write this block from the adventure's premise and cast, following best practices. Review before applying."
+                  >
+                    {peRegenerating === component.id ? "Generating…" : (component.content.trim() ? "✨ Regenerate" : "✨ Generate")}
                   </button>
                 )}
                 {pePreview[component.id] !== undefined && (

@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adventureReducer } from "../state/adventureReducer";
-import { createDefaultAdventure } from "../state/defaults";
+import { createDefaultAdventure, makeComponent } from "../state/defaults";
 import type { Adventure, AdventureAction } from "../types/adventure";
 
 import { BrainsPage } from "./BrainsPage";
@@ -62,6 +62,31 @@ describe("side menu page smoke coverage", () => {
     ));
     await user.click(screen.getByRole("button", { name: "Create Character Self" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
+  });
+
+  it("renders the Arc Director on a Current Arc component and the AI generators", async () => {
+    const arcAdventure: Adventure = {
+      ...seedAdventure(),
+      components: [makeComponent({ title: "Current Story Arc", type: "currentArc", content: "The Red Ring tightens." })],
+    };
+    render(
+      <ComponentsPage
+        adventure={arcAdventure}
+        dispatch={() => undefined}
+        onGenerateComponent={async () => ""}
+        onGenerateArc={async () => undefined}
+      />,
+    );
+    // jsdom keeps <details> content in the DOM regardless of open state
+    expect(screen.getByText("🎬 Arc Director")).toBeInTheDocument();
+    expect(screen.getByText(/The Baddie/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate Arc" })).toBeInTheDocument();
+    cleanup();
+
+    renderWithAdventure((adventure, dispatch) => (
+      <BrainsPage adventure={adventure} dispatch={dispatch} loading={false} onUpdateBrainNow={async () => undefined} onGenerateBrain={async () => undefined} />
+    ));
+    expect(screen.getByRole("button", { name: "✨ Generate from name" })).toBeInTheDocument();
   });
 
   it("sends a Story Card description to the AI memory suggestion flow", async () => {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
+import { generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent } from "../ai/generators";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -456,6 +457,44 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     return response.content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   }
 
+  /** Generate fresh content for a Narration Rules / AI Instructions / Author's Note component. Returns a string for review. */
+  async function generateComponent(componentId: string): Promise<string> {
+    if (!adventure) throw new Error("No adventure loaded.");
+    const component = adventure.components.find((c) => c.id === componentId);
+    if (!component) throw new Error("Component not found.");
+    return generateComponentContent(adventure, activeProviderConfig, component);
+  }
+
+  /** Generate an Arc Director setup from a concept and apply it to the Current Arc component. */
+  async function generateArc(componentId: string, concept: string): Promise<void> {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const arc = await generateArcDirector(adventure, activeProviderConfig, concept);
+      applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: arc }]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Arc generation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** Generate a character Brain from just a name and add it to the adventure. */
+  async function generateBrainFromName(name: string): Promise<void> {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const brain = await generateBrainEntry(adventure, activeProviderConfig, name);
+      applyActionsAndPersist([{ type: "UPSERT_BRAIN", brain }]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Character generation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   continueTurnRef.current = continueTurn;
 
   return {
@@ -475,6 +514,9 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     auditStoryCards,
     regenerateMemoryProposal,
     regeneratePlotEssentials,
+    generateComponent,
+    generateArc,
+    generateBrainFromName,
     applyActionsAndPersist,
   };
 }
