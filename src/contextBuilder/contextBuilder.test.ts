@@ -743,4 +743,21 @@ describe("buildContext", () => {
     expect(broken).toContain("forces the confrontation");
     expect(broken).not.toContain("stays off-screen");
   });
+
+  it("injects a brain's evolving state and recent developments, not just its thoughts", () => {
+    const brain = makeBrain({
+      characterName: "Mira",
+      triggers: ["lantern"],
+      currentState: "Cornered and calculating a betrayal.",
+      recentDevelopments: "Just learned the ward was a trap.",
+      relationshipPressure: "Done protecting the prince.",
+      active: true,
+      inclusionPolicy: "always",
+    });
+    const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };
+    const brainText = buildContext(adventure, {}).sections.find((section) => section.id === "brains")?.items.map((item) => item.content).join("\n") ?? "";
+    expect(brainText).toContain("State: Cornered and calculating a betrayal.");
+    expect(brainText).toContain("Recent: Just learned the ward was a trap.");
+    expect(brainText).toContain("Relationships: Done protecting the prince.");
+  });
 });

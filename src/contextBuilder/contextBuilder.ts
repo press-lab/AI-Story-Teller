@@ -496,7 +496,13 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "No brain trigger matched current input, output, or recent history.");
       return [];
     }
+    // Inject the brain's evolving snapshot (state, relationships, recent shift) alongside the
+    // thought log. The semantic engine updates these fields every time a brain fires, so omitting
+    // them froze each character at their opening thought in context — see the brain-state fix.
     const content = [
+      brain.currentState?.trim() && `State: ${brain.currentState.trim()}`,
+      brain.relationshipPressure?.trim() && `Relationships: ${brain.relationshipPressure.trim()}`,
+      brain.recentDevelopments?.trim() && `Recent: ${brain.recentDevelopments.trim()}`,
       Object.keys(brain.thoughts).length > 0 && `Thoughts:\n${Object.entries(brain.thoughts).map(([k, v]) => `  ${k}: ${v}`).join("\n")}`,
     ]
       .filter(Boolean)
