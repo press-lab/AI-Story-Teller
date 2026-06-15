@@ -9,7 +9,7 @@ function adventureForContext(): Adventure {
   const always = makeComponent({ title: "Always", content: "Always component", alwaysOn: true, active: true, priority: 100 });
   const pinned = makeComponent({ title: "Pinned", content: "Pinned component", pinned: true, active: true, priority: 90 });
   const story = makeStoryCard({ title: "Keyed Story", content: "Story content", keys: ["lantern"], active: true, priority: 80 });
-  const brain = makeBrain({ characterName: "Mira", triggers: ["lantern"], currentState: "Brain state", active: true, priority: 70 });
+  const brain = makeBrain({ characterName: "Mira", triggers: ["lantern"], thoughts: { turn1_state: "1 → The lantern means they're close. I keep my voice level." }, active: true, priority: 70 });
 
   return {
     ...createDefaultAdventure("Context Test"),
@@ -423,7 +423,7 @@ describe("buildContext", () => {
   });
 
   it("sets generatedBy correctly for system and AI items", () => {
-    const aiBrain = makeBrain({ id: "ai-brain", characterName: "npc", triggers: ["npc"], source: "generated", active: true });
+    const aiBrain = makeBrain({ id: "ai-brain", characterName: "npc", triggers: ["npc"], thoughts: { turn1_seen: "1 → I watch and say nothing." }, source: "generated", active: true });
     const adventure = {
       ...adventureForContext(),
       components: [],
@@ -744,10 +744,12 @@ describe("buildContext", () => {
     expect(broken).not.toContain("stays off-screen");
   });
 
-  it("injects a brain's evolving state and recent developments, not just its thoughts", () => {
+  it("injects a brain's thought log only — never the legacy unbounded state fields", () => {
     const brain = makeBrain({
       characterName: "Mira",
       triggers: ["lantern"],
+      thoughts: { turn3_betrayal: "3 → The ward was a trap. I'm done protecting the prince." },
+      // Legacy fields exist in the data but must NOT reach context (no editor field, append unbounded).
       currentState: "Cornered and calculating a betrayal.",
       recentDevelopments: "Just learned the ward was a trap.",
       relationshipPressure: "Done protecting the prince.",
@@ -756,8 +758,22 @@ describe("buildContext", () => {
     });
     const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };
     const brainText = buildContext(adventure, {}).sections.find((section) => section.id === "brains")?.items.map((item) => item.content).join("\n") ?? "";
-    expect(brainText).toContain("State: Cornered and calculating a betrayal.");
-    expect(brainText).toContain("Recent: Just learned the ward was a trap.");
-    expect(brainText).toContain("Relationships: Done protecting the prince.");
+    expect(brainText).toContain("turn3_betrayal: 3 → The ward was a trap. I'm done protecting the prince.");
+    expect(brainText).not.toContain("State: Cornered and calculating a betrayal.");
+    expect(brainText).not.toContain("Recent:");
+    expect(brainText).not.toContain("Relationships:");
+  });
+
+  it("excludes a triggered brain that has no thoughts yet", () => {
+    const brain = makeBrain({
+      characterName: "Mira",
+      triggers: ["lantern"],
+      currentState: "Cornered and calculating a betrayal.",
+      active: true,
+      inclusionPolicy: "always",
+    });
+    const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };
+    const brains = buildContext(adventure, {}).sections.find((section) => section.id === "brains");
+    expect(brains?.items.length ?? 0).toBe(0);
   });
 });

@@ -496,17 +496,17 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "No brain trigger matched current input, output, or recent history.");
       return [];
     }
-    // Inject the brain's evolving snapshot (state, relationships, recent shift) alongside the
-    // thought log. The semantic engine updates these fields every time a brain fires, so omitting
-    // them froze each character at their opening thought in context — see the brain-state fix.
-    const content = [
-      brain.currentState?.trim() && `State: ${brain.currentState.trim()}`,
-      brain.relationshipPressure?.trim() && `Relationships: ${brain.relationshipPressure.trim()}`,
-      brain.recentDevelopments?.trim() && `Recent: ${brain.recentDevelopments.trim()}`,
-      Object.keys(brain.thoughts).length > 0 && `Thoughts:\n${Object.entries(brain.thoughts).map(([k, v]) => `  ${k}: ${v}`).join("\n")}`,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    // A brain is its thought log (thoughts-only, per the Brains UI). The semantic engine records
+    // one new thought per update and pruneThoughtsToBudget bounds + archives the rest, so the live
+    // thoughts are always the current, size-capped snapshot. The legacy currentState /
+    // relationshipPressure / recentDevelopments fields are NOT injected: they have no editor field,
+    // append unbounded, and ballooned context (a high-frequency character hit ~9KB). History lives
+    // in the thought archive and in arc-graduated story cards, not in an ever-growing state blob.
+    if (Object.keys(brain.thoughts).length === 0) {
+      pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "Brain triggered but has no thoughts yet — nothing to inject.");
+      return [];
+    }
+    const content = Object.entries(brain.thoughts).map(([k, v]) => `${k}: ${v}`).join("\n");
     const next = item(brain.id, "brain", brain.characterName, content, brain.priority, brain.protected, brain.pinned, brain.active, brain.inclusionPolicy, sourceToGeneratedBy(brain.source));
     pushIncluded(next, `Brain included by ${brain.pinned ? "pin" : forced ? "manual force" : brain.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${brain.priority}; protected=${brain.protected}.`);
     return [next];

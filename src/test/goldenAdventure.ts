@@ -98,8 +98,7 @@ export function goldenAdventure(): Adventure {
     id: "brain-margo",
     characterName: "Margo",
     triggers: ["hedge prince"],
-    currentState: "Margo is protective of Seth.",
-    recentDevelopments: "She uses teasing to hide fear.",
+    thoughts: { turn1_protective: "1 → I tease the hedge prince so he can't see how scared I am for him." },
     active: true,
     priority: 80,
   });
@@ -107,7 +106,7 @@ export function goldenAdventure(): Adventure {
     id: "brain-seth",
     characterName: "Seth",
     triggers: ["Seth"],
-    currentState: "Seth is suspicious of the ward.",
+    thoughts: { turn1_ward: "1 → The ward feels wrong. I don't trust it, and I don't trust who built it." },
     active: true,
     priority: 70,
   });
