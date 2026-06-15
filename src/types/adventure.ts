@@ -77,6 +77,8 @@ export interface ComponentEntry {
   arcState?: ArcPacingState;
   /** Arc Director — generated next-arc directions, offered once this arc reaches aftermath. */
   arcContinuationOptions?: ArcContinuationOption[];
+  /** Arc Director — when true, the Director silently picks and seeds the next arc at aftermath (no chooser, no spoiler). */
+  arcAutoContinue?: boolean;
   priority: number;
   alwaysOn: boolean;
   active: boolean;

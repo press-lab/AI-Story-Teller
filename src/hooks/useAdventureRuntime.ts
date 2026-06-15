@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
-import { generateArcContinuations, generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent } from "../ai/generators";
+import { generateArcContinuations, generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -211,7 +211,15 @@ export function useAdventureRuntime(
     if (!arc) return;
     try {
       const options = await generateArcContinuations(snapshot, activeProviderConfig, arc);
-      applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options }]);
+      if (arc.arcAutoContinue) {
+        // Silent auto-continue: the Director picks the most convergent direction and seeds it
+        // itself — no chooser, no spoiler. The new threat surfaces through play.
+        const pick = pickConvergentContinuation(options, arc.arcState?.threadEngagement ?? {});
+        if (pick) applyActionsAndPersist([{ type: "APPLY_ARC_CONTINUATION", componentId: arc.id, option: pick }]);
+        else applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options: [] }]);
+      } else {
+        applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options }]);
+      }
     } catch {
       // non-fatal — options stay ungenerated and we retry next turn
     }

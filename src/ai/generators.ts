@@ -188,6 +188,20 @@ Respond with ONLY this JSON:
   return options;
 }
 
+/**
+ * Pick the most convergent continuation for silent auto-continue: the option whose carried-forward
+ * threads had the most engagement in the resolved arc (reuses what the player was most invested in),
+ * falling back to the generator's lead option. Pure + deterministic.
+ */
+export function pickConvergentContinuation(
+  options: ArcContinuationOption[],
+  priorEngagement: Record<string, number>,
+): ArcContinuationOption | undefined {
+  if (options.length === 0) return undefined;
+  const score = (o: ArcContinuationOption) => o.threadKeys.reduce((sum, key) => sum + (priorEngagement[key] ?? 0), 0);
+  return options.reduce((best, o) => (score(o) > score(best) ? o : best), options[0]);
+}
+
 /** Generate a character Brain from just a name — behavioral voice contract, not adjectives. */
 export async function generateBrainFromName(
   adventure: Adventure,

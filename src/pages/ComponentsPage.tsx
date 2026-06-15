@@ -142,6 +142,16 @@ function ArcDirector({
         </Field>
       </div>
 
+      <CheckboxField
+        label="Auto-continue the next arc (surprise me — no chooser, no spoiler)"
+        checked={component.arcAutoContinue === true}
+        onChange={(arcAutoContinue) => patch({ arcAutoContinue })}
+      />
+      <p className="muted" style={{ fontSize: "0.8em", margin: "0 0 0.5rem" }}>
+        When this arc resolves, the Director silently picks the most convergent next arc and seeds it
+        simmering — you meet the new threat in the story, not a menu. Off = you pick from drafted directions.
+      </p>
+
       <Field label="How the baddie behaves while building (simmer)">
         <textarea
           rows={3}
