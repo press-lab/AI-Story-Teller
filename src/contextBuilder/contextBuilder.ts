@@ -311,8 +311,9 @@ RULES:
 - Title is the SUBJECT'S NAME — the person, place, technique, or relationship (e.g. "Nyx", "Plum Tree Courtyard", "Nyx and Setu Bond"). Never an event name ("Mutual confession", "First kiss").
 - Content is what is PERMANENTLY TRUE about this subject — who they are, their role, personality, abilities, established relationship state. Written so the AI understands this subject every time it appears.
 - Do NOT log scene events. Wrong: "They kissed on the ship." Right: "Romantic bond confirmed; kept deliberately discreet from court."
-- Only tag NEW subjects with no existing story card. If the subject already has a card, skip the tag.
-- One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards (do not duplicate): ${existingCardTitles.join(", ")}` : ""}`;
+- NEW subject (no existing card): tag it with a new title.
+- EXISTING subject (already has a card in the list below): if a NEW permanent fact about it became true this turn, REUSE that card's EXACT title and put ONLY the new fact in content — it updates the living card instead of duplicating. NEVER invent a second title for a subject that already has a card (no "Setu and Nyxa's Private Space" when "Setu and Nyxa" exists). If nothing permanent changed, skip.
+- One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
 }
 
 function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {

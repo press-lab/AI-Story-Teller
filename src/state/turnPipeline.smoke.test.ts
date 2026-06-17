@@ -341,6 +341,37 @@ describe("full turn smoke path", () => {
     expect(adventure.storyCards.some((card) => card.content.includes("west wall"))).toBe(false);
   });
 
+  it("routes an inline memory tag to a living-card UPDATE when its subject already has a card", async () => {
+    let adventure = createDefaultAdventure("Tag Routing");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], active: true }),
+    });
+
+    // Model emits a memory tag whose title matches the existing card → should become an update, not a sibling.
+    const provider = vi.fn(async () => ({
+      content: 'They go public.\n<memory category="relationship" title="Setu and Nyxa" content="• The bond is now openly acknowledged at court." triggers="Setu, Nyxa, court"/>',
+    }));
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "Setu announces it.",
+      userMessageId: "tag-user",
+      assistantMessageId: "tag-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: provider,
+    });
+
+    const proposal = result.adventure.activeState.memoryProposals.find((p) => p.proposedType === "storyCard");
+    expect(proposal).toBeDefined();
+    expect(proposal?.targetId).toBe("card-couple");
+    expect(proposal?.appendContent).toBe(true);
+    expect(proposal?.title).toBe("Setu and Nyxa");
+    // No sibling card was created, and the tag was stripped from the visible prose.
+    expect(result.adventure.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
+    expect(result.responseContent).not.toContain("<memory");
+  });
+
   it("sends Next Output Bias in the provider payload and consumes it after one successful output", async () => {
     const adventure = dispatch(makeSmokeAdventure(), {
       type: "SET_NEXT_TURN_NOTE",

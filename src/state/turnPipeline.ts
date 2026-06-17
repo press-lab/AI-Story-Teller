@@ -131,26 +131,28 @@ export async function runTurnPipeline({
     finalContent = `${finalContent}\n\n${visibleThoughtLines.join("\n")}`;
   }
 
-  // Convert inline memory tags to story card proposals (zero extra API calls)
+  // Convert inline memory tags to story card proposals (zero extra API calls).
+  // Living-card routing: if a tag's subject already has a card (matched by exact title), it becomes
+  // an UPDATE to that card (append + archive on approval) instead of a duplicate sibling. Otherwise
+  // it's a new card. Either way it lands in the Memory Inbox for approval.
   if (memoryTags.length > 0) {
     const turn = next.activeState.turn;
-    const existingTitles = new Set(next.storyCards.map((c) => c.title.toLowerCase()));
     for (const tag of memoryTags) {
-      // Deduplicate: skip if a card with this title already exists
-      if (existingTitles.has(tag.title.toLowerCase())) continue;
+      const existing = next.storyCards.find((c) => c.title.trim().toLowerCase() === tag.title.trim().toLowerCase());
       const now = nowIso();
       const proposal: MemoryProposal = {
         id: createId("proposal"),
         sourceTurnId: String(turn),
         sourceText: "",
         proposedType: "storyCard",
-        title: tag.title,
+        title: existing ? existing.title : tag.title,
         content: tag.content,
         suggestedTriggers: tag.triggers,
         confidence: 0.75,
-        rationale: `Inline memory tag: ${tag.category}`,
+        rationale: existing ? `Update to "${existing.title}" (inline memory tag: ${tag.category})` : `Inline memory tag: ${tag.category}`,
         status: "pending",
-        appendContent: false,
+        targetId: existing?.id,
+        appendContent: Boolean(existing),
         createdAt: now,
         updatedAt: now,
       };
