@@ -165,6 +165,24 @@ describe("buildContext", () => {
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "c-inactive", reason: "inactive" }));
   });
 
+  it("does not assemble disabled Immediate Momentum legacy components", () => {
+    const plot = makeComponent({ id: "c-plot", title: "Plot", type: "plotEssentials", content: "Plot still loads.", priority: 90 });
+    const momentum = makeComponent({
+      id: "c-momentum",
+      title: "Immediate Momentum",
+      type: "immediateMomentum",
+      content: "Momentum should not load.",
+      active: true,
+      priority: 240,
+    });
+    const adventure = { ...createDefaultAdventure("Legacy Momentum"), components: [plot, momentum] };
+
+    const result = buildContext(adventure);
+
+    expect(result.sections.find((section) => section.id === "plotEssentials")?.items.map((item) => item.id)).toEqual(["c-plot"]);
+    expect(result.messages[0].content).not.toContain("Momentum should not load.");
+  });
+
   it("triggers story cards from input, output, recent history, pins, and regex-only match mode", () => {
     const inputCard = makeStoryCard({ id: "card-input", title: "Input", content: "input", keys: ["silver key"], active: true, priority: 50 });
     const outputCard = makeStoryCard({ id: "card-output", title: "Output", content: "output", keys: ["moon bell"], active: true, priority: 40 });

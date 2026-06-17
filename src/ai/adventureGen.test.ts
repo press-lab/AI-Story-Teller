@@ -29,6 +29,7 @@ describe("runAdventureGen", () => {
         components: [
           { title: "Premise", type: "plotEssentials", content: "A valid premise." },
           { title: "Pressure", type: "activePressure", content: "The ward is collapsing." },
+          { title: "Momentum", type: "immediateMomentum", content: "The old next beat should be ignored." },
           { title: "Rules", type: "narrationRules", content: "Not allowed from generation." },
           { title: "Bad priority", type: "custom", content: "No.", priority: "high" },
         ],
@@ -65,7 +66,8 @@ describe("runAdventureGen", () => {
     expect(request.responseFormat).toBe("json_object");
     expect(request.thinking).toBe("disabled");
     expect(request.messages[0].content).toContain('"activePressure"');
-    expect(request.messages[0].content).toContain('"immediateMomentum"');
+    expect(request.messages[0].content).not.toContain('"immediateMomentum"');
+    expect(request.messages[0].content).toContain("exactly one concise sentence");
     expect(request.messages[0].content).toContain('"authorNote"');
     expect(request.messages[0].content).toContain("Do not create cards for current scene position");
   });

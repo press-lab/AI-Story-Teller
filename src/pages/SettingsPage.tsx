@@ -597,12 +597,6 @@ export function SettingsPage({
                 />
                 <p className="muted">Active Pressure section is replaced automatically when stakes shift.</p>
                 <CheckboxField
-                  label="Auto-approve Immediate Momentum updates"
-                  checked={activeSettings.memoryAutoApprove.plotMomentumUpdate}
-                  onChange={(plotMomentumUpdate) => updateMemoryAutoApprove({ plotMomentumUpdate })}
-                />
-                <p className="muted">Immediate Momentum section is replaced automatically when scene direction shifts.</p>
-                <CheckboxField
                   label="Auto-approve brain state updates"
                   checked={activeSettings.memoryAutoApprove.brainUpdate}
                   onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}

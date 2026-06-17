@@ -399,9 +399,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // C. Plot Essentials + Active Pressure + Immediate Momentum
+  // C. Plot Essentials + Active Pressure
   const plotEssentialItems = prioritySort(adventure.components).flatMap((component) => {
-    if (component.type !== "plotEssentials" && component.type !== "activePressure" && component.type !== "immediateMomentum") return [];
+    if (component.type !== "plotEssentials" && component.type !== "activePressure") return [];
     if (!component.active) {
       logExcludedOnce(component.id, component.title, "inactive");
       return [];

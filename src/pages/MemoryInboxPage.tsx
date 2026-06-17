@@ -5,7 +5,7 @@ import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
 
-const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "summaryUpdate", "ignore"];
+const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "arcProposal", "summaryUpdate", "ignore"];
 
 interface MemoryInboxPageProps extends AdventurePageProps {
   onRegenerateProposal?: (proposalId: string) => Promise<void>;
@@ -73,7 +73,6 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
           <CheckboxField label="Summary" checked={autoApprove.summaryUpdate} onChange={(v) => setAutoApprove({ summaryUpdate: v })} />
           <CheckboxField label="Plot Essentials" checked={autoApprove.plotEssentialsUpdate} onChange={(v) => setAutoApprove({ plotEssentialsUpdate: v })} />
           <CheckboxField label="Active Pressure" checked={autoApprove.plotPressureUpdate} onChange={(v) => setAutoApprove({ plotPressureUpdate: v })} />
-          <CheckboxField label="Momentum" checked={autoApprove.plotMomentumUpdate} onChange={(v) => setAutoApprove({ plotMomentumUpdate: v })} />
           <CheckboxField label="Story Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
           <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
         </div>

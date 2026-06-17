@@ -27,7 +27,6 @@ const componentTypes = new Set<ComponentType>([
   "plotEssentials",
   "currentArc",
   "activePressure",
-  "immediateMomentum",
   "authorNote",
   "memory",
   "custom",
@@ -108,6 +107,13 @@ function collectComponents(value: unknown): unknown[] {
 function parseComponent(raw: unknown, sourceIndex: number): ParsedComponent | SkippedComponent {
   if (!isRecord(raw)) {
     return { sourceIndex, reason: "Component was not an object.", raw };
+  }
+  if (raw.type === "immediateMomentum") {
+    return {
+      sourceIndex,
+      reason: "Immediate Momentum is disabled.",
+      raw,
+    };
   }
   if (!isComponentType(raw.type)) {
     return {

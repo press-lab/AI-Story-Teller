@@ -193,7 +193,7 @@ describe("runSemanticPostTurnEvaluation", () => {
 
       // deactivate PE components and disable summary so only story card conditions are relevant
       components: baseAdventure().components.map((c) =>
-        (c.type === "activePressure" || c.type === "immediateMomentum") ? { ...c, active: false } : c
+        c.type === "activePressure" ? { ...c, active: false } : c
       ),
       tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
     };
@@ -202,6 +202,27 @@ describe("runSemanticPostTurnEvaluation", () => {
 
     expect(mockProvider).not.toHaveBeenCalled();
     expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).not.toContain("storyCard:card-cooling");
+  });
+
+  it("does not evaluate disabled Immediate Momentum components", async () => {
+    const momentum = makeComponent({
+      id: "component-momentum",
+      title: "Immediate Momentum",
+      type: "immediateMomentum",
+      content: "The old next beat should not update.",
+      active: true,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [momentum],
+      storyCards: [],
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
+    };
+
+    const result = await runMemoryCycle(adventure, providerConfig);
+
+    expect(mockProvider).not.toHaveBeenCalled();
+    expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).not.toContain("plotEssentialsMomentum:component-momentum");
   });
 
   it("routes story-card updates to Memory Inbox when auto-update approval is required", async () => {
@@ -266,6 +287,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     const result = await runMemoryCycle(adventure, providerConfig);
 
     expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
+    expect(mockProvider.mock.calls[1][0].messages[0].content).toContain("Write exactly one sentence");
     expect(result.actions.some((action) => action.type === "APPLY_COMPONENT_UPDATE")).toBe(false);
 
     // pressure auto-approves by default, so content is applied immediately

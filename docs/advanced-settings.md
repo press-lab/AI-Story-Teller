@@ -24,13 +24,13 @@ Hard ceiling on total tokens sent per turn. Set it ~1–2k below your model's ac
 
 ### Max Recent Messages
 
-How many recent chat turns to keep verbatim in the context. Beyond this cap, history is only available via the rolling summary. 40 is the balanced default; if your turns are long, 20–25 avoids crowding out story cards and components.
+How many recent chat turns to keep verbatim in the context. Beyond this cap, older turns are not sent verbatim; preserve important facts through Story Cards, Brains, Plot Essentials, Current Arc, or Active Pressure instead. 40 is the balanced default; if your turns are long, 20–25 avoids crowding out story cards and components.
 
 ### Memory Priority Mode
 
 Controls the *order* things get dropped when the context is over budget.
 
-**`userLocked` (default):** Drops oldest messages first, then truncates rolling summary (if allowed), then drops lowest-priority unpinned story cards, then lowest-priority unpinned items overall. Your manually set priorities are fully respected.
+**`userLocked` (default):** Drops oldest messages first, then drops lowest-priority unpinned story cards, then lowest-priority unpinned items overall. Your manually set priorities are fully respected.
 
 **`systemSuggested`:** Scores every context item by priority + inclusion policy + section type. Drops the lowest-scoring item regardless of type. More aggressively optimized, less predictable.
 
@@ -55,15 +55,15 @@ When over budget, lets the system drop triggered story cards that aren't pinned.
 
 ### Allow system to truncate rolling summary
 
-When over budget, lets the system trim old text off the front of the rolling summary. Safe to enable if auto-summarize is on — the summary is already compressed history, so losing its oldest sentences is low-loss.
+Legacy setting. Rolling Summary is retained in saves but is not assembled into the default model context, so this has no effect on the current provider payload.
 
 ### Auto-summarize in background
 
-After every N turns, fires a background API call to compress recent messages into the rolling summary. Keeps context lean without manual effort. Uses the background provider if configured.
+Legacy setting. Rolling Summary content can still be retained in adventure data, but it is not sent to the model by default and should not be relied on for active context.
 
 ### Auto-summarize every N turns
 
-Default 20. Lower values = fresher summary but more background API calls. 10–20 is reasonable for fast-moving adventures.
+Legacy setting for old summary workflows.
 
 ### Section Budgets JSON
 
@@ -73,7 +73,7 @@ Per-section hard token caps. Expert setting. Lets you constrain a specific secti
 
 ## LLM Evaluation
 
-Controls the semantic engine — the background AI that reads your story after each turn and fires Automations (brain updates, plot essentials updates, auto-card generation, etc.).
+Controls the semantic engine — the background AI that reads your story after each turn and fires Automations such as brain updates, story card updates, Plot Essentials updates, Current Arc updates, and one-sentence Active Pressure updates.
 
 ### Evaluation Model Override
 
@@ -85,7 +85,7 @@ How many recent messages the evaluator reads. More messages = more context for a
 
 ### Enable semantic triggers
 
-Master switch for all Automations. Must be on for brain updates, plot essentials tracking, and auto-card generation to fire automatically after each turn.
+Master switch for all Automations. Must be on for brain updates, story card updates, Plot Essentials tracking, Current Arc tracking, and Active Pressure updates to fire automatically after each turn.
 
 ### Show evaluation log on Automations page
 
@@ -101,7 +101,7 @@ When on, all AI-generated Automation updates (brain updates, plot essentials, et
 
 ### Background Provider
 
-Route all background tasks (evaluation, brain updates, scene state, rolling summary, memory detection) through a separate provider endpoint. Leave blank to use your main preset for everything.
+Route background tasks (evaluation, brain updates, story card updates, Plot Essentials/Current Arc/Active Pressure updates, and memory detection) through a separate provider endpoint. Leave blank to use your main preset for everything.
 
 Useful if you have a fast/cheap API (e.g., Groq + Llama 3.3 70B) for background work and a better model for story generation. The model field here overrides the evaluation model override above.
 
@@ -109,27 +109,27 @@ Useful if you have a fast/cheap API (e.g., Groq + Llama 3.3 70B) for background 
 
 ## Auto-Cards
 
-Lets the AI generate new story cards automatically when it detects something noteworthy — new characters, locations, objects, etc.
+Auto-Cards are a removed legacy surface. Use Memory Detection or the Story Cards page to create new Story Card proposals instead.
 
 ### Enable Auto-Cards
 
-Master switch. Off by default.
+Legacy setting if present in old saves. It has no active product behavior.
 
 ### Detection Condition
 
-Natural-language description of *when* to generate a card. The semantic evaluator checks this after each turn. Be specific — vague conditions over-generate.
+Legacy field retained only for old data.
 
 Example: `"A new named character appears who doesn't have a story card yet."`
 
 ### Generation Prompt
 
-Instructions for *what to write* in the generated card. Used as a system prompt for the card content generation call.
+Legacy field retained only for old data.
 
 Example: `"Write a concise story card for the new character: appearance, role, and personality in 2–3 sentences."`
 
 ### Cooldown Between Generations (turns)
 
-Minimum turns between auto-card generations. Prevents a burst of redundant cards if the detection condition fires on consecutive turns. 3–5 is reasonable.
+Legacy field retained only for old data.
 
 ---
 

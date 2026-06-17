@@ -49,7 +49,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
         <p>
           New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
           Story Cards, and Story Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
-          opening scene, tight Plot Essentials, Active Pressure, Immediate Momentum, optional scenario-specific
+          opening scene, tight Plot Essentials, one-sentence Active Pressure, optional scenario-specific
           AI Instructions or Author's Note, and recurring Story Cards for review. Native DeepSeek generation uses
           structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
@@ -662,7 +662,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          Active Pressure describes the external threat, obligation, or force currently bearing on the player character at the story level. It tells the model "this is what is pushing or threatening right now" — and it should replace the previous value entirely when the pressure changes.
+          Active Pressure is one sentence describing the external threat, obligation, or force currently bearing on the player character at the story level. It tells the model "this is what is pushing or threatening right now" — and it should replace the previous value entirely when the pressure changes.
         </p>
         <p><strong>Active Pressure answers:</strong> <em>What is currently threatening, pressing, or obligating the player character from the outside?</em></p>
         <p><strong>Good Active Pressure:</strong></p>
@@ -683,30 +683,14 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "best-practices-momentum",
-    title: "Immediate Momentum — Best Practices",
+    title: "Immediate Momentum — Disabled",
     category: "Best Practices",
-    summary: "What Immediate Momentum tracks and how to write it so the model drives toward a concrete next action.",
+    summary: "Immediate Momentum is a disabled legacy component.",
     tags: ["immediate momentum", "momentum", "direction", "next action", "best practices"],
     body: (
       <>
         <p>
-          Immediate Momentum describes the concrete next move or decision the story is driving toward. It is a direction, not a mood. It should tell the model "this is what is immediately in front of the player character."
-        </p>
-        <p><strong>Immediate Momentum answers:</strong> <em>What is the concrete next action, confrontation, or choice the story is driving toward right now?</em></p>
-        <p><strong>Good Immediate Momentum:</strong></p>
-        <ul>
-          <li>"Setu needs to answer Kael's challenge before they reach the gate."</li>
-          <li>"The group is moving toward the war room to deliver the report."</li>
-          <li>"Margo is waiting for Seth to acknowledge what she said — the scene can't move until he does."</li>
-        </ul>
-        <p><strong>Bad Immediate Momentum:</strong></p>
-        <ul>
-          <li>"The tension between them lingers, pulling toward connection." (mood, not a next move)</li>
-          <li>"Unspoken feelings hang in the air." (subtext, not an action)</li>
-          <li>"Setu is conflicted about her feelings for Kael." (internal state, not a direction)</li>
-        </ul>
-        <p>
-          If Immediate Momentum ever becomes a mood description, the model loses its forward drive and tends to loop on emotional beats. Reset it to a concrete action whenever this happens.
+          Immediate Momentum is disabled and no longer generated, auto-updated, or assembled into model context. Use Recent Messages for live scene direction and Next Output Bias for one-turn steering.
         </p>
       </>
     ),

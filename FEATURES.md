@@ -49,7 +49,7 @@ Pure function — builds the provider payload each turn. Sections are assembled 
 |---|---|---|---|
 | 0 | `system` | A. System Shell | Fixed system prompt + all active `narrationRules` components |
 | 1 | `aiInstructions` | B. AI Instructions | All active `aiInstructions` components |
-| 2 | `plotEssentials` | C. Plot Essentials | `plotEssentials`, `activePressure`, `immediateMomentum` components |
+| 2 | `plotEssentials` | C. Plot Essentials | `plotEssentials`, `activePressure` components |
 | 2.5 | `currentArc` | C2. Current Story Arc | `currentArc` components (prefixed with `[Arc Premise: ...]` if set) |
 | 3 | `components` | E. Components | Always-on or pinned non-special-typed components |
 | 4 | `storyCards` | F. Story Cards | Triggered, always, or pinned story cards |
@@ -85,19 +85,19 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 | `aiInstructions` | Yes | B | No | Optional separately inspectable scenario-specific contract. Not required when Narration Rules already contain the stable rules. Protected. One per adventure. |
 | `plotEssentials` | Yes | C | Yes (append) | Static world constants — setting, factions, arc beats. Human-edited. AI appends only via Memory Inbox. Auto-update toggle required. |
 | `currentArc` | Yes | C2 | Yes (append) | Running arc log. Requires `arcPremise` for auto-update. Graduate → Story Card when done. |
-| `activePressure` | No* | C | Yes (replace) | Current external threat or obligation. Auto-updated, auto-approved by default. |
-| `immediateMomentum` | No* | C | Yes (replace) | Concrete next action ahead. Auto-updated, auto-approved by default. |
+| `activePressure` | No* | C | Yes (replace) | One-sentence current external threat or obligation. Auto-updated, auto-approved by default. |
+| `immediateMomentum` | No | — | No | Disabled legacy type. Not generated, auto-updated, or assembled into context. |
 | `authorNote` | Yes | D (near-context) | No | Immediate narrative correction. One per adventure. Most powerful short-term tool. |
 | `memory` | No | — | No | **Legacy.** Migrate content to Story Cards (type: Lore). |
 | `custom` | No | E (if always-on/pinned) | No | General purpose. Configure inclusion policy, priority, protection manually. |
 
-*`activePressure` and `immediateMomentum` are treated as singletons by the semantic engine (one of each per adventure is normal).
+*`activePressure` is treated as a singleton by defaults/normalization. `immediateMomentum` remains in the type system only for old-save compatibility.
 
 ### Current Story Arc — interaction notes:
 - Requires `arcPremise` text — this is the LLM filter condition. No premise = no auto-updates fire.
 - Auto-approval: `memoryAutoApprove.currentArcUpdate` (default `true`)
 - "Complete Arc → Story Card" button: creates a `plot` type Story Card from the log, clears content and arcPremise
-- Cooldown: 4 turns default (coarser than AP/Momentum's 3)
+- Cooldown: 4 turns default (coarser than Active Pressure's 3)
 - Difference from Plot Essentials: PE = static world constants (rarely touched). Arc = what's actively happening to the protagonist right now (accumulates as story unfolds, then gets retired)
 - Difference from Quests: Arc tracks narrative shape, not task completion. No objective states. Graduated arc becomes referenced backstory via Story Card, not a "quest completed" flag.
 
@@ -201,7 +201,7 @@ All AI-generated content suggestions pass through Memory Proposals before becomi
 | `plotEssentialsUpdate` | Semantic engine, "Suggest Updates" | Off | Append to PE component |
 | `currentArcUpdate` | Semantic engine (updateComponentArc) | **On** | Append to arc component |
 | `plotPressureUpdate` | Semantic engine (updateComponentPressure) | **On** | Replace activePressure content |
-| `plotMomentumUpdate` | Semantic engine (updateComponentMomentum) | **On** | Replace immediateMomentum content |
+| `plotMomentumUpdate` | Legacy/disabled | Off | No-op |
 | `summaryUpdate` | Semantic engine (summaryConditions) — deprecated | Off | Append to rollingSummary |
 | `ignore` | Classification fallback | — | No-op |
 
@@ -230,7 +230,7 @@ Runs in background after each turn (async, doesn't block story).
 - All output routes to Memory Inbox (always awaits approval)
 
 ### Condition builders:
-- `plotEssentialsConditions()` — plotEssentials (auto-update=true), currentArc (has arcPremise), activePressure, immediateMomentum
+- `plotEssentialsConditions()` — plotEssentials (auto-update=true), currentArc (has arcPremise), activePressure
 - `storyCardUpdateConditions()` — first eligible card with auto-update=true, not on cooldown
 - `summaryConditions()` — rolling summary (frequency-gated)
 
@@ -257,7 +257,8 @@ Three evaluation modes on the same rule schema:
 ### Available trigger actions:
 - Activate/deactivate/pin/unpin: component, story card, brain
 - Update: component (patch), story card (patch), brain (replace/append), brain state (field + text)
-- `updateComponentPressure`, `updateComponentMomentum`, `updateComponentArc` — generate new content via LLM
+- `updateComponentPressure`, `updateComponentArc` — generate new content via LLM
+- `updateComponentMomentum` — disabled legacy action; no runtime effect
 - `updateSummary` — generate rolling summary addition via LLM
 - `forceIncludeNextTurn` — force component/card/brain into next context regardless of triggers
 
@@ -398,7 +399,8 @@ If you have legacy adventures with summary content, that content remains in the 
 | Voice Contracts (documentation/convention) | ✅ Complete |
 | All 9 component types | ✅ Complete |
 | Current Story Arc + graduation | ✅ Complete |
-| Active Pressure + Immediate Momentum | ✅ Complete |
+| Active Pressure | ✅ Complete |
+| Immediate Momentum | ⚠️ Disabled legacy type |
 | Memory proposals / inbox | ✅ Complete |
 | Memory detection (post-turn background) | ✅ Complete |
 | Inline memory tagging (systemTriggers) | ✅ Complete |
@@ -436,7 +438,7 @@ Player input
     → contextBuilder (assembles sections A–M)
         ← narrationRules, aiInstructions, plotEssentials
         ← currentArc (with arcPremise header)
-        ← activePressure, immediateMomentum
+        ← activePressure
         ← triggered story cards (phrase/keyword/regex match)
         ← triggered brains (character name match)
         ← authorNote
@@ -460,7 +462,7 @@ Player input
                 → card updates → ADD_MEMORY_PROPOSAL (storyCard)
                 → PE updates → ADD_MEMORY_PROPOSAL (plotEssentialsUpdate)
                 → arc updates → ADD_MEMORY_PROPOSAL (currentArcUpdate) [auto-approved]
-                → pressure/momentum → ADD_MEMORY_PROPOSAL [auto-approved]
+                → pressure updates → ADD_MEMORY_PROPOSAL [auto-approved]
         → detectMemoryFromTurn
             → ADD_MEMORY_PROPOSAL (storyCard or plotEssentialsUpdate)
         → runMemoryCycle (periodic)

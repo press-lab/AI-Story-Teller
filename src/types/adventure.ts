@@ -334,6 +334,7 @@ export type MemoryProposalType =
   | "brainUpdate"
   | "plotEssentialsUpdate"
   | "currentArcUpdate"
+  | "arcProposal"
   | "plotPressureUpdate"
   | "plotMomentumUpdate"
   | "summaryUpdate"

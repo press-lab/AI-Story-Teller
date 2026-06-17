@@ -202,6 +202,78 @@ export function pickConvergentContinuation(
   return options.reduce((best, o) => (score(o) > score(best) ? o : best), options[0]);
 }
 
+export interface ProposedArc {
+  /** Short human-readable label for the Inbox title (≤6 words). */
+  label: string;
+  arcPremise: string;
+  arcSimmerInstruction: string;
+  arcBreakInstruction: string;
+  arcPace: ArcPace;
+  arcTriggerMode: ArcTriggerMode;
+  /** Ids of existing story cards / brains to carry as this arc's threads. */
+  arcThreadKeys: string[];
+  /** Why this arc grows out of what just happened — shown as the proposal rationale. */
+  rationale: string;
+}
+
+/**
+ * Read the last ~50 turns and draft an arc that grows out of what's actually been happening —
+ * for a story that's gone stale in aftermath and wants a new direction. Returns a proposal for
+ * review (it does not apply anything); approving it seeds the Current Arc.
+ */
+export async function generateArcFromHistory(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+): Promise<ProposedArc> {
+  const threads = [
+    ...adventure.storyCards.filter((card) => card.active).map((card) => ({ id: card.id, label: card.title })),
+    ...adventure.brains.filter((brain) => brain.active).map((brain) => ({ id: brain.id, label: brain.characterName })),
+  ];
+  const validIds = new Set(threads.map((t) => t.id));
+  const recent = adventure.messages.slice(-50).map((m) => `${m.role}: ${m.content}`).join("\n").slice(0, 6000);
+
+  const systemPrompt = `You are the story director for an interactive-fiction adventure. The story has been running without a driving arc — read what's been happening and propose ONE arc that grows naturally out of it.
+
+${adventureContext(adventure)}
+
+Recent play (most recent last):
+${recent || "(none)"}
+
+Threads you may carry forward (use these exact ids in arcThreadKeys — only ids from this list):
+${threads.map((t) => `[${t.id}] ${t.label}`).join("\n") || "(none)"}
+
+Design an arc that climbs out of the moment-to-moment loop and is allowed to actually break. Follow these rules:
+- It must grow from threads, tensions, or characters already present in the recent play — never a brand-new stranger.
+- The simmer instruction keeps the antagonist recurring, hinting, and mostly off-screen — connected to a larger plan, never monologuing every scene.
+- The break instruction licenses a real confrontation that cannot be deferred and is allowed to cost the cast (named allies can die, ground can be lost). The player stays the strongest — the win is just expensive. "OP in the loop, costly at the climax."
+
+Respond with ONLY this JSON (no markdown, no prose):
+{"label":"<6 words or fewer>","arcPremise":"one line — what this arc builds toward","arcSimmerInstruction":"how the antagonist behaves while building","arcBreakInstruction":"how the confrontation lands and what it costs","arcPace":"short|medium|long|epic","arcTriggerMode":"ask|auto","arcThreadKeys":["<id>","<id>"],"rationale":"one or two lines on how this grows from the recent play"}`;
+  const response = await sendOpenAICompatibleChatCompletion({
+    config: providerConfig,
+    messages: [{ role: "user", content: systemPrompt }],
+  });
+  const parsed = parseJsonObject(response.content);
+  if (!parsed) throw new Error("The AI did not return a usable arc.");
+  const pace = ARC_PACES.includes(parsed.arcPace as ArcPace) ? (parsed.arcPace as ArcPace) : "long";
+  const trigger = parsed.arcTriggerMode === "auto" ? "auto" : "ask";
+  const threadKeys = Array.isArray(parsed.arcThreadKeys)
+    ? (parsed.arcThreadKeys as unknown[]).filter((k): k is string => typeof k === "string" && validIds.has(k))
+    : [];
+  const premise = String(parsed.arcPremise ?? "").trim();
+  if (!premise) throw new Error("The AI did not return a usable arc.");
+  return {
+    label: String(parsed.label ?? "").trim() || premise.slice(0, 60),
+    arcPremise: premise,
+    arcSimmerInstruction: String(parsed.arcSimmerInstruction ?? "").trim(),
+    arcBreakInstruction: String(parsed.arcBreakInstruction ?? "").trim(),
+    arcPace: pace,
+    arcTriggerMode: trigger,
+    arcThreadKeys: threadKeys,
+    rationale: String(parsed.rationale ?? "").trim(),
+  };
+}
+
 /** Generate a character Brain from just a name — behavioral voice contract, not adjectives. */
 export async function generateBrainFromName(
   adventure: Adventure,

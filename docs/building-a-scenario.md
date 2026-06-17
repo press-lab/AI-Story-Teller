@@ -26,7 +26,7 @@ A scenario is six things working together:
 | **Interior life** | Brains | Hidden agendas that simmer and persist |
 | **The engine** | a custom "missions" component | The repeatable loop that prints scenes |
 | **The spine** | Current Story Arc + **Arc Director** | The conflict that climbs and breaks |
-| **The hook** | Opening Scene + Author's Note | Where it starts, how it sounds |
+| **The hook** | Opening Scene + one-sentence Active Pressure + Author's Note | Where it starts, what is pressing now, how it sounds |
 
 Build them in that order.
 
@@ -116,6 +116,33 @@ Keep the **protagonist's** brain light — the player drives him. Give the
 The **"Generate from name"** button on the Brains page drafts a behavioral brain
 from just a name (it produces a brain, not a card — pair it with a character card
 for the voice contract).
+
+---
+
+## Step 3.5 — Active Pressure: one sentence of now
+
+Active Pressure is not a second plot summary. It is the single external force
+pressing on the player character right now: the deadline, pursuit, debt, failing
+system, public challenge, or visible consequence that keeps the next response
+from floating.
+
+Write it as exactly one sentence. If you need more than that, the durable part
+belongs in Plot Essentials, the climbing part belongs in Current Story Arc, and
+the live next beat belongs in Recent Messages or Next Output Bias.
+
+Good:
+
+```
+The Fire Lord's messenger has arrived with news of another New Ozai Society strike, forcing Setu to leave training and answer the crisis now.
+```
+
+Bad:
+
+```
+Setu feels torn between duty, Nyxa, and the burden of being the Dragon's Heir.
+```
+
+That second one is emotion and theme. It can be true, but it is not pressure.
 
 ---
 
@@ -222,6 +249,8 @@ Set the **response length** to a target (slider on the Play page) — V3.2 write
 
 - [ ] Backdrop you like + OP fantasy stated in AI Instructions.
 - [ ] Plot Essentials: tight premise, antagonist personal/convergent.
+- [ ] Active Pressure: exactly one sentence naming the external force pressing
+      right now.
 - [ ] One `character` card per recurring figure; **Voice Contract on every NPC**,
       none on the PC; canon voices accurate; formal + nickname noted.
 - [ ] Brains for the inner circle + antagonist; behavioral; **hidden agendas

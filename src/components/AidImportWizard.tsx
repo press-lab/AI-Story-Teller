@@ -84,7 +84,6 @@ const singletonComponentTypes = new Set<ComponentType>([
   "plotEssentials",
   "currentArc",
   "activePressure",
-  "immediateMomentum",
   "authorNote",
 ]);
 

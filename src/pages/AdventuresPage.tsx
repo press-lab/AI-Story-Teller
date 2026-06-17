@@ -66,7 +66,6 @@ const componentTypes: ComponentType[] = [
   "aiInstructions",
   "plotEssentials",
   "activePressure",
-  "immediateMomentum",
   "authorNote",
   "custom",
 ];
@@ -90,7 +89,6 @@ const uniqueComponentTypes = new Set<ComponentType>([
   "authorNote",
   "currentArc",
   "activePressure",
-  "immediateMomentum",
 ]);
 
 function isFixedComponentType(type: ComponentType): boolean {
@@ -102,7 +100,6 @@ function defaultComponentPriority(type: ComponentType): number {
   if (type === "aiInstructions") return 90;
   if (type === "plotEssentials") return 80;
   if (type === "activePressure") return 245;
-  if (type === "immediateMomentum") return 240;
   if (type === "authorNote") return 70;
   return 0;
 }

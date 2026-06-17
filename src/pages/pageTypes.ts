@@ -22,7 +22,7 @@ export const defaultGlobalAdventureSettings: GlobalAdventureSettings = {
   tokenBudgetSettings: defaultTokenBudgetSettings,
   semanticEvaluationSettings: defaultSemanticEvaluationSettings,
   memoryDetectionSettings: defaultMemoryDetectionSettings,
-  memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
+  memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
 };
 
 export const defaultUiPreferences: UiPreferences = {

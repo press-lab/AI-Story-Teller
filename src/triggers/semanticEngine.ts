@@ -157,7 +157,7 @@ ${current}
 
 Do not describe how characters feel, think, or what they want. Describe only the external story pressure — the threat, obligation, or force acting on the situation.
 
-Write 1–3 sentences describing the current active pressure. Return ONLY the new content as plain text.`;
+Write exactly one sentence describing the current active pressure. Return ONLY the new content as plain text.`;
 }
 
 function arcUpdatePrompt(component: ComponentEntry): string {
@@ -174,26 +174,6 @@ Do NOT restate anything already in the existing log. Do NOT summarize the whole 
 
 Return ONLY the new sentences as plain text.`;
 }
-
-function plotMomentumPrompt(adventure: Adventure): string {
-  const current = adventure.components.find((c) => c.type === "immediateMomentum")?.content ?? "(none)";
-  return `You are updating the Immediate Momentum for this story.
-
-Immediate Momentum describes the concrete next move or decision the story is driving toward — what action, confrontation, or choice is immediately in front of the player character. It is a direction, not a mood.
-
-GOOD: "Setu needs to answer Kael's challenge before they reach the gate."
-GOOD: "The group is moving toward the war room to deliver the report."
-BAD: "The tension between them lingers, pulling toward connection." (mood, not direction)
-BAD: "Unspoken feelings hang in the air." (subtext, not a next move)
-
-Current Immediate Momentum:
-${current}
-
-Do not describe character emotional states or desires. Describe only the concrete next action or decision the story is driving toward.
-
-Write 1–2 sentences stating what concrete action or decision is immediately ahead. Return ONLY the new content as plain text.`;
-}
-
 
 function isStoryCardOnAutoUpdateCooldown(adventure: Adventure, card: StoryCard): boolean {
   const last = card.lastAutoUpdateTurn;
@@ -285,16 +265,7 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
     }));
-  const momentum = adventure.components
-    .filter((c) => c.type === "immediateMomentum" && c.active && !isPEComponentOnCooldown(adventure, c))
-    .map((component) => ({
-      id: `plotEssentialsMomentum:${component.id}`,
-      label: `Immediate Momentum: ${component.title}`,
-      condition: `when the immediate direction of the scene has changed — the concrete next action, confrontation, or decision immediately in front of the player character has shifted. Fires more freely than pressure updates.`,
-      sourceType: "component" as const,
-      actionFactory: () => [{ type: "updateComponentMomentum" as const, componentId: component.id }],
-    }));
-  return [...arc, ...currentArc, ...pressure, ...momentum];
+  return [...arc, ...currentArc, ...pressure];
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
@@ -382,7 +353,6 @@ function isGeneratedAction(action: TriggerAction): boolean {
     action.type === "updateStoryCard" ||
     action.type === "updateComponent" ||
     action.type === "updateComponentPressure" ||
-    action.type === "updateComponentMomentum" ||
     action.type === "updateSummary"
   );
 }
@@ -609,21 +579,6 @@ async function generatedActionsFor(
       return {
         actions,
         generated: { targetType: "component", targetId: pressureComp?.id, title: "Active Pressure", preview: preview(content) },
-      };
-    }
-
-    if (triggerAction.type === "updateComponentMomentum") {
-      const momentumComp = adventure.components.find((c) => c.type === "immediateMomentum");
-      const content = await sendTargetedUpdate(adventure, providerConfig, plotMomentumPrompt(adventure), accum);
-      const proposal = makeProposal(
-        { proposedType: "plotMomentumUpdate", title: "Immediate Momentum", content, targetId: momentumComp?.id, rationale: "Immediate Momentum update." },
-        adventure,
-      );
-      const actions: AdventureAction[] = [{ type: "ADD_MEMORY_PROPOSAL", proposal }];
-      if (momentumComp) actions.push({ type: "MARK_COMPONENT_UPDATED", componentId: momentumComp.id, turn: adventure.activeState.turn });
-      return {
-        actions,
-        generated: { targetType: "component", targetId: momentumComp?.id, title: "Immediate Momentum", preview: preview(content) },
       };
     }
 
@@ -991,15 +946,13 @@ export async function runManualPEComponentUpdate(
     errors: [],
   };
 
-  if (!component || (component.type !== "plotEssentials" && component.type !== "activePressure" && component.type !== "immediateMomentum")) {
+  if (!component || (component.type !== "plotEssentials" && component.type !== "activePressure")) {
     const errorLog = { ...emptyLog, errors: [`Component not found or wrong type: ${componentId}`] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: errorLog }], logEntry: errorLog };
   }
 
   const triggerAction = component.type === "activePressure"
     ? { type: "updateComponentPressure" as const, componentId }
-    : component.type === "immediateMomentum"
-    ? { type: "updateComponentMomentum" as const, componentId }
     : { type: "updateComponent" as const, componentId };
 
   const forcePropose = {
@@ -1011,7 +964,7 @@ export async function runManualPEComponentUpdate(
     forcePropose,
     providerConfig,
     triggerAction,
-    `manual${component.type === "activePressure" ? "Pressure" : component.type === "immediateMomentum" ? "Momentum" : "Arc"}:${componentId}`,
+    `manual${component.type === "activePressure" ? "Pressure" : "Arc"}:${componentId}`,
   );
 
   const logEntry: EvaluationLogEntry = {

@@ -156,7 +156,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
         pinned: true,
       }),
       makeComponent({ title: "Active Pressure", type: "activePressure", content: "", priority: 245, active: true }),
-      makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true }),
     ],
     storyCards: [],
     brains: [],
@@ -184,7 +183,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
-    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
+    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
     memoryDetectionSettings: defaultMemoryDetectionSettings,
     systemTriggers: defaultSystemTriggerSettings,
   };
@@ -425,11 +424,9 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         return true;
       });
       const hasActivePressure = deduped.some((c) => c.type === "activePressure");
-      const hasImmediateMomentum = deduped.some((c) => c.type === "immediateMomentum");
       return [
         ...deduped,
         ...(hasActivePressure ? [] : [makeComponent({ title: "Active Pressure", type: "activePressure", content: "", priority: 245, active: true })]),
-        ...(hasImmediateMomentum ? [] : [makeComponent({ title: "Immediate Momentum", type: "immediateMomentum", content: "", priority: 240, active: true })]),
       ];
     })(),
     triggerRules: (adventure.triggerRules ?? []).map((rule) => ({
@@ -444,8 +441,9 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
     },
     memoryAutoApprove: {
-      ...{ summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: true, storyCard: false, brainUpdate: false },
+      ...{ summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
       ...(adventure.memoryAutoApprove ?? {}),
+      plotMomentumUpdate: false,
     },
     memoryDetectionSettings: {
       ...defaultMemoryDetectionSettings,

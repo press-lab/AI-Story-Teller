@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type 
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
-import { generateArcContinuations, generateArcDirector, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
+import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -476,8 +476,8 @@ Recent story turns:
 ${recentTurns}
 
 Rewrite the plot essentials as a clean, current, non-redundant block.
-Remove resolved events and outdated constraints. Keep active pressures, open tensions, and immediate momentum.
-Write as tight bullet points with bold headers like **Active pressure:**, **Immediate momentum:**, **Open tension:**.
+Remove resolved events and outdated constraints. Keep active pressures and open tensions.
+Write as tight bullet points with bold headers like **Active pressure:** and **Open tension:**.
 Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     const response = await sendOpenAICompatibleChatCompletion({
       config: activeProviderConfig,
@@ -504,6 +504,55 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
       applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: arc }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Arc generation failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /**
+   * Read recent play and draft an arc, dropping it into the Memory Inbox for approval (does not
+   * apply it). For a story that's gone stale in aftermath and wants a new direction.
+   */
+  async function proposeArcFromHistory(componentId: string): Promise<void> {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const arc = await generateArcFromHistory(adventure, activeProviderConfig);
+      const timestamp = nowIso();
+      applyActionsAndPersist([
+        {
+          type: "ADD_MEMORY_PROPOSAL",
+          proposal: {
+            id: createId("proposal"),
+            sourceTurnId: adventure.messages.at(-1)?.id ?? "manual",
+            sourceText: "Arc suggested from recent play.",
+            proposedType: "arcProposal",
+            title: arc.label,
+            content: JSON.stringify(
+              {
+                arcPremise: arc.arcPremise,
+                arcSimmerInstruction: arc.arcSimmerInstruction,
+                arcBreakInstruction: arc.arcBreakInstruction,
+                arcPace: arc.arcPace,
+                arcTriggerMode: arc.arcTriggerMode,
+                arcThreadKeys: arc.arcThreadKeys,
+              },
+              null,
+              2,
+            ),
+            suggestedTriggers: [],
+            confidence: 0.7,
+            rationale: arc.rationale,
+            status: "pending",
+            targetId: componentId,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        },
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Arc suggestion failed.");
     } finally {
       setLoading(false);
     }
@@ -545,6 +594,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     regeneratePlotEssentials,
     generateComponent,
     generateArc,
+    proposeArcFromHistory,
     generateBrainFromName,
     applyActionsAndPersist,
   };

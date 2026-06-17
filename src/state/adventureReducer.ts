@@ -4,6 +4,7 @@ import type {
   ArcPace,
   ArcPacingState,
   ArcPhase,
+  ArcTriggerMode,
   BrainEntry,
   BrainPatch,
   BrainStateField,
@@ -17,7 +18,7 @@ import type {
   StoryCard,
   TriggerRule,
 } from "../types/adventure";
-import { defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
+import { defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
@@ -386,6 +387,16 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   // summaryUpdate with blank content would immediately overwrite the real summary — hard drop
   if (proposal.proposedType === "summaryUpdate" && !content) return null;
 
+  // arcProposal: content must be JSON carrying a non-empty premise, or the seed is meaningless
+  if (proposal.proposedType === "arcProposal") {
+    try {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      if (typeof parsed.arcPremise !== "string" || !(parsed.arcPremise as string).trim()) return null;
+    } catch {
+      return null;
+    }
+  }
+
   // brainUpdate: if the content looks like JSON, validate it has at least one recognised field
   if (proposal.proposedType === "brainUpdate" && content.startsWith("{")) {
     try {
@@ -498,11 +509,15 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     return { components: upsertById(state.components, component) };
   }
 
-  if (proposal.proposedType === "plotPressureUpdate" || proposal.proposedType === "plotMomentumUpdate") {
+  if (proposal.proposedType === "plotMomentumUpdate") {
+    return {};
+  }
+
+  if (proposal.proposedType === "plotPressureUpdate") {
     if (!proposal.content.trim()) return {};
-    const componentType = proposal.proposedType === "plotPressureUpdate" ? "activePressure" : "immediateMomentum";
-    const defaultTitle = proposal.proposedType === "plotPressureUpdate" ? "Active Pressure" : "Immediate Momentum";
-    const defaultPriority = proposal.proposedType === "plotPressureUpdate" ? 245 : 240;
+    const componentType = "activePressure";
+    const defaultTitle = "Active Pressure";
+    const defaultPriority = 245;
     const existing =
       state.components.find((c) => c.id === proposal.targetId && c.type === componentType) ??
       state.components.find((c) => c.type === componentType);
@@ -531,6 +546,64 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const existing = arcComp.content.trim();
     const newContent = existing ? `${existing}\n\n${proposal.content}` : proposal.content;
     return { components: upsertById(state.components, touch({ ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn })) };
+  }
+
+  if (proposal.proposedType === "arcProposal") {
+    // Approving an AI-drafted arc seeds the Current Arc and starts it simmering. Any stale/finished
+    // arc that was sitting in the component is banked as a Story Card first, so previous arcs are
+    // preserved — same as the aftermath continuation flow.
+    let seed: Record<string, unknown>;
+    try {
+      seed = JSON.parse(proposal.content) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+    const premise = typeof seed.arcPremise === "string" ? seed.arcPremise.trim() : "";
+    if (!premise) return {};
+    const arcComp =
+      (proposal.targetId ? state.components.find((c) => c.id === proposal.targetId && c.type === "currentArc") : undefined) ??
+      state.components.find((c) => c.type === "currentArc");
+    if (!arcComp) return {};
+
+    const pace = (["short", "medium", "long", "epic"] as const).includes(seed.arcPace as ArcPace)
+      ? (seed.arcPace as ArcPace)
+      : "long";
+    const triggerMode: ArcTriggerMode = seed.arcTriggerMode === "auto" ? "auto" : "ask";
+    const threadKeys = Array.isArray(seed.arcThreadKeys)
+      ? (seed.arcThreadKeys as unknown[]).filter((k): k is string => typeof k === "string")
+      : [];
+
+    // Bank the old arc if it built up any content worth keeping.
+    const oldBody = [arcComp.arcPremise?.trim() ? `Arc: ${arcComp.arcPremise.trim()}` : "", arcComp.content.trim()]
+      .filter(Boolean)
+      .join("\n");
+    const storyCards = oldBody.trim()
+      ? upsertById(
+          state.storyCards,
+          makeStoryCard({
+            title: arcComp.arcPremise?.trim() || arcComp.title,
+            content: oldBody,
+            type: "custom",
+            active: true,
+            state: "archivedArc",
+          }),
+        )
+      : state.storyCards;
+
+    const seededArc = touch({
+      ...arcComp,
+      arcPremise: premise,
+      content: "",
+      arcThreadKeys: threadKeys,
+      arcSimmerInstruction: typeof seed.arcSimmerInstruction === "string" ? seed.arcSimmerInstruction : "",
+      arcBreakInstruction: typeof seed.arcBreakInstruction === "string" ? seed.arcBreakInstruction : "",
+      arcPace: pace,
+      arcTriggerMode: triggerMode,
+      arcState: defaultArcState(),
+      arcContinuationOptions: undefined,
+      lastAutoUpdateTurn: state.activeState.turn,
+    });
+    return { components: upsertById(state.components, seededArc), storyCards };
   }
 
   if (proposal.proposedType === "summaryUpdate") {

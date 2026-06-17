@@ -21,12 +21,14 @@ function ArcDirector({
   component,
   dispatch,
   onGenerateArc,
+  onProposeArcFromHistory,
   loading,
 }: {
   adventure: Adventure;
   component: ComponentEntry;
   dispatch: (action: AdventureAction) => void;
   onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
+  onProposeArcFromHistory?: (componentId: string) => Promise<void>;
   loading?: boolean;
 }) {
   const [concept, setConcept] = useState("");
@@ -77,6 +79,23 @@ function ArcDirector({
             </button>
           </div>
         </Field>
+      )}
+
+      {onProposeArcFromHistory && (
+        <div style={{ margin: "0.25rem 0 0.5rem" }}>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void onProposeArcFromHistory(component.id)}
+            title="Read the last ~50 turns and draft an arc that grows out of what's been happening. It goes to the Memory Inbox for your approval — nothing is applied until you approve it."
+          >
+            {loading ? "Reading the story…" : "✨ Suggest an arc from recent play → Inbox"}
+          </button>
+          <p className="muted" style={{ fontSize: "0.8em", margin: "0.25rem 0 0" }}>
+            For a story that's gone quiet. The AI reads recent play and proposes a new arc; review and
+            approve it in the Memory Inbox. Approving seeds this arc and starts it simmering.
+          </p>
+        </div>
       )}
 
       <div className="row" style={{ alignItems: "center", gap: "0.75rem", margin: "0.5rem 0" }}>
@@ -202,8 +221,8 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   aiInstructions: "Optional scenario-specific rules separated for organization. Use this only when you want a distinct drift-prevention or genre contract outside Narration Rules. Do not duplicate rules already present in Narration Rules; both blocks load every turn.",
   plotEssentials: "Durable story shape — core conflict, major forces, what the story is about. Human-edited only. Warning: the model writes toward what this says the story is about. If it contains only relationship content, you get a relationship story. Always keep at least one external threat, unresolved problem, or active arc visible here.",
   currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Story Card and start fresh.",
-  activePressure: "The external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it. The model reads this as 'what the scene is about' and writes toward it.",
-  immediateMomentum: "The concrete next action or decision immediately in front of the player character. Auto-generated, approved via Memory Inbox. Keep the character initiating, not waiting. 'Nix waits for Seth to answer' is a passive momentum — it writes a passive character. 'Nix needs to source the next component before the Registry traces the portal' writes an active one.",
+  activePressure: "One sentence naming the external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it.",
+  immediateMomentum: "Disabled legacy component. Immediate next-beat direction now belongs in Recent Messages or the one-turn Next Output Bias.",
   authorNote: "Near-context narrative direction — inserted just before Recent Messages for maximum influence on the next response. One per adventure. Most powerful mid-session correction tool: if a character is drifting too passive, too emotional, or too reactive, add a directive here before the next turn. 'Nix should have a project she is actively working on right now' resets the register immediately.",
   memory: "Legacy lore block. Move content to a Story Card with type Lore for triggered inclusion.",
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
@@ -234,11 +253,13 @@ interface ComponentsPageProps extends AdventurePageProps {
   onGenerateComponent?: (componentId: string) => Promise<string>;
   /** Generate an Arc Director setup from a concept and apply it to the Current Arc component. */
   onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
+  /** Draft an arc from recent play and drop it in the Memory Inbox for approval. */
+  onProposeArcFromHistory?: (componentId: string) => Promise<void>;
 }
 
 const GENERATABLE_COMPONENT_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "authorNote"]);
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
@@ -384,7 +405,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </Field>
               )}
               {component.type === "currentArc" && (
-                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} loading={loading} />
+                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} onProposeArcFromHistory={onProposeArcFromHistory} loading={loading} />
               )}
               <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
                 <textarea
@@ -402,7 +423,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   />
                 </Field>
               )}
-              {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "currentArc") && (
+              {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "currentArc") && (
                 <div className="grid two">
                   {component.type === "plotEssentials" && (
                     <CheckboxField
@@ -491,7 +512,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <button type="button" onClick={() => dispatch({ type: "REORDER_COMPONENT", componentId: component.id, direction: "down" })}>
                   Move Down
                 </button>
-                {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "currentArc") && onUpdatePEComponentNow && (
+                {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "currentArc") && onUpdatePEComponentNow && (
                   <button
                     type="button"
                     disabled={loading}

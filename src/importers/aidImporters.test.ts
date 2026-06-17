@@ -146,6 +146,7 @@ describe("plot component parser", () => {
       JSON.stringify({
         components: [
           { title: "Wrong", type: "mystery", content: "Unknown type." },
+          { title: "Momentum", type: "immediateMomentum", content: "Disabled type." },
           { title: "Empty", type: "plotEssentials", content: "  " },
         ],
       }),
@@ -154,6 +155,7 @@ describe("plot component parser", () => {
     expect(result.components).toHaveLength(0);
     expect(result.skipped.map((item) => item.reason)).toEqual([
       'Unknown component type "mystery".',
+      "Immediate Momentum is disabled.",
       "Component content was empty.",
     ]);
   });

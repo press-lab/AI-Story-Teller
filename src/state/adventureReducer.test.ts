@@ -519,6 +519,19 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-summary" });
     expect(state.rollingSummary.content).toBe("Seth and Margo reached the old city.");
 
+    const momentum = makeComponent({ id: "component-momentum", title: "Immediate Momentum", type: "immediateMomentum", content: "Old next beat." });
+    const momentumProposal = makeMemoryProposal({
+      id: "proposal-momentum",
+      proposedType: "plotMomentumUpdate",
+      targetId: "component-momentum",
+      title: "Immediate Momentum",
+      content: "New next beat that should not apply.",
+    });
+    state = { ...state, components: [...state.components, momentum] };
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: momentumProposal });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-momentum" });
+    expect(state.components.find((component) => component.id === "component-momentum")?.content).toBe("Old next beat.");
+
     const rejected = makeMemoryProposal({ id: "proposal-reject", status: "pending" });
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: rejected });
     state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "proposal-reject" });
@@ -528,6 +541,57 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: ignored });
     state = reduce(state, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "proposal-ignore" });
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
+  });
+
+  it("approving an arcProposal seeds the Current Arc simmering and banks the old arc", () => {
+    const arcComp = makeComponent({
+      id: "component-arc",
+      title: "Current Arc",
+      type: "currentArc",
+      content: "The Renzan conspiracy was broken and its heads arrested.",
+      arcPremise: "Break the Renzan conspiracy",
+      arcState: { phase: "aftermath", tier: 5, threadEngagement: { x: 10 }, pendingBreak: false },
+    });
+    let state = { ...baseAdventure(), components: [arcComp] };
+
+    const arcProposal = makeMemoryProposal({
+      id: "proposal-arc",
+      proposedType: "arcProposal",
+      title: "A Pact of Flame",
+      targetId: "component-arc",
+      content: JSON.stringify({
+        arcPremise: "Azula moves against the throne from the shadows",
+        arcSimmerInstruction: "She stays off-screen, working through proxies.",
+        arcBreakInstruction: "The confrontation lands and costs an ally.",
+        arcPace: "epic",
+        arcTriggerMode: "ask",
+        arcThreadKeys: ["card-azula"],
+      }),
+    });
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: arcProposal });
+    expect(state.activeState.memoryProposals.find((p) => p.id === "proposal-arc")?.status).toBe("pending");
+
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-arc" });
+
+    const seeded = state.components.find((c) => c.id === "component-arc");
+    expect(seeded?.arcPremise).toBe("Azula moves against the throne from the shadows");
+    expect(seeded?.arcPace).toBe("epic");
+    expect(seeded?.arcThreadKeys).toEqual(["card-azula"]);
+    expect(seeded?.arcState?.phase).toBe("simmer");
+    expect(seeded?.arcState?.tier).toBe(0);
+    expect(seeded?.content).toBe("");
+    // Old arc banked as a Story Card so prior arcs are preserved.
+    expect(state.storyCards.some((card) => card.content.includes("Renzan conspiracy was broken"))).toBe(true);
+  });
+
+  it("drops an arcProposal whose content is not valid arc JSON", () => {
+    let state = { ...baseAdventure(), components: [makeComponent({ id: "component-arc", type: "currentArc", title: "Current Arc", content: "" })] };
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({ id: "bad-arc", proposedType: "arcProposal", title: "Bad", content: "not json" }),
+    });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "bad-arc")).toBe(false);
   });
 
   it("dedups memory proposals — skips a duplicate pending suggestion or an existing card title", () => {

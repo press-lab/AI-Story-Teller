@@ -30,7 +30,6 @@ const generatedComponentTypes = new Set<ComponentType>([
   "aiInstructions",
   "plotEssentials",
   "activePressure",
-  "immediateMomentum",
   "authorNote",
   "custom",
 ]);
@@ -51,7 +50,7 @@ Output ONLY valid JSON matching this schema exactly:
   "components": [
     {
       "title": "string",
-      "type": "aiInstructions | plotEssentials | activePressure | immediateMomentum | authorNote | custom",
+      "type": "aiInstructions | plotEssentials | activePressure | authorNote | custom",
       "content": "string",
       "alwaysOn": true,
       "pinned": true,
@@ -72,8 +71,7 @@ Output ONLY valid JSON matching this schema exactly:
 
 Component guidelines:
 - Always include one "plotEssentials" component containing only permanent world truths, the player's durable role or condition, and canon constraints that must shape every scene. Use tight bullet points and keep it under 120 words. Do not put temporary danger, current location, or the next action here.
-- Include one "activePressure" component for the immediate external threat, obligation, deadline, or unresolved problem driving the opening. Keep it to 1-3 concise bullets.
-- Include one "immediateMomentum" component for the concrete action, confrontation, discovery, or decision directly ahead when the opening scene ends. Keep it to 1-2 concise bullets.
+- Include one "activePressure" component for the immediate external threat, obligation, deadline, or unresolved problem driving the opening. Keep it to exactly one concise sentence.
 - Add "aiInstructions" only for scenario-specific generation constraints or drift prevention that are not general narration mechanics.
 - Add "authorNote" only for concise tone, mood, pacing, or prose influence.
 - Add a "custom" component only for broad world context that is relevant every turn. If it matters only when a character, place, faction, object, or secret appears, use a Story Card instead.
@@ -81,7 +79,7 @@ Component guidelines:
 
 Story card guidelines:
 - Create cards for recurring named characters, significant recurring locations, factions, and key lore items introduced by the premise or opening scene.
-- Do not create cards for current scene position, temporary mission status, one-off scenery, or throwaway objects. Put immediate danger in activePressure and the next concrete beat in immediateMomentum.
+- Do not create cards for current scene position, temporary mission status, one-off scenery, or throwaway objects. Put immediate danger in activePressure and let the recent messages carry the next concrete beat.
 - keys array: all names, nicknames, and aliases the card should trigger on — lowercase preferred.
 - Aim for 4–12 cards depending on the complexity of the premise. Quality over quantity.
 - Each card's content should be self-contained reference material the AI will use mid-story.
