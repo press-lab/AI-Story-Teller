@@ -16,6 +16,7 @@ export function makeMemoryProposal(overrides: Partial<MemoryProposal> = {}): Mem
     rationale: overrides.rationale ?? "Recurring private joke.",
     status: overrides.status ?? "pending",
     targetId: overrides.targetId,
+    appendContent: overrides.appendContent,
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };

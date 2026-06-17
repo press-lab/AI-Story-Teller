@@ -196,6 +196,41 @@ function mergeThoughts(
 /** Default character budget for a brain's live thought log before old entries get archived. */
 const DEFAULT_THOUGHT_BUDGET = 1600;
 
+/** Default character budget for a living story card's content (~200 tokens) before old facts archive. */
+const DEFAULT_CARD_CONTENT_BUDGET = 900;
+
+/** Split a card body into individual facts (one per non-empty line), preserving bullet markers. */
+function splitCardFacts(body: string): string[] {
+  return body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Living story-card merge: append the new fact(s) to the card's current content, then keep the live
+ * content under budget by moving the OLDEST facts into archivedFacts (never deleted, never injected).
+ * Mirrors pruneThoughtsToBudget — context stays bounded no matter how long a relationship/subject runs.
+ */
+function mergeCardContentToBudget(
+  existingContent: string,
+  newContent: string,
+  archived: string,
+  budget: number,
+): { content: string; archivedFacts: string } {
+  const existingFacts = splitCardFacts(existingContent);
+  const incoming = splitCardFacts(newContent).filter(
+    (fact) => !existingFacts.some((e) => e.toLowerCase() === fact.toLowerCase()),
+  );
+  const kept = [...existingFacts, ...incoming]; // newest facts last
+  const archivedFacts = splitCardFacts(archived);
+  const total = (facts: string[]) => facts.reduce((sum, f) => sum + f.length, 0);
+  while (kept.length > 1 && total(kept) > budget) {
+    archivedFacts.push(kept.shift()!); // oldest live fact → archive
+  }
+  return { content: kept.join("\n"), archivedFacts: archivedFacts.join("\n") };
+}
+
 /**
  * Keep a brain's accumulating thought log bounded. While the total thought text
  * exceeds the budget, move the oldest entries (insertion order) to archivedThoughts.
@@ -428,22 +463,37 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const safeContent = stripLeadingCardTitle(cardTitle, proposal.content);
     if (!safeContent.trim()) return {};
     const existing = state.storyCards.find((card) => card.id === proposal.targetId || card.title === proposal.title);
-    const storyCard = existing
-      ? touch({
-          ...existing,
-          content: safeContent,
-          keys: proposal.suggestedTriggers,
-          state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
-        })
-      : makeStoryCard({
-          title: cardTitle,
-          content: safeContent,
-          keys: proposal.suggestedTriggers,
-          type: "custom",
-          active: true,
-          pinned: false,
-          state: "memoryProposal",
-        });
+    let storyCard;
+    if (existing && proposal.appendContent) {
+      // Living-card update: append the new fact to existing content, archive the oldest facts beyond
+      // budget so context stays bounded and superseded facts don't read as current.
+      const budget = existing.tokenBudget && existing.tokenBudget > 0 ? existing.tokenBudget * 4 : DEFAULT_CARD_CONTENT_BUDGET;
+      const merged = mergeCardContentToBudget(existing.content, safeContent, existing.archivedFacts ?? "", budget);
+      storyCard = touch({
+        ...existing,
+        content: merged.content,
+        archivedFacts: merged.archivedFacts,
+        keys: Array.from(new Set([...existing.keys, ...proposal.suggestedTriggers])),
+        state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
+      });
+    } else if (existing) {
+      storyCard = touch({
+        ...existing,
+        content: safeContent,
+        keys: proposal.suggestedTriggers,
+        state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
+      });
+    } else {
+      storyCard = makeStoryCard({
+        title: cardTitle,
+        content: safeContent,
+        keys: proposal.suggestedTriggers,
+        type: "custom",
+        active: true,
+        pinned: false,
+        state: "memoryProposal",
+      });
+    }
     return { storyCards: upsertById(state.storyCards, storyCard) };
   }
 

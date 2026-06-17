@@ -459,6 +459,19 @@ export function StoryCardsPage({
                       onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { content: event.target.value } })}
                     />
                   </Field>
+                  {card.archivedFacts?.trim() && (
+                    <details>
+                      <summary className="muted">
+                        Archived facts ({card.archivedFacts.split("\n").filter((l) => l.trim()).length}) — superseded, kept on record, never sent to the AI
+                      </summary>
+                      <textarea
+                        rows={4}
+                        value={card.archivedFacts}
+                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { archivedFacts: event.target.value } })}
+                        style={{ marginTop: "0.5rem", opacity: 0.8 }}
+                      />
+                    </details>
+                  )}
                   <div className="grid four">
                     <Field label="Priority (higher = loaded first)">
                       <NumberInput
@@ -466,7 +479,7 @@ export function StoryCardsPage({
                         onChange={(value) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { priority: value } })}
                       />
                     </Field>
-                    <Field label="Token Budget (0 = no limit)">
+                    <Field label="Token Budget (0 = default ~200; caps live content, older facts archive)">
                       <NumberInput
                         value={card.tokenBudget ?? 0}
                         min={0}

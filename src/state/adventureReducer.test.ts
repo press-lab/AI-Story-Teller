@@ -594,6 +594,38 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "bad-arc")).toBe(false);
   });
 
+  it("living-card update: approving an append proposal merges the new fact and archives the oldest over budget", () => {
+    const card = makeStoryCard({
+      id: "card-living",
+      title: "Setu and Nyxa",
+      content: "• Their bond was a court secret.\n• They spar as equals.",
+      keys: ["Setu", "Nyxa"],
+      tokenBudget: 10, // ~40 char live budget — forces the oldest fact to archive
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [card] };
+
+    const update = makeMemoryProposal({
+      id: "proposal-card-update",
+      proposedType: "storyCard",
+      title: "Setu and Nyxa",
+      targetId: "card-living",
+      appendContent: true,
+      content: "• Setu has now brought her into his private chambers.",
+      suggestedTriggers: ["chambers"],
+    });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: update });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-card-update" });
+
+    const merged = state.storyCards.find((c) => c.id === "card-living");
+    // Newest fact is live; oldest fact pushed to archive; no sibling card created.
+    expect(merged?.content).toContain("private chambers");
+    expect(merged?.archivedFacts).toContain("Their bond was a court secret");
+    expect(merged?.content).not.toContain("Their bond was a court secret");
+    expect(state.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
+    expect(merged?.keys).toContain("chambers");
+  });
+
   it("dedups memory proposals — skips a duplicate pending suggestion or an existing card title", () => {
     let state = baseAdventure();
 

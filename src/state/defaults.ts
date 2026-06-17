@@ -247,6 +247,7 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
     lastAutoUpdateTurn: overrides.lastAutoUpdateTurn,
     state: overrides.state ?? "",
     tokenBudget: overrides.tokenBudget,
+    archivedFacts: overrides.archivedFacts,
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
   };

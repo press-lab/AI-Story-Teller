@@ -109,7 +109,10 @@ export interface StoryCard {
   inclusionPolicy: ContextInclusionPolicy;
   priority: number;
   state: string;
+  /** Token cap for this card's live content; overflow is moved to archivedFacts. 0/undefined = default. */
   tokenBudget?: number;
+  /** Superseded facts pruned out of live content so they stay on record without bloating context. Never injected. */
+  archivedFacts?: string;
   /** When true, the LLM will automatically update this card after relevant scenes. */
   autoUpdate: boolean;
   /** Minimum turns between AI-generated updates or proposals for this card. */

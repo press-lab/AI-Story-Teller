@@ -1,4 +1,4 @@
-import type { AdventureAction, Adventure, MemoryProposal, ProviderConfig } from "../types/adventure";
+import type { AdventureAction, Adventure, MemoryProposal, ProviderConfig, StoryCard } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { classifyMemory } from "./classificationPolicy";
 import { createId, nowIso } from "../utils/id";
@@ -63,15 +63,17 @@ Existing tracked characters (these already have their own entries — facts abou
 ${brainList || "(none)"}
 
 If there is a new durable fact, respond with ONLY this JSON (no markdown, no prose):
-- For a story card: {"proposedType": "storyCard", "title": "...", ${storyCardContentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
-- For a plot update: {"proposedType": "plotEssentialsUpdate", "title": "...", "content": "1–2 bullet points capturing only the NEW constraint or development to append", "suggestedTriggers": [], "rationale": "one line"}
+- New entity card: {"proposedType": "storyCard", "title": "...", ${storyCardContentField}"suggestedTriggers": ["keyword1"], "rationale": "one line"}
+- Update to an EXISTING card: {"proposedType": "storyCard", "updateExisting": "<exact existing card title>", "content": "• the single NEW development, phrased as current (now / has now / no longer)", "suggestedTriggers": ["keyword"], "rationale": "one line"}
+- Plot update: {"proposedType": "plotEssentialsUpdate", "title": "...", "content": "1–2 bullet points capturing only the NEW constraint or development to append", "suggestedTriggers": [], "rationale": "one line"}
 
 If nothing is new: respond with the word null
 
 Rules:
-- storyCard: ONLY a genuinely NEW named entity not already listed above — a specific person, place, faction, organization, or named object/rule the story just introduced. The title must be that entity's own proper name.
-- DO NOT create a card for a relationship, bond, pact, dynamic, romance, or feeling between characters who already appear above. Those belong on the characters' own entries — return null for them.
-- DO NOT use abstract or descriptive titles like "Dynamic between X and Y", "Pact between X and Y", "Their Bond", or "The Relationship". A card title is always the proper name of a single entity, never a description of a connection.${generateContent ? `\n- VOICE CONTRACT: if the new entity is a character (a person the story will voice), the content MUST end with a VOICE CONTRACT block after the bullets, written in their actual voice:\\nVOICE CONTRACT\\nRhythm: <pace, sentence structure>\\nDefault move: <what they reach for under pressure>\\nEmotional defense: <how they deflect or armor up>\\nNever sounds like: <what to avoid — generic, "I feel…", offering choices>\\nExample lines: "<line>" / "<line>"` : ""}
+- PREFER updating over creating. If the development concerns a subject that an existing card above ALREADY covers — including a relationship, bond, or dynamic between tracked characters that already has its own card — set "updateExisting" to that card's exact title and write ONLY the new development. NEVER create a second card for a subject that already has one.
+- storyCard (new): ONLY a genuinely NEW named entity with no existing card — a specific person, place, faction, organization, or named object/rule just introduced. Its title is that entity's own proper name.
+- A relationship/bond/dynamic between tracked characters may have at most ONE living card. If it already exists, UPDATE it. If it does not and the bond is clearly recurring and important, you may create it once with a clear title (e.g. "Setu and Nyxa").
+- When updating, the content is just the NEW development as ONE bullet, written as the current state — do not restate old facts; the card keeps its own history.${generateContent ? `\n- VOICE CONTRACT: if a NEW card's entity is a character (a person the story will voice), the content MUST end with a VOICE CONTRACT block after the bullets, written in their actual voice:\\nVOICE CONTRACT\\nRhythm: <pace, sentence structure>\\nDefault move: <what they reach for under pressure>\\nEmotional defense: <how they deflect or armor up>\\nNever sounds like: <what to avoid — generic, "I feel…", offering choices>\\nExample lines: "<line>" / "<line>"` : ""}
 - plotEssentialsUpdate: ONLY for immediate active constraints (tonight, currently, right now, actively) — write only the new addition as 1–2 bullets, not a full rewrite
 - Do not propose what is already covered — only flag genuinely new information
 - suggestedTriggers: 2–5 specific keywords, no stop words`;
@@ -108,7 +110,7 @@ export async function detectMemoryFromTurn(
 
   if (!raw || raw === "null" || !raw.startsWith("{")) return undefined;
 
-  let parsed: { proposedType?: unknown; title?: unknown; content?: unknown; suggestedTriggers?: unknown; rationale?: unknown };
+  let parsed: { proposedType?: unknown; title?: unknown; updateExisting?: unknown; content?: unknown; suggestedTriggers?: unknown; rationale?: unknown };
   try {
     parsed = JSON.parse(raw) as typeof parsed;
   } catch {
@@ -117,25 +119,51 @@ export async function detectMemoryFromTurn(
 
   const validTypes = new Set(["storyCard", "plotEssentialsUpdate"]);
   if (typeof parsed.proposedType !== "string" || !validTypes.has(parsed.proposedType)) return undefined;
-  if (typeof parsed.title !== "string" || !parsed.title.trim()) return undefined;
-  if (parsed.proposedType === "plotEssentialsUpdate" && (typeof parsed.content !== "string" || !parsed.content.trim())) return undefined;
 
-  if (adventure.activeState.memoryProposals.some((p) => p.status === "pending" && p.proposedType === parsed.proposedType)) return undefined;
+  // Living-card routing: if the model named an existing card to update, target it instead of creating
+  // a sibling. Match by exact title (case-insensitive) against active cards — conservative on purpose.
+  let targetCard: StoryCard | undefined;
+  if (parsed.proposedType === "storyCard" && typeof parsed.updateExisting === "string" && parsed.updateExisting.trim()) {
+    const wanted = parsed.updateExisting.trim().toLowerCase();
+    targetCard = adventure.storyCards.find((c) => c.active && c.title.trim().toLowerCase() === wanted);
+    if (!targetCard) return undefined; // named a card that doesn't exist — drop rather than spawn a sibling
+  }
+
+  const title = targetCard ? targetCard.title : typeof parsed.title === "string" ? parsed.title.trim() : "";
+  if (!title) return undefined;
+  if (parsed.proposedType === "plotEssentialsUpdate" && (typeof parsed.content !== "string" || !parsed.content.trim())) return undefined;
+  if (targetCard && (typeof parsed.content !== "string" || !parsed.content.trim())) return undefined; // an update with no new fact is noise
+  const isCardUpdate = Boolean(targetCard);
+
+  // Don't stack duplicate work: block a second pending proposal of the same type AND target.
+  if (
+    adventure.activeState.memoryProposals.some(
+      (p) =>
+        p.status === "pending" &&
+        p.proposedType === parsed.proposedType &&
+        (p.targetId ?? "") === (targetCard?.id ?? "") &&
+        (targetCard ? true : p.title.trim().toLowerCase() === title.toLowerCase()),
+    )
+  ) {
+    return undefined;
+  }
 
   const proposal: MemoryProposal = {
     id: createId("proposal"),
     sourceTurnId: String(adventure.activeState.turn),
     sourceText: responseText.slice(0, 500),
     proposedType: parsed.proposedType as MemoryProposal["proposedType"],
-    title: parsed.title.trim(),
-    content: generateContent && typeof parsed.content === "string" ? parsed.content : "",
+    title,
+    content: (generateContent || isCardUpdate) && typeof parsed.content === "string" ? parsed.content : "",
     suggestedTriggers: Array.isArray(parsed.suggestedTriggers)
       ? (parsed.suggestedTriggers as unknown[]).filter((t): t is string => typeof t === "string").slice(0, 6)
       : [],
     confidence: 0.8,
     rationale: typeof parsed.rationale === "string" ? parsed.rationale : "AI-detected durable fact.",
     status: "pending",
-    appendContent: parsed.proposedType === "plotEssentialsUpdate",
+    targetId: targetCard?.id,
+    // appendContent drives the living-card merge (append + archive) on approval; plot updates also append.
+    appendContent: isCardUpdate || parsed.proposedType === "plotEssentialsUpdate",
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
