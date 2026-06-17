@@ -532,12 +532,12 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-momentum" });
     expect(state.components.find((component) => component.id === "component-momentum")?.content).toBe("Old next beat.");
 
-    const rejected = makeMemoryProposal({ id: "proposal-reject", status: "pending" });
+    const rejected = makeMemoryProposal({ id: "proposal-reject", title: "Rejected Entity", status: "pending" });
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: rejected });
     state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "proposal-reject" });
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-reject")?.status).toBe("rejected");
 
-    const ignored = makeMemoryProposal({ id: "proposal-ignore", status: "pending" });
+    const ignored = makeMemoryProposal({ id: "proposal-ignore", title: "Ignored Entity", status: "pending" });
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: ignored });
     state = reduce(state, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "proposal-ignore" });
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
@@ -624,6 +624,30 @@ describe("adventureReducer", () => {
     expect(merged?.content).not.toContain("Their bond was a court secret");
     expect(state.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
     expect(merged?.keys).toContain("chambers");
+  });
+
+  it("does not resurrect a dismissed suggestion, but still allows new living-card updates", () => {
+    let state = baseAdventure();
+
+    // Reject a new-card suggestion → re-suggesting the same title next turn is dropped.
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "d1", title: "The Drowned Choir", proposedType: "storyCard", status: "pending" }) });
+    state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "d1" });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "d2", title: "The Drowned Choir", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "d2")).toBe(false);
+
+    // Ignored suggestions are likewise not resurrected.
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "d3", title: "The Ash Market", proposedType: "storyCard", status: "pending" }) });
+    state = reduce(state, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "d3" });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "d4", title: "The Ash Market", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "d4")).toBe(false);
+
+    // But a living-card UPDATE (appendContent) sharing a card title is NOT blocked by a past dismissal.
+    const card = makeStoryCard({ id: "card-x", title: "Setu and Nyxa", content: "• base fact", active: true });
+    state = { ...state, storyCards: [card] };
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "u1", title: "Setu and Nyxa", proposedType: "storyCard", targetId: "card-x", appendContent: true, content: "• first development", status: "pending" }) });
+    state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "u1" });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "u2", title: "Setu and Nyxa", proposedType: "storyCard", targetId: "card-x", appendContent: true, content: "• second development", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "u2")).toBe(true);
   });
 
   it("dedups memory proposals — skips a duplicate pending suggestion or an existing card title", () => {

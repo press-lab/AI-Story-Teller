@@ -19,11 +19,23 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 
 type SortMode = "alpha" | "recent";
 
+/** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
+export function isLivingCard(card: StoryCard): boolean {
+  return (card.state ?? "").split(/\s+/).includes("living");
+}
+
+/** Shown before a living card's title so they're instantly identifiable in the list. */
+export const LIVING_CARD_PREFIX = "⟳ ";
+
 function CardSummary({ card, query }: { card: StoryCard; query: string }) {
   const snippet = contentSnippet(card.content, query);
+  const living = isLivingCard(card);
   return (
     <span className="story-card-summary">
-      <span className="story-card-title"><Highlight text={card.title} query={query} /></span>
+      <span className="story-card-title">
+        {living && <span className="badge badge-priority" title="Living card — auto-updated; old facts are archived, not deleted">{LIVING_CARD_PREFIX}Living</span>}{" "}
+        <Highlight text={card.title} query={query} />
+      </span>
       <span className="story-card-badges">
         <span className="badge badge-type">{TYPE_LABELS[card.type]}</span>
         {!card.active && <span className="badge badge-inactive">Inactive</span>}

@@ -474,7 +474,8 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         content: merged.content,
         archivedFacts: merged.archivedFacts,
         keys: Array.from(new Set([...existing.keys, ...proposal.suggestedTriggers])),
-        state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
+        // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
+        state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
       });
     } else if (existing) {
       storyCard = touch({
@@ -974,23 +975,28 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "ADD_MEMORY_PROPOSAL": {
       const clean = sanitizeProposal(action.proposal);
       if (!clean) return state;
-      // Dedup: drop a proposal that duplicates one already pending (same type, title,
-      // and target), or a NEW story card whose title already exists as a card. Without
-      // this, the model re-suggesting the same not-yet-approved entity each turn spawns
-      // a fresh duplicate proposal every time.
+      // Dedup: drop a proposal that duplicates one already pending, one the user already
+      // dismissed (rejected/ignored), or a NEW story card whose title already exists as a card.
+      // Without this, the model re-suggesting the same entity each turn spawns a fresh duplicate —
+      // including resurrecting suggestions the user has already said no to.
       const normTitle = clean.title.trim().toLowerCase();
-      const duplicatesPending = state.activeState.memoryProposals.some(
-        (p) =>
-          p.status === "pending" &&
-          p.proposedType === clean.proposedType &&
-          p.title.trim().toLowerCase() === normTitle &&
-          (p.targetId ?? "") === (clean.targetId ?? ""),
-      );
+      const isUpdate = clean.appendContent === true;
+      const matchesTarget = (p: MemoryProposal) =>
+        p.proposedType === clean.proposedType &&
+        p.title.trim().toLowerCase() === normTitle &&
+        (p.targetId ?? "") === (clean.targetId ?? "");
+      const duplicatesPending = state.activeState.memoryProposals.some((p) => p.status === "pending" && matchesTarget(p));
+      // A dismissed suggestion shouldn't come back every turn. Living-card UPDATES are exempt:
+      // each is a distinct new development that shares the card's title, so title-matching a past
+      // dismissal must not block future updates to that card.
+      const duplicatesDismissed =
+        !isUpdate &&
+        state.activeState.memoryProposals.some((p) => (p.status === "rejected" || p.status === "ignored") && matchesTarget(p));
       const duplicatesCard =
         clean.proposedType === "storyCard" &&
         !clean.targetId &&
         state.storyCards.some((c) => c.title.trim().toLowerCase() === normTitle);
-      if (duplicatesPending || duplicatesCard) return state;
+      if (duplicatesPending || duplicatesDismissed || duplicatesCard) return state;
       const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {
         const approved = updateMemoryProposal(clean, { status: "approved" });
