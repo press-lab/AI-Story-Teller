@@ -199,6 +199,19 @@ export function SettingsPage({
             <Field label="Story text size (px)">
               <NumberInput min={12} max={24} value={uiPreferences.storyFontSize} onChange={(storyFontSize) => updateUi({ storyFontSize })} />
             </Field>
+            <Field label="Story box width (px)">
+              <NumberInput min={520} max={1800} value={uiPreferences.storyContentWidth} onChange={(storyContentWidth) => updateUi({ storyContentWidth })} />
+            </Field>
+            <Field label="Story box position">
+              <select
+                value={uiPreferences.storyContentAlign}
+                onChange={(e) => updateUi({ storyContentAlign: e.target.value as UiPreferences["storyContentAlign"] })}
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </Field>
             <Field label="Max content width (px)">
               <NumberInput min={600} max={1800} value={uiPreferences.maxContentWidth} onChange={(maxContentWidth) => updateUi({ maxContentWidth })} />
             </Field>

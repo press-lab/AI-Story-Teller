@@ -70,6 +70,8 @@ export function PlayPage({
   providerPresets,
   activePresetId,
   onSelectPreset,
+  uiPreferences,
+  onUiPreferencesChange,
 }: PlayRuntimeProps) {
   const draftKey = `play-input-draft-${adventure.id}`;
   const [input, setInput] = useState(() => { try { return localStorage.getItem(draftKey) ?? ""; } catch { return ""; } });
@@ -154,6 +156,24 @@ export function PlayPage({
       const next = Math.round(Math.max(100, Math.min(500, startHeight + startY - ev.clientY)));
       setComposerHeight(next);
       try { localStorage.setItem("play-composer-height", String(next)); } catch { /* ignore */ }
+    };
+    el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
+  }
+
+  function updateStoryLayout(patch: Partial<NonNullable<typeof uiPreferences>>) {
+    if (!uiPreferences || !onUiPreferencesChange) return;
+    onUiPreferencesChange({ ...uiPreferences, ...patch });
+  }
+
+  function startStoryWidthResize(e: React.PointerEvent<HTMLDivElement>) {
+    if (!uiPreferences || !onUiPreferencesChange) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const startX = e.clientX;
+    const startWidth = uiPreferences.storyContentWidth;
+    const el = e.currentTarget;
+    el.onpointermove = (ev: PointerEvent) => {
+      const next = Math.round(Math.max(520, Math.min(1800, startWidth + startX - ev.clientX)));
+      onUiPreferencesChange({ ...uiPreferences, storyContentWidth: next });
     };
     el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
   }
@@ -273,6 +293,16 @@ export function PlayPage({
       <div className="play-main">
         <div className="transcript-area">
         <div ref={transcriptRef} className="transcript" onClick={() => setComposerOpen(false)}>
+          <div className="story-text-frame">
+          {uiPreferences && onUiPreferencesChange && (
+            <div
+              className="story-width-handle"
+              onPointerDown={startStoryWidthResize}
+              title="Drag to resize story text width"
+              role="separator"
+              aria-orientation="vertical"
+            />
+          )}
           {adventure.openingScene && (
             <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
               <div className="message-actions">
@@ -371,6 +401,7 @@ export function PlayPage({
               )}
             </article>
           ))}
+          </div>
           <div ref={bottomRef} />
         </div>
         {showScrollBottom && (
@@ -574,6 +605,33 @@ export function PlayPage({
               </span>
             )}
           </div>
+          {uiPreferences && onUiPreferencesChange && (
+            <details className="play-layout-controls">
+              <summary>Story layout</summary>
+              <Field label="Width">
+                <input
+                  type="range"
+                  min={520}
+                  max={1800}
+                  step={20}
+                  value={uiPreferences.storyContentWidth}
+                  onChange={(event) => updateStoryLayout({ storyContentWidth: Number(event.target.value) })}
+                />
+              </Field>
+              <div className="story-align-control" role="group" aria-label="Story position">
+                {(["left", "center", "right"] as const).map((align) => (
+                  <button
+                    key={align}
+                    type="button"
+                    className={uiPreferences.storyContentAlign === align ? "active" : ""}
+                    onClick={() => updateStoryLayout({ storyContentAlign: align })}
+                  >
+                    {align}
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
         </div>
 
         <nav className="play-tool-nav" aria-label="Adventure tools">

@@ -6,6 +6,8 @@ export interface UiPreferences {
   darkMode: boolean;
   density: "compact" | "comfortable";
   storyFontSize: number;
+  storyContentWidth: number;
+  storyContentAlign: "left" | "center" | "right";
   maxContentWidth: number;
   showTokenEstimates: boolean;
   showAdvancedSettings: boolean;
@@ -29,6 +31,8 @@ export const defaultUiPreferences: UiPreferences = {
   darkMode: false,
   density: "comfortable",
   storyFontSize: 20,
+  storyContentWidth: 1400,
+  storyContentAlign: "center",
   maxContentWidth: 1100,
   showTokenEstimates: true,
   showAdvancedSettings: false,
@@ -71,4 +75,6 @@ export interface PlayRuntimeProps extends AdventurePageProps {
   providerPresets?: ProviderPreset[];
   activePresetId?: string;
   onSelectPreset?: (id: string) => void;
+  uiPreferences?: UiPreferences;
+  onUiPreferencesChange?: (prefs: UiPreferences) => void;
 }
