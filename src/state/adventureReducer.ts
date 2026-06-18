@@ -18,7 +18,7 @@ import type {
   StoryCard,
   TriggerRule,
 } from "../types/adventure";
-import { defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
+import { cardMatchesName, defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
@@ -462,7 +462,9 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const cardTitle = proposal.title || "Memory Proposal";
     const safeContent = stripLeadingCardTitle(cardTitle, proposal.content);
     if (!safeContent.trim()) return {};
-    const existing = state.storyCards.find((card) => card.id === proposal.targetId || card.title === proposal.title);
+    const existing = state.storyCards.find(
+      (card) => card.id === proposal.targetId || cardMatchesName(card, proposal.title),
+    );
     let storyCard;
     if (existing && proposal.appendContent) {
       // Living-card update: append the new fact to existing content, archive the oldest facts beyond

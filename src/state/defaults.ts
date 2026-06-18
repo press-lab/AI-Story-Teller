@@ -253,6 +253,18 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
   };
 }
 
+/**
+ * True if `name` refers to this card — by its exact title OR any of its trigger keys (aliases),
+ * case-insensitive. Used so a development about "Toph" lands on the "Toph Beifong" card (whose keys
+ * include "Toph") instead of spawning a duplicate.
+ */
+export function cardMatchesName(card: Pick<StoryCard, "title" | "keys">, name: string): boolean {
+  const n = name.trim().toLowerCase();
+  if (!n) return false;
+  if (card.title.trim().toLowerCase() === n) return true;
+  return (card.keys ?? []).some((k) => k.trim().toLowerCase() === n);
+}
+
 export function makeBrain(overrides: Partial<BrainEntry> & Pick<BrainEntry, "characterName">): BrainEntry {
   const timestamp = nowIso();
   return {

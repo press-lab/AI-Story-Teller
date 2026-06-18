@@ -13,6 +13,7 @@ import type {
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import { adventureReducer } from "./adventureReducer";
+import { cardMatchesName } from "./defaults";
 
 export interface MockableProviderResponse {
   content: string;
@@ -138,7 +139,7 @@ export async function runTurnPipeline({
   if (memoryTags.length > 0) {
     const turn = next.activeState.turn;
     for (const tag of memoryTags) {
-      const existing = next.storyCards.find((c) => c.title.trim().toLowerCase() === tag.title.trim().toLowerCase());
+      const existing = next.storyCards.find((c) => cardMatchesName(c, tag.title));
       const now = nowIso();
       const proposal: MemoryProposal = {
         id: createId("proposal"),

@@ -543,6 +543,23 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
+  it("approving a proposal that names a card by an alias updates that card instead of duplicating it", () => {
+    const toph = makeStoryCard({ id: "card-toph", title: "Toph Beifong", keys: ["Toph", "Beifong"], content: "• Greatest earthbender alive.", active: true });
+    let state = { ...baseAdventure(), storyCards: [toph] };
+    const before = state.storyCards.length;
+    // Model refers to her as "Toph" (a key, not the exact card title "Toph Beifong").
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({ id: "toph-alias", proposedType: "storyCard", title: "Toph", content: "• Now travels with the group as its fifth member.", suggestedTriggers: ["Toph", "Beifong"], status: "pending" }),
+    });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "toph-alias" });
+    const tophCards = state.storyCards.filter((c) => /toph/i.test(c.title));
+    expect(state.storyCards.length).toBe(before); // no duplicate created
+    expect(tophCards).toHaveLength(1);
+    expect(tophCards[0].title).toBe("Toph Beifong"); // landed on the existing card
+    expect(tophCards[0].content).toContain("fifth member");
+  });
+
   it("approving an arcProposal seeds the Current Arc simmering and banks the old arc", () => {
     const arcComp = makeComponent({
       id: "component-arc",
