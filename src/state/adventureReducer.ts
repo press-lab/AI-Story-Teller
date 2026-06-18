@@ -483,7 +483,9 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       storyCard = touch({
         ...existing,
         content: safeContent,
-        keys: proposal.suggestedTriggers,
+        // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
+        // break alias-matching and let the card be duplicated again later).
+        keys: Array.from(new Set([...existing.keys, ...proposal.suggestedTriggers])),
         state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
       });
     } else {

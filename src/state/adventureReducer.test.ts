@@ -550,7 +550,7 @@ describe("adventureReducer", () => {
     // Model refers to her as "Toph" (a key, not the exact card title "Toph Beifong").
     state = reduce(state, {
       type: "ADD_MEMORY_PROPOSAL",
-      proposal: makeMemoryProposal({ id: "toph-alias", proposedType: "storyCard", title: "Toph", content: "• Now travels with the group as its fifth member.", suggestedTriggers: ["Toph", "Beifong"], status: "pending" }),
+      proposal: makeMemoryProposal({ id: "toph-alias", proposedType: "storyCard", title: "Toph", content: "• Now travels with the group as its fifth member.", suggestedTriggers: ["Toph"], status: "pending" }),
     });
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "toph-alias" });
     const tophCards = state.storyCards.filter((c) => /toph/i.test(c.title));
@@ -558,6 +558,7 @@ describe("adventureReducer", () => {
     expect(tophCards).toHaveLength(1);
     expect(tophCards[0].title).toBe("Toph Beifong"); // landed on the existing card
     expect(tophCards[0].content).toContain("fifth member");
+    expect(tophCards[0].keys).toContain("Beifong"); // a sparse update must not strip existing aliases
   });
 
   it("approving an arcProposal seeds the Current Arc simmering and banks the old arc", () => {
