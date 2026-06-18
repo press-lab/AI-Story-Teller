@@ -85,11 +85,15 @@ export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
 export const defaultSystemTriggerSettings: SystemTriggerSettings = {
   enabled: true,
   categories: {
-    relationship: true,
-    world_fact: true,
+    // Only detect genuinely NEW entities by default — new characters, and new places/factions/lore.
     character_reveal: true,
-    plot_beat: true,
-    status_change: true,
+    world_fact: true,
+    // Off by default: these generate event/relationship/status cards ("Seth and Jinx's Deal", "The
+    // Escape from Gutterglass", "Setu Joins the Team") that restate scene beats rather than durable
+    // entities and pile up reworded near-duplicates. Opt in per adventure if you want them.
+    relationship: false,
+    plot_beat: false,
+    status_change: false,
   },
 };
 
