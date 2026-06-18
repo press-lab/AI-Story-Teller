@@ -167,6 +167,7 @@ export default function App() {
     root.style.setProperty("--story-font-size", `${uiPreferences.storyFontSize}px`);
     root.style.setProperty("--story-content-width", `${uiPreferences.storyContentWidth}px`);
     root.style.setProperty("--story-content-margin", uiPreferences.storyContentAlign === "left" ? "0 auto 0 0" : uiPreferences.storyContentAlign === "right" ? "0 0 0 auto" : "0 auto");
+    root.style.setProperty("--story-pane-margin", uiPreferences.storyContentAlign === "left" ? "0 auto 0 24px" : uiPreferences.storyContentAlign === "right" ? "0 24px 0 auto" : "0 auto");
     root.style.setProperty("--content-max-width", `${uiPreferences.maxContentWidth}px`);
     root.classList.toggle("hide-token-estimates", !uiPreferences.showTokenEstimates);
   }, [uiPreferences]);
