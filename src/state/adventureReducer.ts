@@ -414,6 +414,20 @@ function stripLeadingCardTitle(title: string, content: string): string {
   return content.replace(new RegExp(`^(?:#{1,3}\\s*|\\*{1,2})?${escaped}\\*{0,2}\\s*\\n?`, "i"), "").trimStart();
 }
 
+/**
+ * Normalize a proposal/card title for duplicate detection: lowercase, drop a leading article,
+ * strip punctuation, collapse whitespace. So "The Escape from Gutterglass" and "Escape from
+ * Gutterglass!" collapse to the same key and the second suggestion is recognized as a duplicate.
+ */
+function normalizeProposalTitle(title: string): string {
+  return (title ?? "")
+    .toLowerCase()
+    .replace(/^\s*(the|a|an)\s+/, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   const rawContent = stripThink(proposal.content ?? "").trim();
   const title = stripThink(proposal.title ?? "").trim();
@@ -983,11 +997,11 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       // dismissed (rejected/ignored), or a NEW story card whose title already exists as a card.
       // Without this, the model re-suggesting the same entity each turn spawns a fresh duplicate —
       // including resurrecting suggestions the user has already said no to.
-      const normTitle = clean.title.trim().toLowerCase();
+      const normTitle = normalizeProposalTitle(clean.title);
       const isUpdate = clean.appendContent === true;
       const matchesTarget = (p: MemoryProposal) =>
         p.proposedType === clean.proposedType &&
-        p.title.trim().toLowerCase() === normTitle &&
+        normalizeProposalTitle(p.title) === normTitle &&
         (p.targetId ?? "") === (clean.targetId ?? "");
       const duplicatesPending = state.activeState.memoryProposals.some((p) => p.status === "pending" && matchesTarget(p));
       // A dismissed suggestion shouldn't come back every turn. Living-card UPDATES are exempt:
@@ -999,7 +1013,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const duplicatesCard =
         clean.proposedType === "storyCard" &&
         !clean.targetId &&
-        state.storyCards.some((c) => c.title.trim().toLowerCase() === normTitle);
+        state.storyCards.some((c) => normalizeProposalTitle(c.title) === normTitle);
       if (duplicatesPending || duplicatesDismissed || duplicatesCard) return state;
       const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {

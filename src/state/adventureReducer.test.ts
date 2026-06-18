@@ -543,6 +543,15 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
+  it("drops a near-duplicate suggestion that differs only by a leading article or punctuation", () => {
+    let state = baseAdventure();
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "e1", title: "The Escape from Gutterglass", proposedType: "storyCard", status: "pending" }) });
+    // same event, title differs only by the leading "The" and a trailing "!" → should be dropped
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "e2", title: "Escape from Gutterglass!", proposedType: "storyCard", status: "pending" }) });
+    expect(state.activeState.memoryProposals.some((p) => p.id === "e2")).toBe(false);
+    expect(state.activeState.memoryProposals.filter((p) => /escape from gutterglass/i.test(p.title))).toHaveLength(1);
+  });
+
   it("approving a proposal that names a card by an alias updates that card instead of duplicating it", () => {
     const toph = makeStoryCard({ id: "card-toph", title: "Toph Beifong", keys: ["Toph", "Beifong"], content: "• Greatest earthbender alive.", active: true });
     let state = { ...baseAdventure(), storyCards: [toph] };
