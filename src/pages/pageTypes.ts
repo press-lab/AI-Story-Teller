@@ -4,6 +4,7 @@ import { defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defa
 
 export interface UiPreferences {
   darkMode: boolean;
+  darkModeTextColor: string;
   density: "compact" | "comfortable";
   storyFontSize: number;
   storyContentWidth: number;
@@ -29,6 +30,7 @@ export const defaultGlobalAdventureSettings: GlobalAdventureSettings = {
 
 export const defaultUiPreferences: UiPreferences = {
   darkMode: false,
+  darkModeTextColor: "#d6ddd4",
   density: "comfortable",
   storyFontSize: 20,
   storyContentWidth: 1400,

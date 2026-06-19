@@ -552,6 +552,107 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.filter((p) => /escape from gutterglass/i.test(p.title))).toHaveLength(1);
   });
 
+  it("drops a repeated story-card memory even when the model changes the title", () => {
+    let state = baseAdventure();
+    const first = makeMemoryProposal({
+      id: "same-event-1",
+      title: "Gutterglass Escape",
+      proposedType: "storyCard",
+      content:
+        "• Seth, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
+        "• They used coordinated bending, blue fire, and a maintenance tunnel to leave with the hextech regulator.",
+      status: "pending",
+    });
+    const second = makeMemoryProposal({
+      id: "same-event-2",
+      title: "Seth, Quintin, and Jinx's Flight",
+      proposedType: "storyCard",
+      content:
+        "• Seth, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
+        "• Their coordinated bending, blue fire, and the maintenance tunnel let them leave with the hextech regulator.",
+      status: "pending",
+    });
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: first });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: second });
+
+    expect(state.activeState.memoryProposals.some((p) => p.id === "same-event-2")).toBe(false);
+    expect(state.activeState.memoryProposals).toHaveLength(1);
+  });
+
+  it("drops a story-card suggestion whose content already exists on an approved card", () => {
+    const card = makeStoryCard({
+      title: "Gutterglass Escape",
+      content:
+        "• Seth, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
+        "• They used coordinated bending, blue fire, and a maintenance tunnel to leave with the hextech regulator.",
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [card] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "already-carded",
+        title: "The Escape from Gutterglass",
+        proposedType: "storyCard",
+        content:
+          "• Seth, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
+          "• Their coordinated bending, blue fire, and the maintenance tunnel let them leave with the hextech regulator.",
+        status: "pending",
+      }),
+    });
+
+    expect(state.activeState.memoryProposals.some((p) => p.id === "already-carded")).toBe(false);
+  });
+
+  it("quietly applies auto-approved Active Pressure without filling Memory Suggestions history", () => {
+    const base = baseAdventure();
+    const pressure = makeComponent({
+      id: "comp-pressure",
+      title: "Active Pressure",
+      type: "activePressure",
+      content: "Old pressure.",
+      active: true,
+    });
+    let state = {
+      ...base,
+      components: [pressure],
+      memoryAutoApprove: { ...base.memoryAutoApprove, plotPressureUpdate: true },
+    };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "pressure-1",
+        proposedType: "plotPressureUpdate",
+        title: "Active Pressure",
+        targetId: "comp-pressure",
+        content: "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+        status: "pending",
+      }),
+    });
+
+    expect(state.components.find((component) => component.id === "comp-pressure")?.content).toBe(
+      "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+    );
+    expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-1")).toBe(false);
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "pressure-duplicate",
+        proposedType: "plotPressureUpdate",
+        title: "Active Pressure",
+        targetId: "comp-pressure",
+        content: "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+        status: "pending",
+      }),
+    });
+
+    expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-duplicate")).toBe(false);
+  });
+
   it("approving a proposal that names a card by an alias updates that card instead of duplicating it", () => {
     const toph = makeStoryCard({ id: "card-toph", title: "Toph Beifong", keys: ["Toph", "Beifong"], content: "• Greatest earthbender alive.", active: true });
     let state = { ...baseAdventure(), storyCards: [toph] };

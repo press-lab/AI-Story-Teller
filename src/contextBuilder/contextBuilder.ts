@@ -28,6 +28,11 @@ CONTEXT SECTIONS (read all, honour their order):
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
   K. Recent Messages — the most recent story turns in chronological order.
 
+CANON GROUNDING:
+  Treat this adventure's context as the only canon, even when names, places, factions, or concepts resemble a published setting, fandom, or prior playthrough.
+  Story Cards are binding identity records for named characters, locations, factions, relationships, and lore. If a Story Card is present, follow it over any outside knowledge.
+  If a famous or familiar name appears but no matching Story Card, Plot Essential, Brain, or Recent Message establishes the detail, treat the detail as unknown. Do not import biography, relationships, motives, powers, locations, or events from model training data.
+
 Honour every section. Continue the scene in prose. Keep the player able to act.`;
 
 interface BuildOptions {

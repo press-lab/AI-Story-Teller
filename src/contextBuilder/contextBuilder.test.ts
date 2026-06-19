@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Adventure, MemoryPriorityMode, TokenBudgetSettings } from "../types/adventure";
-import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, defaultNarrationRulesContent, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
 import { buildContext } from "./contextBuilder";
@@ -113,6 +113,31 @@ describe("buildContext", () => {
     expect(result.messages[0].content).toContain("Keep player agency intact and end on action.");
     expect(result.sections.find((section) => section.id === "aiInstructions")?.items).toHaveLength(0);
     expect(result.sections.find((section) => section.id === "system")?.items.map((item) => item.id)).toContain("narration-only");
+  });
+
+  it("warns models not to import fandom canon when familiar names appear", () => {
+    const jinx = makeStoryCard({
+      id: "card-jinx",
+      title: "Jinx",
+      content: "Jinx is a quiet Piltover archivist in this adventure, not a chaos bomber.",
+      keys: ["Jinx", "Powder"],
+      type: "character",
+      priority: 90,
+    });
+    const adventure = {
+      ...createDefaultAdventure("Arcane AU"),
+      storyCards: [jinx],
+      messages: [{ id: "msg-1", role: "user" as const, content: "I ask Jinx what she found in the archive.", createdAt: "2026-01-01T00:00:00.000Z" }],
+    } satisfies Adventure;
+
+    const result = buildContext(adventure, { currentInput: "Jinx waits beside the archive desk." });
+    const payload = result.messages[0].content;
+
+    expect(payload).toContain("Treat this adventure's context as the only canon");
+    expect(payload).toContain("Do not import biography, relationships, motives, powers, locations, or events from model training data.");
+    expect(payload).toContain("Jinx is a quiet Piltover archivist in this adventure");
+    expect(defaultNarrationRulesContent).toContain("the adventure context is the only canon");
+    expect(defaultNarrationRulesContent).toContain("treat those missing details as unknown");
   });
 
   it("assembles sections in the required deterministic order (A–M)", () => {
@@ -299,7 +324,7 @@ describe("buildContext", () => {
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
       // Budget sized to fit system-shell + high-priority card only
-      tokenBudgetSettings: budget({ maxContextTokens: 460, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
+      tokenBudgetSettings: budget({ maxContextTokens: 620, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
     const result = buildContext(adventure, { currentInput: "signal" });

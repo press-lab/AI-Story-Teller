@@ -11,6 +11,7 @@ import type {
   TokenBudgetSettings,
 } from "../types/adventure";
 import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pageTypes";
+import { defaultUiPreferences } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -186,6 +187,20 @@ export function SettingsPage({
         <article className="panel">
           <h3>Interface</h3>
           <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
+          <div className="grid two">
+            <Field label="Dark mode text color">
+              <input
+                type="color"
+                value={uiPreferences.darkModeTextColor || defaultUiPreferences.darkModeTextColor}
+                onChange={(e) => updateUi({ darkModeTextColor: e.target.value })}
+              />
+            </Field>
+            <Field label="Reset text color">
+              <button type="button" onClick={() => updateUi({ darkModeTextColor: defaultUiPreferences.darkModeTextColor })}>
+                Reset
+              </button>
+            </Field>
+          </div>
           <Field label="Density">
             <select
               value={uiPreferences.density}

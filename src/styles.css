@@ -36,7 +36,7 @@
 :root.dark-mode {
   color-scheme: dark;
   --page-bg: #151817;
-  --text: #ecefeb;
+  --text: var(--dark-text-color, #d6ddd4);
   --muted: #aab3aa;
   --surface: #202523;
   --surface-soft: #252b28;

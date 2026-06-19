@@ -428,6 +428,70 @@ function normalizeProposalTitle(title: string): string {
     .trim();
 }
 
+const DUPLICATE_CONTENT_STOPWORDS = new Set([
+  "about",
+  "after",
+  "again",
+  "against",
+  "also",
+  "and",
+  "are",
+  "been",
+  "being",
+  "but",
+  "can",
+  "for",
+  "from",
+  "has",
+  "have",
+  "her",
+  "his",
+  "into",
+  "its",
+  "now",
+  "only",
+  "that",
+  "the",
+  "their",
+  "them",
+  "they",
+  "this",
+  "through",
+  "with",
+  "you",
+]);
+
+function normalizedContentTokens(content: string): Set<string> {
+  const words = stripThink(content)
+    .toLowerCase()
+    .replace(/[•*#"'’]/g, " ")
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .split(/\s+/)
+    .map((word) => word.replace(/^-+|-+$/g, "").trim())
+    .filter((word) => word.length > 2 && !DUPLICATE_CONTENT_STOPWORDS.has(word));
+  return new Set(words);
+}
+
+function contentLooksDuplicate(a: string, b: string): boolean {
+  const aTokens = normalizedContentTokens(a);
+  const bTokens = normalizedContentTokens(b);
+  const smaller = Math.min(aTokens.size, bTokens.size);
+  if (smaller < 10) return false;
+  let overlap = 0;
+  for (const token of aTokens) {
+    if (bTokens.has(token)) overlap += 1;
+  }
+  return overlap / smaller >= 0.72;
+}
+
+function normalizedReplacementContent(content: string): string {
+  return stripThink(content)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   const rawContent = stripThink(proposal.content ?? "").trim();
   const title = stripThink(proposal.title ?? "").trim();
@@ -1014,12 +1078,34 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         clean.proposedType === "storyCard" &&
         !clean.targetId &&
         state.storyCards.some((c) => normalizeProposalTitle(c.title) === normTitle);
-      if (duplicatesPending || duplicatesDismissed || duplicatesCard) return state;
+      const duplicatesStoryCardContent =
+        clean.proposedType === "storyCard" &&
+        !isUpdate &&
+        !clean.targetId &&
+        state.activeState.memoryProposals.some((p) => p.proposedType === "storyCard" && !p.targetId && contentLooksDuplicate(p.content, clean.content));
+      const duplicatesExistingCardContent =
+        clean.proposedType === "storyCard" &&
+        !isUpdate &&
+        !clean.targetId &&
+        state.storyCards.some((c) => contentLooksDuplicate(c.content, clean.content));
+      const duplicatesCurrentPressure =
+        clean.proposedType === "plotPressureUpdate" &&
+        state.components.some(
+          (component) =>
+            component.type === "activePressure" &&
+            (component.id === clean.targetId || !clean.targetId) &&
+            normalizedReplacementContent(component.content) === normalizedReplacementContent(clean.content),
+        );
+      if (duplicatesPending || duplicatesDismissed || duplicatesCard || duplicatesStoryCardContent || duplicatesExistingCardContent || duplicatesCurrentPressure) return state;
       const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {
         const approved = updateMemoryProposal(clean, { status: "approved" });
+        const applied = applyApprovedMemoryProposal(state, approved);
+        if (clean.proposedType === "plotPressureUpdate") {
+          return touchAdventure(state, applied);
+        }
         return touchAdventure(state, {
-          ...applyApprovedMemoryProposal(state, approved),
+          ...applied,
           activeState: {
             ...state.activeState,
             memoryProposals: [approved, ...state.activeState.memoryProposals],

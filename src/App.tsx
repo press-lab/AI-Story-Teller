@@ -164,6 +164,7 @@ export default function App() {
     const root = document.documentElement;
     root.classList.toggle("dark-mode", uiPreferences.darkMode);
     root.setAttribute("data-density", uiPreferences.density);
+    root.style.setProperty("--dark-text-color", uiPreferences.darkModeTextColor || defaultUiPreferences.darkModeTextColor);
     root.style.setProperty("--story-font-size", `${uiPreferences.storyFontSize}px`);
     root.style.setProperty("--story-content-width", `${uiPreferences.storyContentWidth}px`);
     root.style.setProperty("--story-content-margin", uiPreferences.storyContentAlign === "left" ? "0 auto 0 0" : uiPreferences.storyContentAlign === "right" ? "0 0 0 auto" : "0 auto");
