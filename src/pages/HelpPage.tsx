@@ -696,6 +696,31 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     ),
   },
   {
+    id: "best-practices-narration-rules",
+    title: "Narration Rules — Best Practices",
+    category: "Best Practices",
+    summary: "How the default Narration Rules work and how to customize them without breaking immersion.",
+    tags: ["narration rules", "scene transitions", "prose", "agency", "best practices"],
+    body: (
+      <>
+        <p>
+          Narration Rules are the primary per-adventure behavior contract. They load every turn at the top of the system prompt and control perspective, agency, continuity, character behavior, and prose style. The defaults cover the most common failure modes out of the box — read them before adding a separate AI Instructions component to avoid duplicating rules.
+        </p>
+        <p><strong>Key rules in the default and why they exist:</strong></p>
+        <ul>
+          <li><strong>END OPEN</strong> — prevents option-menu endings ("Want to X, or Y?"). Models trained on human approval data default to presenting choices; this explicitly forbids it.</li>
+          <li><strong>NARRATOR STANCE</strong> — forbids lines like "the choice is yours." The player always has options; the narrator never needs to announce it.</li>
+          <li><strong>SCENE TRANSITIONS</strong> — the rule is "don't resolve decisions the player hasn't made," not "never move." If the player's action implies movement, the scene carries through. The camera only stalls if the player hasn't committed.</li>
+          <li><strong>CONTINUITY</strong> — locks out outside canon. If you're using a fandom setting, the model must not import biography, relationships, or events that aren't in the active context.</li>
+          <li><strong>PROSE</strong> — varied sentence rhythm, sensory detail over exposition. Scenes should feel like they're happening, not being described.</li>
+        </ul>
+        <p><strong>When to customize Narration Rules.</strong> The defaults work for most adventures. Customize when your adventure has a fundamentally different agency model — e.g., "DO NOT SPEAK OR TAKE ACTIONS FOR [player name]" for a strict interactive fiction setup, or second-person present tense lock when the default is flexible.</p>
+        <p><strong>What not to add to Narration Rules.</strong> Scenario-specific constraints (bending rules, faction politics, setting-specific tone) belong in AI Instructions, not Narration Rules. Narration Rules are structural mechanics; AI Instructions carry premise-specific contracts.</p>
+        <p><strong>Existing adventures.</strong> The default Narration Rules only apply to newly created adventures. If your existing adventure's Global Generation Rules component has an older version, open Components → Global Generation Rules and update the SCENE TRANSITIONS and PROSE sections manually.</p>
+      </>
+    ),
+  },
+  {
     id: "best-practices-ai-instructions",
     title: "AI Instructions — Best Practices",
     category: "Best Practices",
@@ -704,28 +729,20 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          AI Instructions are optional always-on context sent every turn after Narration Rules. They can hold a
-          separate scenario-specific contract, but they are not required for Narration Rules to work. If your
-          Narration Rules already contain the stable behavior, perspective, agency, tone, and drift-prevention
-          rules you want, leaving AI Instructions absent is valid and usually avoids duplication.
+          AI Instructions are optional always-on context sent every turn after Narration Rules. Use them for scenario-specific contracts: setting rules, power-level handling, story behavior drift prevention, and prose style guidance that is particular to this adventure. If your Narration Rules already cover stable behavior, agency, and tone, you can leave AI Instructions absent.
         </p>
-        <p><strong>The option-menu problem.</strong> Models trained with strong human-approval feedback (e.g. DeepSeek) interpret "leave choices for the player" as an instruction to <em>present explicit options</em>. The result: every character ends their scene with "Want to X, or Y?" — breaking immersion because every character feels the same.</p>
-        <p><strong>Fix: forbid the pattern explicitly.</strong></p>
-        <p><strong>Good AI Instructions ending behavior:</strong></p>
+        <p><strong>Structure AI Instructions with named ALL-CAPS sections.</strong> Each section should be 2–5 tight bullet points. Common sections for a well-built adventure:</p>
         <ul>
-          <li>"Do not end turns with explicit choices, questions directed at the player, or option menus. End at a natural story beat — the player decides what happens next."</li>
-          <li>"Each character finishes their scene naturally. Never structure the end of a turn as a choose-your-own-adventure prompt."</li>
+          <li><strong>SETTING</strong> — canon source, what's altered by the premise, adult-only or other hard constraints.</li>
+          <li><strong>STORY BEHAVIOR</strong> — what the story should be driven by (jobs, infiltration, faction pressure) and what drift patterns to prevent (council simulation, worship, instant devotion).</li>
+          <li><strong>PLAYER POWER</strong> — if the player is intentionally overpowered, explicit rules: never nerf, stakes land through timing/people/politics not incompetence, NPCs engage without worship.</li>
+          <li><strong>PROSE</strong> — sentence rhythm, dialogue voice diversity, sensory vs. expository balance. This section meaningfully improves output quality even when everything else is default.</li>
+          <li><strong>PREMISE-SPECIFIC RULES</strong> — bending systems, technology rules, faction logic, anything that would otherwise drift by turn 10.</li>
         </ul>
-        <p><strong>Bad AI Instructions ending behavior:</strong></p>
-        <ul>
-          <li>"Leave choices for the player." (triggers option-menu behavior in RLHF-heavy models)</li>
-          <li>"Give the player agency." (same problem — model interprets this as presenting menus)</li>
-          <li>"End scenes open-ended." (too vague — model defaults to option listing as its "open" behavior)</li>
-        </ul>
-        <p><strong>Character voice anchoring.</strong> If a character has a distinct voice (terse, sarcastic, never expresses feelings directly), put that in the character's Story Card using a Voice Contract — not in AI Instructions. AI Instructions apply globally. Per-character voice belongs on the character's card.</p>
-        <p><strong>Don't duplicate Narration Rules.</strong> Rules like "write each character from their Story Card" and "match the player's language" already live in the default Narration Rules and are sent every turn. Don't restate them in AI Instructions — it wastes tokens and creates two sources of truth. Use AI Instructions only for a separate scenario-specific contract you intentionally want to inspect on its own.</p>
-        <p><strong>The word "choices" is a trigger.</strong> Whenever you write "leave X's choices for the player," the model reads "present choices to the player." Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
-        <p><strong>The most important rule:</strong> choose one authoritative home for each stable rule. Keeping the complete contract in Narration Rules is valid. If you use AI Instructions, keep them short, non-duplicative, behavioral, and scenario-specific — never scene-specific.</p>
+        <p><strong>The option-menu problem.</strong> Models trained on human approval data (e.g. DeepSeek) interpret "leave choices for the player" as "present explicit options." Every character ends with "Want to X, or Y?" The default Narration Rules already prevent this — don't restate it in AI Instructions.</p>
+        <p><strong>Character voice anchoring.</strong> Per-character voice belongs on the character's Story Card using a Voice Contract, not in AI Instructions. AI Instructions apply globally — putting one character's rules here dilutes them and creates two sources of truth.</p>
+        <p><strong>Don't duplicate Narration Rules.</strong> Perspective, continuity, language matching, and option-menu prevention are already in the default Narration Rules every turn. Restating them wastes tokens.</p>
+        <p><strong>The word "choices" is a trigger.</strong> "Leave X's choices for the player" → model presents menus. Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
       </>
     ),
   },
