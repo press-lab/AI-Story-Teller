@@ -38,25 +38,34 @@ const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", 
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
 
-  // 1. Fenced block that spans the whole response
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
-  if (fenced) return JSON.parse(fenced) as T;
+  const attempts: Array<() => string | undefined> = [
+    // 1. Fenced block spanning the whole response
+    () => trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1],
+    // 2. Any fenced block anywhere in the response
+    () => trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1],
+    // 3. Outermost {...}
+    () => { const s = trimmed.indexOf("{"); const e = trimmed.lastIndexOf("}"); return s !== -1 && e > s ? trimmed.slice(s, e + 1) : undefined; },
+    // 4. Raw response as-is
+    () => trimmed,
+  ];
 
-  // 2. Any fenced block anywhere in the response
-  const anyFence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
-  if (anyFence) return JSON.parse(anyFence) as T;
-
-  // 3. Outermost {...} anywhere in the response (handles preamble/postamble prose)
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start !== -1 && end > start) return JSON.parse(trimmed.slice(start, end + 1)) as T;
-
-  return JSON.parse(trimmed) as T;
+  let lastErr: unknown;
+  for (const attempt of attempts) {
+    const candidate = attempt();
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate) as T;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  const preview = trimmed.slice(0, 300);
+  throw new Error(`Could not parse model response as JSON. Raw response (first 300 chars): ${preview}\n\nParse error: ${String(lastErr)}`);
 }
 
 const SYSTEM_PROMPT = `You are an expert interactive fiction game master and world builder. Given a premise, generate a complete starter setup for an AI-powered text adventure.
 
-Output ONLY valid JSON matching this schema exactly:
+Output ONLY valid JSON — no explanation, no preamble, no markdown prose outside the JSON block. All field values must be in English regardless of the premise language.
 {
   "title": "string — evocative adventure name",
   "openingScene": "string — 2-4 paragraphs setting the scene and immediately immersing the player",
