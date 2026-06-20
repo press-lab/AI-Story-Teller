@@ -61,8 +61,13 @@ export const defaultModelConfig: ProviderConfig = {
   name: "deepseek",
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
-  temperature: 1.0,
+  // Storytelling profile (mirrors AID): cooler temp + nucleus trim + a strong presence penalty so
+  // prose stays coherent without looping. topK left unset — DeepSeek rejects it; set it per-provider.
+  temperature: 0.7,
   maxOutputTokens: 1200,
+  topP: 0.95,
+  presencePenalty: 0.8,
+  frequencyPenalty: 0,
   requestThrottle: defaultProviderRequestThrottle,
 };
 

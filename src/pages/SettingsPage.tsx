@@ -123,7 +123,7 @@ export function SettingsPage({
   function addPreset() {
     const base = activePreset ?? providerPresets[0];
     const newId = `preset-${Date.now()}`;
-    const newPreset: ProviderPreset = { ...(base ?? { name: "", baseUrl: "", model: "", apiKey: "", temperature: 1, maxOutputTokens: 2048 }), id: newId, label: "New Model", apiKey: "" };
+    const newPreset: ProviderPreset = { ...(base ?? { name: "", baseUrl: "", model: "", apiKey: "", temperature: 0.7, maxOutputTokens: 2048, topP: 0.95, presencePenalty: 0.8, frequencyPenalty: 0 }), id: newId, label: "New Model", apiKey: "" };
     onProviderPresetsChange([...providerPresets, newPreset]);
     setExpandedPresetId(newId);
   }
@@ -306,7 +306,23 @@ export function SettingsPage({
                       <Field label="Max Output Tokens">
                         <NumberInput min={1} value={preset.maxOutputTokens} onChange={(maxOutputTokens) => updatePreset(preset.id, { maxOutputTokens })} />
                       </Field>
+                      <Field label="Top P (nucleus; 1 = off)">
+                        <NumberInput min={0} max={1} value={preset.topP ?? 1} onChange={(topP) => updatePreset(preset.id, { topP })} />
+                      </Field>
+                      <Field label="Top K (0 = off; unsupported on DeepSeek)">
+                        <NumberInput min={0} value={preset.topK ?? 0} onChange={(topK) => updatePreset(preset.id, { topK: topK || undefined })} />
+                      </Field>
+                      <Field label="Presence Penalty (reduces looping; 0–2)">
+                        <NumberInput min={0} value={preset.presencePenalty ?? 0} onChange={(presencePenalty) => updatePreset(preset.id, { presencePenalty })} />
+                      </Field>
+                      <Field label="Frequency Penalty (0–2)">
+                        <NumberInput min={0} value={preset.frequencyPenalty ?? 0} onChange={(frequencyPenalty) => updatePreset(preset.id, { frequencyPenalty })} />
+                      </Field>
                     </div>
+                    <p className="muted" style={{ fontSize: "0.8em", margin: "0.25rem 0 0" }}>
+                      Storytelling profile (AID-style): Temp ~0.7, Top P 0.95, Presence ~0.8. Lower temp + a presence
+                      penalty keeps prose coherent without looping. Top K only works on providers that support it.
+                    </p>
                     {advanced && (
                       <>
                         <h4>API Throttle</h4>

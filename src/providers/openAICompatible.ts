@@ -127,6 +127,10 @@ async function sendOpenAIRequest(
         messages,
         temperature: config.temperature,
         max_tokens: config.maxOutputTokens,
+        ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+        ...(config.topK !== undefined && config.topK > 0 ? { top_k: config.topK } : {}),
+        ...(config.presencePenalty !== undefined ? { presence_penalty: config.presencePenalty } : {}),
+        ...(config.frequencyPenalty !== undefined ? { frequency_penalty: config.frequencyPenalty } : {}),
         ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
         ...(thinking ? { thinking: { type: thinking } } : {}),
       }),
@@ -188,6 +192,9 @@ async function sendAnthropicRequest(
         messages: chatMessages,
         temperature: config.temperature,
         max_tokens: config.maxOutputTokens,
+        // Anthropic supports top_p / top_k but NOT presence/frequency penalties.
+        ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+        ...(config.topK !== undefined && config.topK > 0 ? { top_k: config.topK } : {}),
       }),
     });
   } catch (err) {

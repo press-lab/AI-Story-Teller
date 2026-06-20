@@ -243,6 +243,14 @@ export interface ProviderConfig {
   model: string;
   temperature: number;
   maxOutputTokens: number;
+  /** Nucleus sampling — only sample from tokens whose cumulative probability ≥ this (e.g. 0.95). */
+  topP?: number;
+  /** Only consider the K most-likely tokens. Not supported by all providers (DeepSeek rejects it). */
+  topK?: number;
+  /** Flat penalty on any token that has already appeared — pushes toward new words/ideas (e.g. 0.8). */
+  presencePenalty?: number;
+  /** Penalty scaled by how often a token has appeared. */
+  frequencyPenalty?: number;
   requestThrottle?: ProviderRequestThrottle;
 }
 
