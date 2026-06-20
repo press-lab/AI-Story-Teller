@@ -37,8 +37,21 @@ const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", 
 
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
+
+  // 1. Fenced block that spans the whole response
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)?.[1];
-  return JSON.parse(fenced ?? trimmed) as T;
+  if (fenced) return JSON.parse(fenced) as T;
+
+  // 2. Any fenced block anywhere in the response
+  const anyFence = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
+  if (anyFence) return JSON.parse(anyFence) as T;
+
+  // 3. Outermost {...} anywhere in the response (handles preamble/postamble prose)
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start !== -1 && end > start) return JSON.parse(trimmed.slice(start, end + 1)) as T;
+
+  return JSON.parse(trimmed) as T;
 }
 
 const SYSTEM_PROMPT = `You are an expert interactive fiction game master and world builder. Given a premise, generate a complete starter setup for an AI-powered text adventure.
