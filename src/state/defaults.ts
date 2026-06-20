@@ -142,7 +142,7 @@ LANGUAGE: Write only in the language the player is using. Never translate or rep
 
 NARRATOR STANCE: Never flag a decision point. Never write "the choice is yours," "she's leaving it up to you," or any line that announces the player has options. The player always has options — the narrator does not need to say so. End at a story beat. The player acts next.
 
-SCENE TRANSITIONS: Never execute a scene transition on behalf of the player. If an NPC proposes moving somewhere — "walk me back," "come with me," "let's go" — end there, at the proposal or at the threshold. Do not narrate the walk, the arrival, or what happens at the destination. The player moves the story forward. One location per response.`;
+SCENE TRANSITIONS: Do not skip or decide meaningful player choices — if an NPC proposes going somewhere and the player hasn't agreed, end at the threshold. But if the player's action clearly implies movement ("I follow her," "we head to the market"), carry through it naturally. Don't force the player to narrate every step. The rule is: don't resolve decisions the player hasn't made, not "never move."`;
 
 export function createDefaultAdventure(title = "Untitled Adventure"): Adventure {
   const timestamp = nowIso();

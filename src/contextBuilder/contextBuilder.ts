@@ -331,7 +331,6 @@ function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Mes
   const systemContent = lengthHintText ? `${lengthHintText}\n\n${contextText}` : contextText;
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
   const extraMessages: { role: "user" | "assistant"; content: string }[] = [];
-  if (lengthHintText) extraMessages.push({ role: "user" as const, content: `[Reminder: ${lengthHintText}]` });
   if (thoughtCaptureText) extraMessages.push({ role: "user" as const, content: thoughtCaptureText });
   return [
     { role: "system" as const, content: systemContent },
