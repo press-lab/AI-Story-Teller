@@ -95,6 +95,7 @@ export interface ComponentEntry {
 }
 
 export type StoryCardType = "character" | "location" | "lore" | "plot" | "custom";
+export type StoryCardMemoryMode = "static" | "living" | "historical";
 
 export interface StoryCard {
   id: string;
@@ -103,6 +104,11 @@ export interface StoryCard {
   matchType: TriggerMatchType;
   content: string;
   type: StoryCardType;
+  /**
+   * static: always-true reference facts; living: current evolving subject whose
+   * updates merge/archive; historical: past event or completed arc record.
+   */
+  memoryMode: StoryCardMemoryMode;
   active: boolean;
   pinned: boolean;
   protected: boolean;
@@ -366,6 +372,7 @@ export interface MemoryProposal {
   status: MemoryProposalStatus;
   targetId?: string;
   appendContent?: boolean;
+  memoryMode?: StoryCardMemoryMode;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

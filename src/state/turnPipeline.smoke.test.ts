@@ -350,7 +350,7 @@ describe("full turn smoke path", () => {
 
     // Model emits a memory tag whose title matches the existing card → should become an update, not a sibling.
     const provider = vi.fn(async () => ({
-      content: 'They go public.\n<memory category="relationship" title="Setu and Nyxa" content="• The bond is now openly acknowledged at court." triggers="Setu, Nyxa, court"/>',
+      content: 'They go public.\n<memory category="relationship" memoryMode="living" title="Setu and Nyxa" content="• The bond is now openly acknowledged at court." triggers="Setu, Nyxa, court"/>',
     }));
 
     const result = await runTurnPipeline({
@@ -367,6 +367,7 @@ describe("full turn smoke path", () => {
     expect(proposal?.targetId).toBe("card-couple");
     expect(proposal?.appendContent).toBe(true);
     expect(proposal?.title).toBe("Setu and Nyxa");
+    expect(proposal?.memoryMode).toBe("living");
     // No sibling card was created, and the tag was stripped from the visible prose.
     expect(result.adventure.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
     expect(result.responseContent).not.toContain("<memory");

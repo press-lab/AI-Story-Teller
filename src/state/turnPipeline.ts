@@ -1,6 +1,7 @@
 import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
 import type { MemoryProposal } from "../types/adventure";
 import { runContinuityCheck, scanForRiskyClaims } from "../continuityLint";
+import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
 import { evaluateTriggerRules, type TriggerEvaluationEvent } from "../triggers/triggerEngine";
 import type {
   Adventure,
@@ -144,21 +145,32 @@ export async function applyProviderResponse({
   if (memoryTags.length > 0) {
     const turn = next.activeState.turn;
     for (const tag of memoryTags) {
-      const existing = next.storyCards.find((c) => cardMatchesName(c, tag.title));
+      const routed = resolveMemoryTarget(next, {
+        proposedType: "storyCard",
+        title: tag.title,
+        content: tag.content,
+        suggestedTriggers: tag.triggers,
+        memoryMode: tag.memoryMode,
+        category: tag.category,
+        sourceText: "",
+        rationale: `Inline memory tag: ${tag.category}`,
+      });
+      const existing = routed.targetId ? next.storyCards.find((c) => c.id === routed.targetId) : next.storyCards.find((c) => cardMatchesName(c, routed.title));
       const now = nowIso();
       const proposal: MemoryProposal = {
         id: createId("proposal"),
         sourceTurnId: String(turn),
         sourceText: "",
         proposedType: "storyCard",
-        title: existing ? existing.title : tag.title,
-        content: tag.content,
-        suggestedTriggers: tag.triggers,
+        title: routed.title,
+        content: routed.content,
+        suggestedTriggers: routed.suggestedTriggers,
         confidence: 0.75,
-        rationale: existing ? `Update to "${existing.title}" (inline memory tag: ${tag.category})` : `Inline memory tag: ${tag.category}`,
+        rationale: routed.rationale ?? (existing ? `Update to "${existing.title}" (inline memory tag: ${tag.category})` : `Inline memory tag: ${tag.category}`),
         status: "pending",
-        targetId: existing?.id,
-        appendContent: Boolean(existing),
+        targetId: routed.targetId ?? existing?.id,
+        appendContent: routed.appendContent ?? Boolean(existing),
+        memoryMode: routed.memoryMode,
         createdAt: now,
         updatedAt: now,
       };

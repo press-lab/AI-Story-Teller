@@ -463,7 +463,7 @@ export function useAdventureRuntime(
     if (!proposal) return;
     const newContent = await regenerateProposalContent(proposal, adventure, activeProviderConfig);
     if (!newContent) return;
-    const appendContent = proposal.appendContent ?? (proposal.proposedType === "plotEssentialsUpdate" ? true : undefined);
+    const appendContent = proposal.appendContent ?? (proposal.proposedType === "plotEssentialsUpdate" ? false : undefined);
     applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent } }]);
   }
 

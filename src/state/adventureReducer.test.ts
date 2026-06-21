@@ -754,6 +754,120 @@ describe("adventureReducer", () => {
     expect(merged?.keys).toContain("chambers");
   });
 
+  it("routes related generated facts into an existing living story card instead of creating a sibling", () => {
+    const viktor = makeStoryCard({
+      id: "card-viktor",
+      title: "Viktor's Lattice Heart",
+      content: "- Viktor maintains the fused commune through his lattice heart.",
+      keys: ["Viktor", "lattice heart"],
+      memoryMode: "living",
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [viktor] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "viktor-update",
+        proposedType: "storyCard",
+        title: "Fused Commune Maintenance",
+        content: "- Viktor's lattice heart now requires periodic commune maintenance.",
+        suggestedTriggers: ["Viktor", "fused commune", "lattice heart"],
+        status: "pending",
+      }),
+    });
+
+    const proposal = state.activeState.memoryProposals.find((entry) => entry.id === "viktor-update");
+    expect(proposal).toMatchObject({
+      title: "Viktor's Lattice Heart",
+      targetId: "card-viktor",
+      appendContent: true,
+      memoryMode: "living",
+    });
+
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "viktor-update" });
+    const cards = state.storyCards.filter((card) => /viktor/i.test(card.title));
+    expect(cards).toHaveLength(1);
+    expect(cards[0].content).toContain("periodic commune maintenance");
+  });
+
+  it("removes broad character triggers from generated subplot cards when those triggers belong to other cards", () => {
+    const jinx = makeStoryCard({
+      id: "card-jinx",
+      title: "Jinx",
+      content: "- Jinx carries cloud tattoos and uses blue fire.",
+      keys: ["Jinx", "blue fire"],
+      type: "character",
+      active: true,
+    });
+    const vi = makeStoryCard({
+      id: "card-vi",
+      title: "Vi",
+      content: "- Vi works the case through Piltover channels.",
+      keys: ["Vi"],
+      type: "character",
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [jinx, vi] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "vi-search",
+        proposedType: "storyCard",
+        title: "Vi's Search for Jinx",
+        content: "- Vi's search for Jinx now runs through Piltover specialists and a sealed warrant.",
+        suggestedTriggers: ["Jinx", "Vi", "blue fire", "Piltover specialists", "sealed warrant"],
+        memoryMode: "living",
+        status: "pending",
+      }),
+    });
+
+    const proposal = state.activeState.memoryProposals.find((entry) => entry.id === "vi-search");
+    expect(proposal?.suggestedTriggers).toEqual(["Piltover specialists", "sealed warrant"]);
+
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "vi-search" });
+    const searchCard = state.storyCards.find((card) => card.title === "Vi's Search for Jinx");
+    expect(searchCard?.keys).toEqual(["Piltover specialists", "sealed warrant"]);
+  });
+
+  it("replaces Plot Essentials and turns outgoing PE facts into pending historical card proposals", () => {
+    const plot = makeComponent({
+      id: "component-pe",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content:
+        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- Caitlyn is currently sealing the Pumpworks with a task force.",
+      active: true,
+    });
+    let state = { ...baseAdventure(), components: [plot] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "pe-replacement",
+        proposedType: "plotEssentialsUpdate",
+        title: "Plot Essentials",
+        targetId: "component-pe",
+        appendContent: false,
+        content: "- Caitlyn's task force has moved from sealing the Pumpworks to guarding the canal exits.",
+        status: "pending",
+      }),
+    });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "pe-replacement" });
+
+    expect(state.components.find((component) => component.id === "component-pe")?.content).toBe(
+      "- Caitlyn's task force has moved from sealing the Pumpworks to guarding the canal exits.",
+    );
+    const outgoing = state.activeState.memoryProposals.filter(
+      (proposal) => proposal.proposedType === "storyCard" && proposal.status === "pending",
+    );
+    expect(outgoing.some((proposal) => proposal.content.includes("Drowned Choir"))).toBe(true);
+    expect(outgoing.every((proposal) => proposal.memoryMode === "historical")).toBe(true);
+    expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "pe-replacement")?.status).toBe("approved");
+  });
+
   it("does not resurrect a dismissed suggestion, but still allows new living-card updates", () => {
     let state = baseAdventure();
 

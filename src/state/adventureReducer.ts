@@ -20,6 +20,7 @@ import type {
 } from "../types/adventure";
 import { cardMatchesName, defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
+import { resolveMemoryTarget, sanitizeStoryCardTriggers } from "../memory/resolveMemoryTarget";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
@@ -534,6 +535,100 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   };
 }
 
+function routedProposal(state: Adventure, proposal: MemoryProposal): MemoryProposal {
+  const routed = resolveMemoryTarget(state, {
+    proposedType: proposal.proposedType,
+    title: proposal.title,
+    content: proposal.content,
+    sourceText: proposal.sourceText,
+    suggestedTriggers: proposal.suggestedTriggers,
+    targetId: proposal.targetId,
+    appendContent: proposal.appendContent,
+    memoryMode: proposal.memoryMode,
+    rationale: proposal.rationale,
+  });
+  return {
+    ...proposal,
+    title: routed.title,
+    content: routed.content,
+    suggestedTriggers: routed.suggestedTriggers,
+    targetId: routed.targetId,
+    appendContent: routed.appendContent,
+    memoryMode: routed.memoryMode,
+    rationale: routed.rationale ?? proposal.rationale,
+  };
+}
+
+function factLines(text: string): string[] {
+  const lines = text
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*•]\s*/, "").trim())
+    .filter(Boolean);
+  const units = lines.length > 1 ? lines : text.split(/(?<=[.!?])\s+/).map((line) => line.trim()).filter(Boolean);
+  return units.filter((line) => line.length >= 40).slice(0, 6);
+}
+
+function titleFromFact(fact: string): string {
+  const skip = new Set(["The", "A", "An", "During", "After", "Before", "Every", "Current", "Active"]);
+  const named = [...fact.matchAll(/\b[A-Z][a-z]+(?:['’]s)?(?:\s+[A-Z][a-z]+(?:['’]s)?)?\b/g)]
+    .map((match) => match[0].replace(/['’]s$/, ""))
+    .find((item) => !skip.has(item));
+  return named ?? "Plot Essential History";
+}
+
+function triggersFromFact(fact: string): string[] {
+  return [...fact.matchAll(/\b[A-Z][a-z]+(?:['’]s)?(?:\s+[A-Z][a-z]+(?:['’]s)?)?\b/g)]
+    .map((match) => match[0].replace(/['’]s$/, ""))
+    .filter((item, index, arr) => item.length > 2 && arr.indexOf(item) === index)
+    .slice(0, 4);
+}
+
+function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryProposal): MemoryProposal[] {
+  if (proposal.proposedType !== "plotEssentialsUpdate" || proposal.appendContent) return [];
+  const target =
+    state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
+    state.components.find((component) => component.type === "plotEssentials");
+  if (!target?.content.trim() || !proposal.content.trim()) return [];
+  const newNormalized = normalizedReplacementContent(proposal.content);
+  const now = nowIso();
+  const sourceTurnId = String(state.activeState.turn);
+  const results: MemoryProposal[] = [];
+  for (const fact of factLines(target.content)) {
+    const normalizedFact = normalizedReplacementContent(fact);
+    if (!normalizedFact || newNormalized.includes(normalizedFact)) continue;
+    if (state.storyCards.some((card) => contentLooksDuplicate(card.content, fact) || normalizedReplacementContent(card.content).includes(normalizedFact))) continue;
+    const content = `• ${fact}`;
+    const routed = resolveMemoryTarget(state, {
+      proposedType: "storyCard",
+      title: titleFromFact(fact),
+      content,
+      sourceText: fact,
+      suggestedTriggers: triggersFromFact(fact),
+      memoryMode: "historical",
+      rationale: "Fact left Plot Essentials during a replacement. Approve if it remains true as history or durable card context; reject if it is obsolete.",
+    });
+    results.push({
+      id: createId("proposal"),
+      sourceTurnId,
+      sourceText: fact,
+      proposedType: "storyCard",
+      title: routed.title,
+      content: routed.content,
+      suggestedTriggers: routed.suggestedTriggers,
+      confidence: 0.72,
+      rationale: routed.rationale ?? "Fact left Plot Essentials during a replacement. Approve if it remains true as history or durable card context; reject if it is obsolete.",
+      status: "pending",
+      targetId: routed.targetId,
+      appendContent: routed.appendContent,
+      memoryMode: routed.memoryMode ?? "historical",
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (results.length >= 3) break;
+  }
+  return results;
+}
+
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
   if (proposal.proposedType === "storyCard") {
     if (!proposal.content.trim()) return {};
@@ -543,7 +638,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const existing = state.storyCards.find(
       (card) => card.id === proposal.targetId || cardMatchesName(card, proposal.title),
     );
-    let storyCard;
+    let storyCard: StoryCard;
     if (existing && proposal.appendContent) {
       // Living-card update: append the new fact to existing content, archive the oldest facts beyond
       // budget so context stays bounded and superseded facts don't read as current.
@@ -553,7 +648,11 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         ...existing,
         content: merged.content,
         archivedFacts: merged.archivedFacts,
-        keys: Array.from(new Set([...existing.keys, ...proposal.suggestedTriggers])),
+        keys: Array.from(new Set([
+          ...existing.keys,
+          ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+        ])),
+        memoryMode: "living",
         // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
         state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
       });
@@ -563,14 +662,19 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         content: safeContent,
         // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
         // break alias-matching and let the card be duplicated again later).
-        keys: Array.from(new Set([...existing.keys, ...proposal.suggestedTriggers])),
+        keys: Array.from(new Set([
+          ...existing.keys,
+          ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+        ])),
+        memoryMode: proposal.memoryMode ?? existing.memoryMode,
         state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
       });
     } else {
       storyCard = makeStoryCard({
         title: cardTitle,
         content: safeContent,
-        keys: proposal.suggestedTriggers,
+        keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers),
+        memoryMode: proposal.memoryMode ?? "static",
         type: "custom",
         active: true,
         pinned: false,
@@ -586,7 +690,8 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       const storyCard = makeStoryCard({
         title: proposal.title || "Memory Proposal",
         content: proposal.content,
-        keys: proposal.suggestedTriggers,
+        keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers),
+        memoryMode: proposal.memoryMode ?? "static",
         type: "character",
         active: true,
         state: "memoryProposal routedFromMissingBrain",
@@ -717,6 +822,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             title: arcComp.arcPremise?.trim() || arcComp.title,
             content: oldBody,
             type: "custom",
+            memoryMode: "historical",
             active: true,
             state: "archivedArc",
           }),
@@ -936,7 +1042,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         .filter(Boolean)
         .join("\n");
       const archived = cardBody.trim()
-        ? [makeStoryCard({ title: cardTitle, content: cardBody, type: "plot", active: true })]
+        ? [makeStoryCard({ title: cardTitle, content: cardBody, type: "plot", memoryMode: "historical", active: true })]
         : [];
       return touchAdventure(state, {
         storyCards: [...state.storyCards, ...archived],
@@ -1055,7 +1161,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         },
       });
     case "ADD_MEMORY_PROPOSAL": {
-      const clean = sanitizeProposal(action.proposal);
+      const clean = sanitizeProposal(routedProposal(state, action.proposal));
       if (!clean) return state;
       // Dedup: drop a proposal that duplicates one already pending, one the user already
       // dismissed (rejected/ignored), or a NEW story card whose title already exists as a card.
@@ -1100,6 +1206,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const autoApprove = state.memoryAutoApprove?.[clean.proposedType as keyof typeof state.memoryAutoApprove] ?? false;
       if (autoApprove) {
         const approved = updateMemoryProposal(clean, { status: "approved" });
+        const outgoing = outgoingPlotEssentialsProposals(state, approved);
         const applied = applyApprovedMemoryProposal(state, approved);
         if (clean.proposedType === "plotPressureUpdate") {
           return touchAdventure(state, applied);
@@ -1108,7 +1215,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           ...applied,
           activeState: {
             ...state.activeState,
-            memoryProposals: [approved, ...state.activeState.memoryProposals],
+            memoryProposals: [...outgoing, approved, ...state.activeState.memoryProposals],
           },
         });
       }
@@ -1131,13 +1238,19 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "APPROVE_MEMORY_PROPOSAL": {
       const existing = state.activeState.memoryProposals.find((proposal) => proposal.id === action.proposalId);
       if (!existing) return state;
-      const proposal = proposalWithEdits(existing, action.editedProposal);
+      const proposal = sanitizeProposal(routedProposal(state, proposalWithEdits(existing, action.editedProposal)));
+      if (!proposal) return state;
       const approved = updateMemoryProposal(proposal, { status: "approved" });
+      const outgoing = outgoingPlotEssentialsProposals(state, approved);
+      const applied = applyApprovedMemoryProposal(state, approved);
       return touchAdventure(state, {
-        ...applyApprovedMemoryProposal(state, approved),
+        ...applied,
         activeState: {
           ...state.activeState,
-          memoryProposals: state.activeState.memoryProposals.map((entry) => (entry.id === action.proposalId ? approved : entry)),
+          memoryProposals: [
+            ...outgoing,
+            ...state.activeState.memoryProposals.map((entry) => (entry.id === action.proposalId ? approved : entry)),
+          ],
         },
       });
     }

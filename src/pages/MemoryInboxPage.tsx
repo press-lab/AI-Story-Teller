@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
+import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
 import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
@@ -26,6 +27,15 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
       existingBrainNames: adventure.brains.map((brain) => brain.characterName),
       existingStoryCards: adventure.storyCards.map((card) => ({ id: card.id, title: card.title, keys: card.keys })),
     });
+    const routed = resolveMemoryTarget(adventure, {
+      proposedType: classified.proposedType,
+      title: classified.title,
+      content: classified.content,
+      sourceText,
+      suggestedTriggers: classified.suggestedTriggers,
+      targetId: classified.targetId,
+      rationale: classified.rationale,
+    });
     const timestamp = nowIso();
     dispatch({
       type: "ADD_MEMORY_PROPOSAL",
@@ -33,14 +43,16 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
         id: createId("proposal"),
         sourceTurnId: adventure.messages.at(-1)?.id ?? "manual",
         sourceText,
-        proposedType: classified.proposedType,
-        title: classified.title,
-        content: classified.content,
-        suggestedTriggers: classified.suggestedTriggers,
+        proposedType: routed.proposedType,
+        title: routed.title,
+        content: routed.content,
+        suggestedTriggers: routed.suggestedTriggers,
         confidence: classified.confidence,
-        rationale: classified.rationale,
+        rationale: routed.rationale ?? classified.rationale,
         status: "pending",
-        targetId: classified.targetId,
+        targetId: routed.targetId,
+        appendContent: routed.appendContent,
+        memoryMode: routed.memoryMode,
         createdAt: timestamp,
         updatedAt: timestamp,
       },
@@ -217,6 +229,19 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
               ))}
             </select>
           </Field>
+          {proposal.proposedType === "storyCard" && (
+            <Field label="Memory Mode">
+              <select
+                value={proposal.memoryMode ?? "static"}
+                onChange={(event) => onUpdate(proposal, { memoryMode: event.target.value as MemoryProposal["memoryMode"] })}
+                disabled={!isPending}
+              >
+                <option value="static">static</option>
+                <option value="living">living</option>
+                <option value="historical">historical</option>
+              </select>
+            </Field>
+          )}
           <Field label="Triggers">
             <input
               value={commaList(proposal.suggestedTriggers)}

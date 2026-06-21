@@ -241,6 +241,7 @@ export function defaultArcState(): ArcPacingState {
 
 export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "title" | "content">): StoryCard {
   const timestamp = nowIso();
+  const memoryMode = overrides.memoryMode ?? "static";
   return {
     id: overrides.id ?? createId("story"),
     title: overrides.title,
@@ -248,6 +249,7 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
     matchType: overrides.matchType ?? "phrase",
     content: overrides.content,
     type: overrides.type ?? "custom",
+    memoryMode,
     active: overrides.active ?? true,
     pinned: overrides.pinned ?? false,
     protected: overrides.protected ?? false,
@@ -417,6 +419,13 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     storyCards: (adventure.storyCards ?? []).map((card) => ({
       ...card,
       matchType: card.matchType ?? "phrase",
+      memoryMode: card.memoryMode ?? (
+        (card.state ?? "").split(/\s+/).includes("living")
+          ? "living"
+          : (card.state ?? "").split(/\s+/).includes("archivedArc")
+            ? "historical"
+            : "static"
+      ),
       protected: card.protected ?? false,
       inclusionPolicy: card.inclusionPolicy ?? "triggered",
       autoUpdate: card.autoUpdate ?? false,

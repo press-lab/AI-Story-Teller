@@ -16,6 +16,7 @@ import type {
 } from "../types/adventure";
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
+import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
 import { createId, nowIso } from "../utils/id";
 import { matchPatterns, splitList } from "./matching";
 import { isTriggerOnCooldown, triggerActionToAdventureActions } from "./triggerEngine";
@@ -110,7 +111,14 @@ Keep all values verbatim and unchanged. Do not rewrite or summarize any entry.`;
 }
 
 function storyCardPrompt(card: StoryCard): string {
+  const modeInstruction =
+    card.memoryMode === "living"
+      ? "This is a LIVING card: keep the content as the current state of this evolving subject. Preserve still-current facts, update changed facts, and remove or rewrite obsolete current-state claims."
+      : card.memoryMode === "historical"
+        ? "This is a HISTORICAL card: write past-tense facts about completed events or resolved beats. Do not make completed events sound current."
+        : "This is a STATIC card: write always-true character, location, lore, or technique facts in present tense.";
   return `You are updating a persistent world fact card titled '${card.title}'.
+${modeInstruction}
 
 Current content:
 ${card.content}
@@ -132,16 +140,18 @@ Return ONLY the bullet-pointed content — no title, no headers, no commentary.`
 function componentPrompt(component: ComponentEntry): string {
   if (component.type === "plotEssentials") {
     const current = component.content?.trim();
-    return `You are contributing to a Plot Essentials arc document for an interactive fiction story.
+    return `You are maintaining Plot Essentials for an interactive fiction story.
 
-Current arc:
+Current Plot Essentials:
 ${current || "(empty)"}
 
-Based on the most recent story events, write ONLY new permanent developments to append — completed arc beats, sealed consequences, major relationship shifts, or revealed plot truths. Do NOT repeat anything already captured above. If nothing new and permanent happened, respond with an empty string.
+Based on the most recent story events, decide whether this block is stale or incomplete as the story's CURRENT OPERATING TRUTH. If it is still accurate, respond with an empty string.
 
-Do NOT include: character emotional states, reactions, or desires. Do not describe the current scene or who is present. Do not record temporary mission status or active assignments. Only sealed consequences and permanent world constraints belong here.
+If it needs updating, rewrite the FULL replacement Plot Essentials block. Keep it compact (about 80-140 words or 4-7 tight bullets). Include the current durable situation, active open tensions, current obligations, and major constraints that should shape every scene.
 
-Write as tight bullet points (• one per line). Return ONLY the new additions.`;
+Do NOT append. Do NOT preserve stale facts just because they used to be true. Do NOT include temporary room position, momentary action, character emotions, or throwaway scene details.
+
+Return ONLY the replacement Plot Essentials content, or an empty string if no update is needed.`;
   }
   return `You are updating a context component titled "${component.title}". Current content: "${component.content}". Based on what just happened, update this component. Return ONLY the new content as a plain string.`;
 }
@@ -234,17 +244,20 @@ function brainConditions(adventure: Adventure): SemanticCondition[] {
   }));
 }
 
-function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
-  const arc = adventure.components
-    .filter((c) => c.type === "plotEssentials" && c.active && c.autoUpdate === true && !isPEComponentOnCooldown(adventure, c))
+function plotEssentialsDriftConditions(adventure: Adventure): SemanticCondition[] {
+  return adventure.components
+    .filter((c) => c.type === "plotEssentials" && c.active && c.autoUpdate === true)
     .map((component) => ({
-      id: `plotEssentialsArc:${component.id}`,
-      label: `Plot Arc: ${component.title}`,
-      condition: `when a significant, permanent story development has occurred — a major arc beat completed, key relationship sealed, permanent consequence established, or plot truth revealed. Do NOT fire for minor scene events or details already established.`,
+      id: `plotEssentialsDrift:${component.id}`,
+      label: `Plot Essentials Drift: ${component.title}`,
+      condition: `when the current Plot Essentials block is stale, incomplete, or no longer describes the story's current operating truth after recent events. Do NOT fire for minor scene motion, temporary room state, or changes that only belong in Active Pressure, Current Arc, or a Story Card.`,
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
     }));
-  const currentArc = adventure.components
+}
+
+function currentArcConditions(adventure: Adventure): SemanticCondition[] {
+  return adventure.components
     .filter((c) => c.type === "currentArc" && c.active && !isPEComponentOnCooldown(adventure, c) && Boolean(c.arcPremise?.trim()))
     .map((component) => {
       const premise = component.arcPremise!.trim();
@@ -256,8 +269,11 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
         actionFactory: () => [{ type: "updateComponentArc" as const, componentId: component.id }],
       };
     });
-  const pressure = adventure.components
-    .filter((c) => c.type === "activePressure" && c.active && !isPEComponentOnCooldown(adventure, c))
+}
+
+function activePressureConditions(adventure: Adventure): SemanticCondition[] {
+  return adventure.components
+    .filter((c) => c.type === "activePressure" && c.active)
     .map((component) => ({
       id: `plotEssentialsPressure:${component.id}`,
       label: `Active Pressure: ${component.title}`,
@@ -265,7 +281,20 @@ function plotEssentialsConditions(adventure: Adventure): SemanticCondition[] {
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponentPressure" as const, componentId: component.id }],
     }));
-  return [...arc, ...currentArc, ...pressure];
+}
+
+function buildStateMaintenanceConditions(adventure: Adventure): SemanticCondition[] {
+  return [
+    ...activePressureConditions(adventure),
+    ...plotEssentialsDriftConditions(adventure),
+  ];
+}
+
+function buildLimitedMemoryConditions(adventure: Adventure): SemanticCondition[] {
+  return [
+    ...currentArcConditions(adventure),
+    ...storyCardUpdateConditions(adventure),
+  ];
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
@@ -284,14 +313,6 @@ function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
     sourceType: "storyCard" as const,
     actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: target.id }],
   }];
-}
-
-function buildMemoryConditions(adventure: Adventure): SemanticCondition[] {
-  // brainConditions removed — character thoughts are now captured inline during story generation
-  return [
-    ...storyCardUpdateConditions(adventure),
-    ...plotEssentialsConditions(adventure),
-  ];
 }
 
 function buildConditions(adventure: Adventure): SemanticCondition[] {
@@ -410,6 +431,8 @@ function makeProposal(
     content: string;
     suggestedTriggers?: string[];
     targetId?: string;
+    appendContent?: boolean;
+    memoryMode?: MemoryProposal["memoryMode"];
     rationale?: string;
   },
   adventure: Adventure,
@@ -427,7 +450,8 @@ function makeProposal(
     rationale: fields.rationale ?? "Auto-generated by semantic evaluation.",
     status: "pending",
     targetId: fields.targetId,
-    appendContent: fields.proposedType === "plotEssentialsUpdate" || fields.proposedType === "summaryUpdate" || fields.proposedType === "currentArcUpdate",
+    appendContent: fields.appendContent ?? (fields.proposedType === "summaryUpdate" || fields.proposedType === "currentArcUpdate"),
+    memoryMode: fields.memoryMode,
     createdAt: now,
     updatedAt: now,
   };
@@ -509,6 +533,8 @@ async function generatedActionsFor(
               content: storyCardNote,
               suggestedTriggers: card.keys,
               targetId: card.id,
+              appendContent: true,
+              memoryMode: card.memoryMode,
               rationale: `Brain thought for ${brain.characterName} revealed a stable character trait.`,
             },
             adventure,
@@ -529,7 +555,7 @@ async function generatedActionsFor(
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || storyCardPrompt(card), accum);
       if (requireApproval) {
         const proposal = makeProposal(
-          { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, rationale: `Auto-update for story card "${card.title}".` },
+          { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, appendContent: false, memoryMode: card.memoryMode, rationale: `Auto-update for story card "${card.title}".` },
           adventure,
         );
         return {
@@ -557,6 +583,7 @@ async function generatedActionsFor(
       const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
       if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component), accum);
+      if (!content.trim()) return { actions: [] };
       const proposal = makeProposal(
         { proposedType: "plotEssentialsUpdate", title: component.title, content, targetId: component.id, rationale: `Auto-update for "${component.title}".` },
         adventure,
@@ -839,13 +866,14 @@ Examine the description against existing story cards and characters:
 Respond ONLY with valid JSON:
 {
   "proposals": [
-    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1"] },
-    { "action": "create", "title": "New Card Title", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1", "keyword2"] }
+    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "memoryMode": "living", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1"] },
+    { "action": "create", "title": "New Card Title", "memoryMode": "historical", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1", "keyword2"] }
   ],
   "rationale": "Brief explanation of choices"
 }
 
 The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.
+Each proposal must include memoryMode: "static" for always-true facts, "living" for current evolving subjects/relationships/arrangements, or "historical" for completed past events. Use present tense for static/living content and past tense for historical content.
 For a CHARACTER card, after the bullets append a VOICE CONTRACT so the model can voice them consistently. Use exactly this shape:
 VOICE CONTRACT
 Rhythm: <how they speak — pace, sentence structure>
@@ -886,6 +914,7 @@ Write the example lines in the character's actual voice. Omit the VOICE CONTRACT
         action: "update" | "create";
         cardId?: string;
         title: string;
+        memoryMode?: "static" | "living" | "historical";
         content: string;
         keys: string[];
       }>;
@@ -897,18 +926,31 @@ Write the example lines in the character's actual voice. Omit the VOICE CONTRACT
     const turnId = String(adventure.activeState.turn);
 
     for (const p of parsed.proposals) {
+      const routed = resolveMemoryTarget(adventure, {
+        proposedType: "storyCard",
+        title: p.title,
+        content: p.content,
+        sourceText: fact,
+        suggestedTriggers: Array.isArray(p.keys) ? p.keys : splitList(String(p.keys ?? "")),
+        targetId: p.action === "update" ? p.cardId : undefined,
+        appendContent: p.action === "update" ? true : undefined,
+        memoryMode: p.memoryMode,
+        rationale: parsed.rationale,
+      });
       const proposal: MemoryProposal = {
         id: createId("proposal"),
         sourceTurnId: turnId,
         sourceText: fact,
-        proposedType: "storyCard",
-        title: p.title,
-        content: p.content,
-        suggestedTriggers: Array.isArray(p.keys) ? p.keys : splitList(String(p.keys ?? "")),
+        proposedType: routed.proposedType,
+        title: routed.title,
+        content: routed.content,
+        suggestedTriggers: routed.suggestedTriggers,
         confidence: 0.9,
-        rationale: parsed.rationale,
+        rationale: routed.rationale ?? parsed.rationale,
         status: "pending",
-        targetId: p.action === "update" ? p.cardId : undefined,
+        targetId: routed.targetId,
+        appendContent: routed.appendContent,
+        memoryMode: routed.memoryMode,
         createdAt: now,
         updatedAt: now,
       };
@@ -999,16 +1041,22 @@ export async function runMemoryCycle(
     semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
   };
 
-  const conditions = buildMemoryConditions(adventure);
-  if (conditions.length === 0) {
+  const stateConditions = buildStateMaintenanceConditions(adventure);
+  const limitedConditions = buildLimitedMemoryConditions(adventure);
+  const allConditions = [...stateConditions, ...limitedConditions];
+  if (allConditions.length === 0) {
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: emptyLog }], logEntry: emptyLog };
   }
 
-  const { firedIds, errors } = await evaluateConditionIds(forcePropose, providerConfig, conditions, accum, { singlePick: true });
+  const stateEval = await evaluateConditionIds(forcePropose, providerConfig, stateConditions, accum);
+  const limitedEval = await evaluateConditionIds(forcePropose, providerConfig, limitedConditions, accum, { singlePick: true });
+  const errors = [...stateEval.errors, ...limitedEval.errors];
+  const firedStateConditions = stateConditions.filter((condition) => stateEval.firedIds.includes(condition.id));
+  const firedLimitedCondition = limitedConditions.find((condition) => condition.id === limitedEval.firedIds[0]);
+  const firedConditions = [...firedStateConditions, ...(firedLimitedCondition ? [firedLimitedCondition] : [])];
 
-  const firedCondition = conditions.find((c) => c.id === firedIds[0]);
-  if (!firedCondition) {
-    const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsEvaluated: conditions.map(({ id, label, condition, sourceType }) => ({ id, label, condition, sourceType })), errors };
+  if (firedConditions.length === 0) {
+    const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsEvaluated: allConditions.map(({ id, label, condition, sourceType }) => ({ id, label, condition, sourceType })), errors };
     return {
       actions: [
         { type: "SET_LAST_MEMORY_CYCLE_TURN", turn: adventure.activeState.turn },
@@ -1019,8 +1067,12 @@ export async function runMemoryCycle(
     };
   }
 
-  const triggerActions = firedCondition.actionFactory(adventure);
-  const results = await runLimited(1, triggerActions.map((ta) => () => generatedActionsFor(forcePropose, providerConfig, ta, firedCondition.id, undefined, accum)));
+  const generationTasks = firedConditions.flatMap((firedCondition) =>
+    firedCondition.actionFactory(adventure).map((ta) => () =>
+      generatedActionsFor(forcePropose, providerConfig, ta, firedCondition.id, undefined, accum),
+    ),
+  );
+  const results = await runLimited(Math.max(1, generationTasks.length), generationTasks);
 
   const generatedContent: GeneratedContentPreview[] = [];
   const allActions: AdventureAction[] = [];
@@ -1034,9 +1086,9 @@ export async function runMemoryCycle(
 
   const logEntry: EvaluationLogEntry = {
     ...emptyLog,
-    conditionsEvaluated: conditions.map(({ id, label, condition, sourceType }) => ({ id, label, condition, sourceType })),
-    conditionsFired: [firedCondition.id],
-    actionsExecuted: [`Memory cycle: ${firedCondition.label}`],
+    conditionsEvaluated: allConditions.map(({ id, label, condition, sourceType }) => ({ id, label, condition, sourceType })),
+    conditionsFired: firedConditions.map((condition) => condition.id),
+    actionsExecuted: firedConditions.map((condition) => `Memory cycle: ${condition.label}`),
     generatedContent,
     errors: resultErrors,
   };

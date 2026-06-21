@@ -214,7 +214,7 @@ Only append a thought if this turn gave them something genuinely new to think, r
 export function extractInlineThoughts(content: string): {
   cleanContent: string;
   thoughts: Array<{ name: string; key: string; value: string }>;
-  memoryTags: Array<{ category: string; title: string; content: string; triggers: string[] }>;
+  memoryTags: Array<{ category: string; title: string; content: string; triggers: string[]; memoryMode?: "static" | "living" | "historical" }>;
 } {
   const thoughts: Array<{ name: string; key: string; value: string }> = [];
   // Standard format: <thought name="..." key="...">...</thought>
@@ -232,7 +232,7 @@ export function extractInlineThoughts(content: string): {
 
   // Extract <memory> tags — deterministic validation: require category + title + non-trivial content
   const VALID_CATEGORIES = new Set(["relationship", "world_fact", "character_reveal", "plot_beat", "status_change"]);
-  const memoryTags: Array<{ category: string; title: string; content: string; triggers: string[] }> = [];
+  const memoryTags: Array<{ category: string; title: string; content: string; triggers: string[]; memoryMode?: "static" | "living" | "historical" }> = [];
   // Match self-closing tags with optional triggers attribute (order-independent)
   const selfClosingMemory = /<memory\b([^/]*)\/?>/gi;
   function attr(attrs: string, name: string): string {
@@ -245,9 +245,11 @@ export function extractInlineThoughts(content: string): {
     const title = attr(attrs, "title");
     const body = attr(attrs, "content");
     const triggersRaw = attr(attrs, "triggers");
+    const memoryModeRaw = attr(attrs, "memoryMode");
+    const memoryMode = memoryModeRaw === "static" || memoryModeRaw === "living" || memoryModeRaw === "historical" ? memoryModeRaw : undefined;
     const triggers = triggersRaw ? triggersRaw.split(",").map((t) => t.trim()).filter(Boolean) : [];
     if (VALID_CATEGORIES.has(category) && title.length > 0 && body.length > 20) {
-      memoryTags.push({ category, title, content: body, triggers });
+      memoryTags.push({ category, title, content: body, triggers, memoryMode });
     }
   }
 
@@ -306,16 +308,21 @@ After writing your response, if this turn introduced a NEW named subject (charac
 Qualifying categories:
 ${lines}
 
-FORMAT — for locations, relationships, lore, and plot beats (bullet facts, present tense, third person):
-<memory category="[category]" title="[Subject Name]" content="• [Permanent fact about the subject.]\n• [Permanent fact.]\n• [Permanent fact.]" triggers="[subject name, relevant keywords]"/>
+FORMAT — include memoryMode:
+- static = always-true character/location/lore/technique facts; use present tense.
+- living = current evolving subject, relationship, or arrangement; use present/current tense because future updates merge/archive old facts.
+- historical = completed past event or resolved beat; use past tense.
+
+<memory category="[category]" memoryMode="static|living|historical" title="[Subject Name]" content="• [Fact in the correct tense.]\n• [Fact.]" triggers="[specific phrase, narrow keyword]"/>
 
 CHARACTER FORMAT — for character_reveal only, include a VOICE CONTRACT after the bullet facts:
-<memory category="character_reveal" title="[Name]" content="• [Who they are, role, or defining trait.]\n• [Permanent fact.]\n\nVOICE CONTRACT\nRhythm: [sentence patterns and pacing]\nDefault move: [instinctive first action when speaking or entering a scene]\nEmotional defense: [how they protect vulnerability]\nNever sounds like: [concrete forbidden behaviors — e.g. warm, offering choices, saying I feel...]\nExample lines: &quot;[line in their actual voice]&quot; / &quot;[another line]&quot;" triggers="[name, relevant keywords]"/>
+<memory category="character_reveal" memoryMode="static" title="[Name]" content="• [Who they are, role, or defining trait.]\n• [Permanent fact.]\n\nVOICE CONTRACT\nRhythm: [sentence patterns and pacing]\nDefault move: [instinctive first action when speaking or entering a scene]\nEmotional defense: [how they protect vulnerability]\nNever sounds like: [concrete forbidden behaviors — e.g. warm, offering choices, saying I feel...]\nExample lines: &quot;[line in their actual voice]&quot; / &quot;[another line]&quot;" triggers="[name, relevant keywords]"/>
 
 RULES:
-- Title is the SUBJECT'S NAME — the person, place, technique, or relationship (e.g. "Nyx", "Plum Tree Courtyard", "Nyx and Setu Bond"). Never an event name ("Mutual confession", "First kiss").
-- Content is what is PERMANENTLY TRUE about this subject — who they are, their role, personality, abilities, established relationship state. Written so the AI understands this subject every time it appears.
-- Do NOT log scene events. Wrong: "They kissed on the ship." Right: "Romantic bond confirmed; kept deliberately discreet from court."
+- Title is the SUBJECT'S NAME for static/living cards — the person, place, technique, or relationship (e.g. "Nyx", "Plum Tree Courtyard", "Nyx and Setu Bond"). For historical cards, title the completed event/beat specifically.
+- Content is either always true/current (static/living) or past-tense history (historical). Write it so the AI knows whether the fact is current or completed.
+- Do NOT log throwaway scene events. For completed durable consequences, use memoryMode="historical" and past tense. Wrong: "They kissed on the ship." Right: "Romantic bond was confirmed and kept deliberately discreet from court."
+- Use narrow triggers. Do not use plain character names on subplot/event cards unless the card is that character's identity card.
 - NEW subject (no existing card): tag it with a new title.
 - EXISTING subject (already has a card in the list below): if a NEW permanent fact about it became true this turn, REUSE that card's EXACT title and put ONLY the new fact in content — it updates the living card instead of duplicating. NEVER invent a second title for a subject that already has a card (no "Setu and Nyxa's Private Space" when "Setu and Nyxa" exists). If nothing permanent changed, skip.
 - One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;

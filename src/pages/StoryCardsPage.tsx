@@ -21,7 +21,7 @@ type SortMode = "alpha" | "recent";
 
 /** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
 export function isLivingCard(card: StoryCard): boolean {
-  return (card.state ?? "").split(/\s+/).includes("living");
+  return card.memoryMode === "living" || (card.state ?? "").split(/\s+/).includes("living");
 }
 
 /** Shown before a living card's title so they're instantly identifiable in the list. */
@@ -444,6 +444,18 @@ export function StoryCardsPage({
                       </select>
                     </Field>
                   </div>
+                  <Field label="Memory Mode">
+                    <select
+                      value={card.memoryMode ?? "static"}
+                      onChange={(event) =>
+                        dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { memoryMode: event.target.value as StoryCard["memoryMode"] } })
+                      }
+                    >
+                      <option value="static">static — always-true reference facts</option>
+                      <option value="living">living — current evolving subject, updates merge/archive</option>
+                      <option value="historical">historical — past event or completed arc record</option>
+                    </select>
+                  </Field>
                   <Field label="Trigger Keys (comma-separated, leave blank to use title only)">
                     <input
                       value={commaList(card.keys)}

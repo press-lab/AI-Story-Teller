@@ -168,6 +168,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     };
 
     mockProvider
+      .mockResolvedValueOnce({ content: "[]", raw: {} })
       .mockResolvedValueOnce({ content: '["storyCard:card-margo"]', raw: {} })
       .mockResolvedValueOnce({ content: "Margo is protective and now worried about Seth.", raw: {} });
 
@@ -243,6 +244,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     };
 
     mockProvider
+      .mockResolvedValueOnce({ content: "[]", raw: {} })
       .mockResolvedValueOnce({ content: '["storyCard:card-joke"]', raw: {} })
       .mockResolvedValueOnce({ content: "Margo calls Seth hedge prince only when scared.", raw: {} });
 
@@ -294,6 +296,42 @@ describe("runSemanticPostTurnEvaluation", () => {
     const reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
     const pressureComp = reduced.components.find((c) => c.type === "activePressure");
     expect(pressureComp?.content).toContain("The Fire Nation court now expects a public duel.");
+  });
+
+  it("updates Plot Essentials on drift instead of waiting for the component cooldown", async () => {
+    const component = makeComponent({
+      id: "component-pe",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "The old PE says Seth is trapped in the Pumpworks.",
+      active: true,
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 60,
+      lastAutoUpdateTurn: 4,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [component],
+      storyCards: [],
+    };
+
+    mockProvider
+      .mockResolvedValueOnce({ content: '["plotEssentialsDrift:component-pe"]', raw: {} })
+      .mockResolvedValueOnce({ content: "- Seth has escaped the Pumpworks and is being hunted along the canal exits.", raw: {} });
+
+    const result = await runMemoryCycle(adventure, providerConfig);
+
+    expect(result.logEntry.conditionsEvaluated.map((condition) => condition.id)).toContain("plotEssentialsDrift:component-pe");
+    expect(result.actions).toContainEqual({ type: "MARK_COMPONENT_UPDATED", componentId: "component-pe", turn: 5 });
+    const proposalAction = result.actions.find((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalAction).toMatchObject({
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        proposedType: "plotEssentialsUpdate",
+        targetId: "component-pe",
+        appendContent: false,
+      },
+    });
   });
 });
 
