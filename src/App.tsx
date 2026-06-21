@@ -30,6 +30,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
+import { premadeAdventures } from "./dev/premadeAdventures";
 
 type TabId =
   | "adventures"
@@ -425,6 +426,8 @@ export default function App() {
           onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
           onDeleteSave={(slot) => void gitHubSaves.deleteSave(slot)}
           providerConfig={runtime.activeProviderConfig}
+          premadeAdventures={premadeAdventures}
+          onLoadPremadeAdventure={library.loadPremadeAdventure}
         />
       );
     }

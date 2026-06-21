@@ -18,6 +18,7 @@ import { runAdventureGen } from "../ai/adventureGen";
 import { createId } from "../utils/id";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
+import type { PremadeAdventureDefinition, PremadeAdventureId } from "../dev/premadeAdventures";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -37,6 +38,8 @@ interface AdventuresPageProps {
   onLoadSave?: (slot: GitHubSaveSlot) => void;
   onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
+  premadeAdventures?: PremadeAdventureDefinition[];
+  onLoadPremadeAdventure?: (id: PremadeAdventureId) => Promise<void>;
 }
 
 interface ComponentDraft {
@@ -165,6 +168,16 @@ function formatUtc(iso: string): string {
   return iso.replace("T", " ").replace(/\.\d{3}Z$/, " UTC").replace(/Z$/, " UTC");
 }
 
+function downloadText(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 export function AdventuresPage({
   adventures,
   currentAdventure,
@@ -183,8 +196,10 @@ export function AdventuresPage({
   onLoadSave,
   onDeleteSave,
   providerConfig,
+  premadeAdventures = [],
+  onLoadPremadeAdventure,
 }: AdventuresPageProps) {
-  const [view, setView] = useState<"list" | "create" | "aidImport" | "github">("list");
+  const [view, setView] = useState<"list" | "create" | "aidImport" | "github" | "premade">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
@@ -758,6 +773,63 @@ export function AdventuresPage({
     );
   }
 
+  if (view === "premade") {
+    return (
+      <section className="page library-page">
+        <header className="library-header">
+          <div>
+            <button type="button" onClick={() => setView("list")}>
+              ← Library
+            </button>
+            <p className="eyebrow">Premade Library</p>
+            <h2>Load a premade adventure</h2>
+            <p className="muted">Bundled playtest seeds with components, story cards, opening scene, and tuned setup.</p>
+          </div>
+        </header>
+        <div className="library-grid">
+          {premadeAdventures.map((premade) => (
+            <article key={premade.id} className="library-card">
+              <div className="library-card-body">
+                <div>
+                  <p className="eyebrow">{premade.eyebrow}</p>
+                  <h3>{premade.title}</h3>
+                  <p className="muted">{premade.summary}</p>
+                  <div className="toolbar" style={{ marginTop: "0.5rem" }}>
+                    {premade.tags.map((tag) => (
+                      <span key={tag} className="status-pill">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="library-card-actions">
+                  <button
+                    type="button"
+                    className="primary-action"
+                    disabled={!onLoadPremadeAdventure}
+                    onClick={() => void onLoadPremadeAdventure?.(premade.id)}
+                  >
+                    Load
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadText(`${premade.id}-adventure.json`, premade.createAdventureJson())}
+                  >
+                    Download Adventure
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadText(`${premade.id}-story-cards.json`, premade.createStoryCardsJson())}
+                  >
+                    Download Cards
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="page library-page">
       <header className="library-header">
@@ -767,6 +839,11 @@ export function AdventuresPage({
           <p className="muted">Continue a saved story, duplicate a setup, or start a new world.</p>
         </div>
         <div className="toolbar">
+          {premadeAdventures.length > 0 && (
+            <button type="button" onClick={() => setView("premade")}>
+              Premade Library
+            </button>
+          )}
           {onListSaves && (
             <button type="button" onClick={() => setView("github")}>
               Load from GitHub

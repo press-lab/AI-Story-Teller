@@ -9,6 +9,7 @@ import {
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { createDevelopmentAdventure } from "../dev/developmentAdventure";
 import { createDispatchAdventure } from "../dev/dispatchAdventure";
+import { buildPremadeContext, getPremadeAdventure, type PremadeAdventureId } from "../dev/premadeAdventures";
 import { createDefaultAdventure } from "../state/defaults";
 import { latestAssistantOutput } from "../state/turnPipeline";
 import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/adventure";
@@ -121,6 +122,21 @@ export function useAdventureLibrary(
     await refreshAdventures();
   }
 
+  async function loadPremadeAdventure(id: PremadeAdventureId) {
+    const premade = getPremadeAdventure(id);
+    if (!premade) {
+      onError("Premade adventure could not be loaded.");
+      return;
+    }
+    const next = premade.createAdventure();
+    await saveAdventure(next);
+    setAdventure(next);
+    setContextResult(buildPremadeContext(next));
+    onModalClose();
+    onNavigate("dashboard");
+    await refreshAdventures();
+  }
+
   async function loadDevelopmentAdventure() {
     await loadDevScenario(createDevelopmentAdventure());
   }
@@ -139,6 +155,7 @@ export function useAdventureLibrary(
     removeAdventure,
     importAdventure,
     createAdventureFromImport,
+    loadPremadeAdventure,
     loadDevelopmentAdventure,
     loadDispatchAdventure,
   };
