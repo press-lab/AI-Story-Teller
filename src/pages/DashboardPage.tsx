@@ -114,9 +114,6 @@ export function DashboardPage({
         <button type="button" onClick={() => onOpenTab?.("memoryInbox")}>
           Memory
         </button>
-        <button type="button" onClick={() => onOpenTab?.("summary")}>
-          Summary
-        </button>
         <button type="button" onClick={() => onOpenTab?.("triggers")}>
           Automation
         </button>

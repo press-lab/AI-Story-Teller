@@ -462,18 +462,18 @@ export function SettingsPage({
                   onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
                 />
                 <CheckboxField
-                  label="Allow system to truncate rolling summary"
+                  label="Allow system to truncate rolling summary (legacy)"
                   checked={activeSettings.tokenBudgetSettings.allowSystemToTruncateSummary}
                   onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
                 />
               </div>
               <div>
                 <CheckboxField
-                  label="Auto-summarize in background"
+                  label="Auto-summarize in background (legacy)"
                   checked={activeSettings.tokenBudgetSettings.autoSummarize ?? true}
                   onChange={(autoSummarize) => updateBudget({ autoSummarize })}
                 />
-                <Field label="Auto-summarize every N turns">
+                <Field label="Auto-summarize every N turns (legacy)">
                   <NumberInput
                     min={5}
                     value={activeSettings.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
@@ -550,7 +550,7 @@ export function SettingsPage({
             </p>
             <h4>Background Provider</h4>
             <p className="muted">
-              Route background tasks (evaluation, brain updates, scene state, summary) through a
+              Route background tasks (evaluation, brain updates, story card updates, and plot updates) through a
               separate provider. Leave blank to use the active preset for all tasks.
             </p>
             <Field label="Base URL">
@@ -736,7 +736,7 @@ export function SettingsPage({
                 <h3>{developmentAdventureTitle}</h3>
                 <p className="muted">
                   Loads a complete adult Fire Nation AU scenario with World Blocks, Story Cards, Characters,
-                  semantic triggers, a quest, a rolling summary, and one opening message.
+                  semantic triggers, a quest, legacy rolling summary data, and one opening message.
                 </p>
               </div>
             </div>

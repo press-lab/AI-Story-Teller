@@ -33,6 +33,11 @@ export interface RunTurnPipelineOptions {
   userMessageId?: string;
   assistantMessageId?: string;
   createdAt?: string;
+  recordUserInput?: boolean;
+  providerCue?: string;
+  currentInputForContext?: string;
+  incrementTurn?: boolean;
+  advanceArcPacing?: boolean;
 }
 
 export interface RunTurnPipelineResult {
@@ -57,34 +62,32 @@ export function latestAssistantOutput(adventure: Adventure): string | undefined 
   return [...adventure.messages].reverse().find((message) => message.role === "assistant")?.content;
 }
 
-export async function runTurnPipeline({
+interface ApplyProviderResponseOptions {
+  adventure: Adventure;
+  response: MockableProviderResponse;
+  mode: InputMode;
+  providerConfig?: ProviderConfig;
+  preProviderContext: ContextBuildResult;
+  assistantMessageId?: string;
+  createdAt?: string;
+  incrementTurn?: boolean;
+  advanceArcPacing?: boolean;
+}
+
+export async function applyProviderResponse({
   adventure,
-  text,
-  mode = "story",
-  sendChatCompletion,
+  response,
+  mode,
   providerConfig,
-  userMessageId,
+  preProviderContext,
   assistantMessageId,
   createdAt,
-}: RunTurnPipelineOptions): Promise<RunTurnPipelineResult> {
-  let next = adventureReducer(adventure, {
-    type: "ADD_MESSAGE",
-    role: "user",
-    content: text,
-    inputMode: mode,
-    id: userMessageId,
-    createdAt,
-  });
-  next = applyRuntimeEngines(next, { source: "input", text });
+  incrementTurn = true,
+  advanceArcPacing = true,
+}: ApplyProviderResponseOptions): Promise<{ adventure: Adventure; responseContent: string; continuityCorrected: boolean }> {
+  let next = adventure;
 
-  const preProviderContext = buildContext(next, {
-    currentInput: text,
-    latestModelOutput: latestAssistantOutput(next),
-  });
-  const providerPayload = preProviderContext.messages;
-  const response = await sendChatCompletion(providerPayload, next, preProviderContext);
-
-  // Extract inline thought tags and memory tags from the response before the player sees it
+  // Extract inline thought tags and memory tags from the response before the player sees it.
   const { cleanContent: thoughtCleanContent, thoughts: inlineThoughts, memoryTags } = extractInlineThoughts(response.content);
   const rawContentForLint = thoughtCleanContent;
 
@@ -104,7 +107,7 @@ export async function runTurnPipeline({
     }
   }
 
-  // Apply inline thought captures to brains (zero extra API calls)
+  // Apply inline thought captures to brains (zero extra API calls).
   // Also collect thoughts from brains with printThoughts enabled so they can be appended visibly.
   const visibleThoughtLines: string[] = [];
   if (inlineThoughts.length > 0) {
@@ -115,12 +118,14 @@ export async function runTurnPipeline({
       );
       if (brain && thought.key && thought.value) {
         next = adventureReducer(next, {
-          type: "UPDATE_BRAIN",
+          type: "APPLY_BRAIN_UPDATE",
           brainId: brain.id,
           patch: {
             thoughts: { [`${turn}_${thought.key}`]: `${turn} → ${thought.value}` },
-            lastUpdatedTurn: turn,
           },
+          mode: "append",
+          turn,
+          preview: thought.value,
         });
         if (brain.printThoughts) {
           visibleThoughtLines.push(`*[${brain.characterName}]: ${thought.value}*`);
@@ -172,25 +177,78 @@ export async function runTurnPipeline({
   });
   next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
 
-  next = applyRuntimeEngines(next, { source: "output", text: response.content });
+  next = applyRuntimeEngines(next, { source: "output", text: finalContent });
 
-  // Arc Director: count engagement for any arc threads (Story Cards / Brains) that were
-  // active in-scene this turn. Deterministic — drives arc pacing without an extra LLM call.
-  const triggeredIds = preProviderContext.sections
-    .filter((sectionEntry) => sectionEntry.id === "storyCards" || sectionEntry.id === "brains")
-    .flatMap((sectionEntry) => sectionEntry.items.map((entry) => entry.id));
-  if (triggeredIds.length > 0) {
+  // Arc Director: count only Story Card / Brain ids whose trigger patterns matched turn text.
+  // Pinned or always-on context can be included without counting as engagement.
+  const triggeredIds = preProviderContext.triggeredThreadIds;
+  if (advanceArcPacing && triggeredIds.length > 0) {
     next = adventureReducer(next, { type: "ADVANCE_ARC_PACING", triggeredIds, turn: next.activeState.turn });
   }
 
-  next = adventureReducer(next, { type: "INCREMENT_TURN" });
+  if (incrementTurn) {
+    next = adventureReducer(next, { type: "INCREMENT_TURN" });
+  }
+
+  return { adventure: next, responseContent: finalContent, continuityCorrected };
+}
+
+export async function runTurnPipeline({
+  adventure,
+  text,
+  mode = "story",
+  sendChatCompletion,
+  providerConfig,
+  userMessageId,
+  assistantMessageId,
+  createdAt,
+  recordUserInput = true,
+  providerCue,
+  currentInputForContext,
+  incrementTurn = true,
+  advanceArcPacing = true,
+}: RunTurnPipelineOptions): Promise<RunTurnPipelineResult> {
+  let next = adventure;
+  if (recordUserInput) {
+    next = adventureReducer(adventure, {
+      type: "ADD_MESSAGE",
+      role: "user",
+      content: text,
+      inputMode: mode,
+      id: userMessageId,
+      createdAt,
+    });
+    next = applyRuntimeEngines(next, { source: "input", text });
+  }
+
+  const preProviderContext = buildContext(next, {
+    currentInput: currentInputForContext ?? (recordUserInput ? text : undefined),
+    latestModelOutput: latestAssistantOutput(next),
+  });
+  const providerPayload = providerCue
+    ? [...preProviderContext.messages, { role: "user" as const, content: providerCue }]
+    : preProviderContext.messages;
+  const response = await sendChatCompletion(providerPayload, next, preProviderContext);
+
+  const applied = await applyProviderResponse({
+    adventure: next,
+    response,
+    mode,
+    providerConfig,
+    preProviderContext,
+    assistantMessageId,
+    createdAt,
+    incrementTurn,
+    advanceArcPacing,
+  });
+  next = applied.adventure;
 
   return {
     adventure: next,
     preProviderContext,
-    postTurnContext: buildContext(next, { latestModelOutput: finalContent }),
+    postTurnContext: buildContext(next, { latestModelOutput: applied.responseContent }),
     providerPayload,
-    responseContent: finalContent,
-    continuityCorrected,
+    responseContent: applied.responseContent,
+    continuityCorrected: applied.continuityCorrected,
   };
 }

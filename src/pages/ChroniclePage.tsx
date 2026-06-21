@@ -16,8 +16,8 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
       <article className="panel">
         <h3>Adventure Chronicle — {messages.length} entries</h3>
         <p className="muted">
-          Complete story transcript stored locally. Not sent to the AI — only Recent Messages and
-          Rolling Summary reach the model. Click any entry to edit.
+          Complete story transcript stored locally. Not sent to the AI — only the Recent Messages window
+          and active memory surfaces reach the model. Click any entry to edit.
         </p>
       </article>
 

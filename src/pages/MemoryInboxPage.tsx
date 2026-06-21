@@ -60,17 +60,17 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
         <h3>Memory Suggestions</h3>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Story Cards, Character Self updates,
-          Plot Essentials rewrites, and Summary changes. The AI generates these automatically after turns or when
+          Plot Essentials rewrites, Active Pressure updates, and legacy Summary changes. The AI generates these automatically after turns or when
           you use <strong>Remember This</strong>. Review each proposal and <strong>Approve</strong> to apply it,
           <strong> Reject</strong> to dismiss it cleanly, or <strong>Ignore</strong> to remove it from view without applying.
           You can edit the content before approving.
-          {" "}<strong>Every approved proposal becomes permanent context</strong> — the model reads it every turn and writes toward it.
-          Be especially careful with Character Self and Summary updates: approving emotional escalation or relationship milestones
+          {" "}<strong>Approved Story Cards, Character Self updates, Plot Essentials, and Active Pressure become active context</strong> — the model reads them when their section is included.
+          Be especially careful with Character Self and plot updates: approving emotional escalation or relationship milestones
           unchecked is how characters drift. Edit proposals before approving, or reject ones that pull the story somewhere you don't want.
         </p>
         <div className="auto-approve-toggles">
           <span className="auto-approve-label muted">Auto-approve:</span>
-          <CheckboxField label="Summary" checked={autoApprove.summaryUpdate} onChange={(v) => setAutoApprove({ summaryUpdate: v })} />
+          <CheckboxField label="Legacy Summary" checked={autoApprove.summaryUpdate} onChange={(v) => setAutoApprove({ summaryUpdate: v })} />
           <CheckboxField label="Plot Essentials" checked={autoApprove.plotEssentialsUpdate} onChange={(v) => setAutoApprove({ plotEssentialsUpdate: v })} />
           <CheckboxField label="Active Pressure" checked={autoApprove.plotPressureUpdate} onChange={(v) => setAutoApprove({ plotPressureUpdate: v })} />
           <CheckboxField label="Story Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />

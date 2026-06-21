@@ -604,6 +604,8 @@ export interface ContextBuildResult {
   totalEstimatedTokens: number;
   excludedItems: ExcludedContextItem[];
   decisions: ContextBuildDecision[];
+  /** Story Card / Brain ids whose trigger patterns matched current turn text. Used for deterministic arc pacing. */
+  triggeredThreadIds: string[];
   /** Pending Memory Proposals — not in model context; shown in preview for user review. */
   pendingProposals: MemoryProposal[];
 }

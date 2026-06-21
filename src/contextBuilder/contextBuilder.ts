@@ -19,13 +19,13 @@ const SYSTEM_SHELL = `You are the story engine for AI Story Teller. The context 
 CONTEXT SECTIONS (read all, honour their order):
   B. AI Instructions — narrative rules and style for this adventure.
   C. Plot Essentials — permanent world facts and canon plot state. Ground truth.
+  C2. Current Story Arc — active arc log and any gated Arc Director phase instruction.
   E. Components — general world-building context (always-on or pinned entries).
   F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.
   G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
-  I. Rolling Summary — compressed history of earlier turns. Treat as canon.
   D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
-  L. Scene State — current location, present characters, immediate situation, last story beat. Treat as ground truth for what is happening right now.
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
+  M. Continuity Challenge — one-turn verification instruction when active.
   K. Recent Messages — the most recent story turns in chronological order.
 
 CANON GROUNDING:
@@ -348,6 +348,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   const excludedItems: ExcludedContextItem[] = [];
   const decisions: ContextBuildDecision[] = [];
   const triggerText = recentText(adventure, options);
+  const triggeredThreadIds = new Set<string>();
   const budgetSettings = adventure.tokenBudgetSettings;
 
   function pushExcluded(
@@ -477,6 +478,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     }
     const keysWithTitle = card.keys.includes(card.title) ? card.keys : [card.title, ...card.keys];
     const match = matchPatterns(triggerText, keysWithTitle, card.matchType ?? "phrase");
+    if (match.matched) triggeredThreadIds.add(card.id);
     const matched = card.inclusionPolicy === "always" || card.pinned || forced || (card.inclusionPolicy !== "manual" && match.matched);
     if (matched) {
       const next = item(card.id, "storyCard", card.title, card.content, card.priority, card.protected, card.pinned, card.active, card.inclusionPolicy, "user");
@@ -496,6 +498,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     }
     const patterns = [brain.characterName, ...brain.triggers].filter(Boolean);
     const match = matchPatterns(triggerText, patterns, "phrase");
+    if (match.matched) triggeredThreadIds.add(brain.id);
     const matched = brain.inclusionPolicy === "always" || brain.pinned || forced || (brain.inclusionPolicy !== "manual" && match.matched);
     if (!matched) {
       pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "No brain trigger matched current input, output, or recent history.");
@@ -742,6 +745,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,
     decisions,
+    triggeredThreadIds: [...triggeredThreadIds],
     pendingProposals,
   };
 }

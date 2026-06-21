@@ -372,6 +372,126 @@ describe("full turn smoke path", () => {
     expect(result.responseContent).not.toContain("<memory");
   });
 
+  it("appends inline brain thoughts without replacing the existing thought log", async () => {
+    let adventure = createDefaultAdventure("Thought Capture");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_BRAIN",
+      brain: makeBrain({
+        id: "brain-margo",
+        characterName: "Margo",
+        triggers: ["Margo"],
+        thoughts: { old_guard: "0 → I am already watching the ward." },
+        active: true,
+        inclusionPolicy: "always",
+      }),
+    });
+
+    const provider = vi.fn(async () => ({
+      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Seth before it answered me.</thought>',
+    }));
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "Margo watches Seth test the ward.",
+      userMessageId: "thought-user",
+      assistantMessageId: "thought-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: provider,
+    });
+
+    const thoughts = result.adventure.brains.find((brain) => brain.id === "brain-margo")?.thoughts ?? {};
+    expect(thoughts.old_guard).toBe("0 → I am already watching the ward.");
+    expect(Object.values(thoughts).some((value) => value.includes("ward answer Seth"))).toBe(true);
+    expect(result.responseContent).not.toContain("<thought");
+  });
+
+  it("does not advance Arc Director pacing from pinned context unless the thread actually matched", async () => {
+    let adventure = createDefaultAdventure("Pinned Arc");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({
+        id: "card-shroud",
+        title: "Shroud",
+        keys: ["Shroud"],
+        content: "Shroud is the hidden antagonist.",
+        active: true,
+        pinned: true,
+      }),
+    });
+    adventure = dispatch(adventure, {
+      type: "UPSERT_COMPONENT",
+      component: {
+        ...makeComponent({
+          id: "component-arc",
+          title: "Current Arc",
+          type: "currentArc",
+          content: "Shroud tightens the net.",
+          active: true,
+        }),
+        arcThreadKeys: ["card-shroud"],
+        arcPace: "short",
+        arcTriggerMode: "auto",
+      },
+    });
+
+    const quiet = await runTurnPipeline({
+      adventure,
+      text: "I study the ceiling.",
+      userMessageId: "quiet-user",
+      assistantMessageId: "quiet-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: vi.fn(async () => ({ content: "Dust moves in the light." })),
+    });
+
+    expect(sectionItemIds(quiet.preProviderContext, "storyCards")).toContain("card-shroud");
+    expect(quiet.preProviderContext.triggeredThreadIds).not.toContain("card-shroud");
+    let arc = quiet.adventure.components.find((component) => component.id === "component-arc");
+    expect(arc?.arcState?.threadEngagement["card-shroud"] ?? 0).toBe(0);
+
+    const matched = await runTurnPipeline({
+      adventure: quiet.adventure,
+      text: "Shroud steps out of the smoke.",
+      userMessageId: "match-user",
+      assistantMessageId: "match-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: vi.fn(async () => ({ content: "The net pulls tight." })),
+    });
+
+    expect(matched.preProviderContext.triggeredThreadIds).toContain("card-shroud");
+    arc = matched.adventure.components.find((component) => component.id === "component-arc");
+    expect(arc?.arcState?.threadEngagement["card-shroud"]).toBe(1);
+  });
+
+  it("supports a silent continue cue while still processing inline memory tags", async () => {
+    let adventure = createDefaultAdventure("Silent Continue");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], active: true }),
+    });
+
+    let capturedPayload: ChatMessage[] | undefined;
+    const provider = vi.fn(async (messages: ChatMessage[]) => {
+      capturedPayload = messages;
+      return {
+        content: 'They step into court.\n<memory category="relationship" title="Setu and Nyxa" content="• Their bond is now known by the council." triggers="Setu, Nyxa, council"/>',
+      };
+    });
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "[continue]",
+      recordUserInput: false,
+      providerCue: "[continue]",
+      sendChatCompletion: provider,
+    });
+
+    expect(capturedPayload?.at(-1)).toEqual({ role: "user", content: "[continue]" });
+    expect(result.adventure.messages.map((message) => message.role)).toEqual(["assistant"]);
+    expect(result.adventure.messages[0].content).not.toContain("<memory");
+    const proposal = result.adventure.activeState.memoryProposals.find((p) => p.proposedType === "storyCard");
+    expect(proposal).toMatchObject({ targetId: "card-couple", appendContent: true });
+  });
+
   it("sends Next Output Bias in the provider payload and consumes it after one successful output", async () => {
     const adventure = dispatch(makeSmokeAdventure(), {
       type: "SET_NEXT_TURN_NOTE",

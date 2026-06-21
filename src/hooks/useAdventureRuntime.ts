@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { buildContext, extractInlineThoughts } from "../contextBuilder/contextBuilder";
+import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
 import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
@@ -7,7 +7,7 @@ import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCard
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
 import {
-  applyRuntimeEngines,
+  applyProviderResponse,
   latestAssistantOutput,
   reduceActions,
   runTurnPipeline,
@@ -296,37 +296,36 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
 
-    let next = flushPendingBeforeContext(adventure);
-    const context = buildContext(next, { latestModelOutput: latestAssistantOutput(next) });
-    setContextResult(context);
-    setAdventure(next);
-
     try {
-      const continueConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
-      // Inject a silent user turn so the model has something to respond to.
-      // continueTurn sends no player input — without this the model sees its own last
-      // message and has no cue for what to generate next, causing repetition or stumbling.
-      const continueMessages = [...context.messages, { role: "user" as const, content: "[continue]" }];
-      const response = await sendOpenAICompatibleChatCompletion({ messages: continueMessages, config: continueConfig });
-      const { cleanContent: continueClean } = extractInlineThoughts(response.content);
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: continueClean, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      void 0; // memory cycle runs post-turn via checkMemoryCycle
-      setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
-      next = adventureReducer(next, { type: "INCREMENT_TURN" });
+      const base = flushPendingBeforeContext(adventure);
+      const result = await runTurnPipeline({
+        adventure: base,
+        text: "[continue]",
+        mode: "story",
+        recordUserInput: false,
+        providerCue: "[continue]",
+        providerConfig: mergeProviderConfig(base, providerSettings),
+        sendChatCompletion: async (messages, snapshot, context) => {
+          setAdventure(snapshot);
+          setContextResult(context);
+          const continueConfig = applyResponseLengthHint(mergeProviderConfig(snapshot, providerSettings), snapshot.activeState.responseLengthHint);
+          return sendOpenAICompatibleChatCompletion({ messages, config: continueConfig });
+        },
+      });
+      let next = result.adventure;
       next = mergeQueuedUpdates(next);
       setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
+      setContextResult(result.postTurnContext);
       await saveAdventure(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
       checkMemoryCycle(next);
+      void checkArcContinuation(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
-      setAdventure(next);
-      await saveAdventure(next);
+      setAdventure(adventure);
+      await saveAdventure(adventure);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -349,15 +348,19 @@ export function useAdventureRuntime(
     try {
       const regenConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
       const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: regenConfig });
-      const { cleanContent: regenClean } = extractInlineThoughts(response.content);
-      next = adventureReducer(next, { type: "ADD_MESSAGE", role: "assistant", content: regenClean, usage: response.usage });
-      next = adventureReducer(next, { type: "CONSUME_NEXT_TURN_NOTE" });
-      void 0; // memory cycle runs post-turn via checkMemoryCycle
-      setAdventure(next);
-      next = applyRuntimeEngines(next, { source: "output", text: response.content });
+      const applied = await applyProviderResponse({
+        adventure: next,
+        response,
+        mode: "story",
+        providerConfig: regenConfig,
+        preProviderContext: context,
+        incrementTurn: false,
+        advanceArcPacing: false,
+      });
+      next = applied.adventure;
       next = mergeQueuedUpdates(next);
       setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: response.content }));
+      setContextResult(buildContext(next, { latestModelOutput: applied.responseContent }));
       await saveAdventure(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
@@ -460,7 +463,8 @@ export function useAdventureRuntime(
     if (!proposal) return;
     const newContent = await regenerateProposalContent(proposal, adventure, activeProviderConfig);
     if (!newContent) return;
-    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent: proposal.proposedType === "plotEssentialsUpdate", updatedAt: new Date().toISOString() } }]);
+    const appendContent = proposal.appendContent ?? (proposal.proposedType === "plotEssentialsUpdate" ? true : undefined);
+    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent } }]);
   }
 
   async function regeneratePlotEssentials(componentId: string): Promise<string> {

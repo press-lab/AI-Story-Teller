@@ -186,7 +186,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           <span className="token-metrics-sep">·</span>
           <span title="Average prompt tokens per story turn">avg {avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Total tokens used by background AI calls (brain updates, scene state, summaries, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
+          <span title="Total tokens used by background AI calls (brain updates, story card updates, plot updates, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
         </span>
         {dedupError && (
           <span className="context-inline-error">

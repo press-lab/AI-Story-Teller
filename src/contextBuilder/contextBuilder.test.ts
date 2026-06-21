@@ -245,6 +245,7 @@ describe("buildContext", () => {
     });
     const triggeredIds = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id);
     expect(triggeredIds).toEqual(["card-input", "card-output", "card-history", "card-pinned", "card-regex"]);
+    expect(result.triggeredThreadIds).toEqual(["card-input", "card-output", "card-history", "card-regex"]);
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-inactive", reason: "inactive" }));
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-unmatched", reason: "not_triggered" }));
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "card-phrase-regex", reason: "not_triggered" }));

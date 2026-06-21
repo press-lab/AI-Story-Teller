@@ -116,7 +116,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
         </p>
         <p>
           Chronicle is source material for summaries and memory proposals, but it does not automatically
-          flood the model context. Recent Messages and Rolling Summary are the model-facing versions.
+          flood the model context. Recent Messages and active memory surfaces are the model-facing versions.
         </p>
       </>
     ),
@@ -135,7 +135,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
         </p>
         <p>
           Pending proposals are not active context. Approving a proposal routes it to a Story Card, Brain
-          update, Plot Essentials update, or Rolling Summary update through reducer-backed paths.
+          update, Plot Essentials update, Active Pressure update, or legacy Rolling Summary update through reducer-backed paths.
         </p>
       </>
     ),
@@ -432,9 +432,9 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Components</li>
           <li>Story Cards</li>
           <li>Brains</li>
-          <li>Rolling Summary</li>
           <li>Author's Note</li>
           <li>Next Turn Note</li>
+          <li>Continuity Challenge</li>
           <li>Recent Messages</li>
         </ol>
         <p>
@@ -479,7 +479,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "memory-surfaces",
     title: "Memory Surfaces",
     category: "Memory",
-    summary: "Chronicle, Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Suggestions roles.",
+    summary: "Chronicle, legacy Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Suggestions roles.",
     tags: ["memory", "chronicle", "summary", "next turn note", "story cards", "brains"],
     body: (
       <>
@@ -487,7 +487,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <dt>Adventure Chronicle</dt>
           <dd>The complete transcript. Stored locally, not compressed, not automatically dumped into context.</dd>
           <dt>Rolling Summary</dt>
-          <dd>Compressed model-facing continuity, editable by the user.</dd>
+          <dd>Legacy save-compatible continuity data. Retained in adventures, but not emitted as a default context section.</dd>
           <dt>Next Turn Note</dt>
           <dd>Short-term user-written steering for the next generation. It is visible, token-counted, and expires after use by default.</dd>
           <dt>Story Cards</dt>
@@ -515,7 +515,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Durable recurring facts go to Story Cards.</li>
           <li>Character-specific evolving internal state goes to Brains only for existing BrainEntries.</li>
           <li>Tiny always-on current constraints go to Plot Essentials.</li>
-          <li>Broad continuity goes to Rolling Summary.</li>
+          <li>Current external pressure goes to Active Pressure; active arc history goes to Current Arc.</li>
           <li>Ephemeral scenery, one-off room layouts, movement, and throwaway details are ignored.</li>
         </ul>
         <pre>{`"Margo calls Seth hedge prince" -> storyCard
@@ -547,7 +547,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <p><strong>What does NOT belong:</strong></p>
         <ul>
           <li>Generic emotional states: "feeling anxious", "excited", "uneasy". These give the model nothing actionable.</li>
-          <li>Scene descriptions or location tracking — that's Scene State.</li>
+          <li>Scene descriptions or location tracking — keep that in Recent Messages unless it becomes durable.</li>
           <li>Permanent character traits — those belong in a Story Card.</li>
           <li>Things the character has already said or done openly — that's in the transcript.</li>
         </ul>
@@ -579,7 +579,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </ul>
         <p><strong>What does NOT belong:</strong></p>
         <ul>
-          <li>Current location or scene presence — that's Scene State.</li>
+          <li>Current location or scene presence — keep that in Recent Messages unless it becomes durable.</li>
           <li>Temporary mission status or current assignments.</li>
           <li>Emotional reactions to specific events — that's a Brain thought.</li>
           <li>One-off scenery or room details that won't recur.</li>
@@ -613,7 +613,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </ul>
         <p><strong>What does NOT belong:</strong></p>
         <ul>
-          <li>Current scene position or who is present — that's Scene State.</li>
+          <li>Current scene position or who is present — keep that in Recent Messages unless it becomes a durable constraint.</li>
           <li>Character emotional states or internal goals.</li>
           <li>Temporary mission status that changes every few turns.</li>
           <li>Lore that only matters when a specific character or place comes up — use a Story Card instead.</li>
@@ -628,12 +628,12 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "best-practices-summary",
     title: "Durable Summary — Best Practices",
     category: "Best Practices",
-    summary: "What the Rolling Summary is for and how to write one that keeps the story on track.",
+    summary: "What the legacy Rolling Summary field is for and what replaced it in active context.",
     tags: ["rolling summary", "summary", "continuity", "best practices"],
     body: (
       <>
         <p>
-          The Rolling Summary is the compressed, model-facing continuity layer. It replaces the full transcript once the story grows long. The model treats it as canon — so what is in the summary defines what the story is "about."
+          Rolling Summary is a legacy save-compatible field. It is retained on the adventure object for old saves, but it is not emitted as a default model context section. Use Current Arc, Plot Essentials, Active Pressure, Story Cards, Brains, and Recent Messages for active continuity.
         </p>
         <p><strong>What belongs:</strong></p>
         <ul>
@@ -649,7 +649,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Character inner thoughts — those belong in Brains.</li>
           <li>Permanent world facts that belong in Story Cards or Plot Essentials.</li>
         </ul>
-        <p>Auto-summarize appends new facts periodically. Review it manually after a major arc beat to make sure the external stakes are still visible.</p>
+        <p>For current adventures, keep external stakes visible through Active Pressure and Current Arc instead of relying on auto-summary settings.</p>
       </>
     ),
   },
@@ -899,7 +899,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
     body: (
       <>
         <p>
-          Every item in context — Story Cards, World Blocks, Brains, the Rolling Summary — has an estimated token cost.
+          Every item in context — Story Cards, World Blocks, Brains, Current Arc, Author's Note, Next Turn Note, and Recent Messages — has an estimated token cost.
           The total is shown in Context Preview and in the header of the Play page.
         </p>
         <dl>
@@ -921,7 +921,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
         </dl>
         <p>
           Watch the token count in the play header. If you see it climbing above ~6,000–8,000 tokens with a smaller model,
-          consider shortening the Rolling Summary or reducing the number of always-on Story Cards.
+          consider reducing always-on World Blocks, trimming long Story Cards, or lowering the Recent Messages window.
         </p>
       </>
     ),
