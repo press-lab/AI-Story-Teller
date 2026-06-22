@@ -12,10 +12,14 @@ import {
   createDispatchAdventure,
   dispatchAdventureTitle,
 } from "./dispatchAdventure";
+import {
+  createRookeryAdventure,
+  rookeryAdventureTitle,
+} from "./rookeryAdventure";
 import crucibleComponents from "./premades/crucible-protocol-components.json";
 import crucibleStoryCards from "./premades/crucible-protocol-story-cards.json";
 
-export type PremadeAdventureId = "dragon-throne" | "dispatch-sdn" | "crucible-protocol";
+export type PremadeAdventureId = "dragon-throne" | "dispatch-sdn" | "crucible-protocol" | "rookery";
 
 export interface PremadeAdventureDefinition {
   id: PremadeAdventureId;
@@ -152,6 +156,10 @@ function applyPremadeBestPractices(adventure: Adventure): Adventure {
     ...card,
     memoryMode: premadeMemoryMode(card),
     matchType: card.matchType ?? "phrase",
+    autoUpdate: premadeMemoryMode(card) === "living" ? true : card.autoUpdate,
+    autoUpdateCooldownTurns: premadeMemoryMode(card) === "living"
+      ? Math.min(card.autoUpdateCooldownTurns ?? 1, 1)
+      : card.autoUpdateCooldownTurns,
     keys: sanitizeStoryCardTriggers(componentTuned, card.title, card.keys, card.id),
   }));
   return normalizeAdventure({ ...componentTuned, storyCards });
@@ -259,6 +267,18 @@ function createDispatchSdnPremadeStoryCardsJson(): string {
   return premadeStoryCardsJson(createDispatchSdnPremadeAdventure);
 }
 
+function createRookeryPremadeAdventure(): Adventure {
+  return applyPremadeBestPractices(createRookeryAdventure());
+}
+
+function createRookeryPremadeAdventureJson(): string {
+  return premadeAdventureJson(createRookeryPremadeAdventure);
+}
+
+function createRookeryPremadeStoryCardsJson(): string {
+  return premadeStoryCardsJson(createRookeryPremadeAdventure);
+}
+
 export const premadeAdventures: PremadeAdventureDefinition[] = [
   {
     id: "dragon-throne",
@@ -289,6 +309,16 @@ export const premadeAdventures: PremadeAdventureDefinition[] = [
     createAdventure: createCrucibleProtocolAdventure,
     createAdventureJson: createCrucibleProtocolAdventureJson,
     createStoryCardsJson: createCrucibleProtocolStoryCardsJson,
+  },
+  {
+    id: "rookery",
+    title: rookeryAdventureTitle,
+    eyebrow: "Powered Mercenary Drama",
+    summary: "A grimy mercenary bar, rotating contract crews, Seth's provisional first job, and living trust/romance pressure.",
+    tags: ["original", "mercenaries", "bar hub", "romance"],
+    createAdventure: createRookeryPremadeAdventure,
+    createAdventureJson: createRookeryPremadeAdventureJson,
+    createStoryCardsJson: createRookeryPremadeStoryCardsJson,
   },
 ];
 

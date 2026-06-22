@@ -8,6 +8,7 @@ describe("premade adventure library", () => {
       "dragon-throne",
       "dispatch-sdn",
       "crucible-protocol",
+      "rookery",
     ]);
   });
 
@@ -34,5 +35,27 @@ describe("premade adventure library", () => {
       expect(imported.storyCards.length).toBeGreaterThan(0);
       expect(imported.components.length).toBeGreaterThan(0);
     }
+  });
+
+  it("loads The Rookery with explicit living cards and tight Plot Essentials", () => {
+    const rookery = premadeAdventures.find((premade) => premade.id === "rookery")!;
+    const adventure = rookery.createAdventure();
+    const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
+    const livingCards = adventure.storyCards.filter((card) => card.memoryMode === "living");
+
+    expect(adventure.title).toBe("The Rookery");
+    expect(adventure.openingScene).toContain("One provisional job");
+    expect(adventure.storyCards.find((card) => card.title === "Seth's Absorption")?.memoryMode).toBe("static");
+    expect(livingCards.map((card) => card.title)).toEqual([
+      "Seth's Rookery Standing",
+      "Rookery Romance Pressure",
+      "Tamsin's Investigation",
+    ]);
+    expect(livingCards.every((card) => card.autoUpdate)).toBe(true);
+    expect(pe).toContain("The current opening is Hollis offering Seth one provisional courier-extraction contract");
+    expect(pe.split("\n")).toHaveLength(6);
+    expect(pe).not.toContain("electricity, light, radiation");
+    expect(adventure.storyCards.find((card) => card.title === "Hollis Pike")?.keys).not.toContain("bartender");
+    expect(adventure.storyCards.find((card) => card.title === "Powered Mercenary Network")?.keys).not.toContain("contract work");
   });
 });
