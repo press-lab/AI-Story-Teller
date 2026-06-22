@@ -98,7 +98,7 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 - Auto-approval: `memoryAutoApprove.currentArcUpdate` (default `true`)
 - "Complete Arc → Story Card" button: creates a `plot` type Story Card from the log, clears content and arcPremise
 - Cooldown: 4 turns default (coarser than Active Pressure's 3)
-- Difference from Plot Essentials: PE = static world constants (rarely touched). Arc = what's actively happening to the protagonist right now (accumulates as story unfolds, then gets retired)
+- Difference from Plot Essentials: PE = current operating truth and always-on constraints. Arc = the active conflict's running log (accumulates as story unfolds, then gets retired)
 - Difference from Quests: Arc tracks narrative shape, not task completion. No objective states. Graduated arc becomes referenced backstory via Story Card, not a "quest completed" flag.
 
 ### Arc Director (deterministic story pacing)

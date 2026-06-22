@@ -18,7 +18,7 @@ const SYSTEM_SHELL = `You are the story engine for AI Story Teller. The context 
 
 CONTEXT SECTIONS (read all, honour their order):
   B. AI Instructions — narrative rules and style for this adventure.
-  C. Plot Essentials — permanent world facts and canon plot state. Ground truth.
+  C. Plot Essentials — current operating truth and always-on constraints. Ground truth.
   C2. Current Story Arc — active arc log and any gated Arc Director phase instruction.
   E. Components — general world-building context (always-on or pinned entries).
   F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.

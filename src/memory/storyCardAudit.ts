@@ -1,5 +1,6 @@
 import type { Adventure, Message, ProviderConfig, StoryCard } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { STORY_CARD_BEST_PRACTICES, TRIGGER_BEST_PRACTICES } from "../ai/authoringBestPractices";
 
 export type AuditAction = "edit" | "delete" | "create";
 export type AuditDecision = "pending" | "approved" | "rejected";
@@ -157,7 +158,9 @@ function buildPrompt(cards: StoryCard[], rollingSummary: string, recentStory: st
     .map((c) => `[${c.id}] "${c.title}" (${c.type}) keys: ${c.keys.join(", ")}\n${c.content.slice(0, 150)}`)
     .join("\n\n---\n\n");
 
-  return `You are auditing story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged — focus on semantic accuracy and gaps.
+  return `You are auditing story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged — focus on semantic accuracy, consolidation, trigger bleed, living-card updates, and gaps.
+${STORY_CARD_BEST_PRACTICES}
+${TRIGGER_BEST_PRACTICES}
 
 STORY CARDS UNDER REVIEW:
 ${cardList || "(none)"}
@@ -177,6 +180,9 @@ Rules:
 - Edit: card content is outdated or factually wrong based on recent events
 - Delete: card covers something that no longer exists in the story
 - Create: a recurring entity or fact has no card at all
+- Prefer editing or consolidating an existing living card over creating a sibling card for the same evolving subject
+- Remove broad character-name triggers from subplot/event/relationship cards when those names already belong to identity cards
+- Historical/completed event cards should be past tense
 - Be selective — only changes with clear story justification
 - Rationale: one specific sentence
 - Return [] if no changes are needed`;

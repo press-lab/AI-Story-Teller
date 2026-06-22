@@ -17,6 +17,12 @@ import type {
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
+import {
+  PLOT_ESSENTIALS_BEST_PRACTICES,
+  STORY_CARD_BEST_PRACTICES,
+  TRIGGER_BEST_PRACTICES,
+  storyCardCreationGuidance,
+} from "../ai/authoringBestPractices";
 import { createId, nowIso } from "../utils/id";
 import { matchPatterns, splitList } from "./matching";
 import { isTriggerOnCooldown, triggerActionToAdventureActions } from "./triggerEngine";
@@ -119,6 +125,7 @@ function storyCardPrompt(card: StoryCard): string {
         : "This is a STATIC card: write always-true character, location, lore, or technique facts in present tense.";
   return `You are updating a persistent world fact card titled '${card.title}'.
 ${modeInstruction}
+${storyCardCreationGuidance(card.memoryMode)}
 
 Current content:
 ${card.content}
@@ -127,7 +134,7 @@ Based on what just happened, rewrite or extend this card. Format the content as 
 
 If this is a character card with a VOICE CONTRACT section, keep that section after the bullets — preserve it verbatim unless the character's voice has genuinely shifted, in which case refine it in place (keep the Rhythm / Default move / Emotional defense / Never sounds like / Example lines shape).
 
-Do NOT include: current location, who is currently present in a scene, active mission status, or any "currently X" state. These are temporary and belong in Scene State, not a Story Card. Only record facts that are durably true regardless of which scene is happening.
+Do NOT include: current location, who is currently present in a scene, active mission status, next-step instructions, or momentary emotions. Only record facts that match this card's memory mode.
 
 Example format:
 • Permanent trait, history, or rule about the entity.
@@ -141,6 +148,7 @@ function componentPrompt(component: ComponentEntry): string {
   if (component.type === "plotEssentials") {
     const current = component.content?.trim();
     return `You are maintaining Plot Essentials for an interactive fiction story.
+${PLOT_ESSENTIALS_BEST_PRACTICES}
 
 Current Plot Essentials:
 ${current || "(empty)"}
@@ -855,6 +863,8 @@ export async function runRememberThis(
     .join("\n");
 
   const systemPrompt = `You are a world memory assistant for an interactive fiction game. The player described something they want represented as durable story memory.
+${STORY_CARD_BEST_PRACTICES}
+${TRIGGER_BEST_PRACTICES}
 
 Examine the description against existing story cards and characters:
 - If the fact is a property or development of existing entities, propose updating those cards (action "update" with the cardId)
@@ -862,6 +872,7 @@ Examine the description against existing story cards and characters:
 - You may propose both updates AND a new card for the same fact
 - Prefer one focused proposal. Return multiple proposals only when the description clearly contains separate durable subjects.
 - Do not propose temporary scene state, one-off scenery, generic movement, or short-lived emotional reactions.
+- Do not put broad character names on event, relationship, or subplot cards when those names already belong to character cards. Use specific consequences, place names, object names, faction names, case names, or nicknames instead.
 
 Respond ONLY with valid JSON:
 {

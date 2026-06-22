@@ -1,5 +1,11 @@
 import type { Adventure, MemoryProposal, ProviderConfig } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import {
+  PLOT_ESSENTIALS_BEST_PRACTICES,
+  STORY_CARD_BEST_PRACTICES,
+  TRIGGER_BEST_PRACTICES,
+  storyCardCreationGuidance,
+} from "../ai/authoringBestPractices";
 
 function resolvedProviderConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
   const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
@@ -19,6 +25,9 @@ function proposalFormatInstruction(proposal: MemoryProposal): string {
           ? "Write the current state of an evolving subject in present tense. Remove or rewrite obsolete current-state facts."
           : "Write always-true facts in present tense.";
     return `Format: bullet points, one per line, no title in the body. This is a ${mode} Story Card. ${tense}
+${storyCardCreationGuidance(mode)}
+${STORY_CARD_BEST_PRACTICES}
+${TRIGGER_BEST_PRACTICES}
 If this card is a character (a person the story will voice), append a VOICE CONTRACT block after the bullets, written in their actual voice:
 VOICE CONTRACT
 Rhythm: <pace, sentence structure>
@@ -28,7 +37,8 @@ Never sounds like: <what to avoid: generic, "I feel...", offering choices>
 Example lines: "<line>" / "<line>"`;
   }
   if (proposal.proposedType === "plotEssentialsUpdate") {
-    return "Format: rewrite the FULL Plot Essentials replacement block as the story's current operating truth. Keep it compact, current, and non-redundant. Remove resolved or stale facts. Do not append a small update note.";
+    return `Format: rewrite the FULL Plot Essentials replacement block as the story's current operating truth. Keep it compact, current, and non-redundant. Remove resolved or stale facts. Do not append a small update note.
+${PLOT_ESSENTIALS_BEST_PRACTICES}`;
   }
   if (proposal.proposedType === "plotPressureUpdate") {
     return "Format: exactly one sentence naming the current external threat, obligation, or pressure. Replace the old pressure entirely.";

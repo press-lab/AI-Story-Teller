@@ -10,6 +10,12 @@ import type {
 } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { makeBrain } from "../state/defaults";
+import {
+  AI_INSTRUCTIONS_BEST_PRACTICES,
+  PLOT_ESSENTIALS_BEST_PRACTICES,
+  STORY_CARD_BEST_PRACTICES,
+  TRIGGER_BEST_PRACTICES,
+} from "./authoringBestPractices";
 
 /** Compact snapshot of the adventure, fed to every generator so output is grounded in this world. */
 function adventureContext(adventure: Adventure): string {
@@ -51,10 +57,16 @@ const COMPONENT_GEN_PROMPTS: Partial<Record<ComponentType, string>> = {
   narrationRules:
     "Write a Narration Rules block — the per-adventure behavior contract. Cover POV and tense, prose format, player agency (never decide the player's actions, words, or feelings), continuity discipline, tone, and a few hard \"never\" rules. Make it behavioral and specific to THIS adventure, not generic boilerplate.",
   aiInstructions:
-    "Write an AI Instructions block — scenario-specific genre and drift-prevention rules that complement, and do not duplicate, the narration rules. Anchor the register and the kind of scenes this adventure should keep producing (the repeatable loop). Keep the cast active and the world pressing.",
+    "Write an AI Instructions block — scenario-specific genre, drift-prevention, scene-loop, and prose behavior rules that complement, and do not duplicate, the narration rules. Do not store character facts, lore facts, current mission state, backstory, or card-like memory here. Use named ALL-CAPS sections with tight bullets.",
   authorNote:
     "Write a single concise Author's Note — near-context steering for the next few responses. Keep characters active and initiating and the scene moving. One or two sentences.",
 };
+
+function componentBestPractices(type: ComponentType): string {
+  if (type === "aiInstructions") return AI_INSTRUCTIONS_BEST_PRACTICES;
+  if (type === "plotEssentials") return PLOT_ESSENTIALS_BEST_PRACTICES;
+  return "";
+}
 
 /** Generate fresh content for a Narration Rules / AI Instructions / Author's Note component. Returns a string for review. */
 export async function generateComponentContent(
@@ -70,6 +82,7 @@ export async function generateComponentContent(
 ${adventureContext(adventure)}
 
 ${instruction}
+${componentBestPractices(component.type)}
 ${existing ? `\nThe current version (improve on it, keep what works):\n${existing.slice(0, 1500)}` : ""}
 
 Respond with ONLY the block content — no preamble, no labels, no markdown fences.`;
@@ -288,6 +301,9 @@ ${adventureContext(adventure)}
 
 Create a Brain (interior state) for the character named "${trimmed}".
 Make it BEHAVIORAL, not adjectival: describe what they DO in a room, how they treat the player and others, what they want, and how they push scenes forward. "Encourages the player's worst brave ideas and expects them to keep up" — not "reckless and fun".
+Do not use this Brain as a replacement for the character's Story Card. Stable public identity, appearance, powers, voice contract, aliases, and always-true facts belong on a character Story Card. This Brain is only for evolving interior state.
+${STORY_CARD_BEST_PRACTICES}
+${TRIGGER_BEST_PRACTICES}
 
 Respond with ONLY this JSON (no markdown, no prose):
 {"currentState":"2-4 lines of behavioral voice contract — what this character does, wants, and how they act in scenes","triggers":["${trimmed}"],"relationshipPressure":"what they want from or how they lean on the main characters","emotionalInterpretation":"how they tend to read situations and people"}`;

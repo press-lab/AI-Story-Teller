@@ -8,6 +8,7 @@ import type {
   NewAdventureSetup,
   ProviderConfig,
   StoryCard,
+  StoryCardMemoryMode,
   StoryCardType,
 } from "../types/adventure";
 import { AidImportWizard } from "../components/AidImportWizard";
@@ -60,6 +61,7 @@ interface StoryCardDraft {
   keysText: string;
   content: string;
   type: StoryCardType;
+  memoryMode: StoryCardMemoryMode;
   priority: number;
   pinned: boolean;
 }
@@ -129,6 +131,7 @@ function blankStoryCardDraft(): StoryCardDraft {
     keysText: "",
     content: "",
     type: "custom",
+    memoryMode: "static",
     priority: 0,
     pinned: false,
   };
@@ -158,6 +161,7 @@ function storyCardFromDraft(draft: StoryCardDraft): StoryCard | undefined {
     keys: fromCommaList(draft.keysText),
     content,
     type: draft.type,
+    memoryMode: draft.memoryMode,
     priority: draft.priority,
     active: true,
     pinned: draft.pinned,
@@ -358,6 +362,7 @@ export function AdventuresPage({
             source: "generated" as const,
             title: card.title,
             type: card.type as StoryCardType,
+            memoryMode: card.memoryMode ?? "static",
             keysText: (card.keys ?? []).join(", "),
             content: card.content,
             priority: card.priority ?? 0,
@@ -582,6 +587,16 @@ export function AdventuresPage({
                             </select>
                           </Field>
                         </div>
+                        <Field label="Memory Mode">
+                          <select
+                            value={draft.memoryMode}
+                            onChange={(event) => updateStoryCardDraft(draft.id, { memoryMode: event.target.value as StoryCardMemoryMode })}
+                          >
+                            <option value="static">static - always-true reference facts</option>
+                            <option value="living">living - current evolving subject, updates merge/archive</option>
+                            <option value="historical">historical - completed past event or retired fact</option>
+                          </select>
+                        </Field>
                         <Field label="Triggers / keys">
                           <input
                             value={draft.keysText}

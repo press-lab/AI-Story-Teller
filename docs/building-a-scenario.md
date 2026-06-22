@@ -21,7 +21,7 @@ A scenario is six things working together:
 
 | Piece | Component / object | Job |
 |---|---|---|
-| **Backdrop + premise** | Plot Essentials | The world you like inhabiting + what's true |
+| **Current truth + premise** | Plot Essentials | What is happening now + always-on constraints |
 | **The cast** | Story Cards (`character`) **+ Voice Contracts** | Who's fun in a room |
 | **Interior life** | Brains | Hidden agendas that simmer and persist |
 | **The engine** | a custom "missions" component | The repeatable loop that prints scenes |
@@ -40,8 +40,10 @@ enjoy**. Decide the one-line premise *and* the slow-burn arc it builds toward.
 *Heir of the Dragon Throne:* post-war Avatar world (backdrop), an overpowered
 dragon-fire crown prince (fantasy), and a premise where the antagonist is
 **personal and convergent** — the conspiracy is run by the love interest's
-father. Write this into **Plot Essentials** (always-on, protected) as durable,
-human-edited ground truth. Keep it tight; this is what the model writes *toward*.
+father. Write this into **Plot Essentials** (always-on, protected) as the
+current operating truth: what is happening now, open tensions, obligations, and
+major constraints that must shape every scene. Keep it tight; this is what the
+model writes *toward*.
 
 Two rules from experience:
 - **Let the player be OP.** State it in AI Instructions: *"NPCs respect, fear,
@@ -82,8 +84,16 @@ Rules learned the hard way:
 - **Naming:** give a formal name and an intimate nickname, and say which is which
   on the card — e.g. *"Formally Lady Nyxa or Lady Renzan; called Nyx by those
   close to her."* Use the correct in-world title.
-- **Relationships live on the characters' cards/brains, never as their own
-  card.** No "Dynamic between X and Y" cards.
+- **Relationship cards are living cards only when the relationship is its own
+  recurring subject.** Otherwise keep the fact on the character cards/brains.
+  Do not make vague "Dynamic between X and Y" cards with both character names as
+  broad triggers.
+- **Pick the memory mode.** `static` = always-true present-tense facts,
+  `living` = current evolving subject whose updates merge/archive, and
+  `historical` = completed event or retired Plot Essentials fact in past tense.
+- **Keep triggers narrow.** Character aliases belong on the character's identity
+  card. Event, relationship, or subplot cards should use specific consequences,
+  objects, locations, factions, or case names instead of broad character names.
 
 The **"Create a Story Card with AI"** button and the in-play detector now emit
 voice contracts for character cards automatically — so cards you mint mid-game
@@ -248,11 +258,13 @@ Set the **response length** to a target (slider on the Play page) — V3.2 write
 ## Quick checklist
 
 - [ ] Backdrop you like + OP fantasy stated in AI Instructions.
-- [ ] Plot Essentials: tight premise, antagonist personal/convergent.
+- [ ] Plot Essentials: tight current operating truth, antagonist
+      personal/convergent, no chronological log.
 - [ ] Active Pressure: exactly one sentence naming the external force pressing
       right now.
 - [ ] One `character` card per recurring figure; **Voice Contract on every NPC**,
-      none on the PC; canon voices accurate; formal + nickname noted.
+      none on the PC; canon voices accurate; formal + nickname noted; memory
+      mode and triggers chosen deliberately.
 - [ ] Brains for the inner circle + antagonist; behavioral; **hidden agendas
       preloaded** so the story reads from turn one; PC brain light.
 - [ ] A mission-loop component whose phases feed each other; a dispatcher figure.

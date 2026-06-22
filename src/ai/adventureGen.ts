@@ -1,5 +1,6 @@
-import type { ComponentType, ProviderConfig, StoryCardType } from "../types/adventure";
+import type { ComponentType, ProviderConfig, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { ADVENTURE_GENERATION_BEST_PRACTICES } from "./authoringBestPractices";
 
 export interface GenComponent {
   title: string;
@@ -13,6 +14,7 @@ export interface GenComponent {
 export interface GenStoryCard {
   title: string;
   type: StoryCardType;
+  memoryMode?: StoryCardMemoryMode;
   keys: string[];
   content: string;
   pinned: boolean;
@@ -34,6 +36,7 @@ const generatedComponentTypes = new Set<ComponentType>([
   "custom",
 ]);
 const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
+const storyCardMemoryModes = new Set<StoryCardMemoryMode>(["static", "living", "historical"]);
 
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
@@ -83,18 +86,22 @@ Output ONLY valid JSON — no explanation, no preamble, no markdown prose outsid
     {
       "title": "string",
       "type": "character | location | lore | plot | custom",
+      "memoryMode": "static | living | historical",
       "keys": ["trigger1", "trigger2"],
-      "content": "string — rich lore, facts, personality, or description; 2-6 sentences",
+      "content": "string — concise durable reference facts; bullet format preferred",
       "pinned": false,
       "priority": 0
     }
   ]
 }
 
+Authoring contract:
+${ADVENTURE_GENERATION_BEST_PRACTICES}
+
 Component guidelines:
-- Always include one "plotEssentials" component containing only permanent world truths, the player's durable role or condition, and canon constraints that must shape every scene. Use tight bullet points and keep it under 120 words. Do not put temporary danger, current location, or the next action here.
+- Always include one "plotEssentials" component containing the current operating truth: current situation, active tensions, obligations, and constraints that must shape every scene. Use 4-7 tight bullets and keep it under 140 words. Do not turn it into a full backstory or lore encyclopedia.
 - Include one "activePressure" component for the immediate external threat, obligation, deadline, or unresolved problem driving the opening. Keep it to exactly one concise sentence.
-- Add "aiInstructions" for scenario-specific generation constraints or drift prevention not covered by narration mechanics. Structure it with named ALL-CAPS sections (SETTING, BENDING-FIRST RULE, PLAYER POWER, STORY BEHAVIOR, PROSE, etc.) relevant to the premise. Each section should be 2–5 tight bullet points. Always include a PROSE section with guidance on sentence rhythm, dialogue voice diversity, and sensory vs. expository balance. Include a STORY BEHAVIOR section that specifies what the story should be driven by and what drift patterns to prevent. If the premise involves a powerful or exceptional player character, include a PLAYER POWER section with explicit rules about how NPCs engage without worship or constant nerf attempts. Omit sections that are not relevant to the premise.
+- Add "aiInstructions" for scenario-specific generation constraints or drift prevention not covered by narration mechanics. Do not put story facts there. Structure it with named ALL-CAPS sections (SETTING, PLAYER POWER, STORY BEHAVIOR, PROSE, etc.) relevant to the premise. Each section should be 2-5 tight bullet points. Always include a PROSE section with guidance on sentence rhythm, dialogue voice diversity, and sensory vs. expository balance. Include a STORY BEHAVIOR section that specifies what the story should be driven by and what drift patterns to prevent. If the premise involves a powerful or exceptional player character, include a PLAYER POWER section with explicit rules about how NPCs engage without worship or constant nerf attempts. Omit sections that are not relevant to the premise.
 - Add "authorNote" only for concise tone, mood, pacing, or prose influence.
 - Add a "custom" component only for broad world context that is relevant every turn. If it matters only when a character, place, faction, object, or secret appears, use a Story Card instead.
 - Do NOT include narrationRules — those are managed separately.
@@ -102,10 +109,11 @@ Component guidelines:
 Story card guidelines:
 - Create cards for recurring named characters, significant recurring locations, factions, and key lore items introduced by the premise or opening scene.
 - Do not create cards for current scene position, temporary mission status, one-off scenery, or throwaway objects. Put immediate danger in activePressure and let the recent messages carry the next concrete beat.
-- keys array: all names, nicknames, and aliases the card should trigger on — lowercase preferred.
+- memoryMode: use "static" for always-true facts, "living" for evolving current relationships/status/searches/arrangements, and "historical" for completed events or past-tense facts.
+- keys array: use the specific trigger phrases that should summon THIS card. Character aliases belong on character identity cards. Do not put broad character names on event, relationship, or subplot cards when those names already have character cards.
 - Aim for 4–12 cards depending on the complexity of the premise. Quality over quantity.
 - Each card's content should be self-contained reference material the AI will use mid-story.
-- Location, faction, and lore cards: 3–6 bullet facts. Present tense. What the AI needs to know to write it correctly.
+- Location, faction, and lore cards: 3-6 bullet facts. Present tense unless memoryMode is "historical". What the AI needs to know to write it correctly.
 - Character cards MUST include a VOICE CONTRACT section. This is the single most important part of the card — it tells the AI how the character sounds, not just who they are. Also include a section on HOW THEY ENGAGE THE PLAYER: the specific tactics, tests, or social maneuvers this character uses with the player character specifically — not just their general personality. Use this exact structure:
 
 [brief 1–2 sentence description of who they are and their role]
@@ -169,6 +177,7 @@ function isValidCard(c: unknown): c is GenStoryCard {
     && typeof obj.type === "string"
     && storyCardTypes.has(obj.type as StoryCardType)
     && typeof obj.content === "string"
+    && (obj.memoryMode === undefined || (typeof obj.memoryMode === "string" && storyCardMemoryModes.has(obj.memoryMode as StoryCardMemoryMode)))
     && (obj.keys === undefined || (Array.isArray(obj.keys) && obj.keys.every((key) => typeof key === "string")))
     && (obj.pinned === undefined || typeof obj.pinned === "boolean")
     && (obj.priority === undefined || typeof obj.priority === "number")

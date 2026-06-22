@@ -3,6 +3,7 @@ import { buildContext } from "../contextBuilder/contextBuilder";
 import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
 import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
+import { PLOT_ESSENTIALS_BEST_PRACTICES } from "../ai/authoringBestPractices";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
@@ -475,15 +476,17 @@ export function useAdventureRuntime(
     if (!component) throw new Error("Plot Essentials component not found.");
     const recentTurns = adventure.messages.slice(-20).map((m) => `${m.role}: ${m.content}`).join("\n");
     const systemPrompt = `You are maintaining plot essentials for an interactive fiction game.
+${PLOT_ESSENTIALS_BEST_PRACTICES}
+
 Current plot essentials:
 ${component.content}
 
 Recent story turns:
 ${recentTurns}
 
-Rewrite the plot essentials as a clean, current, non-redundant block.
-Remove resolved events and outdated constraints. Keep active pressures and open tensions.
-Write as tight bullet points with bold headers like **Active pressure:** and **Open tension:**.
+Rewrite the plot essentials as a clean, current, non-redundant replacement block.
+Remove resolved events and outdated constraints. Keep active pressures, open tensions, obligations, and major constraints.
+Write 4-7 tight bullets or short labeled lines. Do not append a small update note.
 Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     const response = await sendOpenAICompatibleChatCompletion({
       config: activeProviderConfig,

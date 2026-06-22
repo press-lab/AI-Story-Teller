@@ -251,8 +251,8 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
             accumulate without your involvement. If the log fills with noise, tighten the premise.
           </li>
           <li>
-            <strong>Plot Essentials ≠ Current Arc.</strong> PE holds static world constants — setting,
-            factions, history. The arc holds what's actively happening to the protagonist right now.
+            <strong>Plot Essentials ≠ Current Arc.</strong> PE holds the compact current operating truth and
+            always-on constraints. The arc holds the active conflict's running log and pacing gate.
           </li>
           <li>
             <strong>Graduate when the arc resolves.</strong> When the arc has run its course, click
@@ -527,6 +527,44 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     ),
   },
   {
+    id: "authoring-best-practices",
+    title: "Authoring Best Practices",
+    category: "Best Practices",
+    summary: "Where AI Instructions, Plot Essentials, and Story Cards belong, based on the BetterRepository guide.",
+    tags: ["betterrepository", "ai instructions", "plot essentials", "story cards", "triggers", "best practices"],
+    body: (
+      <>
+        <p>
+          These defaults follow the BetterRepository authoring guide: use AI Instructions for behavior, Plot Essentials
+          for the current operating truth, and Story Cards for durable triggered memory. The executable copy of these
+          rules lives in <code>src/ai/authoringBestPractices.ts</code> so generators and docs stay aligned.
+        </p>
+        <dl>
+          <dt>AI Instructions</dt>
+          <dd>
+            Global behavior rules only: genre contract, drift prevention, scene loop, prose style, model behavior, and
+            scenario-specific writing constraints. Do not store character facts, lore facts, current scene state,
+            backstory, or per-character voice here.
+          </dd>
+          <dt>Plot Essentials</dt>
+          <dd>
+            The compact always-on current operating truth: what is happening now, open tensions, obligations, and major
+            constraints that should shape every scene. PE updates replace the full block. When old PE facts leave the
+            block, AIST turns them into pending historical Story Card proposals for review.
+          </dd>
+          <dt>Story Cards</dt>
+          <dd>
+            Durable triggered records for one subject: character, location, faction, object, relationship, secret, rule,
+            or completed event. Static cards use present tense for always-true facts, living cards track current evolving
+            subjects, and historical cards use past tense for completed events.
+          </dd>
+        </dl>
+        <p><strong>Trigger rule:</strong> character aliases belong on character identity cards. Event, relationship, and subplot cards should use specific trigger phrases, not broad character names that already belong to other cards.</p>
+        <p><strong>Generator rule:</strong> generated cards should avoid temporary details, be concise and self-contained, repeat the subject in the body, and use the correct memory mode and tense.</p>
+      </>
+    ),
+  },
+  {
     id: "best-practices-brain",
     title: "Brain Thoughts — Best Practices",
     category: "Best Practices",
@@ -585,7 +623,8 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>One-off scenery or room details that won't recur.</li>
         </ul>
         <p><strong>Format:</strong> Bullet points, one per line, using •. Each bullet is one self-contained fact. Lead with what is always true, then add specific constraints or rules.</p>
-        <p><strong>Trigger keys:</strong> Use the character's name, key places, and specific phrases the story returns to. Avoid overly broad triggers that pull the card in on every turn.</p>
+        <p><strong>Memory mode:</strong> Static cards are always-true facts in present tense. Living cards are current evolving subjects that updates merge/archive. Historical cards are completed events or retired PE facts in past tense.</p>
+        <p><strong>Trigger keys:</strong> Use specific names, places, nicknames, objects, factions, and consequences. Character aliases belong on character identity cards; avoid putting broad character names on event, relationship, or subplot cards.</p>
         <p><strong>Good card:</strong></p>
         <pre>{`• Margo uses teasing to deflect when she's afraid.
 • She has a long-running private joke calling Seth "hedge prince."
@@ -603,23 +642,23 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          Plot Essentials is an always-on context component for permanent world facts, sealed arc beats, and active constraints that must shape every scene. It loads every turn and costs tokens every turn — keep it tight.
+          Plot Essentials is an always-on context component for the story's current operating truth: what is happening now, open tensions, obligations, and major constraints that must shape every scene. It loads every turn and costs tokens every turn — keep it tight.
         </p>
         <p><strong>What belongs:</strong></p>
         <ul>
-          <li>Sealed consequences: decisions that cannot be undone, factions that have been revealed, rules broken.</li>
-          <li>Active constraints: things that are now permanently true about the world or the player character's situation.</li>
-          <li>Open plot truths: major revelations that the story is now built around.</li>
+          <li>Current situation: the active story state the model must respect right now.</li>
+          <li>Open tensions and obligations: threats, promises, deadlines, or complications still shaping every scene.</li>
+          <li>Major constraints: power rules, public stakes, faction pressure, or canon limits that remain globally relevant.</li>
         </ul>
         <p><strong>What does NOT belong:</strong></p>
         <ul>
           <li>Current scene position or who is present — keep that in Recent Messages unless it becomes a durable constraint.</li>
           <li>Character emotional states or internal goals.</li>
-          <li>Temporary mission status that changes every few turns.</li>
+          <li>Temporary mission status that changes every few turns, unless it is the main current operating truth.</li>
           <li>Lore that only matters when a specific character or place comes up — use a Story Card instead.</li>
         </ul>
-        <p><strong>Format:</strong> Tight bullet points. Each bullet should be one permanent truth, not a scene description. AI updates are append-only — new bullets are added; existing bullets are preserved.</p>
-        <p><strong>Good PE entry:</strong> <code>• The warded threshold collapsed. The ward cannot be resealed.</code></p>
+        <p><strong>Format:</strong> 4-7 tight bullets or short labeled lines. PE updates replace the full block. When outgoing PE facts disappear from a replacement, AIST creates pending historical Story Card proposals so you can keep true history without bloating PE.</p>
+        <p><strong>Good PE entry:</strong> <code>• The warded threshold is open, House Vale is exploiting it tonight, and Seth must contain the breach before dawn.</code></p>
         <p><strong>Bad PE entry:</strong> <code>• Seth and Margo are currently standing near the threshold discussing the ward.</code> (scene state, not a permanent truth)</p>
       </>
     ),

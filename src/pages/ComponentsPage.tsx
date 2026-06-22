@@ -219,7 +219,7 @@ const TYPE_LABELS: Record<ComponentType, string> = {
 const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   narrationRules: "The primary per-adventure behavior contract — POV, format, player agency, continuity, tone, and hard writing rules. Loaded first with the system shell. It is valid to keep all stable generation rules here and use no AI Instructions block.",
   aiInstructions: "Optional scenario-specific rules separated for organization. Use this only when you want a distinct drift-prevention or genre contract outside Narration Rules. Do not duplicate rules already present in Narration Rules; both blocks load every turn.",
-  plotEssentials: "Durable story shape — core conflict, major forces, what the story is about. Human-edited only. Warning: the model writes toward what this says the story is about. If it contains only relationship content, you get a relationship story. Always keep at least one external threat, unresolved problem, or active arc visible here.",
+  plotEssentials: "Current operating truth — what is happening now, open tensions, obligations, and major constraints that should shape every scene. Keep it compact and replace it when it drifts. Outgoing facts become reviewable historical Story Card proposals.",
   currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Story Card and start fresh.",
   activePressure: "One sentence naming the external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it.",
   immediateMomentum: "Disabled legacy component. Immediate next-beat direction now belongs in Recent Messages or the one-turn Next Output Bias.",
@@ -427,7 +427,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 <div className="grid two">
                   {component.type === "plotEssentials" && (
                     <CheckboxField
-                      label="Auto-suggest (append new arc beats automatically)"
+                      label="Auto-suggest full replacements when current truth drifts"
                       checked={component.autoUpdate === true}
                       onChange={(autoUpdate) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { autoUpdate } })}
                     />

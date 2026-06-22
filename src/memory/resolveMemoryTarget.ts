@@ -31,8 +31,10 @@ const TOKEN_STOPWORDS = new Set([
 ]);
 
 const GENERIC_TRIGGER_WORDS = new Set([
+  "agency", "case", "current scene", "current status",
   "active", "currently", "connection", "date", "event", "facts", "missing", "mutual interest", "now",
-  "official", "romantic", "search", "specialists", "status", "termination", "the search",
+  "mission", "official", "relationship", "romantic", "scene", "search", "specialists", "status", "team",
+  "termination", "the agency", "the case", "the mission", "the search", "the team",
 ]);
 
 function normalize(value: string): string {
