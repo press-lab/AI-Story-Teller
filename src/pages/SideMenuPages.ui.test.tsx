@@ -62,6 +62,8 @@ describe("side menu page smoke coverage", () => {
     ));
     await user.click(screen.getByRole("button", { name: "Create Character Self" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Additional Triggers / Aliases"), "Blazer, Blonde Blazer, Mandy");
+    expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
   });
 
   it("renders the Arc Director on a Current Arc component and the AI generators", async () => {

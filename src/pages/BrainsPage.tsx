@@ -2,7 +2,7 @@ import type { ContextInclusionPolicy } from "../types/adventure";
 import { makeBrain } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
@@ -35,6 +35,38 @@ function ThoughtArchive({ archivedThoughts }: { archivedThoughts: Record<string,
         </div>
       )}
     </details>
+  );
+}
+
+function BrainTriggerInput({
+  triggers,
+  onChange,
+}: {
+  triggers: string[];
+  onChange: (triggers: string[]) => void;
+}) {
+  const [draft, setDraft] = useState(commaList(triggers));
+  const [focused, setFocused] = useState(false);
+
+  useEffect(() => {
+    if (!focused) setDraft(commaList(triggers));
+  }, [focused, triggers]);
+
+  return (
+    <input
+      value={draft}
+      placeholder="Blazer, Blonde Blazer, Mandy"
+      onChange={(event) => {
+        const next = event.target.value;
+        setDraft(next);
+        onChange(fromCommaList(next));
+      }}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        setDraft(commaList(fromCommaList(draft)));
+      }}
+    />
   );
 }
 
@@ -97,6 +129,14 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
                   onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { characterName: event.target.value } })}
                 />
               </Field>
+              <Field label="Additional Triggers / Aliases">
+                <BrainTriggerInput
+                  triggers={brain.triggers}
+                  onChange={(triggers) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { triggers } })}
+                />
+              </Field>
+            </div>
+            <div className="grid two">
               <Field label="Priority">
                 <NumberInput
                   value={brain.priority}
