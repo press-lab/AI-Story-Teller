@@ -78,7 +78,8 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
   const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
-  const lengthHint = `RESPONSE LENGTH TARGET: Aim for roughly ${wordTarget} words. This is a target to write toward, not a hard limit — a little over or under is fine to finish a thought naturally, but do not stop well short of it. Keep the scene substantive without padding.`;
+  const maxWords = Math.ceil(wordTarget * 1.2);
+  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} words, with a hard ceiling of ${maxWords} words unless the player explicitly asks for more. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
   const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {

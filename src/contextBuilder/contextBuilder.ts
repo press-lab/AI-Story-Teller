@@ -732,7 +732,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   const wordTarget = typeof adventure.activeState.responseLengthHint === "number"
     ? Math.max(50, Math.min(500, adventure.activeState.responseLengthHint))
     : 150;
-  const lengthHintText = `RESPONSE LENGTH TARGET: Aim for roughly ${wordTarget} words. This is a target to write toward, not a hard limit — a little over or under is fine to finish a thought naturally, but do not stop well short of it. Keep the scene substantive without padding.`;
+  const maxWords = Math.ceil(wordTarget * 1.2);
+  const lengthHintText = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} words, with a hard ceiling of ${maxWords} words unless the player explicitly asks for more. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
 
   // Inline thought capture — eligible brains get their thought harvested from the story response itself
   const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);

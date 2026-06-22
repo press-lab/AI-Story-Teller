@@ -36,11 +36,13 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
 }
 
-function applyResponseLengthHint(config: RuntimeProviderSettings, _hint: number): RuntimeProviderSettings {
-  // The word-count instruction in the system prompt guides length.
-  // Capping max_tokens here breaks models that use extended thinking (thinking tokens
-  // exhaust the budget before any text is generated). Leave max_tokens at the model default.
-  return config;
+export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number): RuntimeProviderSettings {
+  const wordTarget = Number.isFinite(hint) ? Math.max(50, Math.min(500, Math.round(hint))) : 150;
+  const playableTokenCap = Math.ceil(wordTarget * 1.5) + 120;
+  const configuredCap = Number.isFinite(config.maxOutputTokens) && config.maxOutputTokens > 0
+    ? config.maxOutputTokens
+    : playableTokenCap;
+  return { ...config, maxOutputTokens: Math.min(configuredCap, playableTokenCap) };
 }
 
 function stripThinkTags(text: string): string {
