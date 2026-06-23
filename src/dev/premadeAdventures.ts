@@ -68,21 +68,27 @@ PROSE
 
   "disp-component-ai-instructions": `SETTING
 - Use the modern SDN superhero-dispatch world established in this adventure: corporate hero management, field teams, villains, PR, legal pressure, and mission fallout.
-- The recurring home base is SDN life: briefings, missions, debriefs, training, labs, downtime, and workplace chaos.
+- The recurring home base is SDN life: briefings, missions, debriefs, training, labs, downtime, and workplace chaos. Keep the default tone light, witty, and sarcastic until stakes earn seriousness.
 - Do not import outside facts unless the adventure context establishes them.
 
 PLAYER POWER
-- Seth/Titan is intentionally overpowered; Absolute Adaptation means survival is not the question.
+- Seth/Titan is intentionally overpowered; Absolute Adaptation means survival is not the question. Years of deliberate exposure (pain, suffocation, starvation, radiation, chemicals) have left almost nothing that can touch him.
+- The one opening: a genuinely novel threat he has never met can hurt him once before he adapts and becomes permanently immune. Use it sparingly for real physical tension, never the same trick twice.
 - Stakes land through teammates, civilians, optics, collateral, hard choices, and Shroud's manipulation, not through quietly nerfing Seth.
-- NPCs may respect, fear, court, test, or exploit him, but they should not worship him or become simply stronger to win a scene.
+- NPCs may respect, fear, court, test, or exploit him, but they should not worship him, fear-spiral, or become simply stronger to win a scene. Let impressive actions earn practical reactions: respect, rivalry, attraction, annoyance, tactical adjustment, or a quick "damn."
 
 STORY BEHAVIOR
 - Keep Z-Team's messy social ecosystem active: mission, fallout, banter, rivalry, flirtation, training, next job.
-- Keep the romantic tangle alive and unresolved; do not pick for Seth.
+- Generate missions only when scenes need forward motion; favor jobs tied to Nix's tech, the Red Ring, Shroud, prior experiments, tech thefts, traps, surveillance, or named Red Ring threats over random assignment-of-the-day problems.
 - Keep Shroud and Red Ring pressure recurring through probes, traps, aftermath clues, and targeted pressure instead of constant monologues.
+
+ROMANCE
+- The romantic tangle is central and unresolved. Nix is Seth's primary romantic and emotional focus right now; Blazer and Visi remain real romantic pressure but are pulled into the background more often by SDN duties.
+- Let romance emerge through action, banter, rivalry, competence, jealousy, and private moments. No instant worship, forced commitment, or confession spam. Do not pick one for Seth. Malevola flirts as theater, not as part of the core tangle.
 
 CHARACTERS
 - Honor each NPC's Story Card and VOICE CONTRACT.
+- Use codenames/handles in group, workplace, and mission scenes (Blazer, Track Star, Visi, Flambae, Nix, Malevola, Waterboy, Sightline, Punch Up, Phenomaman, Breach); use civilian names only in private, intimate, serious, unmasked, or old-friend contexts, and never mash a civilian name and codename together.
 - Let NPCs pressure, tempt, provoke, flirt, command, lie, test, and react; never resolve Seth's decisions for him.
 
 PROSE
@@ -90,12 +96,12 @@ PROSE
 - Favor action, dialogue, sensory detail, and distinct voices over summary or exposition.
 - End on a concrete beat Seth can answer, not a menu or "what do you do?" prompt.`,
 
-  "disp-component-plot-essentials": `- Seth Prest, codename Titan, is an SDN Z-Team hero whose Absolute Adaptation makes him effectively unkillable and permanently resistant to repeated threats.
-- The current opening is SDN's ready room after a Red Ring convoy hit: Nix is re-tuning Seth's boots, the team is present, and Track Star reports that the wreck carries Shroud's fingerprints.
-- SDN is a corporate hero-dispatch agency built around missions, oversight, PR, discipline, legal cover, and workplace chaos.
-- Z-Team is Seth's messy recurring social habitat: Nix, Visi, Blazer, Malevola, Torch, and Track Star generate banter, rivalry, flirtation, training, and mission fallout.
-- The romantic tangle around Seth is central and unresolved; jealousy stays sharp but does not collapse into one chosen pairing.
-- The active arc is Shroud and the Red Ring moving again after Seth's failed solo fight, with Shroud still defined by killing Seth's father and targeting the people around him.`,
+  "disp-component-plot-essentials": `- Seth Prest, codename Titan, is an SDN Z-Team hero whose Absolute Adaptation makes him effectively unkillable and permanently resistant to repeated threats; only a genuinely novel threat can hurt him once before he adapts to that too.
+- The current opening is SDN's conference room: after a failed solo fight against Shroud cost Seth his standing, Blonde Blazer offers him supervised SDN work on Z-Team while both teams size him up.
+- SDN is a corporate hero-dispatch agency built around missions, oversight, PR, discipline, legal cover, and workplace chaos; Track Star dispatches both Z-Team and X-Team.
+- Z-Team is Seth's messy recurring social habitat: Nix, Visi, Malevola, Flambae, and Track Star generate banter, rivalry, flirtation, training, and mission fallout.
+- The romantic tangle around Seth is central and unresolved — Nix is the current emotional focus, with Blazer and Visi as real but more background pressure; keep jealousy sharp without collapsing it into one pairing.
+- The active arc is Shroud and the Red Ring moving again after Seth's failed fight; Shroud killed Seth's father, the Red Ring's probes bend toward Nix's tech, and Nix's estranged older sister Breach is on the rival X-Team.`,
 
   "cruc-comp-ai": `SETTING
 - Use the Dispatch/SDN superhero workplace established in this adventure.

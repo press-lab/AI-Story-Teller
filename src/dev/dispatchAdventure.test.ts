@@ -16,8 +16,8 @@ describe("dispatch adventure seed", () => {
     expect(adventure.title).toBe(dispatchAdventureTitle);
     expect(adventure.modelConfig.apiKey).toBeUndefined();
     expect(adventure.components.length).toBeGreaterThanOrEqual(6);
-    expect(adventure.storyCards).toHaveLength(16);
-    expect(adventure.brains).toHaveLength(7);
+    expect(adventure.storyCards).toHaveLength(21);
+    expect(adventure.brains).toHaveLength(8);
     expect(adventure.triggerRules).toHaveLength(4);
     expect(adventure.messages).toHaveLength(1);
     expect(adventure.components.find((component) => component.title === "AI Instructions")?.content).toContain(
@@ -56,13 +56,13 @@ describe("dispatch adventure seed", () => {
   it("exports re-importable full adventure JSON and Story Card JSON", () => {
     const imported = importAdventureJson(createDispatchAdventureJson());
     expect(imported.title).toBe(dispatchAdventureTitle);
-    expect(imported.storyCards).toHaveLength(16);
-    expect(imported.brains).toHaveLength(7);
+    expect(imported.storyCards).toHaveLength(21);
+    expect(imported.brains).toHaveLength(8);
 
     const parsedCards = parseAidStoryCards(createDispatchStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
-    expect(parsedCards.cards).toHaveLength(16);
+    expect(parsedCards.cards).toHaveLength(21);
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Seth Prest");
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Torch");
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Flambae");
   });
 });
