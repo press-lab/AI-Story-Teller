@@ -261,7 +261,8 @@ export function extractInlineThoughts(content: string): {
     .replace(/\[CHARACTER THOUGHT CAPTURE\][\s\S]*$/i, "") // echoed header + everything after
     .replace(/<thought[\s\S]*$/i, "")                      // unclosed <thought> tag to end of string
     .replace(/<other[\s\S]*$/i, "")                        // unclosed <other> tag to end of string
-    .replace(/<memory\s[^>]*\/>/gi, "")                    // self-closing memory tags
+    .replace(/<memory\b[^>]*>/gi, "")                       // self-closing or malformed-but-complete memory tags
+    .replace(/<memory\b[\s\S]*$/i, "")                    // truncated memory tag to end of string
     .replace(/\[MEMORY TAGGING\][\s\S]*$/i, "")            // echoed memory header
     .replace(/\*\*end of response\.?\*\*/gi, "")           // model-generated closing markers
     .replace(/---\s*end\s*---/gi, "")                      // variant: --- end ---

@@ -3,7 +3,7 @@ import type { Adventure, MemoryPriorityMode, TokenBudgetSettings } from "../type
 import { createDefaultAdventure, defaultNarrationRulesContent, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
-import { buildContext } from "./contextBuilder";
+import { buildContext, extractInlineThoughts } from "./contextBuilder";
 
 function adventureForContext(): Adventure {
   const always = makeComponent({ title: "Always", content: "Always component", alwaysOn: true, active: true, priority: 100 });
@@ -820,5 +820,12 @@ describe("buildContext", () => {
     const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };
     const brains = buildContext(adventure, {}).sections.find((section) => section.id === "brains");
     expect(brains?.items.length ?? 0).toBe(0);
+  });
+
+  it("hides a memory tag when the provider truncates it mid-attribute", () => {
+    const result = extractInlineThoughts(`You don't say anything as you travel. The silence is comfortable.\n\n<memory category="world_fact" memoryMode="historical" title="Chimera Containment" content="• Shroud's Chimera bio-weapon was activated at the old rail yards and successfully destroyed by Z-Team.\n• The team used a combined strategy: Titan absorbed its novel attacks, Nix's concussive charges scrambled its systems`);
+
+    expect(result.cleanContent).toBe("You don't say anything as you travel. The silence is comfortable.");
+    expect(result.memoryTags).toEqual([]);
   });
 });
