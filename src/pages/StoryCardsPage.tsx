@@ -18,6 +18,8 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 };
 
 type SortMode = "alpha" | "recent";
+type CardStatusFilter = "all" | "active" | "inactive";
+type CardMemoryFilter = "all" | "living";
 
 /** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
 export function isLivingCard(card: StoryCard): boolean {
@@ -134,6 +136,8 @@ export function StoryCardsPage({
   const [aiDescription, setAiDescription] = useState("");
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
+  const [statusFilter, setStatusFilter] = useState<CardStatusFilter>("all");
+  const [memoryFilter, setMemoryFilter] = useState<CardMemoryFilter>("all");
   const [search, setSearch] = useState("");
   const [auditTurns, setAuditTurns] = useState(20);
   const [audit, setAudit] = useState<AuditState | null>(null);
@@ -211,15 +215,25 @@ export function StoryCardsPage({
     return card.title.toLowerCase().includes(searchLower) || card.keys.some((k) => k.toLowerCase().includes(searchLower)) || card.content.toLowerCase().includes(searchLower);
   }
 
+  function cardMatchesFilters(card: StoryCard): boolean {
+    const statusMatches =
+      statusFilter === "all" ||
+      (statusFilter === "active" && card.active) ||
+      (statusFilter === "inactive" && !card.active);
+    const memoryMatches = memoryFilter === "all" || isLivingCard(card);
+    return statusMatches && memoryMatches;
+  }
+
   // Group cards by type, only include types that have at least one card
   const groups: Array<{ type: StoryCardType; cards: StoryCard[] }> = TYPE_ORDER
-    .map((type) => ({ type, cards: sortCards(adventure.storyCards.filter((c) => c.type === type && cardMatchesSearch(c)), sortMode) }))
+    .map((type) => ({ type, cards: sortCards(adventure.storyCards.filter((c) => c.type === type && cardMatchesSearch(c) && cardMatchesFilters(c)), sortMode) }))
     .filter((g) => g.cards.length > 0);
   const totalCards = adventure.storyCards.length;
   const activeCards = adventure.storyCards.filter((c) => c.active);
   const activeCount = activeCards.length;
   const visibleCount = groups.reduce((sum, group) => sum + group.cards.length, 0);
   const livingCount = adventure.storyCards.filter(isLivingCard).length;
+  const filtersActive = statusFilter !== "all" || memoryFilter !== "all";
 
   return (
     <section className="page editor-surface story-cards-page">
@@ -232,7 +246,7 @@ export function StoryCardsPage({
           <span>{totalCards} total</span>
           <span>{activeCount} active</span>
           <span>{livingCount} living</span>
-          {searchLower && <span>{visibleCount} shown</span>}
+          {(searchLower || filtersActive) && <span>{visibleCount} shown</span>}
         </div>
       </div>
       <p className="muted editor-legacy-help" style={{ margin: 0 }}>
@@ -278,6 +292,52 @@ export function StoryCardsPage({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
+        <div className="editor-filter-strip" aria-label="Story card filters">
+          <div className="sort-toggle" role="group" aria-label="Status filter">
+            <button
+              type="button"
+              className={statusFilter === "all" ? "active" : ""}
+              aria-pressed={statusFilter === "all"}
+              onClick={() => setStatusFilter("all")}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "active" ? "active" : ""}
+              aria-pressed={statusFilter === "active"}
+              onClick={() => setStatusFilter("active")}
+            >
+              Active
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "inactive" ? "active" : ""}
+              aria-pressed={statusFilter === "inactive"}
+              onClick={() => setStatusFilter("inactive")}
+            >
+              Inactive
+            </button>
+          </div>
+          <div className="sort-toggle" role="group" aria-label="Memory filter">
+            <button
+              type="button"
+              className={memoryFilter === "all" ? "active" : ""}
+              aria-pressed={memoryFilter === "all"}
+              onClick={() => setMemoryFilter("all")}
+            >
+              Any
+            </button>
+            <button
+              type="button"
+              className={memoryFilter === "living" ? "active" : ""}
+              aria-pressed={memoryFilter === "living"}
+              onClick={() => setMemoryFilter("living")}
+            >
+              Living
+            </button>
+          </div>
+        </div>
         <button
           type="button"
           className="primary-action"
@@ -425,7 +485,11 @@ export function StoryCardsPage({
         </button>
       </details>
 
-      {groups.length === 0 && <p className="muted">No story cards yet.</p>}
+      {groups.length === 0 && (
+        <p className="muted">
+          {totalCards === 0 ? "No story cards yet." : "No story cards match the current search and filters."}
+        </p>
+      )}
 
       {audit && audit.status !== "running" && (
         <div className="audit-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setAudit(null); }}>

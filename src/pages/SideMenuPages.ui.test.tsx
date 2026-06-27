@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adventureReducer } from "../state/adventureReducer";
-import { createDefaultAdventure, makeComponent } from "../state/defaults";
+import { createDefaultAdventure, makeComponent, makeStoryCard } from "../state/defaults";
 import type { Adventure, AdventureAction } from "../types/adventure";
 
 import { BrainsPage } from "./BrainsPage";
@@ -108,6 +108,30 @@ describe("side menu page smoke coverage", () => {
     await user.click(screen.getByRole("button", { name: "Generate Memory Suggestion" }));
 
     expect(onGenerateMemorySuggestion).toHaveBeenCalledWith(description);
+  });
+
+  it("filters Story Cards by active status and living mode", async () => {
+    const user = userEvent.setup();
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      storyCards: [
+        makeStoryCard({ title: "Living Ally", content: "Changes over time.", active: true, memoryMode: "living" }),
+        makeStoryCard({ title: "Static Base", content: "Always true.", active: true, memoryMode: "static" }),
+        makeStoryCard({ title: "Dormant Romance", content: "Not currently active.", active: false, memoryMode: "living" }),
+      ],
+    };
+
+    render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
+
+    await user.click(screen.getByRole("button", { name: "Active" }));
+    await user.click(screen.getByRole("button", { name: "Living" }));
+
+    const visibleCards = document.querySelectorAll(".story-card-editor-item");
+    expect(visibleCards).toHaveLength(1);
+    expect(visibleCards[0]).toHaveTextContent("Living Ally");
+    expect(visibleCards[0]).not.toHaveTextContent("Static Base");
+    expect(visibleCards[0]).not.toHaveTextContent("Dormant Romance");
+    expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
   it("covers Memory Inbox proposal creation and approval", async () => {
