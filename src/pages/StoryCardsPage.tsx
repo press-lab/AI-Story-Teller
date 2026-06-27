@@ -48,6 +48,9 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
         {card.keys.length > 0 && <span className="badge badge-priority">{card.keys.length} triggers</span>}
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
       </span>
+      <span className="story-card-keys">
+        {card.keys.length > 0 ? card.keys.slice(0, 4).join(", ") : "title trigger"}
+      </span>
       {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>
   );

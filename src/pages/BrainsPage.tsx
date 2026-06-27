@@ -125,6 +125,7 @@ function BrainThoughtHistory({ brain }: { brain: BrainEntry }) {
 function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
   const thoughtCount = Object.keys(brain.thoughts).length;
   const archivedCount = Object.keys(brain.archivedThoughts).length;
+  const latestThought = brainThoughtEntries(brain.thoughts)[0]?.[1] ?? brainThoughtEntries(brain.archivedThoughts)[0]?.[1];
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -140,10 +141,11 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
       </span>
       {brain.triggers.length > 0 && (
-        <span className="search-snippet">
+        <span className="story-card-keys">
           <Highlight text={brain.triggers.join(", ")} query={query} />
         </span>
       )}
+      {latestThought && <span className="search-snippet brain-summary-thought"><Highlight text={latestThought} query={query} /></span>}
     </span>
   );
 }
@@ -188,7 +190,14 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <button type="button" onClick={() => dispatch({ type: "UPSERT_BRAIN", brain: makeBrain({ characterName: "New Character" }) })}>
+        <button
+          type="button"
+          onClick={() => {
+            const brain = makeBrain({ characterName: "New Character" });
+            dispatch({ type: "UPSERT_BRAIN", brain });
+            setOpenBrainId(brain.id);
+          }}
+        >
           Create Character Self
         </button>
       </div>

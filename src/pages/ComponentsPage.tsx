@@ -259,6 +259,26 @@ interface ComponentsPageProps extends AdventurePageProps {
 
 const GENERATABLE_COMPONENT_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "authorNote"]);
 
+const PLOT_GROUP_DEFINITIONS: Array<{
+  id: string;
+  title: string;
+  description: string;
+  types: ComponentType[];
+}> = [
+  {
+    id: "contract",
+    title: "Core Story Contract",
+    description: "How the story is written and steered.",
+    types: ["narrationRules", "aiInstructions", "authorNote"],
+  },
+  {
+    id: "current-state",
+    title: "Current Story State",
+    description: "What is true right now and what pressure is active.",
+    types: ["plotEssentials", "activePressure", "currentArc"],
+  },
+];
+
 export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
@@ -323,6 +343,24 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       c.content.toLowerCase().includes(searchLower)
     );
   const activeCount = adventure.components.filter((component) => component.active).length;
+  const groupedComponentIds = new Set<string>();
+  const componentGroups = PLOT_GROUP_DEFINITIONS
+    .map((group) => {
+      const components = visibleComponents.filter((component) => group.types.includes(component.type));
+      components.forEach((component) => groupedComponentIds.add(component.id));
+      return { ...group, components };
+    })
+    .filter((group) => group.components.length > 0);
+  const extraComponents = visibleComponents.filter((component) => !groupedComponentIds.has(component.id));
+  if (extraComponents.length > 0) {
+    componentGroups.push({
+      id: "extras",
+      title: "Extra World Blocks",
+      description: "Optional always-on or custom context.",
+      types: [],
+      components: extraComponents,
+    });
+  }
 
   return (
     <section className="page editor-surface components-page">
@@ -380,8 +418,18 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         )}
       </div>
 
-      <div className="list split-editor-list component-editor-list">
-        {visibleComponents.map((component) => (
+      <div className="component-group-list">
+        {componentGroups.map((group) => (
+          <details key={group.id} className="component-group-panel" open>
+            <summary className="component-group-summary">
+              <span>
+                <strong>{group.title}</strong>
+                <span className="muted">{group.description}</span>
+              </span>
+              <span className="badge badge-type">{group.components.length}</span>
+            </summary>
+            <div className="list split-editor-list component-editor-list">
+        {group.components.map((component) => (
           <details
             key={component.id}
             className="card story-card-item split-editor-item component-editor-item"
@@ -668,6 +716,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </button>
               </div>
               </details>
+            </div>
+          </details>
+        ))}
             </div>
           </details>
         ))}
