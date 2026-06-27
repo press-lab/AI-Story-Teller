@@ -100,27 +100,6 @@ export function DashboardPage({
           </div>
         </aside>
       </div>
-
-      <section className="quick-edit-strip" aria-label="Adventure shortcuts">
-        <button type="button" onClick={() => onOpenTab?.("components")}>
-          Plot
-        </button>
-        <button type="button" onClick={() => onOpenTab?.("storyCards")}>
-          Story Cards
-        </button>
-        <button type="button" onClick={() => onOpenTab?.("brains")}>
-          Characters
-        </button>
-        <button type="button" onClick={() => onOpenTab?.("memoryInbox")}>
-          Memory
-        </button>
-        <button type="button" onClick={() => onOpenTab?.("triggers")}>
-          Automation
-        </button>
-        <button type="button" onClick={() => onOpenTab?.("cloudSaves")}>
-          Saves
-        </button>
-      </section>
     </section>
   );
 }

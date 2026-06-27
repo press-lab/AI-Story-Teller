@@ -61,8 +61,5 @@ describe("DashboardPage adventure detail", () => {
     await user.click(screen.getByRole("button", { name: "Inspect" }));
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenContext).toHaveBeenCalledTimes(1);
-
-    await user.click(screen.getByRole("button", { name: "Story Cards" }));
-    expect(onOpenTab).toHaveBeenCalledWith("storyCards");
   });
 });

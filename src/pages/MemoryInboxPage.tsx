@@ -98,7 +98,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
       </div>
 
       <details className="panel editor-tools-panel">
-        <summary>How suggestions work and auto-approve settings</summary>
+        <summary>Rules &amp; auto-approve</summary>
         <h3>Memory Suggestions</h3>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Story Cards, Character Self updates,
@@ -121,7 +121,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
       </details>
 
       <details className="panel">
-        <summary>Create Suggestion</summary>
+        <summary>Manual Suggestion</summary>
         <Field label="Source Text">
           <textarea
             rows={3}

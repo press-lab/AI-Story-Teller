@@ -259,7 +259,6 @@ pre {
 
 .app-nav button,
 .editor-tabs button,
-.quick-edit-strip button,
 .play-tool-grid button {
   position: relative;
   display: inline-flex;
@@ -619,6 +618,85 @@ pre {
 .editor-tools-panel h4 {
   margin: 0 0 6px;
   font-size: 14px;
+}
+
+.memory-inbox-page {
+  grid-template-columns: repeat(3, max-content) minmax(0, 1fr);
+  align-items: start;
+  max-width: 1080px;
+}
+
+.memory-inbox-page > .editor-page-summary,
+.memory-inbox-page > .editor-command-bar,
+.memory-inbox-page > .list {
+  grid-column: 1 / -1;
+}
+
+.memory-inbox-page > details.panel {
+  order: 2;
+  align-self: start;
+  min-width: 0;
+  padding: 0;
+}
+
+.memory-inbox-page > .list {
+  order: 3;
+}
+
+.memory-inbox-page > details.panel > summary {
+  min-height: 34px;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.memory-inbox-page > details.panel[open] {
+  grid-column: 1 / -1;
+  padding: 0 12px 12px;
+}
+
+.memory-inbox-page > details.panel[open] > summary {
+  margin: 0 -12px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.memory-inbox-page .memory-history-panel {
+  grid-column: auto;
+}
+
+.memory-inbox-page .memory-history-panel .list {
+  margin-top: 0;
+}
+
+.settings-page.has-adventure {
+  max-width: 1100px;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  align-items: start;
+}
+
+.settings-page.has-adventure > .grid.two {
+  display: contents;
+}
+
+.settings-page.has-adventure > .panel,
+.settings-page.has-adventure > .grid.two > .panel {
+  min-width: 0;
+}
+
+.settings-cover-panel,
+.settings-interface-panel {
+  align-self: start;
+}
+
+.settings-cover-panel .thumbnail-picker {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-cover-panel .thumbnail-picker-preview {
+  width: 100%;
+  min-height: 130px;
 }
 
 .import-export-page {
@@ -1280,7 +1358,7 @@ details.story-card-item:not([open]) > :not(summary) {
 }
 
 .library-page {
-  max-width: 1180px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -1300,8 +1378,8 @@ details.story-card-item:not([open]) > :not(summary) {
 
 .library-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
 }
 
 .library-card {
@@ -1337,8 +1415,10 @@ details.story-card-item:not([open]) > :not(summary) {
 
 .library-card-body {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  align-content: space-between;
+  gap: 16px;
+  min-height: 210px;
+  padding: 16px;
 }
 
 .library-card h3 {
@@ -1347,8 +1427,13 @@ details.story-card-item:not([open]) > :not(summary) {
 
 .library-card-actions {
   display: flex;
-  gap: 8px;
+  gap: 9px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.library-card-actions button {
+  min-height: 34px;
 }
 
 .adventure-thumbnail-frame {
@@ -1592,17 +1677,6 @@ button.primary-action:hover:not(:disabled),
 .adventure-stat strong {
   max-width: 210px;
   text-align: right;
-}
-
-.quick-edit-strip {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.quick-edit-strip button {
-  min-height: 38px;
-  background: var(--surface);
 }
 
 .editor-workspace {
@@ -2688,24 +2762,19 @@ details.story-card-item:not([open]) > .editor-card {
 }
 
 .split-editor-list:has(.split-editor-item[open]) {
-  position: relative;
-  display: block;
-  min-height: min(70vh, 720px);
+  display: grid;
+  gap: 10px;
 }
 
 .split-editor-list:has(.split-editor-item[open]) .split-editor-item:not([open]) {
-  width: 320px;
-  max-width: calc(42% - 6px);
-  margin-bottom: 8px;
+  width: auto;
+  max-width: none;
 }
 
 .split-editor-list:has(.split-editor-item[open]) .split-editor-item[open] {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  left: min(332px, 42%);
-  max-height: calc(100vh - 120px);
-  overflow: auto;
+  position: static;
+  max-height: none;
+  overflow: visible;
 }
 
 .split-editor-item[open] > summary {
@@ -2716,24 +2785,19 @@ details.story-card-item:not([open]) > .editor-card {
 }
 
 .brains-page > .list:has(.brain-item[open]) {
-  position: relative;
-  display: block;
-  min-height: min(70vh, 720px);
+  display: grid;
+  gap: 10px;
 }
 
 .brains-page > .list:has(.brain-item[open]) .brain-item:not([open]) {
-  width: 320px;
-  max-width: calc(42% - 6px);
-  margin-bottom: 8px;
+  width: auto;
+  max-width: none;
 }
 
 .brains-page > .list:has(.brain-item[open]) .brain-item[open] {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  left: min(332px, 42%);
-  max-height: calc(100vh - 120px);
-  overflow: auto;
+  position: static;
+  max-height: none;
+  overflow: visible;
 }
 
 .brain-item[open] > summary {
@@ -4119,6 +4183,21 @@ summary {
     justify-content: flex-start;
   }
 
+  .memory-inbox-page,
+  .settings-page.has-adventure {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-inbox-page > details.panel {
+    grid-column: 1;
+  }
+
+  .settings-page.has-adventure > .grid.two {
+    display: grid;
+    grid-column: 1;
+    grid-template-columns: 1fr;
+  }
+
   .import-export-mode-switch,
   .import-export-grid,
   .import-export-secondary-actions,
@@ -4210,8 +4289,7 @@ summary {
     padding: 18px;
   }
 
-  .adventure-hero-actions,
-  .quick-edit-strip {
+  .adventure-hero-actions {
     display: grid;
     grid-template-columns: 1fr;
     width: 100%;

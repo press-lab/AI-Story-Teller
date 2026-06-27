@@ -164,16 +164,15 @@ export function SettingsPage({
   const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
 
   return (
-    <section className="page">
+    <section className={`page settings-page${adventure ? " has-adventure" : ""}`}>
 
       {/* ── Adventure Cover ───────────────────────── */}
       {adventure && (
-        <article className="panel">
+        <article className="panel settings-cover-panel">
           <h3>Adventure Cover</h3>
           <AdventureThumbnailPicker
             thumbnail={currentThumbnail}
             title={adventure.title}
-            compact
             onChange={(thumbnail) =>
               dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
             }
@@ -184,7 +183,7 @@ export function SettingsPage({
       <div className="grid two">
 
         {/* ── Interface ─────────────────────────────── */}
-        <article className="panel">
+        <article className="panel settings-interface-panel">
           <h3>Interface</h3>
           <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
           <div className="grid two">

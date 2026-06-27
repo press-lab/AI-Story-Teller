@@ -84,6 +84,7 @@ describe("App adventure tool workspace", () => {
     // After creation the app lands on the dashboard — title appears as a heading
     await screen.findByRole("heading", { name: "Workspace Test" });
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
     // Now in the editor — title is an editable input
