@@ -18,8 +18,6 @@ import {
   defaultTokenBudgetSettings,
   heavyTokenBudgetPreset,
 } from "../state/defaults";
-import { AdventureThumbnailPicker } from "../components/AdventureThumbnail";
-import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
 import {
   createDevelopmentAdventureJson,
   createDevelopmentStoryCardsJson,
@@ -161,24 +159,8 @@ export function SettingsPage({
     memoryAutoApprove: adventure.memoryAutoApprove,
   } : globalAdventureSettings;
 
-  const currentThumbnail = adventure ? getAdventureThumbnail(adventure) : undefined;
-
   return (
-    <section className={`page settings-page${adventure ? " has-adventure" : ""}`}>
-
-      {/* ── Adventure Cover ───────────────────────── */}
-      {adventure && (
-        <article className="panel settings-cover-panel">
-          <h3>Adventure Cover</h3>
-          <AdventureThumbnailPicker
-            thumbnail={currentThumbnail}
-            title={adventure.title}
-            onChange={(thumbnail) =>
-              dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
-            }
-          />
-        </article>
-      )}
+    <section className="page settings-page">
 
       <div className="grid two">
 

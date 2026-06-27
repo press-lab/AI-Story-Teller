@@ -86,6 +86,9 @@ export function AdventureThumbnailPicker({
   compact?: boolean;
 }) {
   const [error, setError] = useState<string | undefined>();
+  const chooseLabel = compact
+    ? thumbnail ? "Change cover" : "Add cover"
+    : thumbnail ? "Change thumbnail" : "Add thumbnail image";
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -107,14 +110,14 @@ export function AdventureThumbnailPicker({
       <div className="thumbnail-picker-controls">
         <label className="file-button">
           <input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange} />
-          {thumbnail ? "Change thumbnail" : "Add thumbnail image"}
+          {chooseLabel}
         </label>
         {thumbnail && (
           <button type="button" onClick={() => onChange(undefined)}>
-            Remove image
+            {compact ? "Remove" : "Remove image"}
           </button>
         )}
-        {thumbnail?.name && <span className="muted thumbnail-file-name">{thumbnail.name}</span>}
+        {!compact && thumbnail?.name && <span className="muted thumbnail-file-name">{thumbnail.name}</span>}
       </div>
       {error && <p className="error-inline">{error}</p>}
     </div>

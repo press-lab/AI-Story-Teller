@@ -151,6 +151,7 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
 export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onGenerateBrain }: BrainsPageProps) {
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
+  const [openBrainId, setOpenBrainId] = useState<string | null>(null);
   const searchLower = search.toLowerCase().trim();
   const visibleBrains = [...adventure.brains]
     .sort((a, b) => b.priority - a.priority)
@@ -216,8 +217,19 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
 
       <div className="list split-editor-list">
         {visibleBrains.map((brain) => (
-          <details key={brain.id} className="card story-card-item split-editor-item brain-item">
-            <summary><BrainSummary brain={brain} query={searchLower} /></summary>
+          <details
+            key={brain.id}
+            className="card story-card-item split-editor-item brain-item"
+            open={openBrainId === brain.id}
+          >
+            <summary
+              onClick={(event) => {
+                event.preventDefault();
+                setOpenBrainId((current) => current === brain.id ? null : brain.id);
+              }}
+            >
+              <BrainSummary brain={brain} query={searchLower} />
+            </summary>
             <div className="editor-card brain-inspector">
             <div className="panel-heading brain-inspector-heading">
               <div>

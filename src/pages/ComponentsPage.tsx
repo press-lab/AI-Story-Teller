@@ -264,6 +264,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
   const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
+  const [openComponentId, setOpenComponentId] = useState<string | null>(null);
 
   function handleGraduateArc(component: ComponentEntry) {
     if (graduateConfirm !== component.id) {
@@ -381,8 +382,19 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
 
       <div className="list split-editor-list component-editor-list">
         {visibleComponents.map((component) => (
-          <details key={component.id} className="card story-card-item split-editor-item component-editor-item">
-            <summary><ComponentSummary component={component} query={searchLower} /></summary>
+          <details
+            key={component.id}
+            className="card story-card-item split-editor-item component-editor-item"
+            open={openComponentId === component.id}
+          >
+            <summary
+              onClick={(event) => {
+                event.preventDefault();
+                setOpenComponentId((current) => current === component.id ? null : component.id);
+              }}
+            >
+              <ComponentSummary component={component} query={searchLower} />
+            </summary>
 
             <div className="editor-card item-inspector component-inspector">
               <div className="panel-heading item-inspector-heading">

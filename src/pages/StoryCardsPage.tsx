@@ -139,6 +139,7 @@ export function StoryCardsPage({
   const [statusFilter, setStatusFilter] = useState<CardStatusFilter>("all");
   const [memoryFilter, setMemoryFilter] = useState<CardMemoryFilter>("all");
   const [search, setSearch] = useState("");
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [auditTurns, setAuditTurns] = useState(20);
   const [audit, setAudit] = useState<AuditState | null>(null);
   const newCardRef = useRef<HTMLDetailsElement | null>(null);
@@ -192,9 +193,9 @@ export function StoryCardsPage({
   }
 
   useEffect(() => {
-    if (!newCardId || !newCardRef.current) return;
-    newCardRef.current.open = true;
-    newCardRef.current.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+    if (!newCardId) return;
+    setOpenCardId(newCardId);
+    newCardRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
     setNewCardId(undefined);
   }, [newCardId, adventure.storyCards.length]);
 
@@ -561,8 +562,20 @@ export function StoryCardsPage({
           <h4 className="card-group-label">{TYPE_LABELS[type]} <span className="muted">({cards.length})</span></h4>
           <div className="list split-editor-list story-card-editor-list">
             {cards.map((card) => (
-              <details key={card.id} ref={card.id === newCardId ? newCardRef : null} className="card story-card-item split-editor-item story-card-editor-item">
-                <summary><CardSummary card={card} query={searchLower} /></summary>
+              <details
+                key={card.id}
+                ref={card.id === newCardId ? newCardRef : null}
+                className="card story-card-item split-editor-item story-card-editor-item"
+                open={openCardId === card.id}
+              >
+                <summary
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setOpenCardId((current) => current === card.id ? null : card.id);
+                  }}
+                >
+                  <CardSummary card={card} query={searchLower} />
+                </summary>
 
                 <div className="editor-card item-inspector story-card-inspector">
                   <div className="panel-heading item-inspector-heading">

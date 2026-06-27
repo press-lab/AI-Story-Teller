@@ -669,34 +669,12 @@ pre {
   margin-top: 0;
 }
 
-.settings-page.has-adventure {
-  max-width: 1100px;
-  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
-  align-items: start;
-}
-
-.settings-page.has-adventure > .grid.two {
-  display: contents;
-}
-
-.settings-page.has-adventure > .panel,
-.settings-page.has-adventure > .grid.two > .panel {
+.settings-page > .grid.two > .panel {
   min-width: 0;
 }
 
-.settings-cover-panel,
 .settings-interface-panel {
   align-self: start;
-}
-
-.settings-cover-panel .thumbnail-picker {
-  display: grid;
-  gap: 10px;
-}
-
-.settings-cover-panel .thumbnail-picker-preview {
-  width: 100%;
-  min-height: 130px;
 }
 
 .import-export-page {
@@ -1687,17 +1665,48 @@ button.primary-action:hover:not(:disabled),
 
 .editor-header {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 12px;
   padding: 0 2px 4px;
   border: 0;
   background: transparent;
 }
 
+.editor-title-block {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.editor-title-block .thumbnail-picker {
+  flex: 0 0 auto;
+  gap: 6px;
+}
+
+.editor-title-block .thumbnail-picker-controls {
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+.editor-title-block .file-button,
+.editor-title-block .thumbnail-picker button {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.editor-title-block .error-inline {
+  flex-basis: 100%;
+}
+
 .editor-save-status {
   flex-shrink: 0;
   font-size: 0.8rem;
   margin: 0;
+  padding-top: 3px;
 }
 
 .editor-title-input {
@@ -1708,7 +1717,7 @@ button.primary-action:hover:not(:disabled),
   background: transparent;
   padding: 0 0 2px;
   margin: 0;
-  flex: 1;
+  flex: 1 1 18rem;
   min-width: 0;
   color: var(--text);
 }
@@ -4183,19 +4192,12 @@ summary {
     justify-content: flex-start;
   }
 
-  .memory-inbox-page,
-  .settings-page.has-adventure {
+  .memory-inbox-page {
     grid-template-columns: 1fr;
   }
 
   .memory-inbox-page > details.panel {
     grid-column: 1;
-  }
-
-  .settings-page.has-adventure > .grid.two {
-    display: grid;
-    grid-column: 1;
-    grid-template-columns: 1fr;
   }
 
   .import-export-mode-switch,
@@ -4304,6 +4306,21 @@ summary {
   .thumbnail-picker-controls {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .editor-title-block {
+    flex-wrap: wrap;
+  }
+
+  .editor-title-block .thumbnail-picker,
+  .editor-title-block .thumbnail-picker-controls {
+    width: auto;
+    align-items: center;
+  }
+
+  .editor-title-block .thumbnail-picker-controls {
+    display: flex;
+    grid-template-columns: none;
   }
 
   .editor-workspace {

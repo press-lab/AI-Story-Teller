@@ -31,6 +31,8 @@ import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
 import { premadeAdventures } from "./dev/premadeAdventures";
+import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 
 type TabId =
   | "adventures"
@@ -519,12 +521,22 @@ export default function App() {
         return (
           <section className="page editor-workspace">
             <header className="editor-header panel">
-              <input
-                className="editor-title-input"
-                value={adventure.title}
-                onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
-                placeholder="Adventure title"
-              />
+              <div className="editor-title-block">
+                <input
+                  className="editor-title-input"
+                  value={adventure.title}
+                  onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
+                  placeholder="Adventure title"
+                />
+                <AdventureThumbnailPicker
+                  thumbnail={getAdventureThumbnail(adventure)}
+                  title={adventure.title}
+                  compact
+                  onChange={(thumbnail) =>
+                    dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
+                  }
+                />
+              </div>
               <p className="muted editor-save-status">{saveStatus}</p>
             </header>
             <nav className="editor-tabs" aria-label="Adventure editor">
