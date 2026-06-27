@@ -18,6 +18,7 @@ import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pa
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
+import { PlayCardsPeek, PlayCharactersPeek, PlayContextPeek, PlayMemoryPeek, PlayPlotPeek } from "./pages/PlayPeekPanels";
 import { ChroniclePage } from "./pages/ChroniclePage";
 import { ContextPreviewPage } from "./pages/ContextPreviewPage";
 import { ComponentsPage } from "./pages/ComponentsPage";
@@ -87,11 +88,11 @@ const modalTabs = new Set<TabId>([
 ]);
 
 const modalTitles: Partial<Record<TabId, string>> = {
-  context: "Context Preview",
+  context: "Context",
   chronicle: "Adventure Chronicle",
-  components: "World Blocks",
+  components: "Plot",
   storyCards: "Story Cards",
-  brains: "Character Selves",
+  brains: "Characters",
   triggers: "Automations",
   memoryInbox: "Memory Suggestions",
   cloudSaves: "GitHub Saves",
@@ -403,6 +404,31 @@ export default function App() {
     }
   }
 
+  function renderPlayTool(tabId: EditorTabId) {
+    if (!adventure) return null;
+    const props = {
+      adventure,
+      contextResult,
+      onBuildContext: runtime.buildPreview,
+      onEditFully: openEditor,
+    };
+
+    switch (tabId) {
+      case "components":
+        return <PlayPlotPeek {...props} />;
+      case "storyCards":
+        return <PlayCardsPeek {...props} />;
+      case "brains":
+        return <PlayCharactersPeek {...props} />;
+      case "memoryInbox":
+        return <PlayMemoryPeek {...props} />;
+      case "context":
+        return <PlayContextPeek {...props} />;
+      default:
+        return renderAdventureTool(tabId);
+    }
+  }
+
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
 
   const page = (() => {
@@ -487,7 +513,7 @@ export default function App() {
             onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
-            playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
+            playPanelContent={playPanelTab ? renderPlayTool(playPanelTab) : undefined}
             playPanelTitle={playPanelTab ? (modalTitles[playPanelTab as TabId] ?? "Tool") : undefined}
             onClosePlayPanel={() => setPlayPanelTab(undefined)}
             providerPresets={providerPresets}
@@ -568,7 +594,7 @@ export default function App() {
     <div className={`app-shell${navHidden ? " nav-hidden" : ""}`}>
       {navHidden && (
         <button type="button" className="nav-show-btn" onClick={() => setNavForceVisible(true)} title="Show navigation">
-          ≡ nav
+          Menu
         </button>
       )}
       <header className="app-header">
@@ -597,7 +623,7 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={activeTopTab === "play" ? "active primary" : "primary"}
+            className={activeTopTab === "play" ? "active primary" : ""}
             disabled={!adventure}
             onClick={() => openTab("play")}
           >

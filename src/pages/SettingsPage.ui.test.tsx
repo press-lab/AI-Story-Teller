@@ -55,6 +55,7 @@ describe("SettingsPage API throttle controls", () => {
 
     render(<StatefulSettingsPage />);
 
+    await user.click(screen.getByRole("button", { name: /Test Model/ }));
     await user.click(screen.getByLabelText("Enable prompt caching"));
 
     expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
@@ -102,7 +103,7 @@ describe("SettingsPage API throttle controls", () => {
 
     render(<StatefulSettingsPage />);
 
-    // The active preset form starts expanded; throttle section is visible under Advanced
+    await user.click(screen.getByRole("button", { name: /Test Model/ }));
     await user.click(screen.getByLabelText("Enable API request throttle"));
 
     expect(onProviderPresetsChange).toHaveBeenLastCalledWith(

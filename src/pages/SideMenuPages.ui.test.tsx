@@ -152,7 +152,9 @@ describe("side menu page smoke coverage", () => {
         onOpenImportedAdventure={onOpenImportedAdventure}
       />
     ));
-    expect(screen.getByText("Export Adventure")).toBeInTheDocument();
+    expect(screen.getByText("Back up this adventure")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Back Up/i })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("tab", { name: /Migrate/i }));
     expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
     cleanup();
 

@@ -321,10 +321,23 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       TYPE_LABELS[c.type].toLowerCase().includes(searchLower) ||
       c.content.toLowerCase().includes(searchLower)
     );
+  const activeCount = adventure.components.filter((component) => component.active).length;
 
   return (
-    <section className="page">
-      <p className="muted" style={{ margin: 0 }}>
+    <section className="page editor-surface components-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          Always-on plot truth, narration rules, author direction, and custom context blocks.
+          Use Cards for facts that should only load when relevant.
+        </p>
+        <div className="editor-stat-row" aria-label="World block counts">
+          <span>{adventure.components.length} total</span>
+          <span>{activeCount} active</span>
+          {searchLower && <span>{visibleComponents.length} shown</span>}
+        </div>
+      </div>
+
+      <p className="muted editor-legacy-help" style={{ margin: 0 }}>
         World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
         Use them for narration rules, plot state, and author direction.
         For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
@@ -332,13 +345,12 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         AI Instructions are optional; Narration Rules can hold the complete stable behavior contract by themselves.
       </p>
 
-      <div className="toolbar">
+      <div className="editor-command-bar">
         <input
           type="search"
           placeholder="Search blocks…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          style={{ flex: 1, minWidth: "8rem", maxWidth: "20rem" }}
         />
         {availableTypes.filter((t) => SINGLETON_TYPES.has(t)).map((type) => (
           <button
@@ -367,12 +379,63 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         )}
       </div>
 
-      <div className="list">
+      <div className="list split-editor-list component-editor-list">
         {visibleComponents.map((component) => (
-          <details key={component.id} className="card story-card-item">
+          <details key={component.id} className="card story-card-item split-editor-item component-editor-item">
             <summary><ComponentSummary component={component} query={searchLower} /></summary>
 
-            <div className="editor-card">
+            <div className="editor-card item-inspector component-inspector">
+              <div className="panel-heading item-inspector-heading">
+                <div>
+                  <p className="eyebrow">
+                    {component.active ? "active" : "inactive"} · {component.inclusionPolicy}
+                  </p>
+                  <h3>{TYPE_LABELS[component.type]}</h3>
+                  <div className="story-card-badges">
+                    {component.type === "currentArc" && (
+                      <span className="badge badge-priority">{(component.arcState?.phase ?? "simmer").toUpperCase()}</span>
+                    )}
+                    {component.pinned && <span className="badge badge-pinned">Pinned</span>}
+                    {component.protected && <span className="badge badge-protected">Protected</span>}
+                    {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
+                  </div>
+                </div>
+                <div className="row">
+                  {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "currentArc") && onUpdatePEComponentNow && (
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => onUpdatePEComponentNow(component.id)}
+                      title="Ask the AI to review recent story turns and generate an updated version. Result goes to Memory Suggestions for review."
+                    >
+                      {loading ? "Generating..." : "Update Now"}
+                    </button>
+                  )}
+                  {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
+                    <button
+                      type="button"
+                      disabled={!!peRegenerating}
+                      onClick={() => handleRegeneratePE(component.id)}
+                      title="Ask the AI to consolidate and rewrite Plot Essentials, removing resolved events and keeping active state."
+                    >
+                      {peRegenerating === component.id ? "Generating..." : "Regenerate"}
+                    </button>
+                  )}
+                  {GENERATABLE_COMPONENT_TYPES.has(component.type) && onGenerateComponent && (
+                    <button
+                      type="button"
+                      disabled={!!peRegenerating}
+                      onClick={() => handleGenerateComponent(component.id)}
+                      title="Ask the AI to write this block from the adventure's premise and cast, following best practices. Review before applying."
+                    >
+                      {peRegenerating === component.id ? "Generating..." : (component.content.trim() ? "Regenerate" : "Generate")}
+                    </button>
+                  )}
+                  <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
+                    Delete
+                  </button>
+                </div>
+              </div>
               <div className="grid two">
                 <Field label="Type">
                   <select
@@ -405,8 +468,19 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </Field>
               )}
               {component.type === "currentArc" && (
-                <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} onProposeArcFromHistory={onProposeArcFromHistory} loading={loading} />
+                <details className="brain-secondary-details item-secondary-details component-arc-details">
+                  <summary>Arc Director</summary>
+                  <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} onProposeArcFromHistory={onProposeArcFromHistory} loading={loading} />
+                </details>
               )}
+              <section className="item-focus-section">
+                <div className="item-section-heading">
+                  <div>
+                    <p className="eyebrow">{component.type === "currentArc" ? "arc log" : "context block"}</p>
+                    <h4>{component.type === "currentArc" ? "Current story arc history" : "Text sent to the model"}</h4>
+                  </div>
+                  <span className="muted">{component.content.split("\n").filter((line) => line.trim()).length} line{component.content.split("\n").filter((line) => line.trim()).length === 1 ? "" : "s"}</span>
+                </div>
               <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
                 <textarea
                   rows={6}
@@ -414,6 +488,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   onChange={(event) => dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: event.target.value } })}
                 />
               </Field>
+              </section>
               {pePreview[component.id] !== undefined && (
                 <Field label="Regenerated (review before applying)">
                   <textarea
@@ -423,6 +498,8 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   />
                 </Field>
               )}
+              <details className="brain-secondary-details item-secondary-details">
+                <summary>Automation, context settings, and actions</summary>
               {(component.type === "plotEssentials" || component.type === "activePressure" || component.type === "currentArc") && (
                 <div className="grid two">
                   {component.type === "plotEssentials" && (
@@ -578,6 +655,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   Delete
                 </button>
               </div>
+              </details>
             </div>
           </details>
         ))}

@@ -14,9 +14,18 @@ interface MemoryInboxPageProps extends AdventurePageProps {
 
 export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: MemoryInboxPageProps) {
   const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const pending = allProposals.filter((p) => p.status === "pending");
-  const resolved = allProposals.filter((p) => p.status !== "pending");
   const [sourceText, setSourceText] = useState("");
+  const [search, setSearch] = useState("");
+  const searchLower = search.toLowerCase().trim();
+  const visibleProposals = allProposals.filter((proposal) => !searchLower
+    || proposal.title.toLowerCase().includes(searchLower)
+    || proposal.content.toLowerCase().includes(searchLower)
+    || proposal.sourceText.toLowerCase().includes(searchLower)
+    || proposal.rationale.toLowerCase().includes(searchLower));
+  const pending = visibleProposals.filter((p) => p.status === "pending");
+  const resolved = visibleProposals.filter((p) => p.status !== "pending");
+  const totalPending = allProposals.filter((p) => p.status === "pending").length;
+  const totalResolved = allProposals.length - totalPending;
 
   function updateProposal(proposal: MemoryProposal, patch: Partial<MemoryProposal>) {
     dispatch({ type: "UPDATE_MEMORY_PROPOSAL", proposalId: proposal.id, patch });
@@ -67,8 +76,29 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
   }
 
   return (
-    <section className="page">
-      <article className="panel">
+    <section className="page editor-surface memory-inbox-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          Review proposed memory writes before they become active story context.
+        </p>
+        <div className="editor-stat-row" aria-label="Memory suggestion counts">
+          <span>{totalPending} pending</span>
+          <span>{totalResolved} resolved</span>
+          {searchLower && <span>{visibleProposals.length} shown</span>}
+        </div>
+      </div>
+
+      <div className="editor-command-bar">
+        <input
+          type="search"
+          placeholder="Search suggestions..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+
+      <details className="panel editor-tools-panel">
+        <summary>How suggestions work and auto-approve settings</summary>
         <h3>Memory Suggestions</h3>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Story Cards, Character Self updates,
@@ -88,7 +118,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
           <CheckboxField label="Story Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
           <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
         </div>
-      </article>
+      </details>
 
       <details className="panel">
         <summary>Create Suggestion</summary>

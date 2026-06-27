@@ -355,12 +355,32 @@ function migrateBrainThoughts(brain: BrainEntry): Pick<BrainEntry, "thoughts" | 
   );
 }
 
+function normalizedStoryText(text: string): string {
+  return text.replace(/\r\n/g, "\n").trim();
+}
+
+function removeMirroredOpeningMessage(adventure: Adventure): Adventure["messages"] {
+  const messages = adventure.messages ?? [];
+  const openingScene = normalizedStoryText(adventure.openingScene ?? "");
+  const firstMessage = messages[0];
+  if (
+    openingScene &&
+    firstMessage?.role === "assistant" &&
+    normalizedStoryText(firstMessage.content) === openingScene
+  ) {
+    return messages.slice(1);
+  }
+  return messages;
+}
+
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
+  const messages = removeMirroredOpeningMessage(adventure);
   return {
     ...baseline,
     ...adventure,
     openingScene: adventure.openingScene ?? "",
+    messages,
     metadata: adventure.metadata ?? {},
     autoSaveEnabled: adventure.autoSaveEnabled ?? true,
     autoSaveEveryNTurns: adventure.autoSaveEveryNTurns ?? 3,
@@ -397,7 +417,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       ...(adventure.rollingSummary ?? {}),
       lastSummarizedMessageIndex: clampSummaryIndex(
         adventure.rollingSummary?.lastSummarizedMessageIndex,
-        (adventure.messages ?? []).length,
+        messages.length,
       ),
     },
     sceneState: adventure.sceneState ?? { content: "", updatedAt: nowIso() },

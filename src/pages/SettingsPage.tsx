@@ -87,7 +87,7 @@ export function SettingsPage({
   onLoadDispatchAdventure,
 }: SettingsPageProps) {
   const advanced = uiPreferences.showAdvancedSettings;
-  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(activePresetId || null);
+  const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
 

@@ -30,6 +30,7 @@ export const LIVING_CARD_PREFIX = "⟳ ";
 function CardSummary({ card, query }: { card: StoryCard; query: string }) {
   const snippet = contentSnippet(card.content, query);
   const living = isLivingCard(card);
+  const archivedCount = card.archivedFacts?.split("\n").filter((line) => line.trim()).length ?? 0;
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -42,9 +43,62 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
         {card.pinned && <span className="badge badge-pinned">Pinned</span>}
         {card.protected && <span className="badge badge-protected">Protected</span>}
         {card.priority > 0 && <span className="badge badge-priority">p{card.priority}</span>}
+        {card.keys.length > 0 && <span className="badge badge-priority">{card.keys.length} triggers</span>}
+        {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
       </span>
       {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>
+  );
+}
+
+function cardFactLines(text: string | undefined): string[] {
+  return (text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function StoryCardFactHistory({
+  card,
+  onArchivedChange,
+}: {
+  card: StoryCard;
+  onArchivedChange: (value: string) => void;
+}) {
+  const archivedFacts = cardFactLines(card.archivedFacts);
+  if (archivedFacts.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="item-focus-section item-history-section">
+      <div className="item-section-heading">
+        <div>
+          <p className="eyebrow">history</p>
+          <h4>Archived facts</h4>
+        </div>
+        <span className="muted">{archivedFacts.length} archived</span>
+      </div>
+      <div className="item-history-list">
+        {archivedFacts.map((fact, index) => (
+          <article key={`${index}-${fact}`} className="item-history-entry">
+            <div className="item-history-meta">
+              <span>archived fact {index + 1}</span>
+              <span className="badge badge-inactive">not sent</span>
+            </div>
+            <p>{fact}</p>
+          </article>
+        ))}
+      </div>
+      <details className="brain-inline-details item-inline-details">
+        <summary>Edit archived facts</summary>
+        <textarea
+          rows={4}
+          value={card.archivedFacts ?? ""}
+          onChange={(event) => onArchivedChange(event.target.value)}
+        />
+      </details>
+    </section>
   );
 }
 
@@ -161,10 +215,27 @@ export function StoryCardsPage({
   const groups: Array<{ type: StoryCardType; cards: StoryCard[] }> = TYPE_ORDER
     .map((type) => ({ type, cards: sortCards(adventure.storyCards.filter((c) => c.type === type && cardMatchesSearch(c)), sortMode) }))
     .filter((g) => g.cards.length > 0);
+  const totalCards = adventure.storyCards.length;
+  const activeCards = adventure.storyCards.filter((c) => c.active);
+  const activeCount = activeCards.length;
+  const visibleCount = groups.reduce((sum, group) => sum + group.cards.length, 0);
+  const livingCount = adventure.storyCards.filter(isLivingCard).length;
 
   return (
-    <section className="page">
-      <p className="muted" style={{ margin: 0 }}>
+    <section className="page editor-surface story-cards-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          Triggered memory for characters, places, relationships, secrets, rules, and recurring facts.
+          Keep triggers specific; always-on lore belongs in Plot.
+        </p>
+        <div className="editor-stat-row" aria-label="Story card counts">
+          <span>{totalCards} total</span>
+          <span>{activeCount} active</span>
+          <span>{livingCount} living</span>
+          {searchLower && <span>{visibleCount} shown</span>}
+        </div>
+      </div>
+      <p className="muted editor-legacy-help" style={{ margin: 0 }}>
         Story Cards are <strong>triggered memory</strong> — they enter the model context when their title or trigger keys match
         the current input or recent story. Use them for characters, places, relationships, secrets, rules, and recurring facts
         that are only relevant some of the time. Keep triggers specific; broad keys cause card bleed.
@@ -172,7 +243,7 @@ export function StoryCardsPage({
       </p>
 
       {onGenerateMemorySuggestion && (
-        <details className="panel" open>
+        <details className="panel">
           <summary>Create a Story Card with AI</summary>
           <p className="muted">
             Describe a character, place, faction, relationship, recurring object, secret, or durable rule.
@@ -200,16 +271,16 @@ export function StoryCardsPage({
         </details>
       )}
 
-      <div className="toolbar">
+      <div className="editor-command-bar">
         <input
           type="search"
           placeholder="Search cards…"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          style={{ flex: 1, minWidth: "8rem", maxWidth: "20rem" }}
         />
         <button
           type="button"
+          className="primary-action"
           onClick={() => {
             const card = makeStoryCard({ title: "New Story Card", content: "" });
             dispatch({ type: "UPSERT_STORY_CARD", storyCard: card });
@@ -217,59 +288,6 @@ export function StoryCardsPage({
           }}
         >
           Create Story Card
-        </button>
-        <span className="audit-trigger">
-          <span className="audit-turns-wrap">
-            Update cards every
-            <input
-              type="number"
-              min={0}
-              value={adventure.semanticEvaluationSettings.storyCardCooldownTurns ?? 0}
-              onChange={(e) => {
-                const v = Math.max(0, Number(e.target.value));
-                dispatch({ type: "SET_SEMANTIC_EVALUATION_SETTINGS", settings: { ...adventure.semanticEvaluationSettings, storyCardCooldownTurns: v || undefined } });
-              }}
-              className="audit-turns-input"
-            />
-            turns (0 = per-card)
-          </span>
-        </span>
-        {onSuggestCardUpdates && (
-          <button
-            type="button"
-            disabled={loading || adventure.storyCards.filter((c) => c.active).length === 0}
-            onClick={onSuggestCardUpdates}
-            title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
-          >
-            {loading ? "Generating…" : "Suggest Updates"}
-          </button>
-        )}
-        {onAuditStoryCards && (
-          <span className="audit-trigger">
-            <button
-              type="button"
-              disabled={loading || audit?.status === "running"}
-              onClick={runAudit}
-              title="Review all story cards and get AI recommendations to edit, delete, or create cards."
-            >
-              {audit?.status === "running" ? "Auditing…" : "Audit Cards"}
-            </button>
-            <span className="audit-turns-wrap">
-              last
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={auditTurns}
-                onChange={(e) => setAuditTurns(Math.max(1, Number(e.target.value)))}
-                className="audit-turns-input"
-              />
-              turns
-            </span>
-          </span>
-        )}
-        <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
-          Copy Story Cards JSON
         </button>
         <div className="sort-toggle">
           <button
@@ -288,6 +306,64 @@ export function StoryCardsPage({
           </button>
         </div>
       </div>
+
+      <details className="panel editor-tools-panel">
+        <summary>Upkeep, auto-update, and JSON</summary>
+        <div className="toolbar">
+          <span className="audit-trigger">
+            <span className="audit-turns-wrap">
+              Update cards every
+              <input
+                type="number"
+                min={0}
+                value={adventure.semanticEvaluationSettings.storyCardCooldownTurns ?? 0}
+                onChange={(e) => {
+                  const v = Math.max(0, Number(e.target.value));
+                  dispatch({ type: "SET_SEMANTIC_EVALUATION_SETTINGS", settings: { ...adventure.semanticEvaluationSettings, storyCardCooldownTurns: v || undefined } });
+                }}
+                className="audit-turns-input"
+              />
+              turns
+            </span>
+          </span>
+          {onSuggestCardUpdates && (
+            <button
+              type="button"
+              disabled={loading || activeCards.length === 0}
+              onClick={onSuggestCardUpdates}
+              title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
+            >
+              {loading ? "Generating..." : "Suggest Updates"}
+            </button>
+          )}
+          {onAuditStoryCards && (
+            <span className="audit-trigger">
+              <button
+                type="button"
+                disabled={loading || audit?.status === "running"}
+                onClick={runAudit}
+                title="Review all story cards and get AI recommendations to edit, delete, or create cards."
+              >
+                {audit?.status === "running" ? "Auditing..." : "Audit Cards"}
+              </button>
+              <span className="audit-turns-wrap">
+                last
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={auditTurns}
+                  onChange={(e) => setAuditTurns(Math.max(1, Number(e.target.value)))}
+                  className="audit-turns-input"
+                />
+                turns
+              </span>
+            </span>
+          )}
+          <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
+            Copy Story Cards JSON
+          </button>
+        </div>
 
       {(() => {
         const activeCards = adventure.storyCards.filter((c) => c.active);
@@ -339,6 +415,7 @@ export function StoryCardsPage({
           </div>
         );
       })()}
+      </details>
 
       <details className="panel">
         <summary>Import Story Cards JSON</summary>
@@ -418,12 +495,29 @@ export function StoryCardsPage({
       {groups.map(({ type, cards }) => (
         <div key={type} className="card-group">
           <h4 className="card-group-label">{TYPE_LABELS[type]} <span className="muted">({cards.length})</span></h4>
-          <div className="list">
+          <div className="list split-editor-list story-card-editor-list">
             {cards.map((card) => (
-              <details key={card.id} ref={card.id === newCardId ? newCardRef : null} className="card story-card-item">
+              <details key={card.id} ref={card.id === newCardId ? newCardRef : null} className="card story-card-item split-editor-item story-card-editor-item">
                 <summary><CardSummary card={card} query={searchLower} /></summary>
 
-                <div className="editor-card">
+                <div className="editor-card item-inspector story-card-inspector">
+                  <div className="panel-heading item-inspector-heading">
+                    <div>
+                      <p className="eyebrow">
+                        {card.active ? "active" : "inactive"} · {TYPE_LABELS[card.type]} · {card.memoryMode ?? "static"}
+                      </p>
+                      <h3>{card.title || "Untitled Card"}</h3>
+                      <div className="item-tag-row" aria-label="Story card triggers">
+                        {card.keys.length === 0 && <span className="item-tag muted">Title trigger only</span>}
+                        {card.keys.map((key) => (
+                          <span key={key} className="item-tag">{key}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_STORY_CARD", storyCardId: card.id })}>
+                      Delete
+                    </button>
+                  </div>
                   <div className="grid two">
                     <Field label="Title">
                       <input
@@ -444,6 +538,8 @@ export function StoryCardsPage({
                       </select>
                     </Field>
                   </div>
+                  <details className="brain-secondary-details item-secondary-details">
+                    <summary>Trigger behavior</summary>
                   <Field label="Memory Mode">
                     <select
                       value={card.memoryMode ?? "static"}
@@ -476,6 +572,15 @@ export function StoryCardsPage({
                       </select>
                     </Field>
                   </div>
+                  </details>
+                  <section className="item-focus-section">
+                    <div className="item-section-heading">
+                      <div>
+                        <p className="eyebrow">live memory</p>
+                        <h4>Card text sent when triggered</h4>
+                      </div>
+                      <span className="muted">{cardFactLines(card.content).length} line{cardFactLines(card.content).length === 1 ? "" : "s"}</span>
+                    </div>
                   <Field label="Content">
                     <textarea
                       rows={6}
@@ -483,8 +588,15 @@ export function StoryCardsPage({
                       onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { content: event.target.value } })}
                     />
                   </Field>
+                  </section>
+                  <StoryCardFactHistory
+                    card={card}
+                    onArchivedChange={(archivedFacts) =>
+                      dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { archivedFacts } })
+                    }
+                  />
                   {card.archivedFacts?.trim() && (
-                    <details>
+                    <details className="editor-legacy-help">
                       <summary className="muted">
                         Archived facts ({card.archivedFacts.split("\n").filter((l) => l.trim()).length}) — superseded, kept on record, never sent to the AI
                       </summary>
@@ -496,6 +608,8 @@ export function StoryCardsPage({
                       />
                     </details>
                   )}
+                  <details className="brain-secondary-details item-secondary-details">
+                    <summary>Context, automation, and ordering</summary>
                   <div className="grid four">
                     <Field label="Priority (higher = loaded first)">
                       <NumberInput
@@ -561,6 +675,7 @@ export function StoryCardsPage({
                       Delete
                     </button>
                   </div>
+                  </details>
                 </div>
               </details>
             ))}

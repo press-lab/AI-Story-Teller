@@ -12,6 +12,14 @@ describe("premade adventure library", () => {
     ]);
   });
 
+  it("does not mirror the opening scene as the first transcript message", () => {
+    for (const premade of premadeAdventures) {
+      const adventure = premade.createAdventure();
+      const firstMessage = adventure.messages[0];
+      expect(firstMessage?.role === "assistant" && firstMessage.content.trim() === adventure.openingScene.trim()).toBe(false);
+    }
+  });
+
   it("loads Crucible Protocol with a current-state Plot Essentials block", () => {
     const crucible = premadeAdventures.find((premade) => premade.id === "crucible-protocol")!;
     const adventure = crucible.createAdventure();

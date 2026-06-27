@@ -504,10 +504,10 @@ export function PlayPage({
           <div className="composer-actions">
             <button
               type="button"
-              className="take-a-turn-full"
+              className={`take-a-turn-full${composerOpen ? " secondary-toggle" : ""}`}
               onClick={() => setComposerOpen((v) => { if (!v) setTimeout(() => textareaRef.current?.focus(), 0); return !v; })}
             >
-              Take a Turn
+              {composerOpen ? "Close Input" : "Take a Turn"}
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
               <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
