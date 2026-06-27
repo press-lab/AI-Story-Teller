@@ -669,12 +669,163 @@ pre {
   margin-top: 0;
 }
 
-.settings-page > .grid.two > .panel {
+.proposal-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.proposal-card-summary {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto minmax(12rem, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+}
+
+.proposal-card[open] > .proposal-card-summary {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-soft) 80%, var(--surface));
+}
+
+.proposal-card-title {
+  display: grid;
+  gap: 2px;
   min-width: 0;
+}
+
+.proposal-card-title strong,
+.proposal-card-summary .search-snippet {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proposal-card-body {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.settings-page {
+  max-width: 1180px;
+}
+
+.settings-section-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.82fr) minmax(420px, 1.18fr);
+  gap: 12px;
+  order: 2;
+}
+
+.settings-section-full {
+  grid-column: 1 / -1;
+}
+
+.settings-card,
+.settings-section-grid > .panel {
+  min-width: 0;
+}
+
+.settings-card h3 {
+  margin-top: 0;
 }
 
 .settings-interface-panel {
   align-self: start;
+}
+
+.settings-models-panel {
+  align-self: start;
+}
+
+.settings-card .muted {
+  line-height: 1.45;
+}
+
+.triggers-page,
+.cloud-saves-page,
+.chronicle-page,
+.context-preview-page {
+  max-width: 1180px;
+}
+
+.triggers-command-bar,
+.saves-command-bar,
+.context-preview-toolbar {
+  grid-template-columns: minmax(14rem, 1fr) auto auto;
+}
+
+.saves-command-bar > .muted {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.42fr);
+  gap: 12px;
+  order: 3;
+  align-items: start;
+}
+
+.trigger-rule-list,
+.automation-side-list {
+  gap: 6px;
+}
+
+.trigger-rule-summary {
+  grid-template-columns: minmax(10rem, 1fr) auto minmax(9rem, 0.75fr) minmax(10rem, 1fr);
+}
+
+.trigger-rule-editor {
+  display: grid;
+  gap: 10px;
+}
+
+.context-preview-page > .dedup-proposals,
+.context-preview-page > .duplicate-warnings {
+  order: 2;
+}
+
+.context-preview-page > .context-table-wrap {
+  order: 3;
+}
+
+.context-preview-page > details.panel {
+  order: 4;
+}
+
+.disabled-when-off {
+  margin-top: 8px;
+}
+
+.disabled-when-off[data-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.state-flag-item {
+  display: grid;
+  gap: 8px;
+}
+
+.chronicle-page .editor-page-summary h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.chronicle-page > .chronicle-list {
+  gap: 6px;
+}
+
+.cloud-save-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .import-export-page {
@@ -4035,13 +4186,17 @@ summary {
   .grid.two,
   .grid.three,
   .grid.four,
+  .settings-section-grid,
+  .automation-grid,
   .dashboard-grid,
   .docs-layout,
   .adventure-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .story-card-summary {
+  .story-card-summary,
+  .proposal-card-summary,
+  .trigger-rule-summary {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
   }

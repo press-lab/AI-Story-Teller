@@ -169,8 +169,20 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   }
 
   return (
-    <section className="page context-preview-page">
-      <div className="toolbar context-preview-toolbar">
+    <section className="page editor-surface context-preview-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          Everything the model sees each turn. Click a row to inspect content, condense bulky items, or review excluded context.
+        </p>
+        <div className="editor-stat-row" aria-label="Context preview counts">
+          <span>{result.totalEstimatedTokens.toLocaleString()} est tokens</span>
+          <span>{nonEmptySections.length} sections</span>
+          <span>{allItems.length} items</span>
+          {duplicates.length > 0 && <span>{duplicates.length} duplicates</span>}
+        </div>
+      </div>
+
+      <div className="editor-command-bar context-preview-toolbar">
         <button type="button" onClick={onBuildContext}>Rebuild Preview</button>
         {providerConfig && (
           <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
@@ -195,11 +207,6 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           </span>
         )}
       </div>
-
-      <p className="muted" style={{ margin: 0 }}>
-        Everything the model sees each turn. Click a row to expand content. Use <strong>Condense</strong> to
-        shorten an item with AI, or <strong>Auto Dedup</strong> to find and trim overlapping content.
-      </p>
 
       {/* AI dedup proposals */}
       {dedupProposals.length > 0 && (

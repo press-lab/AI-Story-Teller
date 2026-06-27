@@ -174,8 +174,24 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
   }
 
   return (
-    <article key={proposal.id} className={`card proposal-card proposal-${proposal.status}`}>
-      <div className="panel-heading">
+    <details key={proposal.id} className={`card proposal-card proposal-${proposal.status}`} open={isPending}>
+      <summary className="proposal-card-summary">
+        <span className="proposal-card-title">
+          <strong>{proposal.title || "Untitled suggestion"}</strong>
+          <span className="muted">
+            {proposal.proposedType}
+          </span>
+        </span>
+        <span className="story-card-badges">
+          <span className="badge badge-type">{Math.round(proposal.confidence * 100)}%</span>
+          {!isPending && <span className="badge badge-inactive">{proposal.status}</span>}
+          {proposal.suggestedTriggers.length > 0 && <span className="badge">{proposal.suggestedTriggers.length} keys</span>}
+        </span>
+        <span className="search-snippet">{proposal.content || proposal.sourceText || "No proposed content yet."}</span>
+      </summary>
+
+      <div className="proposal-card-body">
+        <div className="panel-heading">
         <div className="suggestion-meta">
           <p className="eyebrow">
             {proposal.proposedType}
@@ -227,8 +243,8 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
         disabled={proposal.status === "approved"}
       />
 
-      <details>
-        <summary>Source &amp; Details</summary>
+      <details className="editor-tools-panel">
+        <summary>Source &amp; details</summary>
         <div className="grid two">
           <Field label="Source">
             <textarea
@@ -287,6 +303,7 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
           </Field>
         </div>
       </details>
-    </article>
+      </div>
+    </details>
   );
 }

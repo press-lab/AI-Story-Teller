@@ -6,24 +6,46 @@ const PAGE_SIZE = 100;
 export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
   const [editingId, setEditingId] = useState<string | undefined>();
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [search, setSearch] = useState("");
 
   const messages = adventure.messages;
-  const visible = messages.slice(0, limit);
-  const hasMore = messages.length > limit;
+  const searchLower = search.trim().toLowerCase();
+  const filtered = messages
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => !searchLower || message.role.toLowerCase().includes(searchLower) || message.content.toLowerCase().includes(searchLower));
+  const visible = filtered.slice(0, limit);
+  const hasMore = filtered.length > limit;
 
   return (
-    <section className="page">
-      <article className="panel">
+    <section className="page editor-surface chronicle-page">
+      <div className="editor-page-summary">
         <h3>Adventure Chronicle — {messages.length} entries</h3>
         <p className="muted">
           Complete story transcript stored locally. Not sent to the AI — only the Recent Messages window
           and active memory surfaces reach the model. Click any entry to edit.
         </p>
-      </article>
+        <div className="editor-stat-row" aria-label="Chronicle counts">
+          <span>{messages.length} entries</span>
+          {searchLower && <span>{filtered.length} shown</span>}
+        </div>
+      </div>
 
-      <div className="list">
+      <div className="editor-command-bar">
+        <input
+          type="search"
+          placeholder="Search chronicle..."
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setLimit(PAGE_SIZE);
+          }}
+        />
+      </div>
+
+      <div className="list chronicle-list">
         {messages.length === 0 && <p className="muted">No chronicle entries yet.</p>}
-        {visible.map((message, index) =>
+        {messages.length > 0 && visible.length === 0 && <p className="muted">No chronicle entries match that search.</p>}
+        {visible.map(({ message, index }) =>
           editingId === message.id ? (
             <article key={message.id} className="card chronicle-editing">
               <div className="toolbar">
@@ -64,7 +86,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
         )}
         {hasMore && (
           <button type="button" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
-            Show more ({messages.length - limit} remaining)
+            Show more ({filtered.length - limit} remaining)
           </button>
         )}
       </div>

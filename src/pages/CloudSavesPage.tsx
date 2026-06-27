@@ -45,9 +45,26 @@ export function CloudSavesPage({
   }
 
   return (
-    <section className="page">
-      <div className="grid two">
-        <article className="panel" style={{ gridColumn: "1 / -1" }}>
+    <section className="page editor-surface cloud-saves-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          Save and load full adventure snapshots from your private GitHub save slots. API keys are never included.
+        </p>
+        <div className="editor-stat-row" aria-label="Cloud save counts">
+          <span>{saveSlots.length} slots</span>
+          <span>{adventure.autoSaveEnabled ? "auto-save on" : "auto-save off"}</span>
+          {savesStatus && <span>{savesStatus}</span>}
+        </div>
+      </div>
+
+      <div className="editor-command-bar saves-command-bar">
+        <span className="muted">GitHub save slots</span>
+        <button type="button" onClick={onSaveNow}>Save Now</button>
+        <button type="button" onClick={onListSaves}>List Saves</button>
+      </div>
+
+      <div className="settings-section-grid">
+        <article className="panel settings-card settings-section-full cloud-save-card">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">GitHub Save Slots</p>
@@ -87,12 +104,6 @@ export function CloudSavesPage({
             </Field>
           </div>
 
-          <div className="toolbar">
-            <button type="button" onClick={onSaveNow}>Save Now</button>
-            <button type="button" onClick={onListSaves}>List Saves</button>
-            {savesStatus && <span className="status-pill">{savesStatus}</span>}
-          </div>
-
           {loadError && (
             <div className="error-box error-dismissible" style={{ marginTop: "0.5rem" }}>
               <span>{loadError}</span>
@@ -101,7 +112,7 @@ export function CloudSavesPage({
           )}
 
           {saveSlots.length > 0 && (
-            <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "0.75rem", fontSize: "0.875rem" }}>
+            <table className="cloud-save-table">
               <thead>
                 <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
                   <th style={{ padding: "0.35rem 0.5rem" }}>Adventure</th>

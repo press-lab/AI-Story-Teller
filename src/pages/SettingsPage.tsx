@@ -158,14 +158,31 @@ export function SettingsPage({
     memoryDetectionSettings: adventure.memoryDetectionSettings,
     memoryAutoApprove: adventure.memoryAutoApprove,
   } : globalAdventureSettings;
+  const activeModelLabel = activePreset?.label || activePreset?.model || "No model";
+  const backgroundStatus = activeSettings.semanticEvaluationSettings.enabled
+    ? `every ${activeSettings.semanticEvaluationSettings.semanticEvalEveryNTurns ?? 1} turns`
+    : "off";
 
   return (
-    <section className="page settings-page">
+    <section className="page editor-surface settings-page">
+      <div className="editor-page-summary">
+        <p className="muted">
+          App-wide controls for reading comfort, model routing, background cost, memory detection, and sync.
+          The common controls stay first; advanced controls stay grouped below.
+        </p>
+        <div className="editor-stat-row" aria-label="Settings summary">
+          <span>{uiPreferences.density}</span>
+          <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
+          <span>{activeModelLabel}</span>
+          <span>background {backgroundStatus}</span>
+          {advanced && <span>advanced</span>}
+        </div>
+      </div>
 
-      <div className="grid two">
+      <div className="settings-section-grid">
 
         {/* ── Interface ─────────────────────────────── */}
-        <article className="panel settings-interface-panel">
+        <article className="panel settings-card settings-interface-panel">
           <h3>Interface</h3>
           <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
           <div className="grid two">
@@ -225,7 +242,7 @@ export function SettingsPage({
         </article>
 
         {/* ── Models ────────────────────────────────── */}
-        <article className="panel" style={{ gridColumn: "1 / -1" }}>
+        <article className="panel settings-card settings-models-panel">
           <div className="preset-list-header">
             <h3 style={{ margin: 0 }}>Models</h3>
             <button type="button" onClick={addPreset}>+ Add Model</button>
@@ -354,7 +371,7 @@ export function SettingsPage({
           const isNormal = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 2 && (bud.autoSceneStateEveryNTurns ?? 1) === 2 && mem.enabled && mem.everyNTurns === 3;
           const isHeavy = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 1 && (bud.autoSceneStateEveryNTurns ?? 1) === 1 && mem.enabled && mem.everyNTurns === 1;
           return (
-            <article className="panel" style={{ gridColumn: "1 / -1" }}>
+            <article className="panel settings-card settings-section-full" style={{ gridColumn: "1 / -1" }}>
               <h3>Background Cost</h3>
               <div className="toolbar" style={{ marginBottom: "0.5rem" }}>
                 <button type="button" className={isOff ? "active" : ""} title="Disable all background AI calls. Play-only." onClick={() => {
@@ -395,7 +412,7 @@ export function SettingsPage({
 
         {/* ── Context Budget (advanced) ─────────────── */}
         {advanced && (
-          <article className="panel" style={{ gridColumn: "1 / -1" }}>
+          <article className="panel settings-card settings-section-full" style={{ gridColumn: "1 / -1" }}>
             <h3>Context Budget</h3>
             <div className="toolbar" style={{ marginBottom: "0.75rem" }}>
               <button type="button" title="8k tokens, 15 messages, tight section budgets" onClick={() => updateBudget(lightTokenBudgetPreset)}>Light</button>
@@ -486,7 +503,7 @@ export function SettingsPage({
 
         {/* ── LLM Evaluation (advanced) ─────────────── */}
         {advanced && (
-          <article className="panel">
+          <article className="panel settings-card">
             <h3>LLM Evaluation</h3>
             <Field label="Evaluation Model Override">
               <input
@@ -591,7 +608,7 @@ export function SettingsPage({
 
         {/* ── Memory Detection (advanced) ───────────── */}
         {advanced && (
-          <article className="panel">
+          <article className="panel settings-card">
             <h3>Memory Detection</h3>
             <p className="muted">
               After each turn, use the evaluation model to detect new durable facts worth storing as memory proposals.
@@ -642,7 +659,7 @@ export function SettingsPage({
 
         {/* ── Cloud Sync ────────────────────────────── */}
         {cloudSyncSettings && onCloudSyncSettingsChange && (
-          <article className="panel cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
+          <article className="panel settings-card settings-section-full cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Personal Cloud Sync</p>
@@ -714,7 +731,7 @@ export function SettingsPage({
 
         {/* ── Dev Adventure (advanced) ──────────────── */}
         {advanced && onLoadDevelopmentAdventure && (
-          <details className="panel dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
+          <details className="panel settings-card settings-section-full dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
             <summary>Developer Test Adventure</summary>
             <div className="panel-heading">
               <div>
@@ -751,7 +768,7 @@ export function SettingsPage({
         )}
 
         {advanced && onLoadDispatchAdventure && (
-          <details className="panel dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
+          <details className="panel settings-card settings-section-full dev-adventure-panel" style={{ gridColumn: "1 / -1" }}>
             <summary>Developer Test Adventure — Dispatch (Supers)</summary>
             <div className="panel-heading">
               <div>
