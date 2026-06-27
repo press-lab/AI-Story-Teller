@@ -325,6 +325,11 @@ export function SettingsPage({
                     </p>
                     {advanced && (
                       <>
+                        <CheckboxField
+                          label="Enable prompt caching"
+                          checked={preset.promptCaching ?? false}
+                          onChange={(promptCaching) => updatePreset(preset.id, { promptCaching })}
+                        />
                         <h4>API Throttle</h4>
                         <CheckboxField
                           label="Enable API request throttle"

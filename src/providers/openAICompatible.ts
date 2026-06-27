@@ -1,5 +1,22 @@
 import type { ChatMessage, ProviderConfig, ProviderRequestThrottle, ProviderUsage } from "../types/adventure";
 
+type CacheBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
+type CacheableContent = string | CacheBlock[];
+type CacheableMessage = { role: string; content: CacheableContent };
+
+/** Mark the last system message with an ephemeral cache breakpoint so stable context is reused. */
+function applyPromptCaching(messages: ChatMessage[]): CacheableMessage[] {
+  let lastSystemIdx = -1;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "system") { lastSystemIdx = i; break; }
+  }
+  return messages.map((msg, i) =>
+    i === lastSystemIdx
+      ? { role: msg.role, content: [{ type: "text" as const, text: msg.content, cache_control: { type: "ephemeral" as const } }] }
+      : msg,
+  );
+}
+
 export interface SendChatCompletionOptions {
   messages: ChatMessage[];
   config: ProviderConfig;
@@ -113,6 +130,7 @@ async function sendOpenAIRequest(
   responseFormat?: SendChatCompletionOptions["responseFormat"],
   thinking?: SendChatCompletionOptions["thinking"],
 ): Promise<ProviderResponse> {
+  const outMessages = config.promptCaching ? applyPromptCaching(messages) : messages;
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -124,7 +142,7 @@ async function sendOpenAIRequest(
       },
       body: JSON.stringify({
         model: config.model,
-        messages,
+        messages: outMessages,
         temperature: config.temperature,
         max_tokens: config.maxOutputTokens,
         ...(config.topP !== undefined ? { top_p: config.topP } : {}),
@@ -141,7 +159,7 @@ async function sendOpenAIRequest(
   }
 
   const rawText = await response.text().catch(() => "");
-  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } };
   try {
     raw = JSON.parse(rawText) as typeof raw;
   } catch {
@@ -161,6 +179,8 @@ async function sendOpenAIRequest(
         promptTokens: raw.usage.prompt_tokens ?? 0,
         completionTokens: raw.usage.completion_tokens ?? 0,
         totalTokens: raw.usage.total_tokens ?? 0,
+        cacheReadTokens: raw.usage.cache_read_input_tokens ?? raw.usage.prompt_tokens_details?.cached_tokens,
+        cacheCreationTokens: raw.usage.cache_creation_input_tokens,
       }
     : undefined;
 
@@ -175,6 +195,12 @@ async function sendAnthropicRequest(
 ): Promise<ProviderResponse> {
   const systemParts = messages.filter((m) => m.role === "system").map((m) => m.content);
   const chatMessages = messages.filter((m) => m.role !== "system");
+  const systemText = systemParts.join("\n\n");
+  const systemParam = systemParts.length === 0
+    ? undefined
+    : config.promptCaching
+      ? [{ type: "text", text: systemText, cache_control: { type: "ephemeral" } }]
+      : systemText;
 
   let response: Response;
   try {
@@ -185,10 +211,11 @@ async function sendAnthropicRequest(
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.apiKey}`,
         "anthropic-version": "2023-06-01",
+        ...(config.promptCaching ? { "anthropic-beta": "prompt-caching-2024-07-31" } : {}),
       },
       body: JSON.stringify({
         model: config.model,
-        ...(systemParts.length > 0 ? { system: systemParts.join("\n\n") } : {}),
+        ...(systemParam !== undefined ? { system: systemParam } : {}),
         messages: chatMessages,
         temperature: config.temperature,
         max_tokens: config.maxOutputTokens,
@@ -203,7 +230,7 @@ async function sendAnthropicRequest(
   }
 
   const rawText = await response.text().catch(() => "");
-  let raw: { error?: { message?: string }; content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number } };
+  let raw: { error?: { message?: string }; content?: Array<{ type: string; text?: string }>; usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number } };
   try {
     raw = JSON.parse(rawText) as typeof raw;
   } catch {
@@ -223,6 +250,8 @@ async function sendAnthropicRequest(
         promptTokens: raw.usage.input_tokens ?? 0,
         completionTokens: raw.usage.output_tokens ?? 0,
         totalTokens: (raw.usage.input_tokens ?? 0) + (raw.usage.output_tokens ?? 0),
+        cacheReadTokens: raw.usage.cache_read_input_tokens,
+        cacheCreationTokens: raw.usage.cache_creation_input_tokens,
       }
     : undefined;
 

@@ -23,7 +23,13 @@ export function scanForRiskyClaims(text: string): boolean {
 function resolvedProviderConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
   const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
   if (bg?.baseUrl) {
-    return { ...providerConfig, baseUrl: bg.baseUrl, apiKey: bg.apiKey ?? providerConfig.apiKey, model: bg.model || providerConfig.model };
+    return {
+      ...providerConfig,
+      baseUrl: bg.baseUrl,
+      apiKey: bg.apiKey ?? providerConfig.apiKey,
+      model: bg.model || providerConfig.model,
+      promptCaching: bg.baseUrl === providerConfig.baseUrl ? providerConfig.promptCaching : undefined,
+    };
   }
   return { ...providerConfig, model: adventure.semanticEvaluationSettings.evaluationModel || providerConfig.model };
 }

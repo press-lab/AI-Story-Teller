@@ -258,6 +258,8 @@ export interface ProviderConfig {
   /** Penalty scaled by how often a token has appeared. */
   frequencyPenalty?: number;
   requestThrottle?: ProviderRequestThrottle;
+  /** When true, mark the system message with cache_control so stable context is cached. Supported by Anthropic (direct or via OpenRouter). */
+  promptCaching?: boolean;
 }
 
 export interface ProviderRequestThrottle {
@@ -273,6 +275,10 @@ export interface ProviderUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  /** Tokens served from the prompt cache (saved cost). */
+  cacheReadTokens?: number;
+  /** Tokens written into the prompt cache this request (cache creation cost). */
+  cacheCreationTokens?: number;
 }
 
 export interface BackgroundProviderConfig {

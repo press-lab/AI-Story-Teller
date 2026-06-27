@@ -51,6 +51,7 @@ function evaluationConfig(adventure: Adventure, providerConfig: ProviderConfig):
       baseUrl: bg.baseUrl,
       apiKey: bg.apiKey ?? providerConfig.apiKey,
       model: bg.model || providerConfig.model,
+      promptCaching: bg.baseUrl === providerConfig.baseUrl ? providerConfig.promptCaching : undefined,
     };
   }
   return {

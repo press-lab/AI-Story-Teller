@@ -72,7 +72,13 @@ function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSe
   const base = mergeProviderConfig(adventure, settings);
   const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
   if (!bg?.baseUrl) return base;
-  return { ...base, baseUrl: bg.baseUrl, apiKey: bg.apiKey ?? base.apiKey, model: bg.model || base.model };
+  return {
+    ...base,
+    baseUrl: bg.baseUrl,
+    apiKey: bg.apiKey ?? base.apiKey,
+    model: bg.model || base.model,
+    promptCaching: bg.baseUrl === base.baseUrl ? base.promptCaching : undefined,
+  };
 }
 
 export function useAdventureRuntime(

@@ -161,6 +161,100 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
+  it("wraps the system message in a cache_control content block when promptCaching is enabled", async () => {
+    const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
+    await sendOpenAICompatibleChatCompletion({
+      messages: [
+        { role: "system", content: "You are a story engine." },
+        { role: "user", content: "Continue." },
+      ],
+      config: { ...config, promptCaching: true },
+    });
+
+    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
+    expect(body.messages[0].role).toBe("system");
+    expect(Array.isArray(body.messages[0].content)).toBe(true);
+    expect(body.messages[0].content[0]).toEqual({
+      type: "text",
+      text: "You are a story engine.",
+      cache_control: { type: "ephemeral" },
+    });
+    // Non-system messages are unchanged
+    expect(body.messages[1]).toEqual({ role: "user", content: "Continue." });
+  });
+
+  it("reports OpenAI-compatible cache usage fields", async () => {
+    mockFetch(200, {
+      choices: [{ message: { content: "ok" } }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        total_tokens: 120,
+        prompt_tokens_details: { cached_tokens: 80 },
+      },
+    });
+
+    const result = await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "user", content: "Hi" }],
+      config,
+    });
+
+    expect(result.usage).toEqual({
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      cacheReadTokens: 80,
+      cacheCreationTokens: undefined,
+    });
+  });
+
+  it("uses Anthropic system cache blocks and reports cache usage", async () => {
+    const spy = mockFetch(200, {
+      content: [{ type: "text", text: "ok" }],
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        cache_read_input_tokens: 70,
+        cache_creation_input_tokens: 30,
+      },
+    });
+
+    const result = await sendOpenAICompatibleChatCompletion({
+      messages: [
+        { role: "system", content: "Stable context" },
+        { role: "user", content: "Continue." },
+      ],
+      config: { ...config, baseUrl: "https://api.example.com/anthropic/v1", promptCaching: true },
+    });
+
+    const [url, init] = spy.mock.calls[0];
+    const headers = init?.headers as Record<string, string>;
+    const body = JSON.parse(init?.body as string);
+    expect(url).toBe("https://api.example.com/anthropic/v1/messages");
+    expect(headers["anthropic-beta"]).toBe("prompt-caching-2024-07-31");
+    expect(body.system).toEqual([
+      { type: "text", text: "Stable context", cache_control: { type: "ephemeral" } },
+    ]);
+    expect(body.messages).toEqual([{ role: "user", content: "Continue." }]);
+    expect(result.usage).toEqual({
+      promptTokens: 100,
+      completionTokens: 20,
+      totalTokens: 120,
+      cacheReadTokens: 70,
+      cacheCreationTokens: 30,
+    });
+  });
+
+  it("does not modify messages when promptCaching is false or unset", async () => {
+    const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
+    await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "system", content: "context" }],
+      config,
+    });
+    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
+    expect(body.messages[0].content).toBe("context");
+  });
+
   it("throttles provider calls by requests per minute", async () => {
     vi.useFakeTimers();
     const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
