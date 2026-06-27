@@ -595,11 +595,19 @@ export function StoryCardsPage({
                       Delete
                     </button>
                   </div>
-                  <div className="grid two">
+                  <div className="grid three story-card-primary-fields">
                     <Field label="Title">
                       <input
                         value={card.title}
                         onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { title: event.target.value } })}
+                      />
+                    </Field>
+                    <Field label="Trigger Keys">
+                      <input
+                        value={commaList(card.keys)}
+                        title="Comma-separated; leave blank to use title only."
+                        placeholder="Blazer, Blonde Blazer"
+                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { keys: fromCommaList(event.target.value) } })}
                       />
                     </Field>
                     <Field label="Type">
@@ -628,12 +636,6 @@ export function StoryCardsPage({
                       <option value="living">living — current evolving subject, updates merge/archive</option>
                       <option value="historical">historical — past event or completed arc record</option>
                     </select>
-                  </Field>
-                  <Field label="Trigger Keys (comma-separated, leave blank to use title only)">
-                    <input
-                      value={commaList(card.keys)}
-                      onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { keys: fromCommaList(event.target.value) } })}
-                    />
                   </Field>
                   <div className="grid two">
                     <Field label="Trigger Match Type">

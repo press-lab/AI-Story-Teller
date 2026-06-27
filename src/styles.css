@@ -2979,8 +2979,21 @@ details.story-card-item:not([open]) > .editor-card {
   order: 1;
 }
 
-.story-card-inspector > .item-history-section {
+.story-card-inspector > .grid.story-card-primary-fields {
+  order: 1;
+  grid-template-columns: minmax(10rem, 1fr) minmax(14rem, 1.25fr) minmax(9rem, 0.75fr);
+}
+
+.story-card-inspector > .story-card-primary-fields + .item-secondary-details {
+  order: 4;
+}
+
+.story-card-inspector > .story-card-primary-fields ~ .item-focus-section:not(.item-history-section) {
   order: 2;
+}
+
+.story-card-inspector > .item-history-section {
+  order: 3;
 }
 
 .story-card-inspector > .grid,
