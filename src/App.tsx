@@ -18,7 +18,6 @@ import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pa
 import { AdventuresPage } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
-import { PlayCardsPeek, PlayCharactersPeek, PlayContextPeek, PlayMemoryPeek, PlayPlotPeek } from "./pages/PlayPeekPanels";
 import { ChroniclePage } from "./pages/ChroniclePage";
 import { ContextPreviewPage } from "./pages/ContextPreviewPage";
 import { ComponentsPage } from "./pages/ComponentsPage";
@@ -404,31 +403,6 @@ export default function App() {
     }
   }
 
-  function renderPlayTool(tabId: EditorTabId) {
-    if (!adventure) return null;
-    const props = {
-      adventure,
-      contextResult,
-      onBuildContext: runtime.buildPreview,
-      onEditFully: openEditor,
-    };
-
-    switch (tabId) {
-      case "components":
-        return <PlayPlotPeek {...props} />;
-      case "storyCards":
-        return <PlayCardsPeek {...props} />;
-      case "brains":
-        return <PlayCharactersPeek {...props} />;
-      case "memoryInbox":
-        return <PlayMemoryPeek {...props} />;
-      case "context":
-        return <PlayContextPeek {...props} />;
-      default:
-        return renderAdventureTool(tabId);
-    }
-  }
-
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
 
   const page = (() => {
@@ -513,7 +487,7 @@ export default function App() {
             onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
-            playPanelContent={playPanelTab ? renderPlayTool(playPanelTab) : undefined}
+            playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
             playPanelTitle={playPanelTab ? (modalTitles[playPanelTab as TabId] ?? "Tool") : undefined}
             onClosePlayPanel={() => setPlayPanelTab(undefined)}
             providerPresets={providerPresets}
