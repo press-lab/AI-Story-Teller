@@ -55,9 +55,9 @@ function expectPreviewMatchesPayload(adventure: Adventure, mode: MemoryPriorityM
   const includedRecent = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])]
     .reverse()
     .map((item) => item.content);
-  // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
   const recentPayload = result.messages.slice(1, 1 + includedRecent.length).map((message) => message.content);
   expect(recentPayload).toEqual(includedRecent);
+  expect(result.messages).toHaveLength(1 + includedRecent.length);
 }
 
 function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorityMode) {
@@ -79,7 +79,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .join("\n\n");
   const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
   const maxWords = Math.ceil(wordTarget * 1.2);
-  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} words, with a hard ceiling of ${maxWords} words unless the player explicitly asks for more. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
+  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
   const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {
@@ -88,9 +88,9 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     return message ? [{ role: message.role, content: message.content }] : [];
   });
 
-  // Extra messages (reminder, thought capture) may be appended after recent — only verify recent + system
-  expect(result.messages[0]).toEqual({ role: "system", content: expectedSystem });
-  expect(result.messages.slice(1, 1 + expectedRecent.length)).toEqual(expectedRecent);
+  expect(result.messages[0].role).toBe("system");
+  expect(result.messages[0].content).toContain(expectedSystem);
+  expect(result.messages.slice(1)).toEqual(expectedRecent);
 }
 
 describe("buildContext", () => {
@@ -807,6 +807,26 @@ describe("buildContext", () => {
     expect(brainText).not.toContain("State: Cornered and calculating a betrayal.");
     expect(brainText).not.toContain("Recent:");
     expect(brainText).not.toContain("Relationships:");
+  });
+
+  it("deduplicates equivalent brain thoughts before context assembly", () => {
+    const repeated = "She held the line. I need to know whether she can hold this one too.";
+    const brain = makeBrain({
+      characterName: "Mira",
+      active: true,
+      inclusionPolicy: "always",
+      thoughts: {
+        turn9_old: `9 \u2192 ${repeated}`,
+        turn10_repeat: `10 \u2192 ${repeated}`,
+        turn11_new: "11 \u2192 The ward answered Seth first. That changes the math.",
+      },
+    });
+    const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };
+    const brainText = buildContext(adventure, {}).sections.find((section) => section.id === "brains")?.items.map((item) => item.content).join("\n") ?? "";
+    expect(brainText).not.toContain("turn9_old");
+    expect(brainText).toContain("turn10_repeat");
+    expect(brainText).toContain("turn11_new");
+    expect((brainText.match(/She held the line/g) ?? [])).toHaveLength(1);
   });
 
   it("excludes a triggered brain that has no thoughts yet", () => {

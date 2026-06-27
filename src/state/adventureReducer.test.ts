@@ -397,6 +397,28 @@ describe("adventureReducer", () => {
     expect(updated.archivedThoughts.first).toBe("1 → oldest thought here");
   });
 
+  it("does not append duplicate brain thoughts under new keys", () => {
+    let state = baseAdventure();
+    const brain = makeBrain({
+      characterName: "Nyx",
+      thoughts: { first_read: "4 \u2192 He is trying to bridge the gap too late." },
+      archivedThoughts: { archived_read: "3 \u2192 The team missed how badly she flinched." },
+    });
+    state = reduce(state, { type: "UPSERT_BRAIN", brain });
+
+    state = reduce(state, {
+      type: "APPLY_BRAIN_UPDATE",
+      brainId: brain.id,
+      mode: "append",
+      turn: 5,
+      patch: { thoughts: { second_read: "5 \u2192 He is trying to bridge the gap too late." } },
+    });
+
+    const deduped = state.brains.find((entry) => entry.id === brain.id)!;
+    expect(deduped.thoughts).toEqual({ first_read: "4 \u2192 He is trying to bridge the gap too late." });
+    expect(deduped.archivedThoughts).toEqual({ archived_read: "3 \u2192 The team missed how badly she flinched." });
+  });
+
   it("handles every trigger rule action", () => {
     let state = baseAdventure();
     const triggerRule = makeTriggerRule({ name: "Rule C", priority: 7 });

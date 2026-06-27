@@ -406,6 +406,41 @@ describe("full turn smoke path", () => {
     expect(result.responseContent).not.toContain("<thought");
   });
 
+  it("ignores inline brain thoughts that repeat an existing thought", async () => {
+    let adventure = createDefaultAdventure("Thought Capture");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_BRAIN",
+      brain: makeBrain({
+        id: "brain-margo",
+        characterName: "Margo",
+        triggers: ["Margo"],
+        thoughts: { old_guard: "0 \u2192 I saw the ward answer Seth before it answered me." },
+        archivedThoughts: { archived_guard: "0 \u2192 I already know the ward listens to Seth first." },
+        active: true,
+        inclusionPolicy: "always",
+      }),
+    });
+
+    const provider = vi.fn(async () => ({
+      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Seth before it answered me.</thought>',
+    }));
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "Margo watches Seth test the ward.",
+      userMessageId: "thought-user",
+      assistantMessageId: "thought-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: provider,
+    });
+
+    const brain = result.adventure.brains.find((entry) => entry.id === "brain-margo");
+    expect(brain?.thoughts).toEqual({
+      old_guard: "0 \u2192 I saw the ward answer Seth before it answered me.",
+    });
+    expect(result.responseContent).toBe("Margo studies the ward.");
+  });
+
   it("does not advance Arc Director pacing from pinned context unless the thread actually matched", async () => {
     let adventure = createDefaultAdventure("Pinned Arc");
     adventure = dispatch(adventure, {

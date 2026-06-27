@@ -13,6 +13,7 @@ import type {
   TriggerRule,
   ProviderRequestThrottle,
 } from "../types/adventure";
+import { dedupeBrainThoughts } from "../memory/thoughtDedupe";
 import { createId, nowIso } from "../utils/id";
 
 export const defaultTokenBudgetSettings: TokenBudgetSettings = {
@@ -347,6 +348,13 @@ function migrateThoughts(raw: unknown): Record<string, string> {
   return {};
 }
 
+function migrateBrainThoughts(brain: BrainEntry): Pick<BrainEntry, "thoughts" | "archivedThoughts"> {
+  return dedupeBrainThoughts(
+    migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),
+    brain.archivedThoughts ?? {},
+  );
+}
+
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   return {
@@ -412,8 +420,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       updateMode: !adventure.activeState?.stateFlags?.brainsAppendMigrated && (brain.updateMode ?? "replace") === "replace"
         ? "append"
         : (brain.updateMode ?? "append"),
-      thoughts: migrateThoughts((brain as unknown as Record<string, unknown>).thoughts),
-      archivedThoughts: brain.archivedThoughts ?? {},
+      ...migrateBrainThoughts(brain),
       linkedStoryCardId: brain.linkedStoryCardId,
     })),
     storyCards: (adventure.storyCards ?? []).map((card) => ({

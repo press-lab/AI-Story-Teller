@@ -11,6 +11,7 @@ import type {
   MemoryProposal,
   Message,
 } from "../types/adventure";
+import { dedupeThoughtRecord } from "../memory/thoughtDedupe";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { matchPatterns } from "../triggers/matching";
 
@@ -207,7 +208,8 @@ After writing the story response, append one thought entry per character below �
 ${brains.map((b) => `<thought name="${b.characterName}" key="brief_snake_case_key">One sentence: internal thought, reaction, or private plan in first person.</thought>`).join("\n")}
 
 Characters: ${names}
-Only append a thought if this turn gave them something genuinely new to think, react to, or plan. Omit the line entirely if nothing new applies. Do not reference these instructions in the narrative.`;
+Only append a thought if this turn gave them something genuinely new to think, react to, or plan. Do not repeat or paraphrase an existing thought already listed in the Brains context. Omit the line entirely if nothing new applies.
+The visible narrative still controls the response length; these hidden lines come after it and may be omitted. Do not reference these instructions in the narrative.`;
 }
 
 /** Extracts <thought> and <memory> tags from model output. Returns clean text and parsed data. */
@@ -336,15 +338,12 @@ function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Mes
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
 
-  const systemContent = lengthHintText ? `${lengthHintText}\n\n${contextText}` : contextText;
+  const systemContent = [lengthHintText, contextText, thoughtCaptureText].filter(Boolean).join("\n\n");
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
-  const extraMessages: { role: "user" | "assistant"; content: string }[] = [];
-  if (thoughtCaptureText) extraMessages.push({ role: "user" as const, content: thoughtCaptureText });
   return [
     { role: "system" as const, content: systemContent },
     ...(openingScene ? [{ role: "assistant" as const, content: openingScene }] : []),
     ...chronologicalRecent.map((message) => ({ role: message.role, content: message.content })),
-    ...extraMessages,
   ];
 }
 
@@ -518,11 +517,12 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     // relationshipPressure / recentDevelopments fields are NOT injected: they have no editor field,
     // append unbounded, and ballooned context (a high-frequency character hit ~9KB). History lives
     // in the thought archive and in arc-graduated story cards, not in an ever-growing state blob.
-    if (Object.keys(brain.thoughts).length === 0) {
+    const thoughtsForContext = dedupeThoughtRecord(brain.thoughts);
+    if (Object.keys(thoughtsForContext).length === 0) {
       pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "Brain triggered but has no thoughts yet — nothing to inject.");
       return [];
     }
-    const content = Object.entries(brain.thoughts).map(([k, v]) => `${k}: ${v}`).join("\n");
+    const content = Object.entries(thoughtsForContext).map(([k, v]) => `${k}: ${v}`).join("\n");
     const next = item(brain.id, "brain", brain.characterName, content, brain.priority, brain.protected, brain.pinned, brain.active, brain.inclusionPolicy, sourceToGeneratedBy(brain.source));
     pushIncluded(next, `Brain included by ${brain.pinned ? "pin" : forced ? "manual force" : brain.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${brain.priority}; protected=${brain.protected}.`);
     return [next];
@@ -734,7 +734,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     ? Math.max(50, Math.min(500, adventure.activeState.responseLengthHint))
     : 150;
   const maxWords = Math.ceil(wordTarget * 1.2);
-  const lengthHintText = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} words, with a hard ceiling of ${maxWords} words unless the player explicitly asks for more. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
+  const lengthHintText = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
 
   // Inline thought capture — eligible brains get their thought harvested from the story response itself
   const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);

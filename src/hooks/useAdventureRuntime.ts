@@ -37,13 +37,21 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
 }
 
-export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number): RuntimeProviderSettings {
+export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number, hiddenReserveTokens = 0): RuntimeProviderSettings {
   const wordTarget = Number.isFinite(hint) ? Math.max(50, Math.min(500, Math.round(hint))) : 150;
-  const playableTokenCap = Math.ceil(wordTarget * 1.5) + 120;
+  const hiddenReserve = Math.max(0, Math.min(360, Math.ceil(hiddenReserveTokens)));
+  const playableTokenCap = Math.ceil(wordTarget * 1.45) + 80 + hiddenReserve;
   const configuredCap = Number.isFinite(config.maxOutputTokens) && config.maxOutputTokens > 0
     ? config.maxOutputTokens
     : playableTokenCap;
   return { ...config, maxOutputTokens: Math.min(configuredCap, playableTokenCap) };
+}
+
+function hiddenOutputReserveTokens(context: ContextBuildResult): number {
+  const payloadText = context.messages.map((message) => message.content).join("\n");
+  const thoughtExamples = payloadText.match(/<thought\s+name=/gi)?.length ?? 0;
+  const memoryTaggingReserve = payloadText.includes("[MEMORY TAGGING]") ? 120 : 0;
+  return thoughtExamples * 42 + memoryTaggingReserve;
 }
 
 function stripThinkTags(text: string): string {
@@ -250,7 +258,11 @@ export function useAdventureRuntime(
           snapshotWithUserMsg = snapshot;
           setAdventure(snapshot);
           setContextResult(context);
-          const storyConfig = applyResponseLengthHint(mergeProviderConfig(snapshot, providerSettings), snapshot.activeState.responseLengthHint);
+          const storyConfig = applyResponseLengthHint(
+            mergeProviderConfig(snapshot, providerSettings),
+            snapshot.activeState.responseLengthHint,
+            hiddenOutputReserveTokens(context),
+          );
           return sendOpenAICompatibleChatCompletion({ messages, config: storyConfig });
         },
       });
@@ -311,7 +323,11 @@ export function useAdventureRuntime(
         sendChatCompletion: async (messages, snapshot, context) => {
           setAdventure(snapshot);
           setContextResult(context);
-          const continueConfig = applyResponseLengthHint(mergeProviderConfig(snapshot, providerSettings), snapshot.activeState.responseLengthHint);
+          const continueConfig = applyResponseLengthHint(
+            mergeProviderConfig(snapshot, providerSettings),
+            snapshot.activeState.responseLengthHint,
+            hiddenOutputReserveTokens(context),
+          );
           return sendOpenAICompatibleChatCompletion({ messages, config: continueConfig });
         },
       });
@@ -349,7 +365,11 @@ export function useAdventureRuntime(
     setContextResult(context);
 
     try {
-      const regenConfig = applyResponseLengthHint(mergeProviderConfig(next, providerSettings), next.activeState.responseLengthHint);
+      const regenConfig = applyResponseLengthHint(
+        mergeProviderConfig(next, providerSettings),
+        next.activeState.responseLengthHint,
+        hiddenOutputReserveTokens(context),
+      );
       const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: regenConfig });
       const applied = await applyProviderResponse({
         adventure: next,

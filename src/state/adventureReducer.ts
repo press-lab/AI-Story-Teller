@@ -21,6 +21,7 @@ import type {
 import { cardMatchesName, defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 import { resolveMemoryTarget, sanitizeStoryCardTriggers } from "../memory/resolveMemoryTarget";
+import { dedupeBrainThoughts, normalizeThoughtForDedupe } from "../memory/thoughtDedupe";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
@@ -179,19 +180,39 @@ function updateBrainField(brain: BrainEntry, field: BrainStateField | undefined,
 function mergeThoughts(
   existing: Record<string, string>,
   archived: Record<string, string>,
-  patch: Record<string, string | null>
+  patch: Record<string, string | null>,
+  dedupeAgainstArchived = true,
 ): { thoughts: Record<string, string>; archivedThoughts: Record<string, string> } {
   const nextThoughts = { ...existing };
   const nextArchived = { ...archived };
+  const seen = new Set(
+    [
+      ...Object.values(existing),
+      ...(dedupeAgainstArchived ? Object.values(archived) : []),
+    ]
+      .map((value) => normalizeThoughtForDedupe(value))
+      .filter(Boolean),
+  );
   for (const [key, value] of Object.entries(patch)) {
     if (value === null) {
-      if (nextThoughts[key]) nextArchived[key] = nextThoughts[key];
+      if (nextThoughts[key]) {
+        const normalized = normalizeThoughtForDedupe(nextThoughts[key]);
+        if (normalized) seen.delete(normalized);
+        nextArchived[key] = nextThoughts[key];
+      }
       delete nextThoughts[key];
     } else {
+      const normalized = normalizeThoughtForDedupe(value);
+      const currentForKey = nextThoughts[key] ?? nextArchived[key];
+      const currentNormalized = currentForKey ? normalizeThoughtForDedupe(currentForKey) : "";
+      if (normalized && seen.has(normalized) && normalized !== currentNormalized) continue;
+      if (currentNormalized) seen.delete(currentNormalized);
       nextThoughts[key] = value;
+      delete nextArchived[key];
+      if (normalized) seen.add(normalized);
     }
   }
-  return { thoughts: nextThoughts, archivedThoughts: nextArchived };
+  return dedupeBrainThoughts(nextThoughts, nextArchived);
 }
 
 /** Default character budget for a brain's live thought log before old entries get archived. */
@@ -267,7 +288,7 @@ function applyBrainUpdate(
 
   const { thoughts: nextThoughts, archivedThoughts: nextArchivedThoughts } = thoughtsPatch
     ? mode === "replace"
-      ? mergeThoughts({}, brain.archivedThoughts, thoughtsPatch)
+      ? mergeThoughts({}, brain.archivedThoughts, thoughtsPatch, false)
       : mergeThoughts(brain.thoughts, brain.archivedThoughts, thoughtsPatch)
     : { thoughts: brain.thoughts, archivedThoughts: brain.archivedThoughts };
 
