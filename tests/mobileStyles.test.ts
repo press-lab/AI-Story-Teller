@@ -14,12 +14,15 @@ describe("mobile layout contract", () => {
     expect(html).toContain("viewport-fit=cover");
   });
 
-  it("switches phones to a dedicated mobile shell with wrapped top navigation", () => {
+  it("lets phone menus scroll away while preserving the fixed play shell", () => {
     const css = readProjectFile("src/styles.css");
     const mobileBlock = css.match(/@media \(max-width: 640px\) \{[\s\S]*$/)?.[0] ?? "";
 
-    expect(mobileBlock).toContain("height: 100dvh");
-    expect(mobileBlock).toMatch(/\.app-shell\s*{[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)/s);
+    expect(mobileBlock).toMatch(/body\s*{[^}]*overflow-y:\s*auto/s);
+    expect(mobileBlock).toMatch(/\.app-shell\s*{[^}]*height:\s*auto[^}]*grid-template-rows:\s*auto auto/s);
+    expect(mobileBlock).toMatch(/\.main-content\s*{[^}]*overflow-y:\s*visible/s);
+    expect(mobileBlock).toMatch(/\.editor-command-bar\s*{[^}]*position:\s*static/s);
+    expect(mobileBlock).toMatch(/\.app-shell:has\(\.main-content\.play-content\)\s*{[^}]*height:\s*100dvh[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)/s);
     expect(mobileBlock).toMatch(/\.app-nav\s*{[^}]*overflow-x:\s*auto/s);
     expect(mobileBlock).toMatch(/button\s*{[^}]*min-height:\s*44px/s);
   });

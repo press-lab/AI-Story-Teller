@@ -4318,7 +4318,8 @@ summary {
 
   body {
     min-width: 0;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   button {
@@ -4336,9 +4337,10 @@ summary {
 
   .app-shell {
     max-width: none;
-    height: 100dvh;
+    height: auto;
     min-height: 100dvh;
-    grid-template-rows: auto minmax(0, 1fr);
+    overflow: visible;
+    grid-template-rows: auto auto;
   }
 
   .app-header {
@@ -4418,21 +4420,28 @@ summary {
   .main-content {
     grid-row: 2;
     padding: 10px;
-    overflow-y: auto;
+    overflow-y: visible;
     overflow-x: hidden;
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
     -webkit-overflow-scrolling: touch;
   }
 
   /* Play page: fixed-height container — transcript scrolls internally */
-  .main-content.play-content {
+  .app-shell:has(.main-content.play-content) {
+    height: 100dvh;
+    min-height: 100dvh;
     overflow: hidden;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
-  /* Edit page: editor body grows with content on mobile, so the
-     main content area must scroll (base rule pins it to hidden) */
+  .main-content.play-content {
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+
+  /* Edit pages use document scroll on mobile so the top menus scroll away. */
   .main-content.edit-content {
-    overflow-y: auto;
+    overflow-y: visible;
   }
 
   .page {
@@ -4462,9 +4471,20 @@ summary {
   }
 
   .editor-command-bar {
+    position: static;
+    top: auto;
+    z-index: auto;
     grid-template-columns: 1fr;
     align-items: stretch;
     padding: 7px;
+  }
+
+  .split-editor-item[open] > summary,
+  .component-editor-item[open] > summary,
+  .brain-item[open] > summary {
+    position: static;
+    top: auto;
+    z-index: auto;
   }
 
   .editor-command-bar button,
