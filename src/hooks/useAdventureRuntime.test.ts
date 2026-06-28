@@ -13,12 +13,12 @@ const baseConfig: RuntimeProviderSettings = {
 
 describe("applyResponseLengthHint", () => {
   it("turns the play word target into a provider output cap", () => {
-    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(298);
+    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(269);
   });
 
-  it("adds a bounded reserve for hidden thought and memory tags", () => {
-    expect(applyResponseLengthHint(baseConfig, 150, 240).maxOutputTokens).toBe(538);
-    expect(applyResponseLengthHint(baseConfig, 150, 999).maxOutputTokens).toBe(658);
+  it("adds only a small bounded reserve for hidden thought and memory tags", () => {
+    expect(applyResponseLengthHint(baseConfig, 150, 240).maxOutputTokens).toBe(329);
+    expect(applyResponseLengthHint(baseConfig, 150, 999).maxOutputTokens).toBe(329);
   });
 
   it("keeps an already lower provider cap", () => {
@@ -26,7 +26,7 @@ describe("applyResponseLengthHint", () => {
   });
 
   it("clamps unsafe word targets before deriving the cap", () => {
-    expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(805);
-    expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(153);
+    expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(815);
+    expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(113);
   });
 });
