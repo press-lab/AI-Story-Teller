@@ -345,7 +345,7 @@ describe("full turn smoke path", () => {
     let adventure = createDefaultAdventure("Tag Routing");
     adventure = dispatch(adventure, {
       type: "UPSERT_STORY_CARD",
-      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], active: true }),
+      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], memoryMode: "living", active: true }),
     });
 
     // Model emits a memory tag whose title matches the existing card → should become an update, not a sibling.
@@ -370,6 +370,44 @@ describe("full turn smoke path", () => {
     expect(proposal?.memoryMode).toBe("living");
     // No sibling card was created, and the tag was stripped from the visible prose.
     expect(result.adventure.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
+    expect(result.responseContent).not.toContain("<memory");
+  });
+
+  it("keeps static lore cards static when inline memory tags target them", async () => {
+    let adventure = createDefaultAdventure("Static Tag Routing");
+    adventure = dispatch(adventure, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({
+        id: "card-red-ring",
+        title: "Red Ring",
+        content: "• Shroud's criminal organization and the main enemy faction.",
+        keys: ["Red Ring", "Shroud"],
+        type: "lore",
+        memoryMode: "static",
+        active: true,
+      }),
+    });
+
+    const provider = vi.fn(async () => ({
+      content: 'A new signal pings.\n<memory category="world_fact" memoryMode="living" title="Red Ring" content="• Red Ring pressure now centers on stolen dampener cores." triggers="Red Ring, dampener cores"/>',
+    }));
+
+    const result = await runTurnPipeline({
+      adventure,
+      text: "The Red Ring signal changes.",
+      userMessageId: "static-tag-user",
+      assistantMessageId: "static-tag-assistant",
+      createdAt: timestamp,
+      sendChatCompletion: provider,
+    });
+
+    const proposal = result.adventure.activeState.memoryProposals.find((p) => p.proposedType === "storyCard");
+    expect(proposal).toMatchObject({
+      targetId: "card-red-ring",
+      appendContent: true,
+      memoryMode: "static",
+    });
+    expect(result.adventure.storyCards.find((card) => card.id === "card-red-ring")?.memoryMode).toBe("static");
     expect(result.responseContent).not.toContain("<memory");
   });
 
@@ -502,7 +540,7 @@ describe("full turn smoke path", () => {
     let adventure = createDefaultAdventure("Silent Continue");
     adventure = dispatch(adventure, {
       type: "UPSERT_STORY_CARD",
-      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], active: true }),
+      storyCard: makeStoryCard({ id: "card-couple", title: "Setu and Nyxa", content: "• Their bond is a court secret.", keys: ["Setu", "Nyxa"], memoryMode: "living", active: true }),
     });
 
     let capturedPayload: ChatMessage[] | undefined;

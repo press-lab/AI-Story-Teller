@@ -565,6 +565,115 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
+  it("preserves static story card mode when approving an appended static proposal", () => {
+    let state = baseAdventure();
+    const redRing = makeStoryCard({
+      id: "card-red-ring",
+      title: "Red Ring",
+      content: "• Shroud's criminal organization and the main enemy faction.",
+      keys: ["Red Ring", "Shroud"],
+      type: "lore",
+      memoryMode: "static",
+    });
+    state = reduce(state, { type: "UPSERT_STORY_CARD", storyCard: redRing });
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "proposal-red-ring",
+        proposedType: "storyCard",
+        targetId: "card-red-ring",
+        title: "Red Ring",
+        content: "• Red Ring pressure now centers on stolen dampener cores.",
+        suggestedTriggers: ["Red Ring", "dampener cores"],
+        appendContent: true,
+        memoryMode: "static",
+      }),
+    });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-red-ring" });
+
+    const updated = state.storyCards.find((card) => card.id === "card-red-ring");
+    expect(updated?.content).toContain("main enemy faction");
+    expect(updated?.content).toContain("stolen dampener cores");
+    expect(updated?.memoryMode).toBe("static");
+    expect((updated?.state ?? "").split(/\s+/)).not.toContain("living");
+  });
+
+  it("does not resurrect dismissed static story card update proposals", () => {
+    let state = baseAdventure();
+    state = reduce(state, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({
+        id: "card-red-ring",
+        title: "Red Ring",
+        content: "• Shroud's criminal organization and the main enemy faction.",
+        keys: ["Red Ring", "Shroud"],
+        type: "lore",
+        memoryMode: "static",
+      }),
+    });
+
+    const proposal = makeMemoryProposal({
+      id: "proposal-red-ring-1",
+      proposedType: "storyCard",
+      targetId: "card-red-ring",
+      title: "Red Ring",
+      content: "• Red Ring probes keep bending toward Nix's stolen tech.",
+      suggestedTriggers: ["Red Ring", "Nix"],
+      appendContent: true,
+      memoryMode: "static",
+    });
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal });
+    state = reduce(state, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "proposal-red-ring-1" });
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        ...proposal,
+        id: "proposal-red-ring-2",
+        content: "• Red Ring pressure repeats through another probe aimed at Nix's stolen tech.",
+      },
+    });
+
+    expect(state.activeState.memoryProposals.filter((entry) => entry.title === "Red Ring")).toHaveLength(1);
+    expect(state.activeState.memoryProposals.find((entry) => entry.id === "proposal-red-ring-2")).toBeUndefined();
+  });
+
+  it("still allows new living-card updates after a different living update was dismissed", () => {
+    let state = baseAdventure();
+    state = reduce(state, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({
+        id: "card-bond",
+        title: "Nix and Seth",
+        content: "• Their bond is private and unresolved.",
+        keys: ["Nix", "Seth"],
+        memoryMode: "living",
+      }),
+    });
+
+    const first = makeMemoryProposal({
+      id: "proposal-bond-1",
+      proposedType: "storyCard",
+      targetId: "card-bond",
+      title: "Nix and Seth",
+      content: "• Nix is testing whether Seth will keep choosing her chaos.",
+      appendContent: true,
+      memoryMode: "living",
+    });
+    const second = makeMemoryProposal({
+      ...first,
+      id: "proposal-bond-2",
+      content: "• Seth and Nix now trust each other with dangerous field experiments.",
+    });
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: first });
+    state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "proposal-bond-1" });
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: second });
+
+    expect(state.activeState.memoryProposals.find((entry) => entry.id === "proposal-bond-2")?.status).toBe("pending");
+  });
+
   it("drops a near-duplicate suggestion that differs only by a leading article or punctuation", () => {
     let state = baseAdventure();
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "e1", title: "The Escape from Gutterglass", proposedType: "storyCard", status: "pending" }) });
@@ -748,6 +857,7 @@ describe("adventureReducer", () => {
     const card = makeStoryCard({
       id: "card-living",
       title: "Setu and Nyxa",
+      memoryMode: "living",
       content: "• Their bond was a court secret.\n• They spar as equals.",
       keys: ["Setu", "Nyxa"],
       tokenBudget: 10, // ~40 char live budget — forces the oldest fact to archive
@@ -906,7 +1016,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "d4")).toBe(false);
 
     // But a living-card UPDATE (appendContent) sharing a card title is NOT blocked by a past dismissal.
-    const card = makeStoryCard({ id: "card-x", title: "Setu and Nyxa", content: "• base fact", active: true });
+    const card = makeStoryCard({ id: "card-x", title: "Setu and Nyxa", content: "• base fact", memoryMode: "living", active: true });
     state = { ...state, storyCards: [card] };
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "u1", title: "Setu and Nyxa", proposedType: "storyCard", targetId: "card-x", appendContent: true, content: "• first development", status: "pending" }) });
     state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "u1" });

@@ -152,7 +152,7 @@ export function resolveMemoryTarget(adventure: Adventure, draft: MemoryTargetDra
   const inferredMode = inferStoryCardMemoryMode(draft);
   const target = exactStoryCardTarget(adventure, draft, inferredMode) ?? bestLivingTarget(adventure, draft);
   const targetMode = target ? (isLivingStoryCard(target) ? "living" : target.memoryMode) : undefined;
-  const memoryMode = target && inferredMode === "living" && targetMode !== "historical" ? "living" : (targetMode ?? inferredMode);
+  const memoryMode = target ? (targetMode ?? inferredMode) : inferredMode;
   const appendContent = draft.appendContent ?? (target ? true : undefined);
   const title = target?.title ?? draft.title;
   const suggestedTriggers = sanitizeStoryCardTriggers(adventure, title, draft.suggestedTriggers, target?.id);

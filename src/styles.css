@@ -490,6 +490,22 @@ pre {
   gap: 10px;
 }
 
+.editor-workspace,
+.editor-body,
+.editor-surface,
+.editor-surface > *,
+.split-editor-list,
+.split-editor-item,
+.story-card-item,
+.editor-card,
+.item-inspector,
+.brain-inspector,
+.item-focus-section,
+.brain-focus-section {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .editor-page-summary {
   display: flex;
   align-items: flex-start;
@@ -1181,6 +1197,8 @@ details.import-export-details[open] {
   border-radius: 8px;
   background: var(--surface);
   padding: 12px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 details.panel > summary,
@@ -3065,6 +3083,7 @@ details.story-card-item:not([open]) > .editor-card {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface-soft);
@@ -3072,6 +3091,8 @@ details.story-card-item:not([open]) > .editor-card {
   padding: 2px 8px;
   font-size: 12px;
   font-weight: 650;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .item-inspector {
@@ -3105,6 +3126,7 @@ details.story-card-item:not([open]) > .editor-card {
   display: inline-flex;
   align-items: center;
   min-height: 22px;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface-soft);
@@ -3112,6 +3134,8 @@ details.story-card-item:not([open]) > .editor-card {
   padding: 2px 8px;
   font-size: 12px;
   font-weight: 650;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .item-focus-section {
@@ -3128,6 +3152,13 @@ details.story-card-item:not([open]) > .editor-card {
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.item-section-heading > div,
+.brain-section-heading > div,
+.item-inspector-heading > div,
+.brain-inspector-heading > div {
+  min-width: 0;
 }
 
 .item-section-heading h4 {
@@ -3153,6 +3184,8 @@ details.story-card-item:not([open]) > .editor-card {
   border-radius: 7px;
   background: var(--surface);
   padding: 8px 9px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .item-history-entry p,
@@ -3160,6 +3193,7 @@ details.story-card-item:not([open]) > .editor-card {
   margin: 0;
   line-height: 1.45;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .item-history-meta,
@@ -3173,6 +3207,20 @@ details.story-card-item:not([open]) > .editor-card {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  min-width: 0;
+}
+
+.item-history-meta > span:first-child,
+.brain-history-meta > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.item-history-meta .badge,
+.brain-history-meta .badge {
+  flex: 0 0 auto;
 }
 
 .item-secondary-details,
@@ -3299,12 +3347,15 @@ details.story-card-item:not([open]) > .editor-card {
   border-radius: 7px;
   background: var(--surface);
   padding: 8px 9px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .brain-thought p {
   margin: 0;
   line-height: 1.45;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .brain-thought-key {
@@ -3313,6 +3364,8 @@ details.story-card-item:not([open]) > .editor-card {
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .brain-empty-state {
@@ -4461,6 +4514,23 @@ summary {
     align-items: stretch;
   }
 
+  .panel-heading,
+  .item-inspector-heading,
+  .brain-inspector-heading,
+  .item-section-heading,
+  .brain-section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .panel-heading > .row,
+  .item-inspector-heading > .row,
+  .brain-inspector-heading > .row {
+    width: 100%;
+    max-width: none;
+  }
+
   .editor-page-summary {
     display: grid;
     gap: 6px;
@@ -4485,6 +4555,19 @@ summary {
     position: static;
     top: auto;
     z-index: auto;
+  }
+
+  .split-editor-item[open] > summary .story-card-summary,
+  .component-editor-item[open] > summary .story-card-summary,
+  .brain-item[open] > summary .story-card-summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .story-card-title,
+  .story-card-keys,
+  .story-card-summary .search-snippet {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .editor-command-bar button,
@@ -4535,7 +4618,8 @@ summary {
     left: auto;
     width: 100%;
     max-width: none;
-    max-height: min(62vh, 520px);
+    max-height: none;
+    overflow: visible;
   }
 
   .split-editor-list:has(.split-editor-item[open]) {
@@ -4551,7 +4635,8 @@ summary {
     left: auto;
     width: 100%;
     max-width: none;
-    max-height: min(62vh, 520px);
+    max-height: none;
+    overflow: visible;
   }
 
   .toolbar input {
