@@ -4639,6 +4639,99 @@ summary {
     overflow: visible;
   }
 
+  .editor-surface,
+  .editor-surface *,
+  .split-editor-item[open],
+  .split-editor-item[open] > summary,
+  .story-card-item[open] > .editor-card,
+  .item-inspector,
+  .brain-inspector,
+  .component-inspector,
+  .trigger-rule-editor,
+  .item-focus-section,
+  .brain-focus-section,
+  .item-secondary-details,
+  .brain-secondary-details,
+  .item-inline-details,
+  .brain-inline-details,
+  .field,
+  .check-field {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .story-card-inspector > .grid.story-card-primary-fields,
+  .story-card-inspector > .grid,
+  .component-inspector > .grid,
+  .brain-inspector > .grid,
+  .trigger-rule-editor > .grid,
+  .item-secondary-details .grid,
+  .brain-secondary-details .grid,
+  .component-arc-details .grid,
+  .audit-rec-fields,
+  .settings-card .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .story-card-item[open] > .editor-card {
+    padding-inline: 10px;
+  }
+
+  .item-inspector,
+  .brain-inspector,
+  .component-inspector,
+  .trigger-rule-editor,
+  .item-focus-section,
+  .brain-focus-section,
+  .item-secondary-details,
+  .brain-secondary-details,
+  .item-inline-details,
+  .brain-inline-details {
+    overflow: hidden;
+  }
+
+  .item-inspector-heading > button,
+  .item-inspector-heading > .row,
+  .item-inspector-heading > .row > button,
+  .brain-inspector-heading > .row,
+  .brain-inspector-heading > .row > button,
+  .component-inspector .row,
+  .component-inspector .row > button,
+  .story-card-inspector .row,
+  .story-card-inspector .row > button {
+    width: 100%;
+  }
+
+  .editor-surface input,
+  .editor-surface select,
+  .editor-surface textarea,
+  .editor-surface button {
+    max-width: 100%;
+  }
+
+  .editor-surface textarea,
+  .editor-surface input,
+  .editor-surface select,
+  .story-card-title,
+  .story-card-keys,
+  .story-card-summary .search-snippet,
+  .field > span,
+  .check-field,
+  .item-section-heading,
+  .brain-section-heading,
+  .item-inspector-heading,
+  .brain-inspector-heading {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .story-card-title,
+  .story-card-keys,
+  .story-card-summary .search-snippet {
+    overflow: visible;
+    text-overflow: clip;
+  }
+
   .toolbar input {
     max-width: none;
   }
