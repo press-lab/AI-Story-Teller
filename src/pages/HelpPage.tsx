@@ -326,6 +326,13 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           Trigger actions must dispatch typed reducer actions. They should not mutate adventure state
           directly.
         </p>
+        <p>
+          System memory triggers are the zero-cost inline memory tags the model can append after a response.
+          Use <strong>Quiet entity-only</strong> when you only want new characters and world facts. Use{" "}
+          <strong>Balanced story memory</strong> when you also want relationship milestones, plot beats, and
+          status changes to create Memory Suggestions. The prompt still asks for only the strongest durable
+          memory per response, and duplicate proposals are filtered by the reducer.
+        </p>
       </>
     ),
   },
@@ -561,6 +568,40 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </dl>
         <p><strong>Trigger rule:</strong> character aliases belong on character identity cards. Event, relationship, and subplot cards should use specific trigger phrases, not broad character names that already belong to other cards.</p>
         <p><strong>Generator rule:</strong> generated cards should avoid temporary details, be concise and self-contained, repeat the subject in the body, and use the correct memory mode and tense.</p>
+      </>
+    ),
+  },
+  {
+    id: "new-adventure-generator-recipes",
+    title: "New Adventure AI Generator - Setup Recipes",
+    category: "Best Practices",
+    summary: "How to choose generator options based on the kind of adventure you want.",
+    tags: ["new adventure", "generate with ai", "ai instructions", "plot essentials", "nsfw", "setup"],
+    body: (
+      <>
+        <p>
+          Generate with AI asks what kind of story you want, then routes the setup into the right surfaces. You choose
+          outcomes; the app decides whether the result belongs in AI Instructions, Plot Essentials, Active Pressure,
+          Author's Note, Story Cards, or Brains.
+        </p>
+        <dl>
+          <dt>Sandbox</dt>
+          <dd>Lighter AI Instructions, broader factions and locations, loose hooks, and lean Plot Essentials.</dd>
+          <dt>Mission loop</dt>
+          <dd>A repeatable custom loop component, current assignment pressure, team cards, handler/enemy cards, and fallout hooks.</dd>
+          <dt>Mystery</dt>
+          <dd>The current known question goes in Plot Essentials. Clues, suspects, secrets, and locations go on Story Cards.</dd>
+          <dt>Faction politics</dt>
+          <dd>Plot Essentials names the current public pressure. Factions, leaders, alliances, leverage, and secrets go on cards.</dd>
+          <dt>Romance drama</dt>
+          <dd>Relationship pressure stays choice-driven. Living relationship cards and Brains carry evolving state instead of bloating PE.</dd>
+          <dt>Survival / horror</dt>
+          <dd>Plot Essentials tracks the current threat and constraints. Story Cards hold threat rules, safe places, recurring dangers, and costs.</dd>
+        </dl>
+        <p><strong>Prose mode is separate.</strong> Minimalist is fast and lean; novelistic is richer and slower; cinematic focuses on visible behavior and blocking; dialogue-heavy prioritizes distinct voices and social pressure.</p>
+        <p><strong>Player control is separate.</strong> Strict mode never writes your character. Minor-actions mode may bridge tiny implied motions. Cinematic flow may write small player-character beats, but major choices stay yours.</p>
+        <p><strong>Adult content / NSFW is explicit opt-in.</strong> Romance-only creates attraction and intimacy without explicit adult content. Explicit adult mode adds a separate adult-content section, consenting-adult framing, and your boundary notes. Keep adult preferences visible and separate from generic prose rules.</p>
+        <p><strong>Plot Essentials stays small.</strong> Do not let setup templates turn PE into a quest log, relationship tracker, inventory, or character voice guide. Those usually belong in Story Cards or Brains.</p>
       </>
     ),
   },

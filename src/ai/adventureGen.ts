@@ -28,6 +28,33 @@ export interface AdventureGenResult {
   storyCards: GenStoryCard[];
 }
 
+export type AdventureStoryShape =
+  | "balanced"
+  | "sandbox"
+  | "missionLoop"
+  | "mystery"
+  | "factionPolitics"
+  | "romanceDrama"
+  | "survivalHorror";
+
+export type AdventureProseMode =
+  | "balanced"
+  | "minimalist"
+  | "novelistic"
+  | "cinematic"
+  | "dialogueHeavy";
+
+export type AdventurePlayerControlMode = "strict" | "minorActions" | "cinematicFlow";
+export type AdventureAdultContentMode = "off" | "romanceOnly" | "explicitAdult";
+
+export interface AdventureGenPreferences {
+  storyShape: AdventureStoryShape;
+  proseMode: AdventureProseMode;
+  playerControl: AdventurePlayerControlMode;
+  adultContent: AdventureAdultContentMode;
+  boundaries?: string;
+}
+
 const generatedComponentTypes = new Set<ComponentType>([
   "aiInstructions",
   "plotEssentials",
@@ -37,6 +64,14 @@ const generatedComponentTypes = new Set<ComponentType>([
 ]);
 const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
 const storyCardMemoryModes = new Set<StoryCardMemoryMode>(["static", "living", "historical"]);
+
+const defaultPreferences: AdventureGenPreferences = {
+  storyShape: "balanced",
+  proseMode: "balanced",
+  playerControl: "strict",
+  adultContent: "off",
+  boundaries: "",
+};
 
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
@@ -130,14 +165,67 @@ HOW THEY ENGAGE THE PLAYER
 
 The example lines carry the most weight. Write them as the character would actually say them in the story. The HOW THEY ENGAGE section is what separates a card that controls behavior from one that only describes it.`;
 
+function setupPreferenceGuidance(preferences: AdventureGenPreferences): string {
+  const storyShapeGuidance: Record<AdventureStoryShape, string> = {
+    balanced: "Balanced adventure: use a tight premise, a small recurring cast, one active pressure, and a few Story Cards. Keep PE compact and broadly useful.",
+    sandbox: "Sandbox: prioritize a reactive world, player agency, faction/location cards, and loose hooks. Keep AI Instructions light; do not over-plan the plot in PE.",
+    missionLoop: "Mission loop: create an explicit custom loop component whose phases feed each other. PE should name the current assignment/obligation and recurring constraints; Story Cards should hold the team, handler, enemy factions, and recurring mission assets.",
+    mystery: "Mystery: PE should state the current known question and immediate investigative pressure, not the answer. Put clues, suspects, secrets, and locations in Story Cards. AI Instructions should prevent premature reveals.",
+    factionPolitics: "Faction politics: PE should name the current public pressure and power balance. Use Story Cards for factions, leaders, alliances, leverage, and secrets. AI Instructions should keep consequences social, legal, and material.",
+    romanceDrama: "Romance drama: keep romance pressure choice-driven. Put recurring relationship state on living Story Cards or Brains, not bloated PE. AI Instructions should preserve tension, banter, boundaries, and competing agendas without forcing commitment.",
+    survivalHorror: "Survival or horror: PE should name the current threat, scarcity, and constraints. Story Cards should capture rules of the threat, safe places, recurring dangers, and costs. AI Instructions should preserve dread, uncertainty, and consequences.",
+  };
+
+  const proseGuidance: Record<AdventureProseMode, string> = {
+    balanced: "Balanced prose: mix dialogue, action, and sensory detail without padding.",
+    minimalist: "Minimalist prose: short paragraphs, clear action, fast dialogue, no ornate description or summary padding.",
+    novelistic: "Novelistic prose: richer atmosphere, interior nuance for NPCs, slower emotional texture, and polished sentence rhythm without stalling play.",
+    cinematic: "Cinematic prose: visible behavior, blocking, sound, motion, and consequences. Frame scenes like a camera; avoid unsupported internal narration.",
+    dialogueHeavy: "Dialogue-heavy prose: prioritize distinct voices, interruptions, subtext, and social moves. Use narration mainly to anchor action and physical cues.",
+  };
+
+  const playerGuidance: Record<AdventurePlayerControlMode, string> = {
+    strict: "Player control: never write the player character's dialogue, thoughts, choices, actions, or reactions. End at a natural beat for the player to act.",
+    minorActions: "Player control: the AI may bridge tiny implied motions for flow, but must not decide the player character's words, emotions, major actions, or turning-point choices.",
+    cinematicFlow: "Player control: the AI may write minor player-character beats needed for a full scene's flow, but major choices, consent, commitments, and consequences remain player-owned.",
+  };
+
+  const adultGuidance: Record<AdventureAdultContentMode, string> = {
+    off: "Adult content: off. Do not include sexual setup, erotic instructions, or NSFW content unless the user explicitly adds it later.",
+    romanceOnly: "Adult content: romance-only. Build attraction, intimacy, flirtation, and emotional/relationship tension, but do not include explicit sexual content or adult scene mechanics.",
+    explicitAdult: "Adult content: explicit opt-in adult layer. All romantic/sexual participants must be clearly consenting adults. Avoid minor-coded, school-age, or ambiguous-age framing. Keep adult rules and boundaries in a clearly named AI Instructions section rather than mixing them into general prose rules.",
+  };
+
+  const boundaries = preferences.adultContent === "off" ? "" : preferences.boundaries?.trim();
+
+  return `Setup preferences:
+- Story shape: ${storyShapeGuidance[preferences.storyShape]}
+- Prose mode: ${proseGuidance[preferences.proseMode]}
+- ${playerGuidance[preferences.playerControl]}
+- ${adultGuidance[preferences.adultContent]}${boundaries ? `\n- Boundaries and limits to respect: ${boundaries}` : ""}
+
+Apply these preferences by routing facts to the correct surfaces:
+- AI Instructions: behavior, player-control contract, prose mode, drift prevention, adult-content policy if opted in.
+- Plot Essentials: 4-7 bullets of current operating truth only.
+- Active Pressure: exactly one sentence naming the current external pressure.
+- Author's Note: brief tone/mood/pacing nudge only.
+- Story Cards/Brains: recurring people, relationships, locations, factions, secrets, rules, and evolving internal state.`;
+}
+
 export async function runAdventureGen(
   premise: string,
   config: ProviderConfig,
+  preferences: Partial<AdventureGenPreferences> = {},
 ): Promise<AdventureGenResult> {
+  const resolvedPreferences: AdventureGenPreferences = {
+    ...defaultPreferences,
+    ...preferences,
+    boundaries: preferences.boundaries ?? defaultPreferences.boundaries,
+  };
   const response = await sendOpenAICompatibleChatCompletion({
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Premise:\n${premise.trim()}` },
+      { role: "user", content: `Premise:\n${premise.trim()}\n\n${setupPreferenceGuidance(resolvedPreferences)}` },
     ],
     config,
     ...(isNativeDeepSeekProvider(config)

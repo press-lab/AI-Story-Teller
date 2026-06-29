@@ -15,7 +15,13 @@ import { AidImportWizard } from "../components/AidImportWizard";
 import type { AdventureSummary } from "../db/adventureDb";
 import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../state/defaults";
 import { parseAidStoryCards } from "../importers/aidCardParser";
-import { runAdventureGen } from "../ai/adventureGen";
+import {
+  runAdventureGen,
+  type AdventureAdultContentMode,
+  type AdventurePlayerControlMode,
+  type AdventureProseMode,
+  type AdventureStoryShape,
+} from "../ai/adventureGen";
 import { createId } from "../utils/id";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
@@ -95,6 +101,36 @@ const uniqueComponentTypes = new Set<ComponentType>([
   "currentArc",
   "activePressure",
 ]);
+
+const storyShapeOptions: Array<{ value: AdventureStoryShape; label: string; description: string }> = [
+  { value: "balanced", label: "Balanced starter", description: "Small cast, clear premise, active pressure, and a few durable cards." },
+  { value: "sandbox", label: "Sandbox", description: "Reactive world, loose hooks, more factions/locations, less plot locking." },
+  { value: "missionLoop", label: "Mission loop", description: "Jobs create fallout, fallout creates team scenes, team scenes create the next job." },
+  { value: "mystery", label: "Mystery", description: "Known question in PE, clues/suspects/secrets in Story Cards, no early answer." },
+  { value: "factionPolitics", label: "Faction politics", description: "Leverage, alliances, public pressure, and consequences." },
+  { value: "romanceDrama", label: "Romance drama", description: "Choice-driven tension, banter, relationships as pressure, not forced commitment." },
+  { value: "survivalHorror", label: "Survival / horror", description: "Threat rules, scarcity, safe places, dread, and consequences." },
+];
+
+const proseModeOptions: Array<{ value: AdventureProseMode; label: string; description: string }> = [
+  { value: "balanced", label: "Balanced", description: "Dialogue, action, and sensory detail without padding." },
+  { value: "minimalist", label: "Minimalist", description: "Fast, lean, short paragraphs, little description." },
+  { value: "novelistic", label: "Novelistic", description: "Richer atmosphere, emotional texture, slower character work." },
+  { value: "cinematic", label: "Cinematic", description: "Visible behavior, motion, blocking, sound, and consequences." },
+  { value: "dialogueHeavy", label: "Dialogue-heavy", description: "Distinct voices, interruptions, subtext, and social moves." },
+];
+
+const playerControlOptions: Array<{ value: AdventurePlayerControlMode; label: string; description: string }> = [
+  { value: "strict", label: "Never write my character", description: "The AI leaves your words, thoughts, choices, actions, and reactions unwritten." },
+  { value: "minorActions", label: "Minor implied actions OK", description: "The AI may bridge tiny motions for flow, but not decisions or emotions." },
+  { value: "cinematicFlow", label: "Cinematic scene flow", description: "The AI can write small player beats, while major choices stay yours." },
+];
+
+const adultContentOptions: Array<{ value: AdventureAdultContentMode; label: string; description: string }> = [
+  { value: "off", label: "Off", description: "No sexual setup or NSFW generation rules." },
+  { value: "romanceOnly", label: "Romance only", description: "Attraction, intimacy, flirtation, and relationship tension without explicit sexual content." },
+  { value: "explicitAdult", label: "Explicit adult opt-in", description: "Adds a separate adult-content section, consenting-adult framing, and boundaries." },
+];
 
 function isFixedComponentType(type: ComponentType): boolean {
   return type === "narrationRules" || type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
@@ -231,6 +267,11 @@ export function AdventuresPage({
   const [jsonImportError, setJsonImportError] = useState<string | undefined>();
   const [jsonImportMessages, setJsonImportMessages] = useState<string[]>([]);
   const [premise, setPremise] = useState("");
+  const [storyShape, setStoryShape] = useState<AdventureStoryShape>("balanced");
+  const [proseMode, setProseMode] = useState<AdventureProseMode>("balanced");
+  const [playerControl, setPlayerControl] = useState<AdventurePlayerControlMode>("strict");
+  const [adultContent, setAdultContent] = useState<AdventureAdultContentMode>("off");
+  const [adultBoundaries, setAdultBoundaries] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState<string | undefined>();
   const [setupError, setSetupError] = useState<string | undefined>();
@@ -314,7 +355,13 @@ export function AdventuresPage({
     setGenLoading(true);
     setGenError(undefined);
     try {
-      const result = await runAdventureGen(premise, providerConfig);
+      const result = await runAdventureGen(premise, providerConfig, {
+        storyShape,
+        proseMode,
+        playerControl,
+        adultContent,
+        boundaries: adultContent === "off" ? "" : adultBoundaries,
+      });
       if (result.title) setTitle(result.title);
       if (result.openingScene) setOpeningScene(result.openingScene);
       setComponentDrafts((existing) => {
@@ -418,6 +465,60 @@ export function AdventuresPage({
                   placeholder="e.g. A disgraced knight in a crumbling empire must choose between loyalty to a corrupt emperor and a rebel cause led by his estranged sister…"
                 />
               </Field>
+              <div className="grid two">
+                <Field label="Story setup">
+                  <select aria-label="Story setup" value={storyShape} onChange={(event) => setStoryShape(event.target.value as AdventureStoryShape)}>
+                    {storyShapeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted">{storyShapeOptions.find((option) => option.value === storyShape)?.description}</p>
+                </Field>
+                <Field label="Prose mode">
+                  <select aria-label="Prose mode" value={proseMode} onChange={(event) => setProseMode(event.target.value as AdventureProseMode)}>
+                    {proseModeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted">{proseModeOptions.find((option) => option.value === proseMode)?.description}</p>
+                </Field>
+              </div>
+              <div className="grid two">
+                <Field label="Player control">
+                  <select aria-label="Player control" value={playerControl} onChange={(event) => setPlayerControl(event.target.value as AdventurePlayerControlMode)}>
+                    {playerControlOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted">{playerControlOptions.find((option) => option.value === playerControl)?.description}</p>
+                </Field>
+                <Field label="Adult content / NSFW">
+                  <select aria-label="Adult content / NSFW" value={adultContent} onChange={(event) => setAdultContent(event.target.value as AdventureAdultContentMode)}>
+                    {adultContentOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="muted">{adultContentOptions.find((option) => option.value === adultContent)?.description}</p>
+                </Field>
+              </div>
+              {adultContent !== "off" && (
+                <Field label="Boundaries / limits">
+                  <textarea
+                    rows={3}
+                    value={adultBoundaries}
+                    onChange={(event) => setAdultBoundaries(event.target.value)}
+                    placeholder="Optional. Add boundaries, tone limits, relationship rules, fade preferences, or content to avoid."
+                  />
+                </Field>
+              )}
               {genError && <p className="error-box">{genError}</p>}
               <div className="toolbar">
                 <button

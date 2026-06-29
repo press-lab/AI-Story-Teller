@@ -292,18 +292,20 @@ function activePressureConditions(adventure: Adventure): SemanticCondition[] {
     }));
 }
 
-function buildStateMaintenanceConditions(adventure: Adventure): SemanticCondition[] {
+function buildPlotMemoryConditions(adventure: Adventure): SemanticCondition[] {
   return [
     ...activePressureConditions(adventure),
     ...plotEssentialsDriftConditions(adventure),
+    ...currentArcConditions(adventure),
   ];
 }
 
-function buildLimitedMemoryConditions(adventure: Adventure): SemanticCondition[] {
-  return [
-    ...currentArcConditions(adventure),
-    ...storyCardUpdateConditions(adventure),
-  ];
+function buildStoryCardMemoryConditions(adventure: Adventure): SemanticCondition[] {
+  return storyCardUpdateConditions(adventure);
+}
+
+function buildCharacterMemoryConditions(adventure: Adventure): SemanticCondition[] {
+  return brainConditions(adventure);
 }
 
 function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
@@ -1053,19 +1055,24 @@ export async function runMemoryCycle(
     semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
   };
 
-  const stateConditions = buildStateMaintenanceConditions(adventure);
-  const limitedConditions = buildLimitedMemoryConditions(adventure);
-  const allConditions = [...stateConditions, ...limitedConditions];
+  const plotConditions = buildPlotMemoryConditions(adventure);
+  const storyCardConditions = buildStoryCardMemoryConditions(adventure);
+  const characterConditions = buildCharacterMemoryConditions(adventure);
+  const allConditions = [...plotConditions, ...storyCardConditions, ...characterConditions];
   if (allConditions.length === 0) {
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: emptyLog }], logEntry: emptyLog };
   }
 
-  const stateEval = await evaluateConditionIds(forcePropose, providerConfig, stateConditions, accum);
-  const limitedEval = await evaluateConditionIds(forcePropose, providerConfig, limitedConditions, accum, { singlePick: true });
-  const errors = [...stateEval.errors, ...limitedEval.errors];
-  const firedStateConditions = stateConditions.filter((condition) => stateEval.firedIds.includes(condition.id));
-  const firedLimitedCondition = limitedConditions.find((condition) => condition.id === limitedEval.firedIds[0]);
-  const firedConditions = [...firedStateConditions, ...(firedLimitedCondition ? [firedLimitedCondition] : [])];
+  const plotEval = await evaluateConditionIds(forcePropose, providerConfig, plotConditions, accum, { singlePick: true });
+  const storyCardEval = await evaluateConditionIds(forcePropose, providerConfig, storyCardConditions, accum, { singlePick: true });
+  const characterEval = await evaluateConditionIds(forcePropose, providerConfig, characterConditions, accum, { singlePick: true });
+  const errors = [...plotEval.errors, ...storyCardEval.errors, ...characterEval.errors];
+  const firedPlotCondition = plotConditions.find((condition) => condition.id === plotEval.firedIds[0]);
+  const firedStoryCardCondition = storyCardConditions.find((condition) => condition.id === storyCardEval.firedIds[0]);
+  const firedCharacterCondition = characterConditions.find((condition) => condition.id === characterEval.firedIds[0]);
+  const firedConditions = [firedPlotCondition, firedStoryCardCondition, firedCharacterCondition].filter(
+    (condition): condition is SemanticCondition => Boolean(condition),
+  );
 
   if (firedConditions.length === 0) {
     const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsEvaluated: allConditions.map(({ id, label, condition, sourceType }) => ({ id, label, condition, sourceType })), errors };

@@ -32,6 +32,42 @@ Build them in that order.
 
 ---
 
+## If you use Generate with AI
+
+The New Adventure generator asks for outcome choices before it drafts the setup.
+Pick the result you want; the app routes the details into AI Instructions, Plot
+Essentials, Active Pressure, Author's Note, Story Cards, and Brains.
+
+| Want | Choose | What it changes |
+|---|---|---|
+| Open-ended exploration | Sandbox | Lighter AI Instructions, broader factions/locations, looser hooks, lean PE |
+| Jobs and team fallout | Mission loop | A custom loop component, current assignment pressure, team/enemy cards |
+| Investigation | Mystery | Current known question in PE, clues/suspects/secrets on cards, no early answer |
+| Power games | Faction politics | Public pressure in PE, faction leverage and secrets on cards |
+| Relationship heat | Romance drama | Choice-driven tension, living relationship cards/Brains, no forced commitment |
+| Danger and dread | Survival / horror | Threat rules, scarcity, safe places, active pressure, consequences |
+
+Prose mode is separate from story shape. Minimalist is fast and lean; novelistic
+is richer and slower; cinematic focuses on visible action and blocking;
+dialogue-heavy prioritizes voice, interruption, and social pressure.
+
+Player control is also separate. Strict control means the model never writes the
+player character's words, thoughts, actions, choices, or reactions. Minor-action
+mode lets it bridge tiny implied motions. Cinematic flow lets it write small
+player-character beats while keeping major choices player-owned.
+
+Adult / NSFW setup is explicit opt-in. "Romance only" keeps attraction and
+intimacy without explicit adult content. "Explicit adult opt-in" adds a separate
+adult-content section, consenting-adult framing, and any boundaries you type. Do
+not mix adult preferences into generic prose rules; keep them visible and
+separable.
+
+The generator should still keep Plot Essentials tight. Relationship trackers,
+voice guides, quest logs, secrets, and recurring locations usually belong in
+Story Cards or Brains, not in PE.
+
+---
+
 ## Step 1 — The spine (backdrop, fantasy, premise)
 
 Pick a **backdrop you actually want to live in** and a **power fantasy you

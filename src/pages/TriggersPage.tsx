@@ -7,6 +7,20 @@ import { CheckboxField, Field, JsonTextarea, NumberInput, commaList, fromCommaLi
 const sources: TriggerSource[] = ["input", "output", "both"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
 const evaluationModes: TriggerEvaluationMode[] = ["semantic", "keyword", "regex"];
+const quietMemoryCategories: Record<InlineMemoryCategory, boolean> = {
+  character_reveal: true,
+  world_fact: true,
+  relationship: false,
+  plot_beat: false,
+  status_change: false,
+};
+const balancedMemoryCategories: Record<InlineMemoryCategory, boolean> = {
+  character_reveal: true,
+  world_fact: true,
+  relationship: true,
+  plot_beat: true,
+  status_change: true,
+};
 
 export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
   const [flagKey, setFlagKey] = useState("");
@@ -93,6 +107,24 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                 checked={enabled}
                 onChange={(v) => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: v } })}
               />
+              <div className="toolbar">
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: quietMemoryCategories } })}
+                >
+                  Quiet entity-only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: balancedMemoryCategories } })}
+                >
+                  Balanced story memory
+                </button>
+              </div>
+              <p className="muted">
+                Quiet tracks new characters and world facts. Balanced also tracks relationship, plot, and status milestones;
+                the prompt still asks for only the strongest durable memory tag per response.
+              </p>
               <div className="grid two disabled-when-off" data-disabled={!enabled}>
                 {categories.map(({ key, label, description }) => (
                   <div key={key}>

@@ -333,6 +333,82 @@ describe("runSemanticPostTurnEvaluation", () => {
       },
     });
   });
+
+  it("allows one plot, one Story Card, and one character update in the same memory cycle", async () => {
+    const pressure = makeComponent({
+      id: "component-pressure",
+      title: "Active Pressure",
+      type: "activePressure",
+      content: "Old pressure.",
+      active: true,
+    });
+    const card = makeStoryCard({
+      id: "card-margo",
+      title: "Margo",
+      content: "Margo watches the gate.",
+      keys: ["Margo"],
+      active: true,
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 0,
+    });
+    const brain = makeBrain({
+      id: "brain-margo",
+      characterName: "Margo",
+      triggers: ["Margo"],
+      active: true,
+      updateMode: "append",
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [pressure],
+      storyCards: [card],
+      brains: [brain],
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+      messages: [
+        ...baseAdventure().messages,
+        { id: "m3", role: "assistant" as const, content: "Margo seals the breach and realizes the gate is still failing.", createdAt: "2026-01-01T00:02:00.000Z" },
+      ],
+    };
+
+    mockProvider.mockImplementation(async (request) => {
+      const system = request.messages[0]?.content ?? "";
+      const user = request.messages[1]?.content ?? "";
+      if (system.includes("SINGLE most story-relevant condition") && user.includes("plotEssentialsPressure:component-pressure")) {
+        return { content: '["plotEssentialsPressure:component-pressure"]', raw: {} };
+      }
+      if (system.includes("SINGLE most story-relevant condition") && user.includes("storyCard:card-margo")) {
+        return { content: '["storyCard:card-margo"]', raw: {} };
+      }
+      if (system.includes("SINGLE most story-relevant condition") && user.includes("brain:brain-margo")) {
+        return { content: '["brain:brain-margo"]', raw: {} };
+      }
+      if (system.includes("updating the Active Pressure")) {
+        return { content: "The breach is sealed, but the gate is still failing.", raw: {} };
+      }
+      if (system.includes("persistent world fact card titled 'Margo'")) {
+        return { content: "• Margo now knows the gate can fail again without warning.", raw: {} };
+      }
+      if (system.includes("recording one new thought, reaction, or private plan for Margo")) {
+        return { content: '{"thoughts":{"gate_failure":"5 → The seal held once. I need a second plan before it breaks in front of everyone."}}', raw: {} };
+      }
+      return { content: "[]", raw: {} };
+    });
+
+    const result = await runMemoryCycle(adventure, providerConfig);
+
+    expect(result.logEntry.conditionsFired).toEqual([
+      "plotEssentialsPressure:component-pressure",
+      "storyCard:card-margo",
+      "brain:brain-margo",
+    ]);
+    expect(result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL")).toHaveLength(3);
+    expect(result.actions).toContainEqual({ type: "MARK_STORY_CARD_UPDATED", storyCardId: "card-margo", turn: 5 });
+
+    const reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
+    expect(reduced.components.find((component) => component.id === "component-pressure")?.content).toBe("The breach is sealed, but the gate is still failing.");
+    expect(reduced.activeState.memoryProposals.some((proposal) => proposal.proposedType === "storyCard" && proposal.targetId === "card-margo")).toBe(true);
+    expect(reduced.activeState.memoryProposals.some((proposal) => proposal.proposedType === "brainUpdate" && proposal.targetId === "brain-margo")).toBe(true);
+  });
 });
 
 describe("runManualBrainUpdate", () => {

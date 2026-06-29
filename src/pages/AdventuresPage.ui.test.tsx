@@ -181,11 +181,26 @@ describe("AdventuresPage new adventure setup", () => {
     await user.type(screen.getByLabelText("Triggers / keys"), "manual ally");
     await user.type(screen.getAllByLabelText("Content").at(-1)!, "Keep this manual card.");
     await user.type(screen.getByLabelText("Premise"), "A ward is failing.");
+    await user.selectOptions(screen.getByLabelText("Story setup"), "missionLoop");
+    await user.selectOptions(screen.getByLabelText("Prose mode"), "cinematic");
+    await user.selectOptions(screen.getByLabelText("Player control"), "minorActions");
+    await user.selectOptions(screen.getByLabelText("Adult content / NSFW"), "romanceOnly");
 
     await user.click(screen.getByRole("button", { name: "Generate" }));
     await waitFor(() => expect(screen.getByDisplayValue("Old canon.")).toBeInTheDocument());
     await user.click(screen.getByRole("button", { name: "Generate" }));
     await waitFor(() => expect(screen.getByDisplayValue("New canon.")).toBeInTheDocument());
+
+    expect(vi.mocked(runAdventureGen)).toHaveBeenLastCalledWith(
+      "A ward is failing.",
+      expect.objectContaining({ model: "deepseek-v4-flash" }),
+      expect.objectContaining({
+        storyShape: "missionLoop",
+        proseMode: "cinematic",
+        playerControl: "minorActions",
+        adultContent: "romanceOnly",
+      }),
+    );
 
     expect(screen.queryByDisplayValue("Old canon.")).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("Old world context.")).not.toBeInTheDocument();

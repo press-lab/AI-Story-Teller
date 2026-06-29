@@ -71,4 +71,28 @@ describe("runAdventureGen", () => {
     expect(request.messages[0].content).toContain('"authorNote"');
     expect(request.messages[0].content).toContain("Do not create cards for current scene position");
   });
+
+  it("passes setup preferences into the generation prompt", async () => {
+    vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
+      content: JSON.stringify({ title: "Preferences", openingScene: "", components: [], storyCards: [] }),
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      raw: {},
+    });
+
+    await runAdventureGen("A messy crew romance premise", config, {
+      storyShape: "romanceDrama",
+      proseMode: "cinematic",
+      playerControl: "minorActions",
+      adultContent: "explicitAdult",
+      boundaries: "No fade to black.",
+    });
+
+    const request = vi.mocked(sendOpenAICompatibleChatCompletion).mock.calls[0][0];
+    const userPrompt = request.messages[1].content;
+    expect(userPrompt).toContain("Story shape: Romance drama");
+    expect(userPrompt).toContain("Prose mode: Cinematic prose");
+    expect(userPrompt).toContain("bridge tiny implied motions");
+    expect(userPrompt).toContain("explicit opt-in adult layer");
+    expect(userPrompt).toContain("Boundaries and limits to respect: No fade to black.");
+  });
 });

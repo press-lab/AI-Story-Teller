@@ -298,7 +298,7 @@ export function enabledMemoryCategories(adventure: Adventure): string[] {
 export function buildMemoryTagInstruction(categories: string[], existingCardTitles: string[] = []): string {
   if (categories.length === 0) return "";
   const categoryDescriptions: Record<string, string> = {
-    relationship: "confirmed bond, established dynamic, or sealed commitment between two characters",
+    relationship: "confirmed bond, established dynamic, changed intimacy, or sealed commitment between two characters",
     world_fact: "new named location, faction, technique, or permanent world rule introduced this turn",
     character_reveal: "new named character introduced, or a character's permanent nature, role, or history revealed",
     plot_beat: "permanent consequence, sealed alliance, betrayal, or irreversible shift in the story's state",
@@ -306,7 +306,7 @@ export function buildMemoryTagInstruction(categories: string[], existingCardTitl
   };
   const lines = categories.map((c) => `- ${c}: ${categoryDescriptions[c] ?? c}`).join("\n");
   return `[MEMORY TAGGING]
-After writing your response, if this turn introduced a NEW named subject (character, location, technique, or relationship) not already captured in the story cards, append ONE self-closing <memory> tag. These tags are stripped before the player sees them.
+After writing your response, append ONE self-closing <memory> tag if this turn created a durable new fact or meaningful update that should become Story Card memory. These tags are stripped before the player sees them. Pick the strongest single Story Card memory candidate in the response.
 
 Qualifying categories:
 ${lines}
@@ -328,7 +328,9 @@ RULES:
 - Use narrow triggers. Do not use plain character names on subplot/event cards unless the card is that character's identity card.
 - NEW subject (no existing card): tag it with a new title.
 - EXISTING subject (already has a card in the list below): if a NEW permanent fact about it became true this turn, REUSE that card's EXACT title and put ONLY the new fact in content — it updates the living card instead of duplicating. NEVER invent a second title for a subject that already has a card (no "Setu and Nyxa's Private Space" when "Setu and Nyxa" exists). If nothing permanent changed, skip.
-- One tag per response. If nothing new qualifies, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
+- Worth tagging: a relationship becomes public or changes terms; a new recurring NPC/location/faction appears; a secret is revealed; an alliance, betrayal, title, injury, debt, promise, rule, or permanent consequence is established.
+- Not worth tagging: room position, travel between rooms, one-off banter, temporary mood, routine attacks with no lasting effect, or facts already present in Story Cards/Brains/Plot Essentials.
+- One Story Card memory tag per response. If nothing durable changed, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
 }
 
 function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {
