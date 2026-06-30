@@ -9,8 +9,12 @@ import type {
   EvaluationLogEntry,
   GeneratedContentPreview,
   MemoryProposal,
+  PlotAIBuilderRequest,
   ProviderConfig,
+  StoryCardAIBuilderRequest,
   StoryCard,
+  StoryCardMemoryMode,
+  StoryCardType,
   TriggerAction,
   TriggerRule,
 } from "../types/adventure";
@@ -848,6 +852,364 @@ export async function runManualStoryCardsUpdate(
 
   const logEntry: EvaluationLogEntry = { ...emptyLog, conditionsFired: cards.map((c) => `manualCard:${c.id}`), actionsExecuted, generatedContent, errors };
   return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+}
+
+const STORY_CARD_TYPES = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
+
+function validMemoryMode(value: unknown): StoryCardMemoryMode | undefined {
+  return value === "static" || value === "living" || value === "historical" ? value : undefined;
+}
+
+function validStoryCardType(value: unknown): StoryCardType | undefined {
+  return typeof value === "string" && STORY_CARD_TYPES.has(value as StoryCardType) ? value as StoryCardType : undefined;
+}
+
+function defaultStoryCardType(intent: StoryCardAIBuilderRequest["intent"]): StoryCardType | undefined {
+  if (intent === "character") return "character";
+  if (intent === "location") return "location";
+  if (intent === "subplot" || intent === "event" || intent === "relationship") return "plot";
+  if (intent === "faction" || intent === "object" || intent === "secret" || intent === "rule") return "lore";
+  return undefined;
+}
+
+function storyCardIntentGuidance(intent: StoryCardAIBuilderRequest["intent"]): string {
+  switch (intent) {
+    case "relationship":
+      return "The user is building a relationship/dynamic card. Use a living Story Card only when the relationship is its own recurring subject. Name the specific bond, pressure, rivalry, bargain, or intimacy; do not create a vague 'Dynamic between X and Y' card. Avoid using both broad character names as the only triggers if those names already have character cards.";
+    case "character":
+      return "The user is building a character card. Include durable public identity, important traits, role, aliases, and a VOICE CONTRACT when there is enough voice signal. Do not store private inner-state that belongs in an existing Brain.";
+    case "location":
+      return "The user is building a location card. Capture durable sensory identity, rules, hazards, residents, and story hooks that matter when the place is mentioned.";
+    case "faction":
+      return "The user is building a faction card. Capture public face, agenda, leverage, known members, constraints, and conflict hooks.";
+    case "object":
+      return "The user is building an object card. Capture what the object is, what it can and cannot do, who wants it, and why it matters.";
+    case "secret":
+      return "The user is building a secret card. Keep it self-contained and trigger it from narrow clues, code names, places, or consequences rather than broad character names.";
+    case "rule":
+      return "The user is building a rule/lore card. State the durable rule, limits, costs, exceptions, and concrete consequences.";
+    case "subplot":
+      return "The user is building an ongoing subplot/status card. Prefer living mode when the current state is expected to change. Keep only the current active arrangement in live content.";
+    case "event":
+      return "The user is building a completed-event card. Prefer historical mode and past tense unless the event created an ongoing current status.";
+    default:
+      return "Infer the right Story Card shape from the user's brief and the existing adventure memory.";
+  }
+}
+
+export async function runStoryCardAIBuilder(
+  adventure: Adventure,
+  config: ProviderConfig,
+  request: StoryCardAIBuilderRequest,
+): Promise<SemanticRunResult> {
+  const description = request.description.trim();
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+
+  if (!description) {
+    const logEntry = { ...emptyLog, errors: ["Story Card builder needs a description."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  const selectedCard = request.targetCardId ? adventure.storyCards.find((card) => card.id === request.targetCardId) : undefined;
+  const requestedMode = request.memoryMode ?? (request.intent === "relationship" || request.intent === "subplot" ? "living" : undefined);
+  const requestedType = defaultStoryCardType(request.intent);
+  const cardList = adventure.storyCards
+    .filter((c) => c.active)
+    .map((c) => `[ID: ${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}${c.autoUpdate ? ", auto-updating" : ""}; keys: ${c.keys.join(", ") || "title"})\n${c.content.slice(0, 350)}`)
+    .join("\n\n");
+  const brainList = adventure.brains
+    .filter((b) => b.active)
+    .map((b) => `[ID: ${b.id}] ${b.characterName}: ${b.currentState.slice(0, 180)}`)
+    .join("\n");
+
+  const systemPrompt = `You are an AI Memory Builder for an interactive fiction game. Draft reviewable Story Card memory from the user's brief.
+${STORY_CARD_BEST_PRACTICES}
+${TRIGGER_BEST_PRACTICES}
+
+Builder focus:
+- Intent: ${request.intent}
+- Requested memory mode: ${requestedMode ?? "infer from subject"}
+- Requested card type: ${requestedType ?? "infer from subject"}
+- Selected existing card: ${selectedCard ? `"${selectedCard.title}" [ID: ${selectedCard.id}]` : "none"}
+- Auto-update requested: ${request.autoUpdate === undefined ? "infer" : request.autoUpdate ? "yes" : "no"}
+
+${storyCardIntentGuidance(request.intent)}
+${storyCardCreationGuidance(requestedMode)}
+
+Rules:
+- Return Memory Suggestions only. Do not claim anything is already approved.
+- If a selected card is provided, prefer updating that exact card unless the user's brief clearly describes a separate subject.
+- For selected-card polishing or fleshing out, set action "update" and appendContent false so the proposal replaces the card content after approval.
+- For a new fact from recent play that should merge into an existing living card, set action "update" and appendContent true.
+- For relationship cards, write the current dynamic in present tense. Include concrete pressure, leverage, attraction, trust, debt, rivalry, promise, or boundary.
+- For living cards, set memoryMode "living" and set autoUpdate true when the user asked for an evolving/current tracker.
+- Use narrow trigger keys. Relationship/subplot cards should not rely only on broad character names when those characters have their own cards.
+- Prefer one proposal. Return multiple proposals only when the brief clearly contains separate durable subjects.
+
+Respond ONLY with valid JSON:
+{
+  "proposals": [
+    {
+      "action": "create",
+      "cardId": "existing-card-id-if-updating",
+      "title": "Specific Card Title",
+      "storyCardType": "character|location|lore|plot|custom",
+      "memoryMode": "static|living|historical",
+      "content": "• Bullet fact one.\\n• Bullet fact two.",
+      "keys": ["specific phrase", "narrow keyword"],
+      "appendContent": false,
+      "autoUpdate": true,
+      "autoUpdateCooldownTurns": 3
+    }
+  ],
+  "rationale": "Brief explanation of memory placement choices"
+}`;
+
+  const userPrompt = `User brief:
+${description}
+
+Selected card:
+${selectedCard ? `[ID: ${selectedCard.id}] "${selectedCard.title}" (${selectedCard.type}, ${selectedCard.memoryMode})\nKeys: ${selectedCard.keys.join(", ") || "(none)"}\nAuto-update: ${selectedCard.autoUpdate ? "yes" : "no"}\n${selectedCard.content}` : "(none)"}
+
+Existing Story Cards:
+${cardList || "(none)"}
+
+Existing Character Brains:
+${brainList || "(none)"}`;
+
+  try {
+    const resolvedConfig = evaluationConfig(adventure, config);
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: resolvedConfig,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      ...(isNativeDeepSeekProvider(resolvedConfig)
+        ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+        : {}),
+    });
+    const parsed = parseJsonResponse<{
+      proposals: Array<{
+        action?: "update" | "create";
+        cardId?: string;
+        title: string;
+        storyCardType?: StoryCardType;
+        type?: StoryCardType;
+        memoryMode?: StoryCardMemoryMode;
+        content: string;
+        keys?: string[];
+        appendContent?: boolean;
+        autoUpdate?: boolean;
+        autoUpdateCooldownTurns?: number;
+      }>;
+      rationale?: string;
+    }>(response.content);
+
+    const actions: AdventureAction[] = [];
+    const generatedContent: GeneratedContentPreview[] = [];
+    const now = nowIso();
+    const turnId = String(adventure.activeState.turn);
+    const sourceText = `AI Story Card Builder
+Intent: ${request.intent}
+Requested mode: ${requestedMode ?? "infer"}
+Selected card: ${selectedCard?.title ?? "none"}
+
+${description}`;
+
+    for (const p of parsed.proposals.slice(0, 3)) {
+      const memoryMode = validMemoryMode(p.memoryMode) ?? requestedMode ?? "static";
+      const storyCardType = validStoryCardType(p.storyCardType ?? p.type) ?? requestedType ?? "custom";
+      const targetId = p.action === "update" ? (p.cardId ?? selectedCard?.id) : undefined;
+      const appendContent = p.action === "update"
+        ? (typeof p.appendContent === "boolean" ? p.appendContent : !selectedCard)
+        : undefined;
+      const autoUpdate = typeof p.autoUpdate === "boolean"
+        ? p.autoUpdate
+        : request.autoUpdate ?? (memoryMode === "living" ? true : undefined);
+      const routed = resolveMemoryTarget(adventure, {
+        proposedType: "storyCard",
+        title: p.title,
+        content: p.content,
+        sourceText,
+        suggestedTriggers: Array.isArray(p.keys) ? p.keys : [],
+        targetId,
+        appendContent,
+        memoryMode,
+        rationale: parsed.rationale,
+      });
+      const proposal: MemoryProposal = {
+        id: createId("proposal"),
+        sourceTurnId: turnId,
+        sourceText,
+        proposedType: routed.proposedType,
+        title: routed.title,
+        content: routed.content,
+        suggestedTriggers: routed.suggestedTriggers,
+        confidence: 0.88,
+        rationale: routed.rationale ?? parsed.rationale ?? "Generated by the AI Story Card Builder.",
+        status: "pending",
+        targetId: routed.targetId,
+        appendContent: routed.appendContent,
+        memoryMode: routed.memoryMode ?? memoryMode,
+        storyCardType,
+        autoUpdate,
+        autoUpdateCooldownTurns: autoUpdate ? Math.max(0, Math.round(p.autoUpdateCooldownTurns ?? request.autoUpdateCooldownTurns ?? 3)) : undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+      actions.push({ type: "ADD_MEMORY_PROPOSAL", proposal });
+      generatedContent.push({ targetType: "storyCard", targetId: proposal.targetId, title: proposal.title, preview: preview(proposal.content) });
+    }
+
+    const logEntry: EvaluationLogEntry = {
+      ...emptyLog,
+      conditionsFired: ["storyCardAIBuilder"],
+      actionsExecuted: [`Story Card Builder: ${actions.length} proposal(s)`],
+      generatedContent,
+    };
+    return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    const logEntry = { ...emptyLog, errors: [error] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+}
+
+export async function runPlotAIBuilder(
+  adventure: Adventure,
+  config: ProviderConfig,
+  request: PlotAIBuilderRequest,
+): Promise<SemanticRunResult> {
+  const description = request.description.trim();
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+
+  if (!description) {
+    const logEntry = { ...emptyLog, errors: ["Plot builder needs a description."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  const componentType = request.target === "activePressure" ? "activePressure" : "plotEssentials";
+  const targetComponent =
+    (request.targetComponentId ? adventure.components.find((c) => c.id === request.targetComponentId && c.type === componentType) : undefined) ??
+    adventure.components.find((c) => c.type === componentType && c.active) ??
+    adventure.components.find((c) => c.type === componentType);
+  const proposedType: MemoryProposal["proposedType"] = request.target === "activePressure" ? "plotPressureUpdate" : "plotEssentialsUpdate";
+  const recent = request.useRecentStory ? recentExcerpt(adventure) : "(not included by user choice)";
+  const plotEssentials = adventure.components.filter((c) => c.type === "plotEssentials").map((c) => `[ID: ${c.id}] ${c.title}\n${c.content}`).join("\n\n");
+  const activePressure = adventure.components.filter((c) => c.type === "activePressure").map((c) => `[ID: ${c.id}] ${c.title}\n${c.content}`).join("\n\n");
+
+  const systemPrompt = `You are an AI Plot Builder for an interactive fiction game. Draft one reviewable Memory Suggestion for Plot Essentials or Active Pressure.
+${PLOT_ESSENTIALS_BEST_PRACTICES}
+
+Rules:
+- Return exactly one proposal for the requested target: ${proposedType}.
+- Plot Essentials is the compact current operating truth. Write 4-7 tight bullets or short labeled lines as a full replacement, not a chronological log.
+- Active Pressure is one sentence naming the current external threat, obligation, deadline, or force pressing on the player character.
+- Do not store relationship trackers, character biographies, locations, secrets, completed events, or voice contracts in Plot Essentials. Those belong in Story Cards or Brains.
+- Remove resolved or outgoing facts from Plot Essentials. They can become historical Story Card proposals elsewhere.
+- The proposal is pending review. Do not claim it is already active.
+
+Respond ONLY with valid JSON:
+{
+  "proposal": {
+    "title": "Plot Essentials",
+    "content": "• Current truth one.\\n• Current truth two.",
+    "appendContent": false,
+    "confidence": 0.85,
+    "rationale": "Brief explanation"
+  }
+}`;
+
+  const userPrompt = `User plot brief:
+${description}
+
+Requested target: ${request.target}
+Selected target component: ${targetComponent ? `[ID: ${targetComponent.id}] ${targetComponent.title}` : "(none; create one if approved)"}
+
+Current Plot Essentials:
+${plotEssentials || "(none)"}
+
+Current Active Pressure:
+${activePressure || "(none)"}
+
+Recent story:
+${recent}`;
+
+  try {
+    const resolvedConfig = evaluationConfig(adventure, config);
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: resolvedConfig,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      ...(isNativeDeepSeekProvider(resolvedConfig)
+        ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+        : {}),
+    });
+    const parsed = parseJsonResponse<{
+      proposal: {
+        title?: string;
+        content: string;
+        appendContent?: boolean;
+        confidence?: number;
+        rationale?: string;
+      };
+    }>(response.content);
+
+    const now = nowIso();
+    const sourceText = `AI Plot Builder
+Target: ${request.target}
+Selected component: ${targetComponent?.title ?? "none"}
+
+${description}`;
+    const proposal: MemoryProposal = {
+      id: createId("proposal"),
+      sourceTurnId: String(adventure.activeState.turn),
+      sourceText,
+      proposedType,
+      title: parsed.proposal.title || (request.target === "activePressure" ? "Active Pressure" : "Plot Essentials"),
+      content: parsed.proposal.content,
+      suggestedTriggers: [],
+      confidence: Math.max(0, Math.min(1, parsed.proposal.confidence ?? 0.85)),
+      rationale: parsed.proposal.rationale ?? "Generated by the AI Plot Builder.",
+      status: "pending",
+      targetId: targetComponent?.id,
+      appendContent: parsed.proposal.appendContent ?? false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const logEntry: EvaluationLogEntry = {
+      ...emptyLog,
+      conditionsFired: ["plotAIBuilder"],
+      actionsExecuted: [`Plot Builder: ${proposal.title}`],
+      generatedContent: [{ targetType: "component", targetId: proposal.targetId, title: proposal.title, preview: preview(proposal.content) }],
+    };
+    return { actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    const logEntry = { ...emptyLog, errors: [error] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
 }
 
 export async function runRememberThis(

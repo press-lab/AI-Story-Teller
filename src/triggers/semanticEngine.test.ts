@@ -3,7 +3,9 @@ import {
   runSemanticPostTurnEvaluation,
   runManualBrainUpdate,
   runMemoryCycle,
+  runPlotAIBuilder,
   runRememberThis,
+  runStoryCardAIBuilder,
 } from "./semanticEngine";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
@@ -499,3 +501,92 @@ describe("runRememberThis", () => {
   });
 });
 
+describe("AI memory builders", () => {
+  it("drafts a living auto-updating Story Card proposal from a guided request", async () => {
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        proposals: [{
+          action: "create",
+          title: "Seth and Margo Trust",
+          storyCardType: "plot",
+          memoryMode: "living",
+          content: "• Seth and Margo use ward-room jokes as a private trust signal.",
+          keys: ["ward-room jokes", "private trust signal"],
+        }],
+        rationale: "The brief describes an evolving relationship subject.",
+      }),
+      raw: {},
+    });
+
+    const result = await runStoryCardAIBuilder(
+      baseAdventure(),
+      providerConfig,
+      {
+        description: "Seth and Margo keep pretending their alliance is only practical.",
+        intent: "relationship",
+        memoryMode: "living",
+        autoUpdate: true,
+        autoUpdateCooldownTurns: 2,
+      },
+    );
+
+    const proposalAction = result.actions.find((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalAction).toMatchObject({
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        proposedType: "storyCard",
+        title: "Seth and Margo Trust",
+        storyCardType: "plot",
+        memoryMode: "living",
+        autoUpdate: true,
+        autoUpdateCooldownTurns: 2,
+        suggestedTriggers: ["ward-room jokes", "private trust signal"],
+      },
+    });
+  });
+
+  it("drafts a Plot Essentials proposal from a guided plot request", async () => {
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        proposal: {
+          title: "Plot Essentials",
+          content: "• The gala has become a hostage crisis.\n• The player's next move remains open.",
+          appendContent: false,
+          confidence: 0.86,
+          rationale: "This is current operating truth.",
+        },
+      }),
+      raw: {},
+    });
+    const plot = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "• The gala is social cover.",
+      active: true,
+    });
+    const adventure = { ...baseAdventure(), components: [plot] };
+
+    const result = await runPlotAIBuilder(
+      adventure,
+      providerConfig,
+      {
+        description: "The gala has shifted into a hostage crisis.",
+        target: "plotEssentials",
+        targetComponentId: "component-plot",
+        useRecentStory: true,
+      },
+    );
+
+    const proposalAction = result.actions.find((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalAction).toMatchObject({
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        proposedType: "plotEssentialsUpdate",
+        targetId: "component-plot",
+        title: "Plot Essentials",
+        appendContent: false,
+      },
+    });
+  });
+});

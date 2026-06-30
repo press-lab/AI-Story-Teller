@@ -91,23 +91,30 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByRole("button", { name: "✨ Generate from name" })).toBeInTheDocument();
   });
 
-  it("sends a Story Card description to the AI memory suggestion flow", async () => {
+  it("sends a guided Story Card builder request to the AI memory suggestion flow", async () => {
     const user = userEvent.setup();
-    const onGenerateMemorySuggestion = vi.fn(async () => undefined);
+    const onBuildStoryCardMemory = vi.fn(async () => undefined);
     renderWithAdventure((adventure, dispatch) => (
       <StoryCardsPage
         adventure={adventure}
         dispatch={dispatch}
         loading={false}
-        onGenerateMemorySuggestion={onGenerateMemorySuggestion}
+        onBuildStoryCardMemory={onBuildStoryCardMemory}
       />
     ));
 
     const description = "Margo is a ward engineer who hides fear behind dry teasing.";
     await user.type(screen.getByLabelText("Story Card description"), description);
-    await user.click(screen.getByRole("button", { name: "Generate Memory Suggestion" }));
+    await user.click(screen.getByRole("button", { name: "Draft Card Suggestion" }));
 
-    expect(onGenerateMemorySuggestion).toHaveBeenCalledWith(description);
+    expect(onBuildStoryCardMemory).toHaveBeenCalledWith({
+      description,
+      intent: "relationship",
+      memoryMode: "living",
+      targetCardId: undefined,
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 3,
+    });
   });
 
   it("filters Story Cards by active status and living mode", async () => {

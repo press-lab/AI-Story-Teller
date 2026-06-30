@@ -18,9 +18,11 @@ import {
   runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
   runManualStoryCardsUpdate,
+  runPlotAIBuilder,
   runMemoryCycle,
   runRememberThis,
   runSemanticPostTurnEvaluation,
+  runStoryCardAIBuilder,
 } from "../triggers/semanticEngine";
 import type {
   Adventure,
@@ -29,6 +31,8 @@ import type {
   InputMode,
   MemoryDetectionSettings,
   PendingAdventureUpdate,
+  PlotAIBuilderRequest,
+  StoryCardAIBuilderRequest,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
@@ -483,6 +487,36 @@ export function useAdventureRuntime(
     }
   }
 
+  async function buildStoryCardMemory(request: StoryCardAIBuilderRequest) {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runStoryCardAIBuilder(adventure, activeProviderConfig, request);
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Story Card builder failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function buildPlotMemory(request: PlotAIBuilderRequest) {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runPlotAIBuilder(adventure, activeProviderConfig, request);
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Plot builder failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function auditStoryCards(nTurns: number): Promise<AuditRecommendation[]> {
     if (!adventure) return [];
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
@@ -626,6 +660,8 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     updatePEComponentNow,
     suggestPlotUpdates,
     suggestCardUpdates,
+    buildStoryCardMemory,
+    buildPlotMemory,
     auditStoryCards,
     regenerateMemoryProposal,
     regeneratePlotEssentials,

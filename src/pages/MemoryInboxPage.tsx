@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
-import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType } from "../types/adventure";
+import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType, StoryCardType } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
 
-const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "arcProposal", "summaryUpdate", "ignore"];
+const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "plotPressureUpdate", "arcProposal", "summaryUpdate", "ignore"];
+const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 
 interface MemoryInboxPageProps extends AdventurePageProps {
   onRegenerateProposal?: (proposalId: string) => Promise<void>;
@@ -276,17 +277,28 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
             </select>
           </Field>
           {proposal.proposedType === "storyCard" && (
-            <Field label="Memory Mode">
-              <select
-                value={proposal.memoryMode ?? "static"}
-                onChange={(event) => onUpdate(proposal, { memoryMode: event.target.value as MemoryProposal["memoryMode"] })}
-                disabled={!isPending}
-              >
-                <option value="static">static</option>
-                <option value="living">living</option>
-                <option value="historical">historical</option>
-              </select>
-            </Field>
+            <>
+              <Field label="Card Type">
+                <select
+                  value={proposal.storyCardType ?? "custom"}
+                  onChange={(event) => onUpdate(proposal, { storyCardType: event.target.value as StoryCardType })}
+                  disabled={!isPending}
+                >
+                  {storyCardTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </Field>
+              <Field label="Memory Mode">
+                <select
+                  value={proposal.memoryMode ?? "static"}
+                  onChange={(event) => onUpdate(proposal, { memoryMode: event.target.value as MemoryProposal["memoryMode"] })}
+                  disabled={!isPending}
+                >
+                  <option value="static">static</option>
+                  <option value="living">living</option>
+                  <option value="historical">historical</option>
+                </select>
+              </Field>
+            </>
           )}
           <Field label="Triggers">
             <input
@@ -302,6 +314,24 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
             />
           </Field>
         </div>
+        {proposal.proposedType === "storyCard" && (
+          <div className="grid two">
+            <CheckboxField
+              label="Let AI auto-update this card after relevant scenes"
+              checked={proposal.autoUpdate === true}
+              disabled={!isPending}
+              onChange={(autoUpdate) => onUpdate(proposal, { autoUpdate })}
+            />
+            <Field label="Auto-update cooldown">
+              <NumberInput
+                value={proposal.autoUpdateCooldownTurns ?? 3}
+                min={0}
+                disabled={!isPending || proposal.autoUpdate !== true}
+                onChange={(value) => onUpdate(proposal, { autoUpdateCooldownTurns: value })}
+              />
+            </Field>
+          </div>
+        )}
       </details>
       </div>
     </details>

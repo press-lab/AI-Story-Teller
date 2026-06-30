@@ -131,7 +131,7 @@ Rules learned the hard way:
   card. Event, relationship, or subplot cards should use specific consequences,
   objects, locations, factions, or case names instead of broad character names.
 
-The **"Create a Story Card with AI"** button and the in-play detector now emit
+The **"Draft a Story Card with AI"** builder and the in-play detector now emit
 voice contracts for character cards automatically — so cards you mint mid-game
 match. But hand-author the core cast for control.
 

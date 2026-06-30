@@ -340,9 +340,9 @@ export default function App() {
       case "context":
         return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={runtime.activeProviderConfig} />;
       case "components":
-        return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} onGenerateComponent={runtime.generateComponent} onGenerateArc={runtime.generateArc} onProposeArcFromHistory={runtime.proposeArcFromHistory} />;
+        return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onBuildPlotMemory={runtime.buildPlotMemory} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} onGenerateComponent={runtime.generateComponent} onGenerateArc={runtime.generateArc} onProposeArcFromHistory={runtime.proposeArcFromHistory} />;
       case "storyCards":
-        return <StoryCardsPage {...common} loading={runtime.loading} onGenerateMemorySuggestion={runtime.rememberThis} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
+        return <StoryCardsPage {...common} loading={runtime.loading} onBuildStoryCardMemory={runtime.buildStoryCardMemory} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
       case "brains":
         return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} onGenerateBrain={runtime.generateBrainFromName} />;
       case "triggers":

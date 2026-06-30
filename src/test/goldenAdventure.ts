@@ -19,6 +19,10 @@ export function makeMemoryProposal(overrides: Partial<MemoryProposal> = {}): Mem
     appendContent: overrides.appendContent,
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
+    memoryMode: overrides.memoryMode,
+    storyCardType: overrides.storyCardType,
+    autoUpdate: overrides.autoUpdate,
+    autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
   };
 }
 

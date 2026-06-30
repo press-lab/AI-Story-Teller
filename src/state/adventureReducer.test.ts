@@ -886,6 +886,32 @@ describe("adventureReducer", () => {
     expect(merged?.keys).toContain("chambers");
   });
 
+  it("applies Story Card proposal type and auto-update settings when approving AI builder drafts", () => {
+    let state = baseAdventure();
+    const proposal = makeMemoryProposal({
+      id: "proposal-relationship-card",
+      proposedType: "storyCard",
+      title: "Seth and Margo Trust",
+      content: "• Seth and Margo use ward-room jokes as a private trust signal.",
+      suggestedTriggers: ["ward-room jokes", "private trust signal"],
+      memoryMode: "living",
+      storyCardType: "plot",
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 2,
+    });
+
+    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-relationship-card" });
+
+    const card = state.storyCards.find((entry) => entry.title === "Seth and Margo Trust");
+    expect(card).toMatchObject({
+      type: "plot",
+      memoryMode: "living",
+      autoUpdate: true,
+      autoUpdateCooldownTurns: 2,
+    });
+  });
+
   it("routes related generated facts into an existing living story card instead of creating a sibling", () => {
     const viktor = makeStoryCard({
       id: "card-viktor",

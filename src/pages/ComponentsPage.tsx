@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy } from "../types/adventure";
+import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, contentSnippet } from "./shared";
@@ -247,6 +247,7 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
 interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
+  onBuildPlotMemory?: (request: PlotAIBuilderRequest) => Promise<void>;
   onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
   onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
   /** Generate fresh content for Narration Rules / AI Instructions / Author's Note. Returns a string for review. */
@@ -279,8 +280,12 @@ const PLOT_GROUP_DEFINITIONS: Array<{
   },
 ];
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
+  const [plotBuilderDescription, setPlotBuilderDescription] = useState("");
+  const [plotBuilderTarget, setPlotBuilderTarget] = useState<PlotAIBuilderRequest["target"]>("plotEssentials");
+  const [plotBuilderTargetComponentId, setPlotBuilderTargetComponentId] = useState("");
+  const [plotBuilderUseRecentStory, setPlotBuilderUseRecentStory] = useState(true);
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
   const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
@@ -361,6 +366,19 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       components: extraComponents,
     });
   }
+  const plotBuilderTargetComponents = adventure.components.filter((component) => component.type === plotBuilderTarget);
+  const selectedPlotBuilderComponentId = plotBuilderTargetComponentId || plotBuilderTargetComponents[0]?.id;
+
+  async function handleBuildPlotMemory() {
+    if (!onBuildPlotMemory || !plotBuilderDescription.trim()) return;
+    await onBuildPlotMemory({
+      description: plotBuilderDescription.trim(),
+      target: plotBuilderTarget,
+      targetComponentId: selectedPlotBuilderComponentId,
+      useRecentStory: plotBuilderUseRecentStory,
+    });
+    setPlotBuilderDescription("");
+  }
 
   return (
     <section className="page editor-surface components-page">
@@ -383,6 +401,64 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons.
         AI Instructions are optional; Narration Rules can hold the complete stable behavior contract by themselves.
       </p>
+
+      {onBuildPlotMemory && (
+        <details className="panel">
+          <summary>Draft plot memory with AI</summary>
+          <p className="muted">
+            Describe the current situation, pressure, or correction. The AI drafts a pending Plot Essentials or Active Pressure update using the app's placement rules.
+          </p>
+          <div className="grid three">
+            <Field label="Target">
+              <select
+                value={plotBuilderTarget}
+                onChange={(event) => {
+                  setPlotBuilderTarget(event.target.value as PlotAIBuilderRequest["target"]);
+                  setPlotBuilderTargetComponentId("");
+                }}
+              >
+                <option value="plotEssentials">Plot Essentials</option>
+                <option value="activePressure">Active Pressure</option>
+              </select>
+            </Field>
+            <Field label="Component">
+              <select
+                value={selectedPlotBuilderComponentId ?? ""}
+                onChange={(event) => setPlotBuilderTargetComponentId(event.target.value)}
+              >
+                {plotBuilderTargetComponents.length === 0 && <option value="">Create if approved</option>}
+                {plotBuilderTargetComponents.map((component) => (
+                  <option key={component.id} value={component.id}>{component.title}</option>
+                ))}
+              </select>
+            </Field>
+            <CheckboxField
+              label="Use recent story"
+              checked={plotBuilderUseRecentStory}
+              onChange={setPlotBuilderUseRecentStory}
+            />
+          </div>
+          <Field label="Plot brief">
+            <textarea
+              rows={4}
+              value={plotBuilderDescription}
+              onChange={(event) => setPlotBuilderDescription(event.target.value)}
+              placeholder="Example: The gala has shifted from social cover to a hostage crisis; keep the mission active, the Red Ring off-balance, and the player's next move open."
+            />
+          </Field>
+          <div className="toolbar">
+            <button
+              type="button"
+              className="primary-action"
+              disabled={loading || !plotBuilderDescription.trim()}
+              onClick={() => void handleBuildPlotMemory()}
+            >
+              {loading ? "Drafting..." : "Draft Plot Suggestion"}
+            </button>
+            <span className="muted">The draft opens in Memory Suggestions for review.</span>
+          </div>
+        </details>
+      )}
 
       <div className="editor-command-bar">
         <input

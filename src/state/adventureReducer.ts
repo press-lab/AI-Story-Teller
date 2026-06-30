@@ -528,6 +528,9 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
   const rawContent = stripThink(proposal.content ?? "").trim();
   const title = stripThink(proposal.title ?? "").trim();
   const content = proposal.proposedType === "storyCard" ? stripLeadingCardTitle(title, rawContent) : rawContent;
+  const autoUpdateCooldownTurns = Number.isFinite(proposal.autoUpdateCooldownTurns)
+    ? Math.max(0, Math.round(proposal.autoUpdateCooldownTurns ?? 0))
+    : undefined;
 
   // summaryUpdate with blank content would immediately overwrite the real summary — hard drop
   if (proposal.proposedType === "summaryUpdate" && !content) return null;
@@ -563,6 +566,7 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
     content,
     title: safeTitle,
     suggestedTriggers: proposal.suggestedTriggers ?? [],
+    autoUpdateCooldownTurns,
   };
 }
 
@@ -669,6 +673,14 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const existing = state.storyCards.find(
       (card) => card.id === proposal.targetId || cardMatchesName(card, proposal.title),
     );
+    const automationPatch = (current?: StoryCard): Partial<StoryCard> => ({
+      ...(proposal.autoUpdate !== undefined ? { autoUpdate: proposal.autoUpdate } : {}),
+      ...(proposal.autoUpdateCooldownTurns !== undefined
+        ? { autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns }
+        : proposal.autoUpdate !== undefined
+          ? { autoUpdateCooldownTurns: current?.autoUpdateCooldownTurns ?? 3 }
+          : {}),
+    });
     let storyCard: StoryCard;
     if (existing && proposal.appendContent) {
       const shouldManageAsLiving = isLivingStoryCard(existing);
@@ -688,6 +700,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           memoryMode: "living",
           // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
           state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
+          ...automationPatch(existing),
         });
       } else {
         storyCard = touch({
@@ -699,6 +712,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           ])),
           memoryMode: existing.memoryMode ?? proposal.memoryMode,
           state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
+          ...automationPatch(existing),
         });
       }
     } else if (existing) {
@@ -712,7 +726,9 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
         ])),
         memoryMode: proposal.memoryMode ?? existing.memoryMode,
+        type: proposal.storyCardType ?? existing.type,
         state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
+        ...automationPatch(existing),
       });
     } else {
       storyCard = makeStoryCard({
@@ -720,9 +736,11 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         content: safeContent,
         keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers),
         memoryMode: proposal.memoryMode ?? "static",
-        type: "custom",
+        type: proposal.storyCardType ?? "custom",
         active: true,
         pinned: false,
+        autoUpdate: proposal.autoUpdate ?? false,
+        autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
         state: "memoryProposal",
       });
     }

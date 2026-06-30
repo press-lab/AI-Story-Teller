@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { ContextInclusionPolicy, StoryCard, StoryCardType, TriggerMatchType } from "../types/adventure";
+import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, StoryCardMemoryMode, StoryCardType, TriggerMatchType, StoryCardAIBuilderRequest } from "../types/adventure";
 import type { AuditRecommendation } from "../memory/storyCardAudit";
 import { makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
@@ -20,6 +20,20 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 type SortMode = "alpha" | "recent";
 type CardStatusFilter = "all" | "active" | "inactive";
 type CardMemoryFilter = "all" | "living";
+type StoryCardModeChoice = "auto" | StoryCardMemoryMode;
+
+const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: string }> = [
+  { value: "relationship", label: "Relationship / dynamic" },
+  { value: "character", label: "Character / voice" },
+  { value: "subplot", label: "Ongoing subplot / status" },
+  { value: "secret", label: "Secret / reveal" },
+  { value: "rule", label: "Rule / lore" },
+  { value: "location", label: "Location" },
+  { value: "faction", label: "Faction" },
+  { value: "object", label: "Object" },
+  { value: "event", label: "Completed event" },
+  { value: "auto", label: "Let AI choose" },
+];
 
 /** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
 export function isLivingCard(card: StoryCard): boolean {
@@ -116,7 +130,7 @@ function sortCards(cards: StoryCard[], mode: SortMode): StoryCard[] {
 
 interface StoryCardsPageProps extends AdventurePageProps {
   loading?: boolean;
-  onGenerateMemorySuggestion?: (description: string) => Promise<void>;
+  onBuildStoryCardMemory?: (request: StoryCardAIBuilderRequest) => Promise<void>;
   onSuggestCardUpdates?: () => Promise<void>;
   onAuditStoryCards?: (nTurns: number) => Promise<AuditRecommendation[]>;
 }
@@ -131,12 +145,17 @@ export function StoryCardsPage({
   adventure,
   dispatch,
   loading,
-  onGenerateMemorySuggestion,
+  onBuildStoryCardMemory,
   onSuggestCardUpdates,
   onAuditStoryCards,
 }: StoryCardsPageProps) {
   const [importText, setImportText] = useState("");
   const [aiDescription, setAiDescription] = useState("");
+  const [aiIntent, setAiIntent] = useState<StoryCardAIBuilderIntent>("relationship");
+  const [aiMemoryMode, setAiMemoryMode] = useState<StoryCardModeChoice>("living");
+  const [aiTargetCardId, setAiTargetCardId] = useState("");
+  const [aiAutoUpdate, setAiAutoUpdate] = useState(true);
+  const [aiAutoUpdateCooldown, setAiAutoUpdateCooldown] = useState(3);
   const [newCardId, setNewCardId] = useState<string | undefined>();
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [statusFilter, setStatusFilter] = useState<CardStatusFilter>("all");
@@ -239,6 +258,19 @@ export function StoryCardsPage({
   const livingCount = adventure.storyCards.filter(isLivingCard).length;
   const filtersActive = statusFilter !== "all" || memoryFilter !== "all";
 
+  async function handleBuildStoryCardMemory() {
+    if (!onBuildStoryCardMemory || !aiDescription.trim()) return;
+    await onBuildStoryCardMemory({
+      description: aiDescription.trim(),
+      intent: aiIntent,
+      memoryMode: aiMemoryMode === "auto" ? undefined : aiMemoryMode,
+      targetCardId: aiTargetCardId || undefined,
+      autoUpdate: aiAutoUpdate,
+      autoUpdateCooldownTurns: aiAutoUpdate ? aiAutoUpdateCooldown : undefined,
+    });
+    setAiDescription("");
+  }
+
   return (
     <section className="page editor-surface story-cards-page">
       <div className="editor-page-summary">
@@ -260,19 +292,70 @@ export function StoryCardsPage({
         For always-on world lore that should load every turn regardless, use a <strong>World Block</strong>.
       </p>
 
-      {onGenerateMemorySuggestion && (
+      {onBuildStoryCardMemory && (
         <details className="panel">
-          <summary>Create a Story Card with AI</summary>
+          <summary>Draft a Story Card with AI</summary>
           <p className="muted">
-            Describe a character, place, faction, relationship, recurring object, secret, or durable rule.
-            The AI will compare it with existing cards and create a pending Memory Suggestion for you to review.
+            Pick what you want to track, choose whether it should be living, and the AI will draft a pending Memory Suggestion using Story Card best practices.
           </p>
+          <div className="grid three">
+            <Field label="Card focus">
+              <select
+                value={aiIntent}
+                onChange={(event) => setAiIntent(event.target.value as StoryCardAIBuilderIntent)}
+              >
+                {CARD_BUILDER_INTENTS.map((intent) => (
+                  <option key={intent.value} value={intent.value}>{intent.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Target card">
+              <select value={aiTargetCardId} onChange={(event) => setAiTargetCardId(event.target.value)}>
+                <option value="">Create new card</option>
+                {adventure.storyCards.map((card) => (
+                  <option key={card.id} value={card.id}>{card.title}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Memory mode">
+              <select
+                value={aiMemoryMode}
+                onChange={(event) => {
+                  const next = event.target.value as StoryCardModeChoice;
+                  setAiMemoryMode(next);
+                  if (next === "living") setAiAutoUpdate(true);
+                  if (next === "historical") setAiAutoUpdate(false);
+                }}
+              >
+                <option value="living">living - current evolving tracker</option>
+                <option value="static">static - always-true reference</option>
+                <option value="historical">historical - completed past event</option>
+                <option value="auto">let AI choose</option>
+              </select>
+            </Field>
+          </div>
+          <div className="grid two">
+            <CheckboxField
+              label="Let AI keep this card updated after relevant scenes"
+              checked={aiAutoUpdate}
+              disabled={aiMemoryMode === "historical"}
+              onChange={setAiAutoUpdate}
+            />
+            <Field label="Auto-update cooldown">
+              <NumberInput
+                value={aiAutoUpdateCooldown}
+                min={0}
+                disabled={!aiAutoUpdate || aiMemoryMode === "historical"}
+                onChange={setAiAutoUpdateCooldown}
+              />
+            </Field>
+          </div>
           <Field label="Story Card description">
             <textarea
               rows={5}
               value={aiDescription}
               onChange={(event) => setAiDescription(event.target.value)}
-              placeholder="Example: Margo is a disgraced ward engineer who hides fear behind dry teasing. She calls Seth “hedge prince” only when she is worried about him."
+              placeholder="Example: Seth and Margo keep pretending their alliance is only practical, but the ward-room jokes have become a private trust signal neither of them is ready to name."
             />
           </Field>
           <div className="toolbar">
@@ -280,9 +363,9 @@ export function StoryCardsPage({
               type="button"
               className="primary-action"
               disabled={loading || !aiDescription.trim()}
-              onClick={() => void onGenerateMemorySuggestion(aiDescription.trim())}
+              onClick={() => void handleBuildStoryCardMemory()}
             >
-              {loading ? "Generating…" : "Generate Memory Suggestion"}
+              {loading ? "Drafting..." : "Draft Card Suggestion"}
             </button>
             <span className="muted">Nothing is added to active memory until you approve it.</span>
           </div>

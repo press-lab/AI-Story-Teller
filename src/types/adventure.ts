@@ -379,8 +379,41 @@ export interface MemoryProposal {
   targetId?: string;
   appendContent?: boolean;
   memoryMode?: StoryCardMemoryMode;
+  storyCardType?: StoryCardType;
+  autoUpdate?: boolean;
+  autoUpdateCooldownTurns?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+}
+
+export type StoryCardAIBuilderIntent =
+  | "auto"
+  | "relationship"
+  | "character"
+  | "location"
+  | "faction"
+  | "object"
+  | "secret"
+  | "rule"
+  | "subplot"
+  | "event";
+
+export interface StoryCardAIBuilderRequest {
+  description: string;
+  intent: StoryCardAIBuilderIntent;
+  memoryMode?: StoryCardMemoryMode;
+  targetCardId?: string;
+  autoUpdate?: boolean;
+  autoUpdateCooldownTurns?: number;
+}
+
+export type PlotAIBuilderTarget = "plotEssentials" | "activePressure";
+
+export interface PlotAIBuilderRequest {
+  description: string;
+  target: PlotAIBuilderTarget;
+  targetComponentId?: string;
+  useRecentStory: boolean;
 }
 
 

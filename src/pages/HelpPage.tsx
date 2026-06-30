@@ -153,9 +153,9 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           and important objects.
         </p>
         <p>
-          Use <strong>Create a Story Card with AI</strong> to describe what should be remembered. The AI compares
-          the description with existing cards and creates a pending Memory Suggestion. It does not change active
-          memory until you approve the proposal.
+          Use <strong>Draft a Story Card with AI</strong> to choose a card focus, memory mode, optional living
+          auto-updates, and the thing that should be remembered. The AI compares the brief with existing cards
+          and creates a pending Memory Suggestion. It does not change active memory until you approve the proposal.
         </p>
         <p>
           Active cards enter context when their triggers match the current input, latest output, or recent
