@@ -9,7 +9,7 @@ import {
 } from "../state/defaults";
 import { nowIso } from "../utils/id";
 
-export const dispatchAdventureTitle = "Dev Scenario: Dispatch (SDN Supers)";
+export const dispatchAdventureTitle = "Dispatch (SDN Supers)";
 
 const ids = {
   components: {

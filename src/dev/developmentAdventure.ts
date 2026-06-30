@@ -9,7 +9,7 @@ import {
 } from "../state/defaults";
 import { nowIso } from "../utils/id";
 
-export const developmentAdventureTitle = "Dev Scenario: Heir of the Dragon Throne";
+export const developmentAdventureTitle = "Heir of the Dragon Throne";
 
 const ids = {
   components: {
