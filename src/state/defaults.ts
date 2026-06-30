@@ -185,7 +185,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
       nextTurnNote: defaultNextTurnNote(),
       rawImports: [],
       stateFlags: {},
-      responseLengthHint: 150,
+      responseLengthHint: 250,
       backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
       challengeMode: false,
       lastMemoryCycleTurn: undefined,

@@ -79,7 +79,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .join("\n\n");
   const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
   const maxWords = Math.ceil(wordTarget * 1.2);
-  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Advance exactly one focused playable beat. Stop before resolving multiple actions, touring multiple rooms, or introducing a full cast. Leave the player room to respond.`;
+  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Continue the active scene as a substantial playable segment: carry through immediate consequences, NPC reactions, dialogue, and motion that naturally follow from the player's input. Do not summarize, fade out, wrap up, or end the scene just because the response budget is reached. Stop only before deciding a meaningful player choice, resolving a major outcome the player has not earned, touring multiple unrelated locations, or introducing a full cast. End on an in-scene moment that invites the next action without announcing choices.`;
   const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {

@@ -449,16 +449,16 @@ export function PlayPage({
               </button>
             ))}
             <label className="length-slider-label">
-              <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 150}w</span>
+              <span className="muted length-label-text">{adventure.activeState.responseLengthHint ?? 250}w</span>
               <input
                 type="range"
                 className="length-slider"
                 min={50}
                 max={500}
                 step={25}
-                value={adventure.activeState.responseLengthHint ?? 150}
+                value={adventure.activeState.responseLengthHint ?? 250}
                 onChange={(event) => dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: Number(event.target.value) })}
-                title={`Response length: ~${adventure.activeState.responseLengthHint ?? 150} words`}
+                title={`Response length: ~${adventure.activeState.responseLengthHint ?? 250} words`}
               />
             </label>
           </div>
@@ -524,13 +524,13 @@ export function PlayPage({
                 className="length-cycle-btn"
                 title="Response length — tap to cycle"
                 onClick={() => {
-                  const presets = [75, 100, 150, 200, 300, 400, 500];
-                  const cur = adventure.activeState.responseLengthHint ?? 150;
+                  const presets = [75, 100, 150, 200, 250, 300, 400, 500];
+                  const cur = adventure.activeState.responseLengthHint ?? 250;
                   const idx = presets.indexOf(cur);
                   dispatch({ type: "SET_RESPONSE_LENGTH_HINT", hint: presets[(idx + 1) % presets.length] });
                 }}
               >
-                {adventure.activeState.responseLengthHint ?? 150}w
+                {adventure.activeState.responseLengthHint ?? 250}w
               </button>
               <button
                 type="button"
