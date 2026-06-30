@@ -40,13 +40,13 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
 export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number, hiddenReserveTokens = 0): RuntimeProviderSettings {
   const wordTarget = Number.isFinite(hint) ? Math.max(50, Math.min(500, Math.round(hint))) : 250;
   const maxVisibleWords = Math.ceil(wordTarget * 1.2);
-  const visibleTokenCap = Math.ceil(maxVisibleWords * 1.3) + 35;
-  const hiddenReserve = Math.max(0, Math.min(60, Math.ceil(hiddenReserveTokens * 0.25)));
-  const playableTokenCap = visibleTokenCap + hiddenReserve;
+  const visibleTokenCap = Math.ceil(maxVisibleWords * 2.2) + 120;
+  const hiddenReserve = Math.max(0, Math.min(180, Math.ceil(hiddenReserveTokens * 0.5)));
+  const lengthBoundedCap = visibleTokenCap + hiddenReserve;
   const configuredCap = Number.isFinite(config.maxOutputTokens) && config.maxOutputTokens > 0
     ? config.maxOutputTokens
-    : undefined;
-  return { ...config, maxOutputTokens: configuredCap ?? playableTokenCap };
+    : lengthBoundedCap;
+  return { ...config, maxOutputTokens: Math.min(configuredCap, lengthBoundedCap) };
 }
 
 function hiddenOutputReserveTokens(context: ContextBuildResult): number {
