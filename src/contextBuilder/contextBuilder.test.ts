@@ -79,7 +79,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .join("\n\n");
   const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
   const maxWords = Math.ceil(wordTarget * 1.2);
-  const lengthHint = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Continue the active scene as a substantial playable segment: carry through immediate consequences, NPC reactions, dialogue, and motion that naturally follow from the player's input. Do not summarize, fade out, wrap up, or end the scene just because the response budget is reached. Stop only before deciding a meaningful player choice, resolving a major outcome the player has not earned, touring multiple unrelated locations, or introducing a full cast. End on an in-scene moment that invites the next action without announcing choices.`;
+  const lengthHint = `PLAYABILITY RESPONSE TARGET: Aim for about ${wordTarget} visible narrative words, and usually stay near ${maxWords} unless the active scene needs more room. Hidden <thought> and <memory> tags do not count toward that visible word target. Continue the active scene as a substantial playable segment: carry through immediate consequences, NPC reactions, dialogue, and motion that naturally follow from the player's input. Do not summarize, fade out, wrap up, or end the scene just because the response target is reached. Stop only before deciding a meaningful player choice, resolving a major outcome the player has not earned, touring multiple unrelated locations, or introducing a full cast. End on an in-scene moment that invites the next action without announcing choices.`;
   const expectedSystem = `${lengthHint}\n\n${contextText}`;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {
@@ -139,6 +139,8 @@ describe("buildContext", () => {
     expect(payload).toContain("Jinx is a quiet Piltover archivist in this adventure");
     expect(defaultNarrationRulesContent).toContain("the adventure context is the only canon");
     expect(defaultNarrationRulesContent).toContain("treat those missing details as unknown");
+    expect(defaultNarrationRulesContent).not.toContain("End each response");
+    expect(defaultNarrationRulesContent).not.toContain("the player decides what happens next");
   });
 
   it("assembles sections in the required deterministic order (A–M)", () => {

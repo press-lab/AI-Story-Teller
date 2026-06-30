@@ -796,7 +796,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </ul>
         <p><strong>When to customize Narration Rules.</strong> The defaults work for most adventures. Customize when your adventure has a fundamentally different agency model — e.g., "DO NOT SPEAK OR TAKE ACTIONS FOR [player name]" for a strict interactive fiction setup, or second-person present tense lock when the default is flexible.</p>
         <p><strong>What not to add to Narration Rules.</strong> Scenario-specific constraints (bending rules, faction politics, setting-specific tone) belong in AI Instructions, not Narration Rules. Narration Rules are structural mechanics; AI Instructions carry premise-specific contracts.</p>
-        <p><strong>Existing adventures.</strong> The default Narration Rules only apply to newly created adventures. If your existing adventure's Global Generation Rules component has an older version, open Components → Global Generation Rules and update the SCENE TRANSITIONS and PROSE sections manually.</p>
+        <p><strong>Existing adventures.</strong> Untouched stock Global Generation Rules are upgraded automatically when an adventure loads. If you edited that component yourself, your version is preserved.</p>
       </>
     ),
   },

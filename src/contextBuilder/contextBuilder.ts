@@ -734,9 +734,9 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
 
   const wordTarget = typeof adventure.activeState.responseLengthHint === "number"
     ? Math.max(50, Math.min(500, adventure.activeState.responseLengthHint))
-    : 150;
+    : 250;
   const maxWords = Math.ceil(wordTarget * 1.2);
-  const lengthHintText = `PLAYABILITY RESPONSE BUDGET: Write about ${wordTarget} visible narrative words, with a hard ceiling of ${maxWords} visible narrative words unless the player explicitly asks for more. Hidden <thought> and <memory> tags do not count toward that visible word budget. Continue the active scene as a substantial playable segment: carry through immediate consequences, NPC reactions, dialogue, and motion that naturally follow from the player's input. Do not summarize, fade out, wrap up, or end the scene just because the response budget is reached. Stop only before deciding a meaningful player choice, resolving a major outcome the player has not earned, touring multiple unrelated locations, or introducing a full cast. End on an in-scene moment that invites the next action without announcing choices.`;
+  const lengthHintText = `PLAYABILITY RESPONSE TARGET: Aim for about ${wordTarget} visible narrative words, and usually stay near ${maxWords} unless the active scene needs more room. Hidden <thought> and <memory> tags do not count toward that visible word target. Continue the active scene as a substantial playable segment: carry through immediate consequences, NPC reactions, dialogue, and motion that naturally follow from the player's input. Do not summarize, fade out, wrap up, or end the scene just because the response target is reached. Stop only before deciding a meaningful player choice, resolving a major outcome the player has not earned, touring multiple unrelated locations, or introducing a full cast. End on an in-scene moment that invites the next action without announcing choices.`;
 
   // Inline thought capture — eligible brains get their thought harvested from the story response itself
   const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);

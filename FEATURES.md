@@ -60,7 +60,7 @@ Pure function — builds the provider payload each turn. Sections are assembled 
 | 11 | `recentMessages` | K. Recent Messages | Last N messages within token budget |
 
 ### Also injected (appended to system section):
-- `[RESPONSE LENGTH LIMIT]` — from `responseLengthHint`
+- `[PLAYABILITY RESPONSE TARGET]` - soft target from `responseLengthHint`
 - `[CHARACTER THOUGHT CAPTURE]` — if brains are active, instructs model to emit `<thought>` tags
 - `[MEMORY TAGGING]` — if `systemTriggers.enabled`, instructs model to emit `<memory>` tags
 

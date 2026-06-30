@@ -12,21 +12,24 @@ const baseConfig: RuntimeProviderSettings = {
 };
 
 describe("applyResponseLengthHint", () => {
-  it("turns the play word target into a provider output cap", () => {
-    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(269);
+  it("preserves the provider output cap when one is configured", () => {
+    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(2048);
   });
 
-  it("adds only a small bounded reserve for hidden thought and memory tags", () => {
-    expect(applyResponseLengthHint(baseConfig, 150, 240).maxOutputTokens).toBe(329);
-    expect(applyResponseLengthHint(baseConfig, 150, 999).maxOutputTokens).toBe(329);
+  it("derives a fallback cap only when the provider has no usable cap", () => {
+    const uncapped = { ...baseConfig, maxOutputTokens: 0 };
+    expect(applyResponseLengthHint(uncapped, 150).maxOutputTokens).toBe(269);
+    expect(applyResponseLengthHint(uncapped, 150, 240).maxOutputTokens).toBe(329);
+    expect(applyResponseLengthHint(uncapped, 150, 999).maxOutputTokens).toBe(329);
   });
 
-  it("keeps an already lower provider cap", () => {
+  it("keeps an intentionally lower provider cap", () => {
     expect(applyResponseLengthHint({ ...baseConfig, maxOutputTokens: 220 }, 150).maxOutputTokens).toBe(220);
   });
 
-  it("clamps unsafe word targets before deriving the cap", () => {
-    expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(815);
-    expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(113);
+  it("clamps unsafe word targets before deriving a fallback cap", () => {
+    const uncapped = { ...baseConfig, maxOutputTokens: 0 };
+    expect(applyResponseLengthHint(uncapped, 999).maxOutputTokens).toBe(815);
+    expect(applyResponseLengthHint(uncapped, 10).maxOutputTokens).toBe(113);
   });
 });
