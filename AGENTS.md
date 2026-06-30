@@ -116,6 +116,18 @@ The Arc Director makes an antagonist's arc climb and *break* on its own, configu
 5. Add an inspectable UI path.
 6. Add AI mutation boundary tests before allowing generated updates to write to it.
 
+## Required Finish Workflow
+
+After any completed scoped code or documentation change, do not stop at a summary. Finish by:
+
+1. Run the relevant validation commands, including the full Validation set below when feasible.
+2. Check `git status --short` and stage only the files changed for the scoped task.
+3. Commit the scoped work.
+4. Push the current branch to its tracked remote.
+5. Report the full commit hash to the user.
+
+If committing or pushing is unsafe or impossible, report the exact blocker and the current commit/staging state. Leave unrelated dirty files unstaged and call them out separately.
+
 ## Validation
 
 Run:
