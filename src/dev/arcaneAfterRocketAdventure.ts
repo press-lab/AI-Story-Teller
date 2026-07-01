@@ -1,4 +1,4 @@
-import type { Adventure } from "../types/adventure";
+import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
 import {
   createDefaultAdventure,
   defaultSemanticEvaluationSettings,
@@ -7,8 +7,16 @@ import {
   makeStoryCard,
 } from "../state/defaults";
 import { nowIso } from "../utils/id";
+import arcaneAfterRocketCoverDataUrl from "./premades/arcane-after-rocket-cover.jpg?inline";
 
 export const arcaneAfterRocketAdventureTitle = "Arcane: After the Rocket";
+
+const arcaneAfterRocketThumbnail = {
+  dataUrl: arcaneAfterRocketCoverDataUrl,
+  name: "arcane-after-rocket-cover.jpg",
+  altText: "Shattered Piltover Council chamber after Jinx's rocket",
+  mimeType: "image/jpeg",
+} satisfies Omit<AdventureThumbnailImage, "updatedAt">;
 
 const ids = {
   components: {
@@ -706,6 +714,10 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       premadeAdventure: true,
       scenario: "Arcane - After the Rocket",
       note: "Season 2 opening AU with Seth as a proven mage Councilor, Hextech amplifier, and survivor of Jinx's rocket.",
+      thumbnailImage: {
+        ...arcaneAfterRocketThumbnail,
+        updatedAt: timestamp,
+      },
     },
     components,
     storyCards,

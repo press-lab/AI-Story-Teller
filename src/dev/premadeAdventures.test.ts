@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { importAdventureJson } from "../utils/json";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 import { premadeAdventures } from "./premadeAdventures";
 
 describe("premade adventure library", () => {
@@ -76,8 +77,12 @@ describe("premade adventure library", () => {
     const mel = adventure.storyCards.find((card) => card.title === "Mel Medarda");
     const sethMagic = adventure.storyCards.find((card) => card.title === "Seth's Magic");
     const brainNames = adventure.brains.map((brain) => brain.characterName);
+    const thumbnail = getAdventureThumbnail(adventure);
 
     expect(adventure.title).toBe("Arcane: After the Rocket");
+    expect(thumbnail?.dataUrl).toMatch(/^data:image\/jpeg;base64,/);
+    expect(thumbnail?.name).toBe("arcane-after-rocket-cover.jpg");
+    expect(thumbnail?.altText).toBe("Shattered Piltover Council chamber after Jinx's rocket");
     expect(adventure.openingScene).toContain("The Council chamber is still burning");
     expect(adventure.openingScene).toContain("Jayce is alive");
     expect(adventure.openingScene).toContain("Mel is alive");
