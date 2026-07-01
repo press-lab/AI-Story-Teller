@@ -637,20 +637,19 @@ export function SettingsPage({
                   When on, the AI writes the proposal body in the same call — more useful but costs more tokens.
                   When off, proposals arrive with blank content for you to fill in.
                 </p>
-                <CheckboxField
-                  label="Auto-approve Active Pressure updates"
-                  checked={activeSettings.memoryAutoApprove.plotPressureUpdate}
-                  onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })}
-                />
-                <p className="muted">Active Pressure section is replaced automatically when stakes shift.</p>
-                <CheckboxField
-                  label="Auto-approve brain state updates"
-                  checked={activeSettings.memoryAutoApprove.brainUpdate}
-                  onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })}
-                />
+                <div className="auto-approve-toggles">
+                  <span className="auto-approve-label muted">Auto-approve:</span>
+                  <CheckboxField label="Legacy Summary" checked={activeSettings.memoryAutoApprove.summaryUpdate} onChange={(summaryUpdate) => updateMemoryAutoApprove({ summaryUpdate })} />
+                  <CheckboxField label="Plot Essentials" checked={activeSettings.memoryAutoApprove.plotEssentialsUpdate} onChange={(plotEssentialsUpdate) => updateMemoryAutoApprove({ plotEssentialsUpdate })} />
+                  <CheckboxField label="Active Pressure" checked={activeSettings.memoryAutoApprove.plotPressureUpdate} onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })} />
+                  <CheckboxField label="Current Arc" checked={activeSettings.memoryAutoApprove.currentArcUpdate} onChange={(currentArcUpdate) => updateMemoryAutoApprove({ currentArcUpdate })} />
+                  <CheckboxField label="Arc Proposals" checked={activeSettings.memoryAutoApprove.arcProposal} onChange={(arcProposal) => updateMemoryAutoApprove({ arcProposal })} />
+                  <CheckboxField label="Story Cards" checked={activeSettings.memoryAutoApprove.storyCard} onChange={(storyCard) => updateMemoryAutoApprove({ storyCard })} />
+                  <CheckboxField label="Characters" checked={activeSettings.memoryAutoApprove.brainUpdate} onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })} />
+                </div>
                 <p className="muted">
-                  Brain state updates from the semantic engine apply immediately without review.
-                  Only affects characters already in your Brains list.
+                  These toggles apply to Memory Suggestions created by automatic detection, manual builders,
+                  inline memory tags, and Plot Essentials history carry-forward.
                 </p>
               </>
             )}

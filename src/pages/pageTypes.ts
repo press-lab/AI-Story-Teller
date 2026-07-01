@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Adventure, AdventureAction, ContextBuildResult, InputMode, MemoryAutoApproveSettings, MemoryDetectionSettings, ProviderConfig, SemanticEvaluationSettings, TokenBudgetSettings } from "../types/adventure";
-import { defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
+import { defaultMemoryAutoApproveSettings, defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
 
 export interface UiPreferences {
   darkMode: boolean;
@@ -25,7 +25,7 @@ export const defaultGlobalAdventureSettings: GlobalAdventureSettings = {
   tokenBudgetSettings: defaultTokenBudgetSettings,
   semanticEvaluationSettings: defaultSemanticEvaluationSettings,
   memoryDetectionSettings: defaultMemoryDetectionSettings,
-  memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
+  memoryAutoApprove: { ...defaultMemoryAutoApproveSettings },
 };
 
 export const defaultUiPreferences: UiPreferences = {

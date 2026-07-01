@@ -3,6 +3,7 @@ import type {
   ArcPacingState,
   BrainEntry,
   ComponentEntry,
+  MemoryAutoApproveSettings,
   MemoryDetectionSettings,
   NextTurnNote,
   ProviderConfig,
@@ -86,6 +87,17 @@ export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
   enabled: true,
   generateContent: true,
   everyNTurns: 1,
+};
+
+export const defaultMemoryAutoApproveSettings: MemoryAutoApproveSettings = {
+  summaryUpdate: false,
+  plotEssentialsUpdate: false,
+  currentArcUpdate: true,
+  arcProposal: false,
+  plotPressureUpdate: true,
+  plotMomentumUpdate: false,
+  storyCard: false,
+  brainUpdate: false,
 };
 
 export const defaultSystemTriggerSettings: SystemTriggerSettings = {
@@ -219,7 +231,7 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     tokenBudgetSettings: defaultTokenBudgetSettings,
     modelConfig: defaultModelConfig,
     semanticEvaluationSettings: defaultSemanticEvaluationSettings,
-    memoryAutoApprove: { summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
+    memoryAutoApprove: { ...defaultMemoryAutoApproveSettings },
     memoryDetectionSettings: defaultMemoryDetectionSettings,
     systemTriggers: defaultSystemTriggerSettings,
   };
@@ -539,7 +551,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
     },
     memoryAutoApprove: {
-      ...{ summaryUpdate: false, plotEssentialsUpdate: false, currentArcUpdate: true, plotPressureUpdate: true, plotMomentumUpdate: false, storyCard: false, brainUpdate: false },
+      ...defaultMemoryAutoApproveSettings,
       ...(adventure.memoryAutoApprove ?? {}),
       plotMomentumUpdate: false,
     },

@@ -931,6 +931,34 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
   return {};
 }
 
+function applyCompanionMemoryProposals(
+  state: Adventure,
+  basePatch: Partial<Adventure>,
+  proposals: MemoryProposal[],
+): { patch: Partial<Adventure>; proposals: MemoryProposal[] } {
+  let patch = basePatch;
+  let workingState: Adventure = { ...state, ...patch };
+  const recorded: MemoryProposal[] = [];
+
+  for (const proposal of proposals) {
+    const clean = sanitizeProposal(routedProposal(workingState, proposal));
+    if (!clean) continue;
+    const autoApprove = workingState.memoryAutoApprove?.[clean.proposedType as keyof typeof workingState.memoryAutoApprove] ?? false;
+    if (!autoApprove) {
+      recorded.push(clean);
+      continue;
+    }
+
+    const approved = updateMemoryProposal(clean, { status: "approved" });
+    const applied = applyApprovedMemoryProposal(workingState, approved);
+    patch = { ...patch, ...applied };
+    workingState = { ...workingState, ...applied };
+    if (clean.proposedType !== "plotPressureUpdate") recorded.push(approved);
+  }
+
+  return { patch, proposals: recorded };
+}
+
 export function adventureReducer(state: Adventure, action: AdventureAction): Adventure {
   switch (action.type) {
     case "SET_TITLE":
@@ -1302,11 +1330,12 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         if (clean.proposedType === "plotPressureUpdate") {
           return touchAdventure(state, applied);
         }
+        const companionResult = applyCompanionMemoryProposals(state, applied, outgoing);
         return touchAdventure(state, {
-          ...applied,
+          ...companionResult.patch,
           activeState: {
             ...state.activeState,
-            memoryProposals: [...outgoing, approved, ...state.activeState.memoryProposals],
+            memoryProposals: [...companionResult.proposals, approved, ...state.activeState.memoryProposals],
           },
         });
       }
@@ -1334,12 +1363,13 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const approved = updateMemoryProposal(proposal, { status: "approved" });
       const outgoing = outgoingPlotEssentialsProposals(state, approved);
       const applied = applyApprovedMemoryProposal(state, approved);
+      const companionResult = applyCompanionMemoryProposals(state, applied, outgoing);
       return touchAdventure(state, {
-        ...applied,
+        ...companionResult.patch,
         activeState: {
           ...state.activeState,
           memoryProposals: [
-            ...outgoing,
+            ...companionResult.proposals,
             ...state.activeState.memoryProposals.map((entry) => (entry.id === action.proposalId ? approved : entry)),
           ],
         },

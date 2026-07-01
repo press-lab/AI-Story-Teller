@@ -532,6 +532,7 @@ export interface MemoryAutoApproveSettings {
   summaryUpdate: boolean;
   plotEssentialsUpdate: boolean;
   currentArcUpdate: boolean;
+  arcProposal: boolean;
   plotPressureUpdate: boolean;
   plotMomentumUpdate: boolean;
   storyCard: boolean;

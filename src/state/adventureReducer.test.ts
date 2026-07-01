@@ -790,6 +790,50 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-duplicate")).toBe(false);
   });
 
+  it("auto-approves Story Card history created by an auto-approved Plot Essentials replacement", () => {
+    const plot = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "Azula revealed the silver warrant to Seth in the council chamber, proving the conspiracy had court access.",
+      active: true,
+    });
+    let state = {
+      ...baseAdventure(),
+      components: [plot],
+      memoryAutoApprove: {
+        ...baseAdventure().memoryAutoApprove,
+        plotEssentialsUpdate: true,
+        storyCard: true,
+      },
+    };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "plot-replacement",
+        proposedType: "plotEssentialsUpdate",
+        title: "Plot Essentials",
+        targetId: "component-plot",
+        content: "Seth has left the council chamber to warn Margo before midnight.",
+      }),
+    });
+
+    expect(state.components.find((component) => component.id === "component-plot")?.content).toContain("warn Margo");
+    expect(state.storyCards.some((card) => card.content.includes("silver warrant"))).toBe(true);
+    expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "plot-replacement")?.status).toBe("approved");
+    expect(
+      state.activeState.memoryProposals.some(
+        (proposal) => proposal.proposedType === "storyCard" && proposal.status === "pending" && proposal.content.includes("silver warrant"),
+      ),
+    ).toBe(false);
+    expect(
+      state.activeState.memoryProposals.some(
+        (proposal) => proposal.proposedType === "storyCard" && proposal.status === "approved" && proposal.content.includes("silver warrant"),
+      ),
+    ).toBe(true);
+  });
+
   it("approving a proposal that names a card by an alias updates that card instead of duplicating it", () => {
     const toph = makeStoryCard({ id: "card-toph", title: "Toph Beifong", keys: ["Toph", "Beifong"], content: "• Greatest earthbender alive.", active: true });
     let state = { ...baseAdventure(), storyCards: [toph] };
@@ -848,6 +892,44 @@ describe("adventureReducer", () => {
     expect(seeded?.content).toBe("");
     // Old arc banked as a Story Card so prior arcs are preserved.
     expect(state.storyCards.some((card) => card.content.includes("Renzan conspiracy was broken"))).toBe(true);
+  });
+
+  it("auto-approves arcProposal when enabled", () => {
+    const arcComp = makeComponent({
+      id: "component-arc",
+      title: "Current Arc",
+      type: "currentArc",
+      content: "",
+    });
+    let state = {
+      ...baseAdventure(),
+      components: [arcComp],
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, arcProposal: true },
+    };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "proposal-arc-auto",
+        proposedType: "arcProposal",
+        title: "A Pact of Flame",
+        targetId: "component-arc",
+        content: JSON.stringify({
+          arcPremise: "Azula moves against the throne from the shadows",
+          arcSimmerInstruction: "She stays off-screen, working through proxies.",
+          arcBreakInstruction: "The confrontation lands and costs an ally.",
+          arcPace: "epic",
+          arcTriggerMode: "ask",
+          arcThreadKeys: ["card-azula"],
+        }),
+      }),
+    });
+
+    expect(state.components.find((component) => component.id === "component-arc")?.arcPremise).toBe(
+      "Azula moves against the throne from the shadows",
+    );
+    expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-arc-auto")?.status).toBe("approved");
+    expect(state.activeState.memoryProposals.some((proposal) => proposal.id === "proposal-arc-auto" && proposal.status === "pending")).toBe(false);
   });
 
   it("drops an arcProposal whose content is not valid arc JSON", () => {
