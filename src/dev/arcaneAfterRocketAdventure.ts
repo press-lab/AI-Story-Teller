@@ -77,7 +77,7 @@ Viktor did not get that miracle.
 
 He lies under a broken wash of marble and brass near the torn edge of the chamber floor, blood dark against his shirt, breath thin enough that the room seems to hold itself around each one. Jayce sees him and every promise about the Hexcore starts to become a problem with a pulse.
 
-Cassandra Kiramman is dead. Irius Bolbok is dead. Torman Hoskel is dead. Shoola is alive but hurt. Salo is alive, trapped in the wreckage, and screaming like the blast left part of him behind.
+Cassandra Kiramman is dead. Irius Bolbok is dead. Torman Hoskel is dead. Shoola is alive but hurt. Salo is alive in the wreckage, injured badly enough that the blast has already rewritten the shape of his future.
 
 Outside, Piltover is beginning to scream.
 
@@ -136,7 +136,7 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       content: `- The story opens at the start of Arcane Season 2, seconds after Jinx's rocket strikes the Piltover Council chamber.
 - Seth is an adult mage, surviving Council member, and proven exception in a city that distrusts mages; his always-on physical wards saved him from the rocket.
 - Seth helped Jayce and Viktor stabilize early Hextech after independently earning Piltover's tolerance as a disciplined, useful mage.
-- Piltover is wounded, furious, and leaderless after Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Jayce, Mel, Shoola, and Salo survive, with Salo crippled.
+- Piltover is wounded, furious, and politically fractured after Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Jayce, Mel, Shoola, and Salo survive, with Salo crippled.
 - Seth is tied to Jayce, Viktor, Heimerdinger, Mel, Caitlyn, and later Ekko through existing trust, suspicion, technical work, and political need.
 - The immediate play is rescue, triage, Viktor's near-death Hexcore pressure, grief, blame, and Piltover's first response to Jinx and Zaun.`,
       alwaysOn: true,
@@ -194,14 +194,14 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       id: ids.components.arc,
       title: "Current Story Arc",
       type: "currentArc",
-      content: "Arc seed: Jinx's rocket has broken Piltover's illusion of control. The surviving city leadership wants blood, Ambessa wants war posture, Caitlyn wants Jinx, Viktor is no longer merely ill, and Zaun is entering the vacuum left by Silco's death.",
+      content: "Arc seed: Jinx's rocket has broken Piltover's illusion of control. Salo and Ambessa push Piltover toward retaliation, Mel opposes Hextech weaponry, Caitlyn wants Jinx, Viktor is no longer merely ill, and Zaun is entering the vacuum left by Silco's death.",
       arcPremise:
         "Piltover's answer to Jinx's rocket will decide whether Seth becomes a bridge, a weapon, or proof that even proven mages are only tolerated until fear needs a target.",
       arcThreadKeys: [ids.cards.jinx, ids.cards.ambessa, ids.cards.hexcore, ids.cards.strikeTeams],
       arcPace: "epic",
       arcTriggerMode: "ask",
       arcSimmerInstruction:
-        "Keep the war arc building through urgent aftermath scenes: damaged Council survivors, Caitlyn's hardening grief, Jayce's guilt, Ambessa applying pressure, Hextech weaponization, Zaunite retaliation, Jinx sightings, Firelight warnings, and Viktor's Hexcore changes. Avoid abstract politics; make every escalation visible in a room, street, lab, bridge, clinic, or raid.",
+        "Keep the war arc building through urgent aftermath scenes: damaged Council survivors, Caitlyn's hardening grief, Jayce's guilt, Ambessa applying pressure, Mel resisting Hextech weaponization, Zaunite retaliation, Jinx sightings, Firelight warnings, and Viktor's Hexcore changes. Avoid abstract politics; make every escalation visible in a room, street, lab, bridge, clinic, or raid.",
       arcBreakInstruction:
         "Force Piltover's response into a choice that cannot stay clean: a strike-team action, Hextech escalation, Zaunite civilian cost, Jinx confrontation, or Hexcore disaster that makes Seth choose what he will amplify, shield, or refuse. Seth remains competent and powerful; the cost lands on trust, casualties, public fear, and the future of Piltover and Zaun. No clean victory.",
       alwaysOn: true,
@@ -410,11 +410,12 @@ Example lines: "My boy, progress is not measured only by speed." / "I have seen 
       type: "character",
       memoryMode: "static",
       priority: 62,
-      content: `- Mel Medarda is a Piltover Councilor, political strategist, patron of Jayce, and Seth's close professional ally. No romance with Seth.
+      content: `- Mel Medarda is a Piltover Councilor, political strategist, Jayce's patron and romantic partner, and Seth's close professional ally. No romance with Seth.
 - Appearance: elegant dark-skinned woman with gold ornamentation, immaculate cream-and-gold clothing, poised posture, and expressive eyes that reveal more when she is silent.
 - Mel values Seth's restraint, judgment, and ability to see political and arcane consequences at once.
 - Seth and Mel have trust built from Council work, private strategy, and mutual respect, but Mel still thinks in terms of power, positioning, and survival.
 - After the rocket, Mel survives far better than the room should allow; she is not the near-death case, but Ambessa's war logic closes around every room she is not strong enough to control.
+- Mel opposes using Hextech weaponry as Piltover's answer to the attack, even while grief and Ambessa make restraint harder to sell.
 
 VOICE CONTRACT
 Rhythm: Smooth, composed, diplomatic; every sentence has a visible surface and a sharper underside.
