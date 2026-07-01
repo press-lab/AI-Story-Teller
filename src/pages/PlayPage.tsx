@@ -107,7 +107,7 @@ export function PlayPage({
   const editingArticleRef = useRef<HTMLElement | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
-  const lastUserMsgRef = useRef<HTMLElement | null>(null);
+  const latestMessageRef = useRef<HTMLElement | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export function PlayPage({
   }, []);
 
   const lastAssistant = [...adventure.messages].reverse().find((m) => m.role === "assistant");
-  const lastUserMsgId = [...adventure.messages].reverse().find((m) => m.role === "user")?.id;
+  const latestMessageId = adventure.messages.at(-1)?.id;
   const nextTurnNote = adventure.activeState.nextTurnNote;
   const pendingMemoryCount = adventure.activeState.memoryProposals.filter((p) => p.status === "pending").length;
 
@@ -187,13 +187,9 @@ export function PlayPage({
   }
 
   useEffect(() => {
-    if (adventure.messages.at(-1)?.role === "user") {
-      const target = lastUserMsgRef.current ?? bottomRef.current;
-      target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    } else {
-      bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
-    }
-  }, [adventure.messages.length]);
+    const target = latestMessageRef.current ?? bottomRef.current;
+    target?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  }, [latestMessageId]);
 
   useEffect(() => {
     if (composerOpen) textareaRef.current?.focus();
@@ -330,7 +326,7 @@ export function PlayPage({
               key={message.id}
               ref={(el) => {
                 if (editingMessageId === message.id) editingArticleRef.current = el;
-                if (message.id === lastUserMsgId) lastUserMsgRef.current = el;
+                if (message.id === latestMessageId) latestMessageRef.current = el;
               }}
               className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
             >

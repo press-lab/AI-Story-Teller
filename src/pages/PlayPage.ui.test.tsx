@@ -18,6 +18,7 @@ global.IntersectionObserver = class {
   disconnect() {}
 } as unknown as typeof IntersectionObserver;
 Element.prototype.scrollBy = () => {};
+Element.prototype.scrollIntoView = () => {};
 
 const timestamp = "2026-01-01T00:00:00.000Z";
 type SubmitTurnHandler = (text: string, mode: InputMode) => Promise<void>;
@@ -134,6 +135,42 @@ describe("PlayPage AID-style controls", () => {
 
     expect(screen.queryByText("I open the door.")).not.toBeInTheDocument();
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
+  });
+
+  it("scrolls to the top of the newest transcript entry", () => {
+    const scrollCalls: Array<{ element: Element; options?: boolean | ScrollIntoViewOptions }> = [];
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function scrollIntoView(options?: boolean | ScrollIntoViewOptions) {
+      scrollCalls.push({ element: this, options });
+    };
+
+    try {
+      const nextAdventure = playAdventure();
+      const initialAdventure = { ...nextAdventure, messages: nextAdventure.messages.slice(0, 1) };
+      const props = {
+        dispatch: () => undefined,
+        loading: false,
+        saveStatus: "saved" as const,
+        onSubmitTurn: noopSubmitTurn,
+        onContinue: noopAsync,
+        onRegenerate: noopAsync,
+        onBuildContext: () => undefined,
+        onOpenContext: () => undefined,
+        onRememberThis: async () => undefined,
+      };
+
+      const { rerender } = render(<PlayPage adventure={initialAdventure} {...props} />);
+      scrollCalls.length = 0;
+
+      rerender(<PlayPage adventure={nextAdventure} {...props} />);
+
+      const newestEntry = screen.getByText("Rain waits outside.").closest("article");
+      const lastCall = scrollCalls.at(-1);
+      expect(lastCall?.element).toBe(newestEntry);
+      expect(lastCall?.options).toEqual({ behavior: "smooth", block: "start" });
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
   });
 
   it("opens context preview from the toolkit nav", async () => {
