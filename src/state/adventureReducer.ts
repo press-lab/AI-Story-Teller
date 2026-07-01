@@ -9,6 +9,10 @@ import type {
   BrainPatch,
   BrainStateField,
   ComponentEntry,
+  MemoryUpdateHistoryEntry,
+  MemoryUpdateOperation,
+  MemoryUpdateSnapshot,
+  MemoryUpdateSource,
   MemoryProposal,
   Message,
   ProviderConfig,
@@ -27,9 +31,97 @@ function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
 }
 
-function touchMemoryUpdate<T extends { updatedAt: string; lastMemoryUpdatedAt?: string }>(entry: T): T {
+interface MemoryUpdateMeta {
+  source: MemoryUpdateSource;
+  operation: MemoryUpdateOperation;
+  proposalId?: string;
+  sourceTurnId?: string;
+}
+
+function componentMemorySnapshot(component: ComponentEntry): MemoryUpdateSnapshot {
+  return {
+    title: component.title,
+    content: component.content,
+    state: component.state,
+    type: component.type,
+    arcPremise: component.arcPremise,
+    arcThreadKeys: component.arcThreadKeys ? [...component.arcThreadKeys] : undefined,
+    arcSimmerInstruction: component.arcSimmerInstruction,
+    arcBreakInstruction: component.arcBreakInstruction,
+    arcPhase: component.arcState?.phase,
+  };
+}
+
+function storyCardMemorySnapshot(card: StoryCard): MemoryUpdateSnapshot {
+  return {
+    title: card.title,
+    content: card.content,
+    state: card.state,
+    keys: [...card.keys],
+    type: card.type,
+    memoryMode: card.memoryMode,
+    archivedFacts: card.archivedFacts,
+  };
+}
+
+function memoryHistoryEntry(
+  previous: MemoryUpdateSnapshot | null,
+  next: MemoryUpdateSnapshot,
+  meta: MemoryUpdateMeta,
+  timestamp: string,
+): MemoryUpdateHistoryEntry {
+  return {
+    id: createId("memoryRevision"),
+    source: meta.source,
+    operation: meta.operation,
+    proposalId: meta.proposalId,
+    sourceTurnId: meta.sourceTurnId,
+    previous,
+    next,
+    updatedAt: timestamp,
+  };
+}
+
+function recordComponentMemoryUpdate(
+  previous: ComponentEntry | undefined,
+  next: ComponentEntry,
+  meta: MemoryUpdateMeta,
+): ComponentEntry {
   const timestamp = nowIso();
-  return { ...entry, updatedAt: timestamp, lastMemoryUpdatedAt: timestamp };
+  const stamped = { ...next, updatedAt: timestamp, lastMemoryUpdatedAt: timestamp };
+  return {
+    ...stamped,
+    memoryUpdateHistory: [
+      ...(previous?.memoryUpdateHistory ?? next.memoryUpdateHistory ?? []),
+      memoryHistoryEntry(
+        previous ? componentMemorySnapshot(previous) : null,
+        componentMemorySnapshot(stamped),
+        meta,
+        timestamp,
+      ),
+    ],
+  };
+}
+
+function recordStoryCardMemoryUpdate(
+  previous: StoryCard | undefined,
+  next: StoryCard,
+  meta: MemoryUpdateMeta,
+): StoryCard {
+  const timestamp = nowIso();
+  const stamped = { ...next, updatedAt: timestamp, lastMemoryUpdatedAt: timestamp };
+  return {
+    ...stamped,
+    memoryUpdateHistory: [
+      ...(previous?.memoryUpdateHistory ?? next.memoryUpdateHistory ?? []),
+      memoryHistoryEntry(
+        previous ? storyCardMemorySnapshot(previous) : null,
+        storyCardMemorySnapshot(stamped),
+        meta,
+        timestamp,
+      ),
+    ],
+  };
 }
 
 function touchAdventure(state: Adventure, patch: Partial<Adventure>): Adventure {
@@ -670,6 +762,13 @@ function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryPropo
 }
 
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
+  const proposalMemoryMeta = (operation: MemoryUpdateOperation): MemoryUpdateMeta => ({
+    source: "memoryProposal",
+    operation,
+    proposalId: proposal.id,
+    sourceTurnId: proposal.sourceTurnId,
+  });
+
   if (proposal.proposedType === "storyCard") {
     if (!proposal.content.trim()) return {};
     const cardTitle = proposal.title || "Memory Proposal";
@@ -694,49 +793,62 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         // budget so context stays bounded and superseded facts don't read as current.
         const budget = existing.tokenBudget && existing.tokenBudget > 0 ? existing.tokenBudget * 4 : DEFAULT_CARD_CONTENT_BUDGET;
         const merged = mergeCardContentToBudget(existing.content, safeContent, existing.archivedFacts ?? "", budget);
-        storyCard = touchMemoryUpdate({
-          ...existing,
-          content: merged.content,
-          archivedFacts: merged.archivedFacts,
-          keys: Array.from(new Set([
-            ...existing.keys,
-            ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
-          ])),
-          memoryMode: "living",
-          // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
-          state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
-          ...automationPatch(existing),
-        });
+        storyCard = recordStoryCardMemoryUpdate(
+          existing,
+          {
+            ...existing,
+            content: merged.content,
+            archivedFacts: merged.archivedFacts,
+            keys: Array.from(new Set([
+              ...existing.keys,
+              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+            ])),
+            memoryMode: "living",
+            // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
+            state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
+            ...automationPatch(existing),
+          },
+          proposalMemoryMeta("append"),
+        );
       } else {
-        storyCard = touchMemoryUpdate({
-          ...existing,
-          content: appendCardContent(existing.content, safeContent),
-          keys: Array.from(new Set([
-            ...existing.keys,
-            ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
-          ])),
-          memoryMode: existing.memoryMode ?? proposal.memoryMode,
-          state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
-          ...automationPatch(existing),
-        });
+        storyCard = recordStoryCardMemoryUpdate(
+          existing,
+          {
+            ...existing,
+            content: appendCardContent(existing.content, safeContent),
+            keys: Array.from(new Set([
+              ...existing.keys,
+              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+            ])),
+            memoryMode: existing.memoryMode ?? proposal.memoryMode,
+            state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
+            ...automationPatch(existing),
+          },
+          proposalMemoryMeta("append"),
+        );
       }
     } else if (existing) {
-      storyCard = touchMemoryUpdate({
-        ...existing,
-        content: safeContent,
-        // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
-        // break alias-matching and let the card be duplicated again later).
-        keys: Array.from(new Set([
-          ...existing.keys,
-          ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
-        ])),
-        memoryMode: proposal.memoryMode ?? existing.memoryMode,
-        type: proposal.storyCardType ?? existing.type,
-        state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
-        ...automationPatch(existing),
-      });
+      storyCard = recordStoryCardMemoryUpdate(
+        existing,
+        {
+          ...existing,
+          content: safeContent,
+          // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
+          // break alias-matching and let the card be duplicated again later).
+          keys: Array.from(new Set([
+            ...existing.keys,
+            ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+          ])),
+          memoryMode: proposal.memoryMode ?? existing.memoryMode,
+          type: proposal.storyCardType ?? existing.type,
+          state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
+          ...automationPatch(existing),
+        },
+        proposalMemoryMeta("replace"),
+      );
     } else {
-      storyCard = touchMemoryUpdate(
+      storyCard = recordStoryCardMemoryUpdate(
+        undefined,
         makeStoryCard({
           title: cardTitle,
           content: safeContent,
@@ -749,6 +861,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
           state: "memoryProposal",
         }),
+        proposalMemoryMeta("create"),
       );
     }
     return { storyCards: upsertById(state.storyCards, storyCard) };
@@ -757,7 +870,8 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
   if (proposal.proposedType === "brainUpdate") {
     const existing = state.brains.find((brain) => brain.id === proposal.targetId || brain.characterName === proposal.title);
     if (!existing) {
-      const storyCard = touchMemoryUpdate(
+      const storyCard = recordStoryCardMemoryUpdate(
+        undefined,
         makeStoryCard({
           title: proposal.title || "Memory Proposal",
           content: proposal.content,
@@ -767,6 +881,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           active: true,
           state: "memoryProposal routedFromMissingBrain",
         }),
+        proposalMemoryMeta("create"),
       );
       return { storyCards: upsertById(state.storyCards, storyCard) };
     }
@@ -806,8 +921,13 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       state.components.find((component) => component.type === "plotEssentials");
     const turn = state.activeState.turn;
     const component = target
-      ? touchMemoryUpdate({ ...target, content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content, lastAutoUpdateTurn: turn })
-      : touchMemoryUpdate(
+      ? recordComponentMemoryUpdate(
+          target,
+          { ...target, content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content, lastAutoUpdateTurn: turn },
+          proposalMemoryMeta(proposal.appendContent && target.content.trim() ? "append" : "replace"),
+        )
+      : recordComponentMemoryUpdate(
+          undefined,
           makeComponent({
             title: proposal.title || "Plot Essentials",
             type: "plotEssentials",
@@ -817,6 +937,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             pinned: false,
             priority: 250,
           }),
+          proposalMemoryMeta("create"),
         );
     return { components: upsertById(state.components, component) };
   }
@@ -835,9 +956,15 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       state.components.find((c) => c.type === componentType);
     const turn = state.activeState.turn;
     if (existing) {
-      return { components: upsertById(state.components, touchMemoryUpdate({ ...existing, content: proposal.content, lastAutoUpdateTurn: turn })) };
+      return {
+        components: upsertById(
+          state.components,
+          recordComponentMemoryUpdate(existing, { ...existing, content: proposal.content, lastAutoUpdateTurn: turn }, proposalMemoryMeta("replace")),
+        ),
+      };
     }
-    const component = touchMemoryUpdate(
+    const component = recordComponentMemoryUpdate(
+      undefined,
       makeComponent({
         title: defaultTitle,
         type: componentType,
@@ -847,6 +974,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         pinned: false,
         priority: defaultPriority,
       }),
+      proposalMemoryMeta("create"),
     );
     return { components: upsertById(state.components, { ...component, lastAutoUpdateTurn: turn }) };
   }
@@ -859,7 +987,16 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     if (!arcComp) return {};
     const existing = arcComp.content.trim();
     const newContent = existing ? `${existing}\n\n${proposal.content}` : proposal.content;
-    return { components: upsertById(state.components, touchMemoryUpdate({ ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn })) };
+    return {
+      components: upsertById(
+        state.components,
+        recordComponentMemoryUpdate(
+          arcComp,
+          { ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn },
+          proposalMemoryMeta(existing ? "append" : "replace"),
+        ),
+      ),
+    };
   }
 
   if (proposal.proposedType === "arcProposal") {
@@ -905,19 +1042,23 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         )
       : state.storyCards;
 
-    const seededArc = touchMemoryUpdate({
-      ...arcComp,
-      arcPremise: premise,
-      content: "",
-      arcThreadKeys: threadKeys,
-      arcSimmerInstruction: typeof seed.arcSimmerInstruction === "string" ? seed.arcSimmerInstruction : "",
-      arcBreakInstruction: typeof seed.arcBreakInstruction === "string" ? seed.arcBreakInstruction : "",
-      arcPace: pace,
-      arcTriggerMode: triggerMode,
-      arcState: defaultArcState(),
-      arcContinuationOptions: undefined,
-      lastAutoUpdateTurn: state.activeState.turn,
-    });
+    const seededArc = recordComponentMemoryUpdate(
+      arcComp,
+      {
+        ...arcComp,
+        arcPremise: premise,
+        content: "",
+        arcThreadKeys: threadKeys,
+        arcSimmerInstruction: typeof seed.arcSimmerInstruction === "string" ? seed.arcSimmerInstruction : "",
+        arcBreakInstruction: typeof seed.arcBreakInstruction === "string" ? seed.arcBreakInstruction : "",
+        arcPace: pace,
+        arcTriggerMode: triggerMode,
+        arcState: defaultArcState(),
+        arcContinuationOptions: undefined,
+        lastAutoUpdateTurn: state.activeState.turn,
+      },
+      proposalMemoryMeta("replace"),
+    );
     return { components: upsertById(state.components, seededArc), storyCards };
   }
 
@@ -1089,7 +1230,9 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       });
     case "APPLY_COMPONENT_UPDATE":
       return touchAdventure(state, {
-        components: updateById(state.components, action.componentId, (item) => touchMemoryUpdate({ ...item, content: action.content })),
+        components: updateById(state.components, action.componentId, (item) =>
+          recordComponentMemoryUpdate(item, { ...item, content: action.content }, { source: "aiMemoryUpdate", operation: "replace" }),
+        ),
       });
     case "REORDER_COMPONENT":
       return touchAdventure(state, { components: moveByPriority(state.components, action.componentId, action.direction) });
@@ -1110,8 +1253,16 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         storyCards: updateById(state.storyCards, action.storyCardId, (item) => mergePatch<StoryCard>(item, action.patch)),
       });
     case "APPLY_STORY_CARD_UPDATE":
+      if (action.content === undefined && (!action.patch || Object.keys(action.patch).length === 0)) return state;
       return touchAdventure(state, {
-        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touchMemoryUpdate({ ...item, content: stripLeadingCardTitle(item.title, action.content) })),
+        storyCards: updateById(state.storyCards, action.storyCardId, (item) => {
+          const content = action.content !== undefined ? stripLeadingCardTitle(item.title, action.content) : item.content;
+          return recordStoryCardMemoryUpdate(
+            item,
+            { ...item, ...action.patch, content },
+            { source: "aiMemoryUpdate", operation: action.content !== undefined ? "replace" : "patch" },
+          );
+        }),
       });
     case "MARK_STORY_CARD_UPDATED":
       return touchAdventure(state, {

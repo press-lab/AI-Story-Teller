@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, contentSnippet, formatCompactTimestamp } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, contentSnippet, formatCompactTimestamp } from "./shared";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -631,6 +631,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 />
               </Field>
               </section>
+              <MemoryUpdateHistory history={component.memoryUpdateHistory} />
               {pePreview[component.id] !== undefined && (
                 <Field label="Regenerated (review before applying)">
                   <textarea

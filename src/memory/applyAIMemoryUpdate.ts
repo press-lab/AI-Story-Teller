@@ -5,7 +5,6 @@ import type {
   ComponentEntry,
   StoryCard,
 } from "../types/adventure";
-import { nowIso } from "../utils/id";
 
 export type AIMemoryUpdate =
   | {
@@ -115,15 +114,13 @@ export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdat
         rejectedUpdates.push(reject(update, "Story card update had no content, triggers, or state change."));
         continue;
       }
-      const storyActions: AdventureAction[] = [];
-      const memoryUpdatedAt = nowIso();
-      if (update.content !== undefined) {
-        storyActions.push({ type: "APPLY_STORY_CARD_UPDATE", storyCardId: update.storyCardId, content: update.content });
-      }
       const metadataPatch = storyCardPatch({ ...update, content: undefined });
-      if (Object.keys(metadataPatch).length > 0) {
-        storyActions.push({ type: "UPDATE_STORY_CARD", storyCardId: update.storyCardId, patch: { ...metadataPatch, lastMemoryUpdatedAt: memoryUpdatedAt } });
-      }
+      const storyActions: AdventureAction[] = [{
+        type: "APPLY_STORY_CARD_UPDATE",
+        storyCardId: update.storyCardId,
+        ...(update.content !== undefined ? { content: update.content } : {}),
+        ...(Object.keys(metadataPatch).length > 0 ? { patch: metadataPatch } : {}),
+      }];
       actions.push(...storyActions);
       appliedUpdates.push({ targetType: "storyCard", targetId: update.storyCardId, actionTypes: storyActions.map((action) => action.type) });
       changedItemIds.push(update.storyCardId);

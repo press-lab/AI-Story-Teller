@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import type { MemoryUpdateHistoryEntry, MemoryUpdateSnapshot } from "../types/adventure";
 
 export function Field({
   label,
@@ -126,4 +127,62 @@ export function formatCompactTimestamp(value: string | undefined): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function snapshotMeta(snapshot: MemoryUpdateSnapshot | null): string {
+  if (!snapshot) return "New memory item";
+  const values = [
+    snapshot.type,
+    snapshot.memoryMode,
+    snapshot.keys && snapshot.keys.length > 0 ? `${snapshot.keys.length} trigger${snapshot.keys.length === 1 ? "" : "s"}` : "",
+    snapshot.state ? `state: ${snapshot.state}` : "",
+    snapshot.arcPremise ? `arc: ${snapshot.arcPremise}` : "",
+    snapshot.arcPhase ? `phase: ${snapshot.arcPhase}` : "",
+  ].filter(Boolean);
+  return values.join(" | ");
+}
+
+function snapshotText(snapshot: MemoryUpdateSnapshot | null): string {
+  if (!snapshot) return "";
+  const parts = [snapshot.content, snapshot.archivedFacts ? `Archived:\n${snapshot.archivedFacts}` : ""].filter(Boolean);
+  return parts.join("\n\n");
+}
+
+function MemorySnapshotPane({ label, snapshot }: { label: string; snapshot: MemoryUpdateSnapshot | null }) {
+  const text = snapshotText(snapshot);
+  return (
+    <div className="memory-history-pane">
+      <strong>{label}</strong>
+      <span className="muted">{snapshotMeta(snapshot)}</span>
+      <pre>{text || "(empty)"}</pre>
+    </div>
+  );
+}
+
+export function MemoryUpdateHistory({ history }: { history: MemoryUpdateHistoryEntry[] | undefined }) {
+  if (!history?.length) return null;
+  const entries = [...history].reverse();
+  return (
+    <details className="brain-secondary-details item-secondary-details memory-history-details">
+      <summary>Memory update history ({history.length})</summary>
+      <div className="memory-history-list">
+        {entries.map((entry) => (
+          <article key={entry.id} className="memory-history-entry">
+            <div className="memory-history-entry-heading">
+              <strong>{entry.operation}</strong>
+              <span className="muted">
+                {formatCompactTimestamp(entry.updatedAt)}
+                {entry.proposalId ? ` | proposal ${entry.proposalId}` : ""}
+                {entry.sourceTurnId ? ` | source ${entry.sourceTurnId}` : ""}
+              </span>
+            </div>
+            <div className="grid two memory-history-snapshots">
+              <MemorySnapshotPane label="Previous" snapshot={entry.previous} />
+              <MemorySnapshotPane label="After" snapshot={entry.next} />
+            </div>
+          </article>
+        ))}
+      </div>
+    </details>
+  );
 }

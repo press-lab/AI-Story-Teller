@@ -3,7 +3,7 @@ import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, Story
 import type { AuditRecommendation } from "../memory/storyCardAudit";
 import { makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
@@ -766,6 +766,7 @@ export function StoryCardsPage({
                       dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { archivedFacts } })
                     }
                   />
+                  <MemoryUpdateHistory history={card.memoryUpdateHistory} />
                   {card.archivedFacts?.trim() && (
                     <details className="editor-legacy-help">
                       <summary className="muted">

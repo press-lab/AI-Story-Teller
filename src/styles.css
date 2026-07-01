@@ -3401,6 +3401,59 @@ details.story-card-item:not([open]) > .editor-card {
   background: var(--surface-soft);
 }
 
+.memory-history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.memory-history-entry {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.memory-history-entry-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.memory-history-entry-heading .muted {
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.memory-history-snapshots {
+  align-items: stretch;
+}
+
+.memory-history-pane {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.memory-history-pane pre {
+  min-height: 68px;
+  max-height: 220px;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font: 12px/1.45 ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+}
+
 .story-card-summary {
   display: grid;
   grid-template-columns: minmax(10rem, 1.2fr) auto minmax(9rem, 0.9fr) minmax(10rem, 1fr);

@@ -57,13 +57,16 @@ describe("applyAIMemoryUpdate", () => {
 
     expect(result.rejectedUpdates).toEqual([]);
     expect(result.changedItemIds).toEqual(["brain-margo", "card-joke"]);
-    expect(result.appliedUpdates.find((entry) => entry.targetId === "card-joke")?.actionTypes).toEqual([
-      "APPLY_STORY_CARD_UPDATE",
-      "UPDATE_STORY_CARD",
-    ]);
+    expect(result.appliedUpdates.find((entry) => entry.targetId === "card-joke")?.actionTypes).toEqual(["APPLY_STORY_CARD_UPDATE"]);
     expect(next.brains[0].currentState).toBe("new");
     expect(next.storyCards[0]).toMatchObject({ content: "new card", keys: ["new"], state: "ai-updated" });
     expect(next.storyCards[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(next.storyCards[0].memoryUpdateHistory?.[0]).toMatchObject({
+      source: "aiMemoryUpdate",
+      operation: "replace",
+      previous: { content: "old", keys: ["old"], state: "" },
+      next: { content: "new card", keys: ["new"], state: "ai-updated" },
+    });
   });
 
   it("stamps story cards when AI memory updates only card metadata", () => {
@@ -78,6 +81,12 @@ describe("applyAIMemoryUpdate", () => {
     expect(result.rejectedUpdates).toEqual([]);
     expect(next.storyCards[0]).toMatchObject({ content: "old", keys: ["new"] });
     expect(next.storyCards[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(next.storyCards[0].memoryUpdateHistory?.[0]).toMatchObject({
+      source: "aiMemoryUpdate",
+      operation: "patch",
+      previous: { content: "old", keys: ["old"] },
+      next: { content: "old", keys: ["new"] },
+    });
   });
 
   it("rejects brain updates when the BrainEntry does not already exist", () => {

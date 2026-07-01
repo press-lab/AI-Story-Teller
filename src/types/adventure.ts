@@ -26,6 +26,9 @@ export type ComponentType =
   | "memory"
   | "custom";
 
+export type MemoryUpdateOperation = "create" | "replace" | "append" | "patch";
+export type MemoryUpdateSource = "aiMemoryUpdate" | "memoryProposal";
+
 /** Arc Director runtime state — lives on a `currentArc` component. Deterministic; never set by an LLM. */
 export type ArcPhase = "simmer" | "escalate" | "break" | "aftermath";
 
@@ -54,6 +57,32 @@ export interface ArcContinuationOption {
   simmerInstruction: string;
   breakInstruction: string;
   pace: ArcPace;
+}
+
+export interface MemoryUpdateSnapshot {
+  title: string;
+  content: string;
+  state: string;
+  keys?: string[];
+  type?: ComponentType | StoryCardType;
+  memoryMode?: StoryCardMemoryMode;
+  archivedFacts?: string;
+  arcPremise?: string;
+  arcThreadKeys?: string[];
+  arcSimmerInstruction?: string;
+  arcBreakInstruction?: string;
+  arcPhase?: ArcPhase;
+}
+
+export interface MemoryUpdateHistoryEntry {
+  id: string;
+  source: MemoryUpdateSource;
+  operation: MemoryUpdateOperation;
+  proposalId?: string;
+  sourceTurnId?: string;
+  previous: MemoryUpdateSnapshot | null;
+  next: MemoryUpdateSnapshot;
+  updatedAt: ISODateString;
 }
 
 export interface ComponentEntry {
@@ -90,6 +119,7 @@ export interface ComponentEntry {
   autoUpdate?: boolean;
   lastAutoUpdateTurn?: number;
   lastMemoryUpdatedAt?: ISODateString;
+  memoryUpdateHistory?: MemoryUpdateHistoryEntry[];
   autoUpdateCooldownTurns?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -126,6 +156,7 @@ export interface StoryCard {
   autoUpdateCooldownTurns: number;
   lastAutoUpdateTurn?: number;
   lastMemoryUpdatedAt?: ISODateString;
+  memoryUpdateHistory?: MemoryUpdateHistoryEntry[];
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }
@@ -705,7 +736,7 @@ export type AdventureAction =
   | { type: "PIN_STORY_CARD"; storyCardId: string }
   | { type: "UNPIN_STORY_CARD"; storyCardId: string }
   | { type: "UPDATE_STORY_CARD"; storyCardId: string; patch: Partial<StoryCard> }
-  | { type: "APPLY_STORY_CARD_UPDATE"; storyCardId: string; content: string }
+  | { type: "APPLY_STORY_CARD_UPDATE"; storyCardId: string; content?: string; patch?: Partial<Pick<StoryCard, "keys" | "state">> }
   | { type: "MARK_STORY_CARD_UPDATED"; storyCardId: string; turn: number }
   | { type: "MARK_COMPONENT_UPDATED"; componentId: string; turn: number }
   | { type: "ADVANCE_ARC_PACING"; triggeredIds: string[]; turn: number }

@@ -298,9 +298,17 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "UPDATE_COMPONENT", componentId: component.id, patch: { title: "Renamed", priority: 5 } });
     expect(state.components.find((entry) => entry.id === component.id)).toMatchObject({ title: "Renamed", priority: 5 });
     expect(state.components.find((entry) => entry.id === component.id)?.lastMemoryUpdatedAt).toBeUndefined();
+    expect(state.components.find((entry) => entry.id === component.id)?.memoryUpdateHistory).toBeUndefined();
     state = reduce(state, { type: "APPLY_COMPONENT_UPDATE", componentId: component.id, content: "Generated component" });
-    expect(state.components.find((entry) => entry.id === component.id)?.content).toBe("Generated component");
-    expect(state.components.find((entry) => entry.id === component.id)?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    const generatedComponent = state.components.find((entry) => entry.id === component.id);
+    expect(generatedComponent?.content).toBe("Generated component");
+    expect(generatedComponent?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(generatedComponent?.memoryUpdateHistory?.[0]).toMatchObject({
+      source: "aiMemoryUpdate",
+      operation: "replace",
+      previous: { title: "Renamed", content: "C" },
+      next: { title: "Renamed", content: "Generated component" },
+    });
 
     const before = state.components.find((entry) => entry.id === component.id)?.priority;
     state = reduce(state, { type: "REORDER_COMPONENT", componentId: component.id, direction: "up" });
@@ -327,9 +335,17 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "UPDATE_STORY_CARD", storyCardId: storyCard.id, patch: { title: "Story Renamed", priority: 5 } });
     expect(state.storyCards.find((entry) => entry.id === storyCard.id)).toMatchObject({ title: "Story Renamed", priority: 5 });
     expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.lastMemoryUpdatedAt).toBeUndefined();
+    expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.memoryUpdateHistory).toBeUndefined();
     state = reduce(state, { type: "APPLY_STORY_CARD_UPDATE", storyCardId: storyCard.id, content: "Generated story" });
-    expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.content).toBe("Generated story");
-    expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    const generatedStory = state.storyCards.find((entry) => entry.id === storyCard.id);
+    expect(generatedStory?.content).toBe("Generated story");
+    expect(generatedStory?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(generatedStory?.memoryUpdateHistory?.[0]).toMatchObject({
+      source: "aiMemoryUpdate",
+      operation: "replace",
+      previous: { title: "Story Renamed", content: "C" },
+      next: { title: "Story Renamed", content: "Generated story" },
+    });
     state = reduce(state, { type: "MARK_STORY_CARD_UPDATED", storyCardId: storyCard.id, turn: 12 });
     expect(state.storyCards.find((entry) => entry.id === storyCard.id)?.lastAutoUpdateTurn).toBe(12);
 
@@ -512,7 +528,15 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-story" });
     expect(state.activeState.memoryProposals[0].status).toBe("approved");
     expect(state.storyCards.some((card) => card.title === "Promise" && card.keys.includes("promise"))).toBe(true);
-    expect(state.storyCards.find((card) => card.title === "Promise")?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    const approvedStoryCard = state.storyCards.find((card) => card.title === "Promise");
+    expect(approvedStoryCard?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(approvedStoryCard?.memoryUpdateHistory?.[0]).toMatchObject({
+      source: "memoryProposal",
+      operation: "create",
+      proposalId: "proposal-story",
+      previous: null,
+      next: { title: "Promise", content: "Seth promised Margo he would return." },
+    });
 
     const brain = makeBrain({ id: "brain-proposal", characterName: "Margo", recentDevelopments: "old" });
     const brainProposal = makeMemoryProposal({
@@ -535,7 +559,15 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: plotProposal });
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-plot" });
     expect(state.components.some((component) => component.type === "plotEssentials" && component.content.includes("Beast"))).toBe(true);
-    expect(state.components.find((component) => component.type === "plotEssentials")?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    const approvedPlot = state.components.find((component) => component.type === "plotEssentials");
+    expect(approvedPlot?.lastMemoryUpdatedAt).toEqual(expect.any(String));
+    expect(approvedPlot?.memoryUpdateHistory?.[0]).toMatchObject({
+      source: "memoryProposal",
+      operation: "create",
+      proposalId: "proposal-plot",
+      previous: null,
+      next: { content: "The Beast is actively hunting Seth tonight." },
+    });
 
     const summaryProposal = makeMemoryProposal({
       id: "proposal-summary",
@@ -972,6 +1004,13 @@ describe("adventureReducer", () => {
     expect(merged?.content).not.toContain("Their bond was a court secret");
     expect(state.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
     expect(merged?.keys).toContain("chambers");
+    expect(merged?.memoryUpdateHistory?.[0]).toMatchObject({
+      source: "memoryProposal",
+      operation: "append",
+      proposalId: "proposal-card-update",
+      previous: { content: expect.stringContaining("They spar as equals") },
+      next: { content: expect.stringContaining("private chambers") },
+    });
   });
 
   it("applies Story Card proposal type and auto-update settings when approving AI builder drafts", () => {
