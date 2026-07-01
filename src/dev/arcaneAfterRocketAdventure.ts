@@ -218,7 +218,7 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
   const storyCards = [
     makeStoryCard({
       id: ids.cards.seth,
-      title: "Seth - Proven Mage Councilor",
+      title: "Seth Valis",
       keys: ["Seth", "Councilor Seth", "mage Councilor", "the Council mage"],
       type: "character",
       memoryMode: "static",
