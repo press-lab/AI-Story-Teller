@@ -12,18 +12,18 @@ const baseConfig: RuntimeProviderSettings = {
 };
 
 describe("applyResponseLengthHint", () => {
-  it("applies a generous length-derived cap below the provider maximum", () => {
-    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(517);
+  it("applies a tight length-derived cap below the provider maximum", () => {
+    expect(applyResponseLengthHint(baseConfig, 150).maxOutputTokens).toBe(305);
   });
 
   it("adds a bounded reserve for hidden thought and memory tags", () => {
-    expect(applyResponseLengthHint(baseConfig, 150, 240).maxOutputTokens).toBe(637);
-    expect(applyResponseLengthHint(baseConfig, 150, 999).maxOutputTokens).toBe(697);
+    expect(applyResponseLengthHint(baseConfig, 150, 240).maxOutputTokens).toBe(365);
+    expect(applyResponseLengthHint(baseConfig, 150, 999).maxOutputTokens).toBe(395);
   });
 
   it("uses the same length cap when the provider has no usable cap", () => {
     const uncapped = { ...baseConfig, maxOutputTokens: 0 };
-    expect(applyResponseLengthHint(uncapped, 150).maxOutputTokens).toBe(517);
+    expect(applyResponseLengthHint(uncapped, 150).maxOutputTokens).toBe(305);
   });
 
   it("keeps an intentionally lower provider cap", () => {
@@ -31,7 +31,7 @@ describe("applyResponseLengthHint", () => {
   });
 
   it("clamps unsafe word targets before deriving the cap", () => {
-    expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(1440);
-    expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(252);
+    expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(830);
+    expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(155);
   });
 });
