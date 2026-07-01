@@ -89,6 +89,7 @@ export interface ComponentEntry {
   tokenBudget?: number;
   autoUpdate?: boolean;
   lastAutoUpdateTurn?: number;
+  lastMemoryUpdatedAt?: ISODateString;
   autoUpdateCooldownTurns?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -124,6 +125,7 @@ export interface StoryCard {
   /** Minimum turns between AI-generated updates or proposals for this card. */
   autoUpdateCooldownTurns: number;
   lastAutoUpdateTurn?: number;
+  lastMemoryUpdatedAt?: ISODateString;
   createdAt: ISODateString;
   updatedAt: ISODateString;
 }

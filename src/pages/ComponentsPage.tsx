@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, contentSnippet } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, contentSnippet, formatCompactTimestamp } from "./shared";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -230,6 +230,7 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
 
 function ComponentSummary({ component, query }: { component: ComponentEntry; query: string }) {
   const snippet = contentSnippet(component.content, query);
+  const memoryUpdatedAt = formatCompactTimestamp(component.lastMemoryUpdatedAt);
   return (
     <span className="story-card-summary">
       <span className="story-card-title"><Highlight text={TYPE_LABELS[component.type]} query={query} /></span>
@@ -238,6 +239,11 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
         {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
+        {memoryUpdatedAt && (
+          <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>
+            Memory {memoryUpdatedAt}
+          </span>
+        )}
       </span>
       {snippet && <span className="search-snippet"><Highlight text={snippet} query={query} /></span>}
     </span>

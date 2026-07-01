@@ -3,7 +3,7 @@ import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, Story
 import type { AuditRecommendation } from "../memory/storyCardAudit";
 import { makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, commaList, contentSnippet, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
@@ -47,6 +47,7 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
   const snippet = contentSnippet(card.content, query);
   const living = isLivingCard(card);
   const archivedCount = card.archivedFacts?.split("\n").filter((line) => line.trim()).length ?? 0;
+  const memoryUpdatedAt = formatCompactTimestamp(card.lastMemoryUpdatedAt);
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -61,6 +62,11 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
         {card.priority > 0 && <span className="badge badge-priority">p{card.priority}</span>}
         {card.keys.length > 0 && <span className="badge badge-priority">{card.keys.length} triggers</span>}
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
+        {memoryUpdatedAt && (
+          <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>
+            Memory {memoryUpdatedAt}
+          </span>
+        )}
       </span>
       <span className="story-card-keys">
         {card.keys.length > 0 ? card.keys.slice(0, 4).join(", ") : "title trigger"}

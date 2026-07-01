@@ -27,6 +27,11 @@ function touch<T extends { updatedAt: string }>(entry: T): T {
   return { ...entry, updatedAt: nowIso() };
 }
 
+function touchMemoryUpdate<T extends { updatedAt: string; lastMemoryUpdatedAt?: string }>(entry: T): T {
+  const timestamp = nowIso();
+  return { ...entry, updatedAt: timestamp, lastMemoryUpdatedAt: timestamp };
+}
+
 function touchAdventure(state: Adventure, patch: Partial<Adventure>): Adventure {
   const next = { ...state, ...patch, updatedAt: nowIso() };
   const summarizedIndex = next.rollingSummary.lastSummarizedMessageIndex;
@@ -689,7 +694,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         // budget so context stays bounded and superseded facts don't read as current.
         const budget = existing.tokenBudget && existing.tokenBudget > 0 ? existing.tokenBudget * 4 : DEFAULT_CARD_CONTENT_BUDGET;
         const merged = mergeCardContentToBudget(existing.content, safeContent, existing.archivedFacts ?? "", budget);
-        storyCard = touch({
+        storyCard = touchMemoryUpdate({
           ...existing,
           content: merged.content,
           archivedFacts: merged.archivedFacts,
@@ -703,7 +708,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           ...automationPatch(existing),
         });
       } else {
-        storyCard = touch({
+        storyCard = touchMemoryUpdate({
           ...existing,
           content: appendCardContent(existing.content, safeContent),
           keys: Array.from(new Set([
@@ -716,7 +721,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         });
       }
     } else if (existing) {
-      storyCard = touch({
+      storyCard = touchMemoryUpdate({
         ...existing,
         content: safeContent,
         // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
@@ -731,18 +736,20 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         ...automationPatch(existing),
       });
     } else {
-      storyCard = makeStoryCard({
-        title: cardTitle,
-        content: safeContent,
-        keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers),
-        memoryMode: proposal.memoryMode ?? "static",
-        type: proposal.storyCardType ?? "custom",
-        active: true,
-        pinned: false,
-        autoUpdate: proposal.autoUpdate ?? false,
-        autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
-        state: "memoryProposal",
-      });
+      storyCard = touchMemoryUpdate(
+        makeStoryCard({
+          title: cardTitle,
+          content: safeContent,
+          keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers),
+          memoryMode: proposal.memoryMode ?? "static",
+          type: proposal.storyCardType ?? "custom",
+          active: true,
+          pinned: false,
+          autoUpdate: proposal.autoUpdate ?? false,
+          autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
+          state: "memoryProposal",
+        }),
+      );
     }
     return { storyCards: upsertById(state.storyCards, storyCard) };
   }
@@ -750,15 +757,17 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
   if (proposal.proposedType === "brainUpdate") {
     const existing = state.brains.find((brain) => brain.id === proposal.targetId || brain.characterName === proposal.title);
     if (!existing) {
-      const storyCard = makeStoryCard({
-        title: proposal.title || "Memory Proposal",
-        content: proposal.content,
-        keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers),
-        memoryMode: proposal.memoryMode ?? "static",
-        type: "character",
-        active: true,
-        state: "memoryProposal routedFromMissingBrain",
-      });
+      const storyCard = touchMemoryUpdate(
+        makeStoryCard({
+          title: proposal.title || "Memory Proposal",
+          content: proposal.content,
+          keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers),
+          memoryMode: proposal.memoryMode ?? "static",
+          type: "character",
+          active: true,
+          state: "memoryProposal routedFromMissingBrain",
+        }),
+      );
       return { storyCards: upsertById(state.storyCards, storyCard) };
     }
     // Content may be a JSON patch (from auto-update flow) or a plain string (from Remember This)
@@ -797,16 +806,18 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       state.components.find((component) => component.type === "plotEssentials");
     const turn = state.activeState.turn;
     const component = target
-      ? touch({ ...target, content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content, lastAutoUpdateTurn: turn })
-      : makeComponent({
-          title: proposal.title || "Plot Essentials",
-          type: "plotEssentials",
-          content: proposal.content,
-          active: true,
-          alwaysOn: false,
-          pinned: false,
-          priority: 250,
-        });
+      ? touchMemoryUpdate({ ...target, content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content, lastAutoUpdateTurn: turn })
+      : touchMemoryUpdate(
+          makeComponent({
+            title: proposal.title || "Plot Essentials",
+            type: "plotEssentials",
+            content: proposal.content,
+            active: true,
+            alwaysOn: false,
+            pinned: false,
+            priority: 250,
+          }),
+        );
     return { components: upsertById(state.components, component) };
   }
 
@@ -824,17 +835,19 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       state.components.find((c) => c.type === componentType);
     const turn = state.activeState.turn;
     if (existing) {
-      return { components: upsertById(state.components, touch({ ...existing, content: proposal.content, lastAutoUpdateTurn: turn })) };
+      return { components: upsertById(state.components, touchMemoryUpdate({ ...existing, content: proposal.content, lastAutoUpdateTurn: turn })) };
     }
-    const component = makeComponent({
-      title: defaultTitle,
-      type: componentType,
-      content: proposal.content,
-      active: true,
-      alwaysOn: false,
-      pinned: false,
-      priority: defaultPriority,
-    });
+    const component = touchMemoryUpdate(
+      makeComponent({
+        title: defaultTitle,
+        type: componentType,
+        content: proposal.content,
+        active: true,
+        alwaysOn: false,
+        pinned: false,
+        priority: defaultPriority,
+      }),
+    );
     return { components: upsertById(state.components, { ...component, lastAutoUpdateTurn: turn }) };
   }
 
@@ -846,7 +859,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     if (!arcComp) return {};
     const existing = arcComp.content.trim();
     const newContent = existing ? `${existing}\n\n${proposal.content}` : proposal.content;
-    return { components: upsertById(state.components, touch({ ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn })) };
+    return { components: upsertById(state.components, touchMemoryUpdate({ ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn })) };
   }
 
   if (proposal.proposedType === "arcProposal") {
@@ -892,7 +905,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         )
       : state.storyCards;
 
-    const seededArc = touch({
+    const seededArc = touchMemoryUpdate({
       ...arcComp,
       arcPremise: premise,
       content: "",
@@ -1048,7 +1061,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       });
     case "APPLY_COMPONENT_UPDATE":
       return touchAdventure(state, {
-        components: updateById(state.components, action.componentId, (item) => touch({ ...item, content: action.content })),
+        components: updateById(state.components, action.componentId, (item) => touchMemoryUpdate({ ...item, content: action.content })),
       });
     case "REORDER_COMPONENT":
       return touchAdventure(state, { components: moveByPriority(state.components, action.componentId, action.direction) });
@@ -1070,7 +1083,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       });
     case "APPLY_STORY_CARD_UPDATE":
       return touchAdventure(state, {
-        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touch({ ...item, content: stripLeadingCardTitle(item.title, action.content) })),
+        storyCards: updateById(state.storyCards, action.storyCardId, (item) => touchMemoryUpdate({ ...item, content: stripLeadingCardTitle(item.title, action.content) })),
       });
     case "MARK_STORY_CARD_UPDATED":
       return touchAdventure(state, {

@@ -41,6 +41,7 @@ describe("applyAIMemoryUpdate", () => {
     expect(result.rejectedUpdates).toEqual([]);
     expect(result.appliedUpdates).toEqual([{ targetType: "component", targetId: "plot", actionTypes: ["APPLY_COMPONENT_UPDATE"] }]);
     expect(next.components[0].content).toBe("new plot");
+    expect(next.components[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
   });
 
   it("allows brain and story card memory updates through typed reducer actions", () => {
@@ -62,6 +63,21 @@ describe("applyAIMemoryUpdate", () => {
     ]);
     expect(next.brains[0].currentState).toBe("new");
     expect(next.storyCards[0]).toMatchObject({ content: "new card", keys: ["new"], state: "ai-updated" });
+    expect(next.storyCards[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
+  });
+
+  it("stamps story cards when AI memory updates only card metadata", () => {
+    const storyCard = makeStoryCard({ id: "card-joke", title: "Joke", content: "old", keys: ["old"] });
+    const adventure = { ...createDefaultAdventure("AI Bounds"), storyCards: [storyCard] };
+
+    const result = applyAIMemoryUpdate(adventure, [
+      { type: "storyCardUpdate", storyCardId: "card-joke", keys: ["new"] },
+    ]);
+    const next = result.actions.reduce((state, action) => adventureReducer(state, action), adventure);
+
+    expect(result.rejectedUpdates).toEqual([]);
+    expect(next.storyCards[0]).toMatchObject({ content: "old", keys: ["new"] });
+    expect(next.storyCards[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
   });
 
   it("rejects brain updates when the BrainEntry does not already exist", () => {

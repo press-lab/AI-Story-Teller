@@ -141,6 +141,35 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
+  it("shows memory update timestamps on Story Card and Component summaries", () => {
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      storyCards: [
+        makeStoryCard({
+          title: "Living Ally",
+          content: "Changes over time.",
+          active: true,
+          lastMemoryUpdatedAt: timestamp,
+        }),
+      ],
+      components: [
+        makeComponent({
+          title: "Plot Essentials",
+          type: "plotEssentials",
+          content: "The Beast is hunting Seth.",
+          lastMemoryUpdatedAt: timestamp,
+        }),
+      ],
+    };
+
+    render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
+    expect(screen.getByTitle(/Last memory update:/)).toHaveTextContent("Memory");
+    cleanup();
+
+    render(<ComponentsPage adventure={adventure} dispatch={() => undefined} />);
+    expect(screen.getByTitle(/Last memory update:/)).toHaveTextContent("Memory");
+  });
+
   it("covers Memory Inbox proposal creation and approval", async () => {
     const user = userEvent.setup();
     renderWithAdventure((adventure, dispatch) => <MemoryInboxPage adventure={adventure} dispatch={dispatch} />);
