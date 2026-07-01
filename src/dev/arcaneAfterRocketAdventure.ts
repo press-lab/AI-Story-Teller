@@ -71,27 +71,25 @@ The impact threw Councilors, guards, paper, and stone into a single screaming wa
 
 Now the room is full of people who did not have your habits.
 
-Jayce is on one knee in the wreckage, coughing blood into his glove, alive and staring at the crater as if he can still see the rocket crossing the sky. Mel is half-buried under a sheet of gilded paneling near the broken wall, gold armor-light fading around her body in uneven pulses. Two enforcers are trying to lift stone off another Councilor and failing.
+Jayce is alive, upright, and moving through the smoke with the stunned focus of a man whose body survived before his mind caught up. Mel is alive too - far too intact for the violence around her - gold at her collar and skin catching the firelight as if something answered before the blast could finish.
+
+Viktor did not get that miracle.
+
+He lies under a broken wash of marble and brass near the torn edge of the chamber floor, blood dark against his shirt, breath thin enough that the room seems to hold itself around each one. Jayce sees him and every promise about the Hexcore starts to become a problem with a pulse.
+
+Cassandra Kiramman is dead. Irius Bolbok is dead. Torman Hoskel is dead. Shoola is alive but hurt. Salo is alive, trapped in the wreckage, and screaming like the blast left part of him behind.
 
 Outside, Piltover is beginning to scream.
 
 The Hexgate alarm bells answer from every tower.
 
-Jayce looks up through smoke, eyes red, voice raw. "Seth."
+Jayce looks up through smoke, eyes red, voice raw. "Seth. Viktor's alive."
 
-Across the chamber, Mel's hand moves once beneath the wreckage.
+Mel's gaze cuts from the bodies to the doors, already understanding what Piltover will become when the names are spoken outside this room.
 
-Then the glass doors burst open and Caitlyn Kiramman comes in with a rifle in her hands, ash on her face, and Vi just behind her like a punch looking for a target.
-
-Caitlyn sees the room. Sees her mother's chair.
-
-Her expression changes.
-
-Jayce tries to stand. The motion almost drops him.
+No one has reached Caitlyn yet. No one has told her what this room took.
 
 From somewhere below the ruined floor, the Hextech emergency conduits start to hum wrong - a deep, resonant note that answers your wards like something heard you survive.
-
-Heimerdinger's voice carries from the corridor, small and horrified. "Do not touch the conduits."
 
 The hum rises anyway.`;
 
@@ -110,6 +108,8 @@ export function createArcaneAfterRocketAdventure(): Adventure {
 The player is Seth, a proven Piltover mage and surviving Councilor. Never write Seth's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.
 
 This scenario starts immediately after Jinx's rocket hits the Council chamber. Do not replay Season 1. Treat Season 1 as loaded history on Story Cards and in relationships.
+
+Respect the Season 2 opening facts: Jayce and Mel survive the blast and are not the critical injuries; Viktor is the near-death emergency; Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Shoola and Salo survive, with Salo crippled.
 
 Keep scenes active. Politics should become pressure, not paperwork. If evidence, Council orders, warrants, reports, emergency decrees, or investigations appear, convert them quickly into public confrontation, emergency response, raid planning, street danger, magical instability, or a character demanding Seth choose a side.
 
@@ -136,9 +136,9 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       content: `- The story opens at the start of Arcane Season 2, seconds after Jinx's rocket strikes the Piltover Council chamber.
 - Seth is an adult mage, surviving Council member, and proven exception in a city that distrusts mages; his always-on physical wards saved him from the rocket.
 - Seth helped Jayce and Viktor stabilize early Hextech after independently earning Piltover's tolerance as a disciplined, useful mage.
-- Piltover is wounded, furious, and leaderless; Zaun has lost Silco but not shimmer, fear, or faction pressure.
+- Piltover is wounded, furious, and leaderless after Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Jayce, Mel, Shoola, and Salo survive, with Salo crippled.
 - Seth is tied to Jayce, Viktor, Heimerdinger, Mel, Caitlyn, and later Ekko through existing trust, suspicion, technical work, and political need.
-- The immediate play is rescue, triage, Hextech instability, grief, blame, and Piltover's first response to Jinx and Zaun.`,
+- The immediate play is rescue, triage, Viktor's near-death Hexcore pressure, grief, blame, and Piltover's first response to Jinx and Zaun.`,
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -152,7 +152,7 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       id: ids.components.pressure,
       title: "Active Pressure",
       type: "activePressure",
-      content: "The Council chamber is burning around Seth, wounded allies need rescue, Caitlyn has just seen her mother's empty chair, and the damaged Hextech conduits beneath the floor are answering Seth's wards.",
+      content: "The Council chamber is burning around Seth; Jayce and Mel are alive, Viktor is barely alive, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, Shoola survived, and damaged Hextech conduits are answering Seth's wards.",
       alwaysOn: true,
       active: true,
       pinned: false,
@@ -284,8 +284,9 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       autoUpdateCooldownTurns: 1,
       content: `- Jinx's rocket struck the Piltover Council chamber at the opening of this scenario.
 - Seth survived because his always-on physical wards absorbed enough of the blast to keep him alive.
-- The chamber is burning, Councilors are dead or wounded, and Piltover is moving from fear to retaliation.
-- Caitlyn's mother, Cassandra Kiramman, was in the Council chamber. Caitlyn's grief is becoming one of Piltover's strongest political forces.
+- Jayce and Mel survived the blast; Shoola and Salo also survived, but Salo was crippled.
+- Caitlyn's mother, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel died in the attack. Caitlyn's grief is becoming one of Piltover's strongest political forces.
+- Viktor was left near death, forcing immediate Hexcore and medical pressure rather than ordinary Council triage.
 - The blast damaged Hextech conduits under the Council chamber; they are reacting strangely to Seth's wards and nearby arcane stress.`,
     }),
     makeStoryCard({
@@ -335,8 +336,9 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
       content: `- The Hexcore is no longer just an experiment. It reacts to blood, illness, desire, shimmer, magic, and survival pressure.
-- Viktor has hidden how much the Hexcore has changed him and how much it seems to answer need.
-- Seth is one of the few people who can understand the Hexcore's arcane behavior, making him useful and dangerous to Viktor's secrecy.
+- Before the rocket, Viktor had already crossed lines with shimmer, blood, and the Hexcore while trying to survive.
+- After the rocket, Viktor is near death; Jayce's choice to use the Hexcore turns an emergency medical crisis into arcane transformation.
+- Seth is one of the few people who can understand the Hexcore's arcane behavior, making him useful and dangerous around Viktor's survival.
 - Seth's amplification magic can stabilize or intensify the Hexcore, but every push risks making it stronger, hungrier, or less controllable.`,
     }),
     makeStoryCard({
@@ -349,7 +351,8 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       content: `- Jayce Talis is an inventor, Councilor, Hextech founder, and Seth's longtime technical/political ally.
 - Appearance: tall and broad-shouldered, dark hair, strong jaw, formal Council clothing under stress, usually looking more heroic than he feels.
 - Jayce trusts Seth's competence because Seth helped make Hextech possible, but Seth's caution can frustrate him when blood is already on the floor.
-- After the rocket, Jayce is wounded, grieving, angry, guilty, and vulnerable to Ambessa's argument that strength is the only language enemies respect.
+- After the rocket, Jayce survives physically functional but grieving, angry, guilty, and immediately focused on saving Viktor.
+- Jayce is vulnerable to Ambessa's argument that strength is the only language enemies respect, especially once bodies are counted.
 - Jayce wants control and accountability, but he is becoming the kind of man who might use Hextech violence to stop worse violence.
 
 VOICE CONTRACT
@@ -368,7 +371,8 @@ Example lines: "We built this to protect people. So we protect them." / "Tell me
       priority: 62,
       content: `- Viktor is a brilliant Zaun-born scientist, Hextech co-founder, and Seth's close technical collaborator.
 - Appearance: thin, pale, sharp-featured, amber-brown eyes, dark hair swept back, cane, brace, increasingly altered posture after Hexcore contact.
-- Viktor trusts Seth's arcane understanding but may hide the worst of the Hexcore because Seth could understand it and stop him.
+- At the start of Season 2, Viktor is no longer merely ill; the rocket leaves him near death and forces Jayce toward the Hexcore.
+- Viktor trusts Seth's arcane understanding but may hide the worst of the Hexcore after survival because Seth could understand it and stop him.
 - Viktor wants survival, progress, and proof that his work matters before his body fails. He is not reckless for spectacle; he is desperate with a scientist's discipline.
 - Viktor's Zaunite origin matters. Piltover values his mind while ignoring the world that made his body disposable.
 
@@ -410,7 +414,7 @@ Example lines: "My boy, progress is not measured only by speed." / "I have seen 
 - Appearance: elegant dark-skinned woman with gold ornamentation, immaculate cream-and-gold clothing, poised posture, and expressive eyes that reveal more when she is silent.
 - Mel values Seth's restraint, judgment, and ability to see political and arcane consequences at once.
 - Seth and Mel have trust built from Council work, private strategy, and mutual respect, but Mel still thinks in terms of power, positioning, and survival.
-- After the rocket, Mel is wounded or recovering, and Ambessa's war logic closes around every room she is not strong enough to control.
+- After the rocket, Mel survives far better than the room should allow; she is not the near-death case, but Ambessa's war logic closes around every room she is not strong enough to control.
 
 VOICE CONTRACT
 Rhythm: Smooth, composed, diplomatic; every sentence has a visible surface and a sharper underside.
@@ -619,7 +623,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.jayce,
       priority: 70,
       thoughts: {
-        rocket_aftermath: "The Council chamber is burning because we failed to stop this before it reached our own table. If I hesitate now, I am choosing more bodies.",
+        rocket_aftermath: "Viktor is dying because we brought magic to the table and called it progress. If there is a way to save him, I will see that before I see the cost.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -630,7 +634,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.viktor,
       priority: 72,
       thoughts: {
-        after_survival: "Seth may understand what the Hexcore did. That is precisely why I cannot let him see all of it yet.",
+        near_death: "Not yet. The work is not finished, and the body was always the least fair limit.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -652,7 +656,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.caitlyn,
       priority: 70,
       thoughts: {
-        mother_chair: "I brought the truth here and Jinx answered with a rocket. If Seth can help me reach her, fine. If he slows me down, he is Council first.",
+        mother_dead: "I brought the truth here and Jinx answered by killing my mother. If Seth can help me reach her, fine. If he slows me down, he is Council first.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -674,7 +678,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.vi,
       priority: 70,
       thoughts: {
-        after_rocket: "Jinx did this and Caitlyn is standing in the smoke where her mother should be. If Seth can help without making this a Council speech, maybe he is useful.",
+        after_rocket: "Jinx did this and Caitlyn lost her mother for it. If Seth can help without making this a Council speech, maybe he is useful.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -707,7 +711,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
     brains,
     rollingSummary: {
       content:
-        "Jinx has killed Silco and fired a rocket into the Piltover Council chamber. Seth, a proven mage Councilor whose always-on physical wards saved him, begins amid the burning aftermath as Piltover, Zaun, Hextech, and his closest political relationships fracture into Season 2 pressure.",
+        "Jinx has killed Silco and fired a rocket into the Piltover Council chamber. Seth, a proven mage Councilor whose always-on physical wards saved him, begins amid the burning aftermath: Jayce and Mel survive, Viktor is near death, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, and Piltover's first response starts to fracture every relationship around him.",
       updatedAt: timestamp,
     },
     messages: [],

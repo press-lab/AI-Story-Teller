@@ -78,8 +78,17 @@ describe("premade adventure library", () => {
 
     expect(adventure.title).toBe("Arcane: After the Rocket");
     expect(adventure.openingScene).toContain("The Council chamber is still burning");
+    expect(adventure.openingScene).toContain("Jayce is alive");
+    expect(adventure.openingScene).toContain("Mel is alive");
+    expect(adventure.openingScene).toContain("Viktor did not get that miracle");
+    expect(adventure.openingScene).toContain("Cassandra Kiramman is dead");
+    expect(adventure.openingScene).toContain("Torman Hoskel is dead");
+    expect(adventure.openingScene).not.toContain("Mel is half-buried");
+    expect(adventure.openingScene).not.toContain("Caitlyn Kiramman comes in");
     expect(pe.split("\n")).toHaveLength(6);
     expect(pe).toContain("seconds after Jinx's rocket strikes");
+    expect(pe).toContain("Irius Bolbok");
+    expect(pe).toContain("Salo crippled");
     expect(pe).not.toContain("VOICE CONTRACT");
     expect(sethMagic?.content).toContain("basic physical wards are always up");
     expect(mel?.content).toContain("No romance with Seth");
