@@ -16,10 +16,14 @@ import {
   createRookeryAdventure,
   rookeryAdventureTitle,
 } from "./rookeryAdventure";
+import {
+  arcaneAfterRocketAdventureTitle,
+  createArcaneAfterRocketAdventure,
+} from "./arcaneAfterRocketAdventure";
 import crucibleComponents from "./premades/crucible-protocol-components.json";
 import crucibleStoryCards from "./premades/crucible-protocol-story-cards.json";
 
-export type PremadeAdventureId = "dragon-throne" | "dispatch-sdn" | "crucible-protocol" | "rookery";
+export type PremadeAdventureId = "dragon-throne" | "dispatch-sdn" | "crucible-protocol" | "rookery" | "arcane-after-rocket";
 
 export interface PremadeAdventureDefinition {
   id: PremadeAdventureId;
@@ -285,6 +289,18 @@ function createRookeryPremadeStoryCardsJson(): string {
   return premadeStoryCardsJson(createRookeryPremadeAdventure);
 }
 
+function createArcaneAfterRocketPremadeAdventure(): Adventure {
+  return applyPremadeBestPractices(createArcaneAfterRocketAdventure());
+}
+
+function createArcaneAfterRocketPremadeAdventureJson(): string {
+  return premadeAdventureJson(createArcaneAfterRocketPremadeAdventure);
+}
+
+function createArcaneAfterRocketPremadeStoryCardsJson(): string {
+  return premadeStoryCardsJson(createArcaneAfterRocketPremadeAdventure);
+}
+
 export const premadeAdventures: PremadeAdventureDefinition[] = [
   {
     id: "dragon-throne",
@@ -325,6 +341,16 @@ export const premadeAdventures: PremadeAdventureDefinition[] = [
     createAdventure: createRookeryPremadeAdventure,
     createAdventureJson: createRookeryPremadeAdventureJson,
     createStoryCardsJson: createRookeryPremadeStoryCardsJson,
+  },
+  {
+    id: "arcane-after-rocket",
+    title: arcaneAfterRocketAdventureTitle,
+    eyebrow: "Arcane AU",
+    summary: "Season 2 aftermath with Seth as a proven Council mage, Hextech amplifier, and survivor of Jinx's rocket.",
+    tags: ["Arcane", "Piltover", "Zaun", "Hextech"],
+    createAdventure: createArcaneAfterRocketPremadeAdventure,
+    createAdventureJson: createArcaneAfterRocketPremadeAdventureJson,
+    createStoryCardsJson: createArcaneAfterRocketPremadeStoryCardsJson,
   },
 ];
 

@@ -9,6 +9,7 @@ describe("premade adventure library", () => {
       "dispatch-sdn",
       "crucible-protocol",
       "rookery",
+      "arcane-after-rocket",
     ]);
   });
 
@@ -65,5 +66,23 @@ describe("premade adventure library", () => {
     expect(pe).not.toContain("electricity, light, radiation");
     expect(adventure.storyCards.find((card) => card.title === "Hollis Pike")?.keys).not.toContain("bartender");
     expect(adventure.storyCards.find((card) => card.title === "Powered Mercenary Network")?.keys).not.toContain("contract work");
+  });
+
+  it("loads Arcane After the Rocket with tight Plot Essentials and character cards", () => {
+    const arcane = premadeAdventures.find((premade) => premade.id === "arcane-after-rocket")!;
+    const adventure = arcane.createAdventure();
+    const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
+    const mel = adventure.storyCards.find((card) => card.title === "Mel Medarda");
+    const sethMagic = adventure.storyCards.find((card) => card.title === "Seth's Magic");
+
+    expect(adventure.title).toBe("Arcane: After the Rocket");
+    expect(adventure.openingScene).toContain("The Council chamber is still burning");
+    expect(pe.split("\n")).toHaveLength(6);
+    expect(pe).toContain("seconds after Jinx's rocket strikes");
+    expect(pe).not.toContain("VOICE CONTRACT");
+    expect(sethMagic?.content).toContain("basic physical wards are always up");
+    expect(mel?.content).toContain("No romance with Seth");
+    expect(mel?.content).toContain("VOICE CONTRACT");
+    expect(adventure.storyCards.find((card) => card.title === "Loaded Season One History")?.memoryMode).toBe("historical");
   });
 });
