@@ -51,8 +51,8 @@ const ids = {
     mel: "arcane-after-brain-mel",
     caitlyn: "arcane-after-brain-caitlyn",
     jinx: "arcane-after-brain-jinx",
+    vi: "arcane-after-brain-vi",
     ekko: "arcane-after-brain-ekko",
-    ambessa: "arcane-after-brain-ambessa",
   },
   message: "arcane-after-msg-opening",
 };
@@ -668,6 +668,17 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
+      id: ids.brains.vi,
+      characterName: "Vi",
+      triggers: ["Vi", "Violet"],
+      linkedStoryCardId: ids.cards.vi,
+      priority: 70,
+      thoughts: {
+        after_rocket: "Jinx did this and Caitlyn is standing in the smoke where her mother should be. If Seth can help without making this a Council speech, maybe he is useful.",
+      },
+      autoUpdateCooldownTurns: 1,
+    }),
+    makeBrain({
       id: ids.brains.ekko,
       characterName: "Ekko",
       triggers: ["Ekko", "Firelights"],
@@ -675,17 +686,6 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       priority: 68,
       thoughts: {
         council_mage: "Heimerdinger says Seth is different. Council people love being different right up until Zaun pays for it.",
-      },
-      autoUpdateCooldownTurns: 1,
-    }),
-    makeBrain({
-      id: ids.brains.ambessa,
-      characterName: "Ambessa Medarda",
-      triggers: ["Ambessa", "Medarda"],
-      linkedStoryCardId: ids.cards.ambessa,
-      priority: 68,
-      thoughts: {
-        weapon_assessment: "The mage survived a rocket that killed Councilors. Piltover will either use him or fear him. Preferably both, if guided well.",
       },
       autoUpdateCooldownTurns: 1,
     }),

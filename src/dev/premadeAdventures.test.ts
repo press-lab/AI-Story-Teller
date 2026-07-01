@@ -74,6 +74,7 @@ describe("premade adventure library", () => {
     const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
     const mel = adventure.storyCards.find((card) => card.title === "Mel Medarda");
     const sethMagic = adventure.storyCards.find((card) => card.title === "Seth's Magic");
+    const brainNames = adventure.brains.map((brain) => brain.characterName);
 
     expect(adventure.title).toBe("Arcane: After the Rocket");
     expect(adventure.openingScene).toContain("The Council chamber is still burning");
@@ -84,5 +85,7 @@ describe("premade adventure library", () => {
     expect(mel?.content).toContain("No romance with Seth");
     expect(mel?.content).toContain("VOICE CONTRACT");
     expect(adventure.storyCards.find((card) => card.title === "Loaded Season One History")?.memoryMode).toBe("historical");
+    expect(brainNames).toContain("Vi");
+    expect(brainNames).not.toContain("Ambessa Medarda");
   });
 });
