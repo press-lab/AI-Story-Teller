@@ -3602,27 +3602,85 @@ mark.search-highlight {
   line-height: 1.4;
 }
 
-/* ── Audit trigger (button + turns inline) ───────────── */
+/* ── Story card maintenance tools ───────────────────── */
 
-.audit-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
+.story-card-maintenance-grid,
+.component-maintenance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 10px;
 }
 
-.audit-turns-wrap {
+.story-card-tool-card,
+.component-tool-card {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--page-bg));
+}
+
+.story-card-tool-card-primary,
+.component-tool-card-primary {
+  border-color: color-mix(in srgb, #d89425 46%, var(--border));
+  background: color-mix(in srgb, var(--surface) 78%, #f0a82f 9%);
+}
+
+.story-card-tool-copy,
+.component-tool-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.story-card-tool-copy h3,
+.component-tool-copy h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.story-card-tool-copy .muted,
+.component-tool-copy .muted {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.story-card-tool-controls,
+.component-tool-controls,
+.story-card-json-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.story-card-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+
+.turn-window-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .audit-turns-input {
   width: 3.5rem;
   text-align: center;
   padding: 2px 4px;
+}
+
+.story-card-json-panel textarea {
+  min-height: 120px;
 }
 
 /* ── Audit modal ─────────────────────────────────────── */
@@ -4680,6 +4738,26 @@ summary {
   .import-export-card .toolbar {
     display: grid;
     align-items: stretch;
+  }
+
+  .story-card-maintenance-grid,
+  .component-maintenance-grid,
+  .story-card-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .story-card-tool-controls,
+  .component-tool-controls,
+  .story-card-json-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .story-card-tool-controls button,
+  .component-tool-controls button,
+  .story-card-json-actions button {
+    width: 100%;
   }
 
   .import-export-card textarea {

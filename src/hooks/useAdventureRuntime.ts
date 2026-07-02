@@ -5,6 +5,7 @@ import { regenerateProposalContent } from "../memory/memoryDetection";
 import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
 import { PLOT_ESSENTIALS_BEST_PRACTICES } from "../ai/authoringBestPractices";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
+import { runComponentAudit, type ComponentAuditRecommendation } from "../memory/componentAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
 import {
@@ -521,6 +522,11 @@ export function useAdventureRuntime(
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
   }
 
+  async function auditComponents(nTurns: number): Promise<ComponentAuditRecommendation[]> {
+    if (!adventure) return [];
+    return runComponentAudit(adventure, activeProviderConfig, nTurns);
+  }
+
   async function regenerateMemoryProposal(proposalId: string): Promise<void> {
     if (!adventure) return;
     const proposal = adventure.activeState.memoryProposals.find((p) => p.id === proposalId);
@@ -662,6 +668,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     buildStoryCardMemory,
     buildPlotMemory,
     auditStoryCards,
+    auditComponents,
     regenerateMemoryProposal,
     regeneratePlotEssentials,
     generateComponent,

@@ -117,6 +117,54 @@ describe("side menu page smoke coverage", () => {
     });
   });
 
+  it("surfaces Story Card cleanup as a maintenance action", async () => {
+    const user = userEvent.setup();
+    const onAuditStoryCards = vi.fn(async () => []);
+    const onSuggestCardUpdates = vi.fn(async () => undefined);
+
+    renderWithAdventure((adventure, dispatch) => (
+      <StoryCardsPage
+        adventure={adventure}
+        dispatch={dispatch}
+        loading={false}
+        onAuditStoryCards={onAuditStoryCards}
+        onSuggestCardUpdates={onSuggestCardUpdates}
+      />
+    ));
+
+    expect(screen.getByText("Review and Maintain Cards")).toBeInTheDocument();
+    expect(screen.getByText("Clean up existing cards")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clean Up Cards" })).toBeInTheDocument();
+    expect(screen.getByText("Automatic Card Updates")).toBeInTheDocument();
+    expect(screen.getByText("Story Card JSON")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clean Up Cards" }));
+    expect(onAuditStoryCards).toHaveBeenCalledWith(20);
+  });
+
+  it("surfaces Plot Component cleanup as a maintenance action", async () => {
+    const user = userEvent.setup();
+    const onAuditComponents = vi.fn(async () => []);
+    const onSuggestPlotUpdates = vi.fn(async () => undefined);
+
+    renderWithAdventure((adventure, dispatch) => (
+      <ComponentsPage
+        adventure={adventure}
+        dispatch={dispatch}
+        loading={false}
+        onAuditComponents={onAuditComponents}
+        onSuggestPlotUpdates={onSuggestPlotUpdates}
+      />
+    ));
+
+    expect(screen.getByText("Review and Maintain Components")).toBeInTheDocument();
+    expect(screen.getByText("Clean up plot components")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clean Up Components" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clean Up Components" }));
+    expect(onAuditComponents).toHaveBeenCalledWith(20);
+  });
+
   it("filters Story Cards by active status and living mode", async () => {
     const user = userEvent.setup();
     const adventure: Adventure = {

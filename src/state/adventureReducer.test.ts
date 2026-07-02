@@ -1215,6 +1215,60 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "pe-replacement")?.status).toBe("approved");
   });
 
+  it("archives direct AI Plot Essentials replacements through historical Story Card proposals", () => {
+    const plot = makeComponent({
+      id: "component-pe-direct",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content:
+        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- Caitlyn is currently sealing the Pumpworks with a task force.",
+      active: true,
+    });
+    let state = { ...baseAdventure(), components: [plot] };
+
+    state = reduce(state, {
+      type: "APPLY_COMPONENT_UPDATE",
+      componentId: "component-pe-direct",
+      content: "- Caitlyn's task force has moved from sealing the Pumpworks to guarding the canal exits.",
+    });
+
+    expect(state.components.find((component) => component.id === "component-pe-direct")?.content).toBe(
+      "- Caitlyn's task force has moved from sealing the Pumpworks to guarding the canal exits.",
+    );
+    const outgoing = state.activeState.memoryProposals.filter(
+      (proposal) => proposal.proposedType === "storyCard" && proposal.status === "pending",
+    );
+    expect(outgoing.some((proposal) => proposal.content.includes("Drowned Choir"))).toBe(true);
+    expect(outgoing.every((proposal) => proposal.memoryMode === "historical")).toBe(true);
+  });
+
+  it("auto-approves outgoing Plot Essentials history when Story Cards are auto-approved", () => {
+    const plot = makeComponent({
+      id: "component-pe-auto-history",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content:
+        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- Caitlyn is currently sealing the Pumpworks with a task force.",
+      active: true,
+    });
+    let state = {
+      ...baseAdventure(),
+      components: [plot],
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, storyCard: true },
+    };
+
+    state = reduce(state, {
+      type: "APPLY_COMPONENT_UPDATE",
+      componentId: "component-pe-auto-history",
+      content: "- Caitlyn's task force has moved from sealing the Pumpworks to guarding the canal exits.",
+    });
+
+    expect(state.storyCards.some((card) => card.content.includes("Drowned Choir") && card.memoryMode === "historical")).toBe(true);
+    expect(state.activeState.memoryProposals.some((proposal) => proposal.status === "approved" && proposal.content.includes("Drowned Choir"))).toBe(true);
+  });
+
   it("does not resurrect a dismissed suggestion, but still allows new living-card updates", () => {
     let state = baseAdventure();
 

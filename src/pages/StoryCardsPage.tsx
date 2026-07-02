@@ -264,6 +264,7 @@ export function StoryCardsPage({
     .filter((g) => g.cards.length > 0);
   const totalCards = adventure.storyCards.length;
   const activeCards = adventure.storyCards.filter((c) => c.active);
+  const autoCard = adventure.storyCards.find((c) => c.autoUpdate);
   const activeCount = activeCards.length;
   const visibleCount = groups.reduce((sum, group) => sum + group.cards.length, 0);
   const livingCount = adventure.storyCards.filter(isLivingCard).length;
@@ -465,12 +466,74 @@ export function StoryCardsPage({
         </div>
       </div>
 
-      <details className="panel editor-tools-panel">
-        <summary>Upkeep, auto-update, and JSON</summary>
-        <div className="toolbar">
-          <span className="audit-trigger">
-            <span className="audit-turns-wrap">
-              Update cards every
+      {(onAuditStoryCards || onSuggestCardUpdates) && (
+        <details className="panel editor-tools-panel story-card-maintenance-panel" open>
+          <summary>Review and Maintain Cards</summary>
+          <div className="story-card-maintenance-grid">
+            {onAuditStoryCards && (
+              <section className="story-card-tool-card story-card-tool-card-primary">
+                <div className="story-card-tool-copy">
+                  <h3>Clean up existing cards</h3>
+                  <p className="muted">
+                    Find broad triggers, stale current facts, misplaced history, duplicate cards, and profile details that should be split into living or historical cards.
+                  </p>
+                </div>
+                <div className="story-card-tool-controls">
+                  <button
+                    type="button"
+                    className="primary-action"
+                    disabled={loading || audit?.status === "running"}
+                    onClick={runAudit}
+                    title="Review existing cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
+                  >
+                    {audit?.status === "running" ? "Cleaning..." : "Clean Up Cards"}
+                  </button>
+                  <label className="turn-window-field">
+                    <span>Review last</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={auditTurns}
+                      onChange={(e) => setAuditTurns(Math.max(1, Number(e.target.value)))}
+                      className="audit-turns-input"
+                    />
+                    <span>turns</span>
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {onSuggestCardUpdates && (
+              <section className="story-card-tool-card">
+                <div className="story-card-tool-copy">
+                  <h3>Suggest updates from recent play</h3>
+                  <p className="muted">
+                    Ask the AI to review recent story turns and draft Memory Suggestions for active cards. You still approve them before they become memory.
+                  </p>
+                </div>
+                <div className="story-card-tool-controls">
+                  <button
+                    type="button"
+                    disabled={loading || activeCards.length === 0}
+                    onClick={onSuggestCardUpdates}
+                    title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
+                  >
+                    {loading ? "Generating..." : "Suggest Card Updates"}
+                  </button>
+                </div>
+              </section>
+            )}
+          </div>
+        </details>
+      )}
+
+      <details className="panel editor-tools-panel story-card-automation-panel">
+        <summary>Automatic Card Updates</summary>
+        <div className="story-card-settings-grid">
+          <Field label="System-wide auto-update cooldown">
+            <span className="turn-window-field">
+              <span>Update at most once every</span>
               <input
                 type="number"
                 min={0}
@@ -481,103 +544,65 @@ export function StoryCardsPage({
                 }}
                 className="audit-turns-input"
               />
-              turns
+              <span>turns</span>
             </span>
-          </span>
-          {onSuggestCardUpdates && (
-            <button
-              type="button"
-              disabled={loading || activeCards.length === 0}
-              onClick={onSuggestCardUpdates}
-              title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
+          </Field>
+          <CheckboxField
+            label="Auto-update one card per semantic eval"
+            checked={!!autoCard}
+            onChange={(checked) => {
+              if (!checked && autoCard) {
+                dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdate: false } });
+              } else if (checked && !autoCard && activeCards.length > 0) {
+                dispatch({ type: "UPDATE_STORY_CARD", storyCardId: activeCards[0].id, patch: { autoUpdate: true } });
+              }
+            }}
+          />
+          <Field label="Card to auto-update">
+            <select
+              value={autoCard?.id ?? ""}
+              disabled={!autoCard}
+              onChange={(e) => {
+                const newId = e.target.value;
+                adventure.storyCards.forEach((c) => {
+                  if (c.autoUpdate && c.id !== newId) {
+                    dispatch({ type: "UPDATE_STORY_CARD", storyCardId: c.id, patch: { autoUpdate: false } });
+                  }
+                });
+                if (newId) dispatch({ type: "UPDATE_STORY_CARD", storyCardId: newId, patch: { autoUpdate: true } });
+              }}
             >
-              {loading ? "Generating..." : "Suggest Updates"}
-            </button>
+              {!autoCard && <option value="">none selected</option>}
+              {activeCards.map((c) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </Field>
+          {autoCard && (
+            <Field label="Selected card cooldown">
+              <NumberInput
+                value={autoCard.autoUpdateCooldownTurns ?? 3}
+                min={0}
+                onChange={(autoUpdateCooldownTurns) =>
+                  dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdateCooldownTurns } })
+                }
+              />
+            </Field>
           )}
-          {onAuditStoryCards && (
-            <span className="audit-trigger">
-              <button
-                type="button"
-                disabled={loading || audit?.status === "running"}
-                onClick={runAudit}
-                title="Review existing cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
-              >
-                {audit?.status === "running" ? "Cleaning..." : "Clean Up Cards"}
-              </button>
-              <span className="audit-turns-wrap">
-                last
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  value={auditTurns}
-                  onChange={(e) => setAuditTurns(Math.max(1, Number(e.target.value)))}
-                  className="audit-turns-input"
-                />
-                turns
-              </span>
-            </span>
-          )}
+        </div>
+      </details>
+
+      <details className="panel editor-tools-panel story-card-json-panel">
+        <summary>Story Card JSON</summary>
+        <div className="story-card-json-actions">
           <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
             Copy Story Cards JSON
           </button>
+          <span className="muted">Advanced import/export for backups and reusable card packs.</span>
         </div>
-
-      {(() => {
-        const activeCards = adventure.storyCards.filter((c) => c.active);
-        const autoCard = adventure.storyCards.find((c) => c.autoUpdate);
-        return (
-          <div className="toolbar">
-            <CheckboxField
-              label="Auto-update one card per eval"
-              checked={!!autoCard}
-              onChange={(checked) => {
-                if (!checked && autoCard) {
-                  dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdate: false } });
-                } else if (checked && !autoCard && activeCards.length > 0) {
-                  dispatch({ type: "UPDATE_STORY_CARD", storyCardId: activeCards[0].id, patch: { autoUpdate: true } });
-                }
-              }}
-            />
-            <Field label="Card to auto-update">
-              <select
-                value={autoCard?.id ?? ""}
-                disabled={!autoCard}
-                onChange={(e) => {
-                  const newId = e.target.value;
-                  adventure.storyCards.forEach((c) => {
-                    if (c.autoUpdate && c.id !== newId) {
-                      dispatch({ type: "UPDATE_STORY_CARD", storyCardId: c.id, patch: { autoUpdate: false } });
-                    }
-                  });
-                  if (newId) dispatch({ type: "UPDATE_STORY_CARD", storyCardId: newId, patch: { autoUpdate: true } });
-                }}
-              >
-                {!autoCard && <option value="">— none selected —</option>}
-                {activeCards.map((c) => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
-            </Field>
-            {autoCard && (
-              <Field label="Cooldown (turns)">
-                <NumberInput
-                  value={autoCard.autoUpdateCooldownTurns ?? 3}
-                  min={0}
-                  onChange={(autoUpdateCooldownTurns) =>
-                    dispatch({ type: "UPDATE_STORY_CARD", storyCardId: autoCard.id, patch: { autoUpdateCooldownTurns } })
-                  }
-                />
-              </Field>
-            )}
-          </div>
-        );
-      })()}
-      </details>
-
-      <details className="panel">
-        <summary>Import Story Cards JSON</summary>
-        <textarea rows={6} value={importText} onChange={(event) => setImportText(event.target.value)} />
+        <Field label="Import Story Cards JSON">
+          <textarea rows={6} value={importText} onChange={(event) => setImportText(event.target.value)} />
+        </Field>
         <button type="button" onClick={importCards}>
           Import Story Cards
         </button>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
+import type { ComponentAuditRecommendation } from "../memory/componentAudit";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
@@ -255,6 +256,7 @@ interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
   onBuildPlotMemory?: (request: PlotAIBuilderRequest) => Promise<void>;
+  onAuditComponents?: (nTurns: number) => Promise<ComponentAuditRecommendation[]>;
   onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
   onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
   /** Generate fresh content for Narration Rules / AI Instructions / Author's Note. Returns a string for review. */
@@ -265,7 +267,14 @@ interface ComponentsPageProps extends AdventurePageProps {
   onProposeArcFromHistory?: (componentId: string) => Promise<void>;
 }
 
+type ComponentAuditState = {
+  status: "running" | "done" | "error";
+  recommendations: ComponentAuditRecommendation[];
+  errorMessage?: string;
+};
+
 const GENERATABLE_COMPONENT_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "authorNote"]);
+const COMPONENT_AUDIT_TYPES: ComponentType[] = ["plotEssentials", "activePressure", "currentArc", "custom", "memory"];
 
 const PLOT_GROUP_DEFINITIONS: Array<{
   id: string;
@@ -287,7 +296,7 @@ const PLOT_GROUP_DEFINITIONS: Array<{
   },
 ];
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
   const [search, setSearch] = useState("");
   const [plotBuilderDescription, setPlotBuilderDescription] = useState("");
   const [plotBuilderTarget, setPlotBuilderTarget] = useState<PlotAIBuilderRequest["target"]>("plotEssentials");
@@ -297,6 +306,65 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
   const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
   const [openComponentId, setOpenComponentId] = useState<string | null>(null);
+  const [componentAuditTurns, setComponentAuditTurns] = useState(20);
+  const [componentAudit, setComponentAudit] = useState<ComponentAuditState | null>(null);
+
+  function updateComponentAuditRec(id: string, patch: Partial<ComponentAuditRecommendation>) {
+    setComponentAudit((prev) => prev && {
+      ...prev,
+      recommendations: prev.recommendations.map((rec) => rec.id === id ? { ...rec, ...patch } : rec),
+    });
+  }
+
+  function approveComponentAuditRec(rec: ComponentAuditRecommendation) {
+    if (rec.action === "delete" && rec.componentId) {
+      dispatch({ type: "DELETE_COMPONENT", componentId: rec.componentId });
+    } else if (rec.action === "edit" && rec.componentId) {
+      const current = adventure.components.find((component) => component.id === rec.componentId);
+      if (current?.type === "plotEssentials" && rec.suggestedType === "plotEssentials" && current.content !== rec.editedContent) {
+        dispatch({ type: "APPLY_COMPONENT_UPDATE", componentId: rec.componentId, content: rec.editedContent });
+        if (current.title !== rec.title) {
+          dispatch({ type: "UPDATE_COMPONENT", componentId: rec.componentId, patch: { title: rec.title } });
+        }
+      } else {
+        dispatch({
+          type: "UPDATE_COMPONENT",
+          componentId: rec.componentId,
+          patch: {
+            title: rec.title,
+            content: rec.editedContent,
+            type: rec.suggestedType,
+          },
+        });
+      }
+    } else if (rec.action === "create") {
+      dispatch({
+        type: "UPSERT_COMPONENT",
+        component: makeComponent({
+          title: rec.title || TYPE_LABELS[rec.suggestedType],
+          type: rec.suggestedType,
+          content: rec.editedContent,
+          active: true,
+        }),
+      });
+    }
+    updateComponentAuditRec(rec.id, { decision: "approved" });
+  }
+
+  async function runComponentAudit() {
+    if (!onAuditComponents) return;
+    setComponentAudit({ status: "running", recommendations: [] });
+    try {
+      const recommendations = await onAuditComponents(componentAuditTurns);
+      setComponentAudit({ status: "done", recommendations });
+    } catch (err) {
+      setComponentAudit({
+        status: "error",
+        recommendations: [],
+        errorMessage: err instanceof Error ? err.message : "Component cleanup failed.",
+      });
+    }
+  }
 
   function handleGraduateArc(component: ComponentEntry) {
     if (graduateConfirm !== component.id) {
@@ -489,17 +557,69 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         >
           Add Custom Block
         </button>
-        {onSuggestPlotUpdates && (
-          <button
-            type="button"
-            disabled={loading || !hasActivePlotEssentials}
-            onClick={onSuggestPlotUpdates}
-            title="Ask the AI to review recent story turns and suggest updates to Plot Essentials. Results appear in Memory Suggestions."
-          >
-            {loading ? "Generating…" : "Suggest Updates"}
-          </button>
-        )}
       </div>
+
+      {(onAuditComponents || onSuggestPlotUpdates) && (
+        <details className="panel editor-tools-panel component-maintenance-panel" open>
+          <summary>Review and Maintain Components</summary>
+          <div className="component-maintenance-grid">
+            {onAuditComponents && (
+              <section className="component-tool-card component-tool-card-primary">
+                <div className="component-tool-copy">
+                  <h3>Clean up plot components</h3>
+                  <p className="muted">
+                    Find bloated Plot Essentials, stale active pressure, disabled legacy blocks, duplicate always-on facts, and current-state/history drift.
+                  </p>
+                </div>
+                <div className="component-tool-controls">
+                  <button
+                    type="button"
+                    className="primary-action"
+                    disabled={loading || componentAudit?.status === "running"}
+                    onClick={runComponentAudit}
+                    title="Review existing plot components and get cleanup suggestions."
+                  >
+                    {componentAudit?.status === "running" ? "Cleaning..." : "Clean Up Components"}
+                  </button>
+                  <label className="turn-window-field">
+                    <span>Review last</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      value={componentAuditTurns}
+                      onChange={(event) => setComponentAuditTurns(Math.max(1, Number(event.target.value)))}
+                      className="audit-turns-input"
+                    />
+                    <span>turns</span>
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {onSuggestPlotUpdates && (
+              <section className="component-tool-card">
+                <div className="component-tool-copy">
+                  <h3>Suggest Plot Essentials updates</h3>
+                  <p className="muted">
+                    Ask the AI to draft Memory Suggestions from recent play. Results open in Memory Suggestions for review.
+                  </p>
+                </div>
+                <div className="component-tool-controls">
+                  <button
+                    type="button"
+                    disabled={loading || !hasActivePlotEssentials}
+                    onClick={onSuggestPlotUpdates}
+                    title="Ask the AI to review recent story turns and suggest updates to Plot Essentials. Results appear in Memory Suggestions."
+                  >
+                    {loading ? "Generating..." : "Suggest Plot Updates"}
+                  </button>
+                </div>
+              </section>
+            )}
+          </div>
+        </details>
+      )}
 
       <div className="component-group-list">
         {componentGroups.map((group) => (
@@ -807,6 +927,86 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
           </details>
         ))}
       </div>
+
+      {componentAudit && componentAudit.status !== "running" && (
+        <div className="audit-modal-overlay" onClick={(event) => { if (event.target === event.currentTarget) setComponentAudit(null); }}>
+          <div className="audit-modal">
+            <div className="audit-modal-header">
+              <h3>Plot Component Cleanup</h3>
+              <button type="button" className="audit-modal-close" onClick={() => setComponentAudit(null)}>x</button>
+            </div>
+
+            {componentAudit.status === "error" && (
+              <p className="audit-error">{componentAudit.errorMessage}</p>
+            )}
+
+            {componentAudit.status === "done" && componentAudit.recommendations.length === 0 && (
+              <p className="muted">No changes recommended - your plot components look good.</p>
+            )}
+
+            {componentAudit.recommendations.map((rec) => (
+              <div key={rec.id} className={`audit-rec ${rec.decision !== "pending" ? `audit-rec-${rec.decision}` : ""}`}>
+                <div className="audit-rec-header">
+                  <span className={`audit-badge audit-badge-${rec.action}`}>{rec.action.toUpperCase()}</span>
+                  {rec.source === "deterministic" && <span className="audit-badge audit-badge-det">DETECTED</span>}
+                  {rec.action !== "delete" && <span className="audit-badge audit-badge-det">{TYPE_LABELS[rec.suggestedType]}</span>}
+                  <span className="audit-rec-title">{rec.title}</span>
+                  {rec.decision !== "pending" && (
+                    <span className={`audit-badge audit-badge-decision-${rec.decision}`}>{rec.decision}</span>
+                  )}
+                </div>
+                <p className="audit-rec-rationale">{rec.rationale}</p>
+
+                {rec.action !== "delete" && (
+                  <div className="audit-rec-fields">
+                    <div className="field-row">
+                      <Field label="Title">
+                        <input
+                          value={rec.title}
+                          onChange={(event) => updateComponentAuditRec(rec.id, { title: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                      <Field label="Type">
+                        <select
+                          value={rec.suggestedType}
+                          onChange={(event) => updateComponentAuditRec(rec.id, { suggestedType: event.target.value as ComponentType })}
+                          disabled={rec.decision !== "pending"}
+                        >
+                          {COMPONENT_AUDIT_TYPES.map((type) => (
+                            <option key={type} value={type}>{TYPE_LABELS[type]}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Content">
+                      <textarea
+                        rows={6}
+                        value={rec.editedContent}
+                        onChange={(event) => updateComponentAuditRec(rec.id, { editedContent: event.target.value })}
+                        disabled={rec.decision !== "pending"}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                <div className="audit-rec-actions">
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => approveComponentAuditRec(rec)}>
+                    Approve
+                  </button>
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => updateComponentAuditRec(rec.id, { decision: "rejected" })}>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="audit-modal-footer">
+              <button type="button" onClick={() => setComponentAudit(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

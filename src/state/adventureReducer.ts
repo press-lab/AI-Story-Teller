@@ -715,15 +715,15 @@ function triggersFromFact(fact: string): string[] {
     .slice(0, 4);
 }
 
-function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryProposal): MemoryProposal[] {
-  if (proposal.proposedType !== "plotEssentialsUpdate" || proposal.appendContent) return [];
-  const target =
-    state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
-    state.components.find((component) => component.type === "plotEssentials");
-  if (!target?.content.trim() || !proposal.content.trim()) return [];
-  const newNormalized = normalizedReplacementContent(proposal.content);
+function outgoingPlotEssentialsProposalsForReplacement(
+  state: Adventure,
+  target: ComponentEntry | undefined,
+  replacementContent: string,
+  sourceTurnId = String(state.activeState.turn),
+): MemoryProposal[] {
+  if (!target?.content.trim() || !replacementContent.trim()) return [];
+  const newNormalized = normalizedReplacementContent(replacementContent);
   const now = nowIso();
-  const sourceTurnId = String(state.activeState.turn);
   const results: MemoryProposal[] = [];
   for (const fact of factLines(target.content)) {
     const normalizedFact = normalizedReplacementContent(fact);
@@ -759,6 +759,14 @@ function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryPropo
     if (results.length >= 3) break;
   }
   return results;
+}
+
+function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryProposal): MemoryProposal[] {
+  if (proposal.proposedType !== "plotEssentialsUpdate" || proposal.appendContent) return [];
+  const target =
+    state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
+    state.components.find((component) => component.type === "plotEssentials");
+  return outgoingPlotEssentialsProposalsForReplacement(state, target, proposal.content, proposal.sourceTurnId ?? String(state.activeState.turn));
 }
 
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
@@ -1228,12 +1236,30 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         components: updateById(state.components, action.componentId, (item) => mergePatch<ComponentEntry>(item, action.patch)),
       });
-    case "APPLY_COMPONENT_UPDATE":
-      return touchAdventure(state, {
+    case "APPLY_COMPONENT_UPDATE": {
+      const target = state.components.find((component) => component.id === action.componentId);
+      if (!target) return state;
+      const basePatch: Partial<Adventure> = {
         components: updateById(state.components, action.componentId, (item) =>
           recordComponentMemoryUpdate(item, { ...item, content: action.content }, { source: "aiMemoryUpdate", operation: "replace" }),
         ),
+      };
+      const outgoing = target.type === "plotEssentials"
+        ? outgoingPlotEssentialsProposalsForReplacement(state, target, action.content)
+        : [];
+      const companionResult = applyCompanionMemoryProposals(state, basePatch, outgoing);
+      return touchAdventure(state, {
+        ...companionResult.patch,
+        ...(companionResult.proposals.length > 0
+          ? {
+              activeState: {
+                ...state.activeState,
+                memoryProposals: [...companionResult.proposals, ...state.activeState.memoryProposals],
+              },
+            }
+          : {}),
       });
+    }
     case "REORDER_COMPONENT":
       return touchAdventure(state, { components: moveByPriority(state.components, action.componentId, action.direction) });
     case "UPSERT_STORY_CARD":
