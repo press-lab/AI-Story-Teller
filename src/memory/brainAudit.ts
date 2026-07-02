@@ -62,6 +62,22 @@ function formatThoughts(thoughts: Record<string, string>): string {
   return Object.entries(thoughts).map(([key, value]) => `${key}: ${value}`).join("\n");
 }
 
+function thoughtTurnValue(key: string, value: string): number {
+  return Number(value.match(/^(\d+)/)?.[1] ?? key.match(/\d+/)?.[0] ?? 0);
+}
+
+function recentThoughtsForReview(brain: BrainEntry, count: number): string {
+  const entries = [
+    ...Object.entries(brain.thoughts).map(([key, value]) => ({ key, value, state: "current" })),
+    ...Object.entries(brain.archivedThoughts).map(([key, value]) => ({ key, value, state: "archived" })),
+  ]
+    .filter((entry) => entry.value.trim())
+    .sort((a, b) => thoughtTurnValue(b.key, b.value) - thoughtTurnValue(a.key, a.value) || b.key.localeCompare(a.key))
+    .slice(0, count);
+
+  return entries.map((entry) => `  [${entry.state}] ${entry.key}: ${entry.value}`).join("\n");
+}
+
 function normalizeName(value: string): string {
   return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s']/gu, " ").replace(/\s+/g, " ").trim();
 }
@@ -197,13 +213,10 @@ function deterministicRecommendations(brains: BrainEntry[]): BrainAuditRecommend
   return results;
 }
 
-function buildPrompt(brains: BrainEntry[], rollingSummary: string, recentStory: string): string {
+function buildPrompt(brains: BrainEntry[], rollingSummary: string, recentStory: string, thoughtReviewWindow: number): string {
   const brainList = brains
     .map((brain) => {
-      const thoughts = Object.entries(brain.thoughts)
-        .slice(-12)
-        .map(([key, value]) => `  ${key}: ${value}`)
-        .join("\n");
+      const thoughts = recentThoughtsForReview(brain, thoughtReviewWindow);
       const archivedCount = Object.keys(brain.archivedThoughts).length;
       return `[${brain.id}] "${brain.characterName}" aliases: ${brain.triggers.join(", ") || "(name only)"}
 currentState: ${brain.currentState || "(empty)"}
@@ -211,7 +224,7 @@ relationshipPressure: ${brain.relationshipPressure || "(empty)"}
 emotionalInterpretation: ${brain.emotionalInterpretation || "(empty)"}
 recentDevelopments: ${brain.recentDevelopments || "(empty)"}
 notes: ${brain.notes || "(empty)"}
-thoughts:
+thoughts under review (last ${thoughtReviewWindow} current/archived entries):
 ${thoughts || "  (none)"}
 archivedThoughts: ${archivedCount}`;
     })
@@ -237,9 +250,11 @@ Rules:
 - Brains should hold private internal reactions, suspicions, motives, pressure, and plans for major recurring characters only.
 - Stable public identity, appearance, powers, biography, voice contract, locations, factions, and completed public events belong on Story Cards, not Brains.
 - Keep current thoughts distinct. Remove duplicate thoughts that restate the same beat.
-- Keep thoughts first-person and specific to a recent or durable private interpretation.
+- Keep thoughts in the brain character's own first-person perspective. Rewrite or remove thoughts that are in narrator voice, second person, player perspective, or another character's interiority.
+- Keep thoughts specific to a recent or durable private interpretation.
 - Do not preserve generic emotions like "I am worried" unless tied to a named pressure, person, plan, or reveal.
 - suggestedTriggers should contain useful aliases only; no pronouns, articles, tiny aliases, or duplicate character-name keys.
+- For edit recommendations, suggestedThoughts must be the cleaned full CURRENT thought set for that brain after removing duplicates and wrong-perspective thoughts. Do not include archivedThoughts in suggestedThoughts.
 - Delete only duplicate, empty, or one-scene NPC brains with no real future value.
 - Create only for a major recurring character with clear private-state signal in recent story.
 - Be selective - only changes with clear story justification.
@@ -325,22 +340,16 @@ export async function runBrainAudit(
   providerConfig: ProviderConfig,
   nTurns: number,
 ): Promise<BrainAuditRecommendation[]> {
-  const recentMessages = lastNTurns(adventure.messages, nTurns);
+  const reviewWindow = Number.isFinite(nTurns) ? Math.max(1, Math.min(500, Math.floor(nTurns))) : 20;
+  const recentMessages = lastNTurns(adventure.messages, reviewWindow);
   const deterministic = deterministicRecommendations(adventure.brains);
   const flaggedDeleteIds = new Set(deterministic.filter((rec) => rec.action === "delete").map((rec) => rec.brainId).filter(Boolean) as string[]);
-  const flaggedById = new Set(deterministic.map((rec) => rec.brainId).filter(Boolean) as string[]);
-  const currentTurn = adventure.activeState.turn;
-  const llmBrains = adventure.brains.filter((brain) => {
-    if (flaggedDeleteIds.has(brain.id)) return false;
-    if (flaggedById.has(brain.id)) return true;
-    if (brain.lastUpdatedTurn !== undefined && currentTurn - brain.lastUpdatedTurn <= nTurns) return false;
-    return true;
-  });
+  const llmBrains = adventure.brains.filter((brain) => !flaggedDeleteIds.has(brain.id));
 
   let llmRecs: BrainAuditRecommendation[] = [];
   if (llmBrains.length > 0) {
     const config = resolvedProviderConfig(adventure, providerConfig);
-    const prompt = buildPrompt(llmBrains, adventure.rollingSummary.content, formatMessages(recentMessages));
+    const prompt = buildPrompt(llmBrains, adventure.rollingSummary.content, formatMessages(recentMessages), reviewWindow);
     try {
       const response = await sendOpenAICompatibleChatCompletion({
         config,

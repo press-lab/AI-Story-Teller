@@ -301,7 +301,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
               <div className="brain-tool-copy">
                 <h3>Clean up existing brains</h3>
                 <p className="muted">
-                  Find duplicate character brains, repeated thoughts, broad aliases, empty stubs, and public facts that should live on Story Cards instead.
+                  Find duplicate character brains, repeated or wrong-perspective thoughts, broad aliases, empty stubs, and public facts that should live on Story Cards instead.
                 </p>
               </div>
               <div className="brain-tool-controls">
@@ -324,7 +324,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                     onChange={(event) => setBrainAuditTurns(Math.max(1, Number(event.target.value)))}
                     className="audit-turns-input"
                   />
-                  <span>turns</span>
+                  <span>turns / thoughts</span>
                 </label>
               </div>
             </section>
