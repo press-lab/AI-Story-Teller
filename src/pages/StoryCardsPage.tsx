@@ -6,6 +6,7 @@ import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
+const MEMORY_MODE_OPTIONS: StoryCardMemoryMode[] = ["static", "living", "historical"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
@@ -190,6 +191,8 @@ export function StoryCardsPage({
         patch: {
           content: rec.editedContent,
           keys: rec.editedKeys.split(",").map((k) => k.trim()).filter(Boolean),
+          type: rec.suggestedType,
+          memoryMode: rec.suggestedMemoryMode,
         },
       });
     } else if (rec.action === "create") {
@@ -204,6 +207,7 @@ export function StoryCardsPage({
           content: rec.editedContent,
           keys: rec.editedKeys.split(",").map((k) => k.trim()).filter(Boolean),
           type,
+          memoryMode: rec.suggestedMemoryMode,
         }),
       });
     }
@@ -496,9 +500,9 @@ export function StoryCardsPage({
                 type="button"
                 disabled={loading || audit?.status === "running"}
                 onClick={runAudit}
-                title="Review all story cards and get AI recommendations to edit, delete, or create cards."
+                title="Review existing cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
               >
-                {audit?.status === "running" ? "Auditing..." : "Audit Cards"}
+                {audit?.status === "running" ? "Cleaning..." : "Clean Up Cards"}
               </button>
               <span className="audit-turns-wrap">
                 last
@@ -589,7 +593,7 @@ export function StoryCardsPage({
         <div className="audit-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setAudit(null); }}>
           <div className="audit-modal">
             <div className="audit-modal-header">
-              <h3>Story Card Audit</h3>
+              <h3>Story Card Cleanup</h3>
               <button type="button" className="audit-modal-close" onClick={() => setAudit(null)}>✕</button>
             </div>
 
@@ -606,6 +610,7 @@ export function StoryCardsPage({
                 <div className="audit-rec-header">
                   <span className={`audit-badge audit-badge-${rec.action}`}>{rec.action.toUpperCase()}</span>
                   {rec.source === "deterministic" && <span className="audit-badge audit-badge-det">DETECTED</span>}
+                  {rec.action !== "delete" && <span className="audit-badge audit-badge-det">{rec.suggestedMemoryMode}</span>}
                   <span className="audit-rec-title">{rec.title}</span>
                   {rec.decision !== "pending" && (
                     <span className={`audit-badge audit-badge-decision-${rec.decision}`}>{rec.decision}</span>
@@ -631,6 +636,30 @@ export function StoryCardsPage({
                         onChange={(e) => updateRec(rec.id, { editedKeys: e.target.value })}
                       />
                     </label>
+                    <div className="field-row">
+                      <label className="field">
+                        <span>Type</span>
+                        <select
+                          value={rec.suggestedType}
+                          onChange={(e) => updateRec(rec.id, { suggestedType: e.target.value as StoryCardType })}
+                        >
+                          {TYPE_ORDER.map((type) => (
+                            <option key={type} value={type}>{TYPE_LABELS[type]}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="field">
+                        <span>Memory mode</span>
+                        <select
+                          value={rec.suggestedMemoryMode}
+                          onChange={(e) => updateRec(rec.id, { suggestedMemoryMode: e.target.value as StoryCardMemoryMode })}
+                        >
+                          {MEMORY_MODE_OPTIONS.map((mode) => (
+                            <option key={mode} value={mode}>{mode}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
                 )}
 

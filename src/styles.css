@@ -3782,6 +3782,12 @@ mark.search-highlight {
   margin-bottom: 10px;
 }
 
+.audit-rec-fields .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
 .audit-rec-actions {
   display: flex;
   gap: 8px;
@@ -4744,6 +4750,7 @@ summary {
   .brain-secondary-details .grid,
   .component-arc-details .grid,
   .audit-rec-fields,
+  .audit-rec-fields .field-row,
   .settings-card .grid {
     grid-template-columns: minmax(0, 1fr);
   }

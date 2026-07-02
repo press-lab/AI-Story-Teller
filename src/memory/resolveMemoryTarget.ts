@@ -28,6 +28,7 @@ const TOKEN_STOPWORDS = new Set([
   "about", "after", "again", "also", "and", "are", "because", "before", "being", "between", "card",
   "current", "during", "from", "has", "have", "into", "its", "new", "now", "official", "only", "that",
   "the", "their", "them", "this", "through", "turn", "under", "was", "were", "with", "without",
+  "any", "he", "her", "hers", "him", "his", "it", "she", "they", "we", "you", "your",
 ]);
 
 const GENERIC_TRIGGER_WORDS = new Set([
@@ -60,6 +61,10 @@ export function isLivingStoryCard(card: Pick<StoryCard, "memoryMode" | "state">)
   return card.memoryMode === "living" || (card.state ?? "").split(/\s+/).includes("living");
 }
 
+function isHistoricalStoryCard(card: Pick<StoryCard, "memoryMode">): boolean {
+  return card.memoryMode === "historical";
+}
+
 export function inferStoryCardMemoryMode(draft: Pick<MemoryTargetDraft, "title" | "content" | "sourceText" | "category" | "memoryMode">): StoryCardMemoryMode {
   if (draft.memoryMode) return draft.memoryMode;
   const text = normalize([draft.title, draft.content, draft.sourceText].filter(Boolean).join(" "));
@@ -75,23 +80,39 @@ export function inferStoryCardMemoryMode(draft: Pick<MemoryTargetDraft, "title" 
   return "static";
 }
 
+function targetAcceptsMode(card: StoryCard, inferredMode: StoryCardMemoryMode): boolean {
+  if (isLivingStoryCard(card)) return inferredMode === "living";
+  if (isHistoricalStoryCard(card)) return inferredMode === "historical";
+  return inferredMode === "static";
+}
+
 function exactStoryCardTarget(adventure: Adventure, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): StoryCard | undefined {
   if (draft.targetId) {
     const target = adventure.storyCards.find((card) => card.id === draft.targetId);
-    if (target) return target;
+    if (target && targetAcceptsMode(target, inferredMode)) return target;
+    return undefined;
   }
   const titleNorm = normalize(draft.title);
-  const exactTitle = adventure.storyCards.find((card) => normalize(card.title) === titleNorm);
-  if (exactTitle && (isLivingStoryCard(exactTitle) || inferredMode === "living" || draft.appendContent === true)) {
+  const exactTitle = adventure.storyCards.find((card) => card.active && normalize(card.title) === titleNorm);
+  if (
+    exactTitle &&
+    targetAcceptsMode(exactTitle, inferredMode) &&
+    (inferredMode !== "static" || draft.appendContent === true)
+  ) {
     return exactTitle;
   }
-  return adventure.storyCards.find((card) => card.keys.some((key) => normalize(key) === titleNorm));
+  return adventure.storyCards.find((card) =>
+    card.active &&
+    targetAcceptsMode(card, inferredMode) &&
+    (inferredMode !== "static" || draft.appendContent === true) &&
+    card.keys.some((key) => normalize(key) === titleNorm)
+  );
 }
 
-function bestLivingTarget(adventure: Adventure, draft: MemoryTargetDraft): StoryCard | undefined {
+function bestRelatedTarget(adventure: Adventure, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): StoryCard | undefined {
   const inputTokens = normalizedTokens([draft.title, draft.content, draft.sourceText].filter(Boolean).join(" "));
   if (inputTokens.size === 0) return undefined;
-  const candidates = adventure.storyCards.filter((card) => card.active && isLivingStoryCard(card));
+  const candidates = adventure.storyCards.filter((card) => card.active && targetAcceptsMode(card, inferredMode));
   let best: { card: StoryCard; score: number } | undefined;
   for (const card of candidates) {
     const subjectTokens = normalizedTokens([card.title, ...card.keys].join(" "));
@@ -104,6 +125,21 @@ function bestLivingTarget(adventure: Adventure, draft: MemoryTargetDraft): Story
   return best?.card;
 }
 
+function incompatibleTarget(adventure: Adventure, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): StoryCard | undefined {
+  const target = draft.targetId ? adventure.storyCards.find((card) => card.id === draft.targetId) : undefined;
+  if (target && !targetAcceptsMode(target, inferredMode)) return target;
+  const exactTitle = adventure.storyCards.find((card) => card.active && normalize(card.title) === normalize(draft.title));
+  return exactTitle && !targetAcceptsMode(exactTitle, inferredMode) ? exactTitle : undefined;
+}
+
+function childTitleFor(target: StoryCard, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): string {
+  const draftTitle = draft.title.trim();
+  if (draftTitle && normalize(draftTitle) !== normalize(target.title)) return draftTitle;
+  if (inferredMode === "historical") return `${target.title}: History`;
+  if (draft.category === "relationship") return `${target.title}: Relationship Status`;
+  return `${target.title}: Current Status`;
+}
+
 function triggerBelongsToOtherCard(adventure: Adventure, normalizedTrigger: string, targetId?: string): boolean {
   return adventure.storyCards.some((card) => {
     if (card.id === targetId) return false;
@@ -111,11 +147,28 @@ function triggerBelongsToOtherCard(adventure: Adventure, normalizedTrigger: stri
   });
 }
 
+function triggerBelongsToCharacterCard(adventure: Adventure, normalizedTrigger: string, targetId?: string): boolean {
+  return adventure.storyCards.some((card) => {
+    if (card.id === targetId || card.type !== "character") return false;
+    return [card.title, ...card.keys].some((key) => normalize(key) === normalizedTrigger);
+  });
+}
+
+function isWeakTrigger(norm: string): boolean {
+  if (!norm) return true;
+  if (TOKEN_STOPWORDS.has(norm) || GENERIC_TRIGGER_WORDS.has(norm)) return true;
+  const tokens = norm.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  if (tokens.every((token) => TOKEN_STOPWORDS.has(token))) return true;
+  return tokens.length === 1 && norm.length < 4;
+}
+
 export function sanitizeStoryCardTriggers(
   adventure: Adventure,
   title: string,
   triggers: string[] | undefined,
   targetId?: string,
+  memoryMode?: StoryCardMemoryMode,
 ): string[] {
   const titleNorm = normalize(title);
   const seen = new Set<string>();
@@ -124,9 +177,10 @@ export function sanitizeStoryCardTriggers(
     const clean = raw.trim();
     if (!clean) continue;
     const norm = normalize(clean);
-    if (!norm || (norm === titleNorm && titleNorm.includes(" "))) continue;
+    if (!norm || norm === titleNorm) continue;
     if (seen.has(norm)) continue;
-    if (GENERIC_TRIGGER_WORDS.has(norm)) continue;
+    if (isWeakTrigger(norm)) continue;
+    if ((memoryMode === "living" || memoryMode === "historical") && triggerBelongsToCharacterCard(adventure, norm, targetId)) continue;
     if (triggerBelongsToOtherCard(adventure, norm, targetId)) continue;
     seen.add(norm);
     result.push(clean);
@@ -149,16 +203,20 @@ export function resolveMemoryTarget(adventure: Adventure, draft: MemoryTargetDra
     };
   }
 
-  const inferredMode = inferStoryCardMemoryMode(draft);
-  const target = exactStoryCardTarget(adventure, draft, inferredMode) ?? bestLivingTarget(adventure, draft);
+  const requestedTarget = draft.targetId ? adventure.storyCards.find((card) => card.id === draft.targetId) : undefined;
+  const inferredMode = draft.memoryMode ?? requestedTarget?.memoryMode ?? inferStoryCardMemoryMode(draft);
+  const blockedTarget = incompatibleTarget(adventure, draft, inferredMode);
+  const target = exactStoryCardTarget(adventure, draft, inferredMode) ?? bestRelatedTarget(adventure, draft, inferredMode);
   const targetMode = target ? (isLivingStoryCard(target) ? "living" : target.memoryMode) : undefined;
   const memoryMode = target ? (targetMode ?? inferredMode) : inferredMode;
-  const appendContent = draft.appendContent ?? (target ? true : undefined);
-  const title = target?.title ?? draft.title;
-  const suggestedTriggers = sanitizeStoryCardTriggers(adventure, title, draft.suggestedTriggers, target?.id);
-  const rationale = target && !draft.targetId
-    ? [draft.rationale, `Routed to existing ${memoryMode} Story Card "${target.title}".`].filter(Boolean).join(" ")
-    : draft.rationale;
+  const appendContent = target ? (draft.appendContent ?? true) : undefined;
+  const title = target?.title ?? (blockedTarget ? childTitleFor(blockedTarget, draft, inferredMode) : draft.title);
+  const suggestedTriggers = sanitizeStoryCardTriggers(adventure, title, draft.suggestedTriggers, target?.id, memoryMode);
+  const rationale = [
+    draft.rationale,
+    target && !draft.targetId ? `Routed to existing ${memoryMode} Story Card "${target.title}".` : undefined,
+    blockedTarget ? `Created a separate ${memoryMode} Story Card instead of appending ${memoryMode} facts to static "${blockedTarget.title}".` : undefined,
+  ].filter(Boolean).join(" ") || undefined;
 
   return {
     proposedType: "storyCard",

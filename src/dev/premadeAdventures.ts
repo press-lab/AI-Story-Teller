@@ -170,7 +170,7 @@ function applyPremadeBestPractices(adventure: Adventure): Adventure {
     autoUpdateCooldownTurns: premadeMemoryMode(card) === "living"
       ? Math.min(card.autoUpdateCooldownTurns ?? 1, 1)
       : card.autoUpdateCooldownTurns,
-    keys: sanitizeStoryCardTriggers(componentTuned, card.title, card.keys, card.id),
+    keys: sanitizeStoryCardTriggers(componentTuned, card.title, card.keys, card.id, premadeMemoryMode(card)),
   }));
   return normalizeAdventure({ ...componentTuned, storyCards });
 }

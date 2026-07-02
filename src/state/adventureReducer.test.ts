@@ -527,7 +527,7 @@ describe("adventureReducer", () => {
 
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-story" });
     expect(state.activeState.memoryProposals[0].status).toBe("approved");
-    expect(state.storyCards.some((card) => card.title === "Promise" && card.keys.includes("promise"))).toBe(true);
+    expect(state.storyCards.some((card) => card.title === "Promise" && card.keys.includes("Seth") && card.keys.includes("Margo"))).toBe(true);
     const approvedStoryCard = state.storyCards.find((card) => card.title === "Promise");
     expect(approvedStoryCard?.lastMemoryUpdatedAt).toEqual(expect.any(String));
     expect(approvedStoryCard?.memoryUpdateHistory?.[0]).toMatchObject({
@@ -592,15 +592,28 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-momentum" });
     expect(state.components.find((component) => component.id === "component-momentum")?.content).toBe("Old next beat.");
 
-    const rejected = makeMemoryProposal({ id: "proposal-reject", title: "Rejected Entity", status: "pending" });
-    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: rejected });
-    state = reduce(state, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "proposal-reject" });
-    expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-reject")?.status).toBe("rejected");
+    let statusState = baseAdventure();
+    const rejected = makeMemoryProposal({
+      id: "proposal-reject",
+      title: "Rejected Entity",
+      content: "The brass key belongs to a dismissed corridor rumor.",
+      suggestedTriggers: ["brass key"],
+      status: "pending",
+    });
+    statusState = reduce(statusState, { type: "ADD_MEMORY_PROPOSAL", proposal: rejected });
+    statusState = reduce(statusState, { type: "REJECT_MEMORY_PROPOSAL", proposalId: "proposal-reject" });
+    expect(statusState.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-reject")?.status).toBe("rejected");
 
-    const ignored = makeMemoryProposal({ id: "proposal-ignore", title: "Ignored Entity", status: "pending" });
-    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: ignored });
-    state = reduce(state, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "proposal-ignore" });
-    expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
+    const ignored = makeMemoryProposal({
+      id: "proposal-ignore",
+      title: "Ignored Entity",
+      content: "The glass orchard blooms only during the winter eclipse.",
+      suggestedTriggers: ["glass orchard"],
+      status: "pending",
+    });
+    statusState = reduce(statusState, { type: "ADD_MEMORY_PROPOSAL", proposal: ignored });
+    statusState = reduce(statusState, { type: "IGNORE_MEMORY_PROPOSAL", proposalId: "proposal-ignore" });
+    expect(statusState.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
   it("preserves static story card mode when approving an appended static proposal", () => {
@@ -635,6 +648,55 @@ describe("adventureReducer", () => {
     expect(updated?.content).toContain("stolen dampener cores");
     expect(updated?.memoryMode).toBe("static");
     expect((updated?.state ?? "").split(/\s+/)).not.toContain("living");
+  });
+
+  it("creates a living child card instead of appending current state to a static character profile", () => {
+    let state = baseAdventure();
+    state = reduce(state, {
+      type: "UPSERT_STORY_CARD",
+      storyCard: makeStoryCard({
+        id: "card-seth",
+        title: "Seth Valis",
+        content: "- Player character and Council mage.",
+        keys: ["Seth"],
+        type: "character",
+        memoryMode: "static",
+      }),
+    });
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "proposal-seth-current",
+        proposedType: "storyCard",
+        targetId: "card-seth",
+        title: "Seth Valis",
+        content: "• Seth is currently managing Viktor's notification protocol while Mel handles the Council.",
+        suggestedTriggers: ["Seth", "The", "Viktor protocol", "current status"],
+        appendContent: true,
+        memoryMode: "living",
+      }),
+    });
+
+    const routed = state.activeState.memoryProposals.find((entry) => entry.id === "proposal-seth-current");
+    expect(routed).toMatchObject({
+      title: "Seth Valis: Current Status",
+      targetId: undefined,
+      appendContent: undefined,
+      memoryMode: "living",
+      suggestedTriggers: ["Viktor protocol"],
+    });
+
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-seth-current" });
+
+    const profile = state.storyCards.find((card) => card.id === "card-seth");
+    const child = state.storyCards.find((card) => card.title === "Seth Valis: Current Status");
+    expect(profile?.content).toBe("- Player character and Council mage.");
+    expect(child).toMatchObject({
+      memoryMode: "living",
+      keys: ["Viktor protocol"],
+    });
+    expect(child?.content).toContain("notification protocol");
   });
 
   it("does not resurrect dismissed static story card update proposals", () => {

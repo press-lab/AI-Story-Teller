@@ -495,7 +495,7 @@ describe("runRememberThis", () => {
         proposedType: "storyCard",
         title: "Margo",
         status: "pending",
-        suggestedTriggers: ["Margo", "hedge prince"],
+        suggestedTriggers: ["hedge prince"],
       },
     });
   });

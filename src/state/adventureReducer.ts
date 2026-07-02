@@ -801,7 +801,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             archivedFacts: merged.archivedFacts,
             keys: Array.from(new Set([
               ...existing.keys,
-              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id, "living"),
             ])),
             memoryMode: "living",
             // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
@@ -818,7 +818,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             content: appendCardContent(existing.content, safeContent),
             keys: Array.from(new Set([
               ...existing.keys,
-              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id, existing.memoryMode ?? proposal.memoryMode),
             ])),
             memoryMode: existing.memoryMode ?? proposal.memoryMode,
             state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
@@ -837,7 +837,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           // break alias-matching and let the card be duplicated again later).
           keys: Array.from(new Set([
             ...existing.keys,
-            ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id),
+            ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id, proposal.memoryMode ?? existing.memoryMode),
           ])),
           memoryMode: proposal.memoryMode ?? existing.memoryMode,
           type: proposal.storyCardType ?? existing.type,
@@ -852,7 +852,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         makeStoryCard({
           title: cardTitle,
           content: safeContent,
-          keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers),
+          keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers, undefined, proposal.memoryMode ?? "static"),
           memoryMode: proposal.memoryMode ?? "static",
           type: proposal.storyCardType ?? "custom",
           active: true,
@@ -875,7 +875,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         makeStoryCard({
           title: proposal.title || "Memory Proposal",
           content: proposal.content,
-          keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers),
+          keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers, undefined, proposal.memoryMode ?? "static"),
           memoryMode: proposal.memoryMode ?? "static",
           type: "character",
           active: true,

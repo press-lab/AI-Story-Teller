@@ -403,9 +403,10 @@ describe("full turn smoke path", () => {
 
     const proposal = result.adventure.activeState.memoryProposals.find((p) => p.proposedType === "storyCard");
     expect(proposal).toMatchObject({
-      targetId: "card-red-ring",
-      appendContent: true,
-      memoryMode: "static",
+      title: "Red Ring: Current Status",
+      targetId: undefined,
+      appendContent: undefined,
+      memoryMode: "living",
     });
     expect(result.adventure.storyCards.find((card) => card.id === "card-red-ring")?.memoryMode).toBe("static");
     expect(result.responseContent).not.toContain("<memory");

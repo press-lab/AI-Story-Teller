@@ -1,4 +1,4 @@
-import type { Adventure, Message, ProviderConfig, StoryCard } from "../types/adventure";
+import type { Adventure, Message, ProviderConfig, StoryCard, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { STORY_CARD_BEST_PRACTICES, TRIGGER_BEST_PRACTICES } from "../ai/authoringBestPractices";
 
@@ -15,7 +15,8 @@ export interface AuditRecommendation {
   rationale: string;
   suggestedContent: string;
   suggestedKeys: string[];
-  suggestedType: string;
+  suggestedType: StoryCardType;
+  suggestedMemoryMode: StoryCardMemoryMode;
   decision: AuditDecision;
   editedContent: string;
   editedKeys: string;
@@ -78,6 +79,7 @@ function makeRec(
     suggestedContent: card.content,
     suggestedKeys: card.keys,
     suggestedType: card.type,
+    suggestedMemoryMode: card.memoryMode ?? "static",
     decision: "pending",
     editedContent: card.content,
     editedKeys: card.keys.join(", "),
@@ -159,12 +161,46 @@ function detectZeroFrequency(cards: StoryCard[], recentMessages: Message[], roll
 
 // ── LLM pass ─────────────────────────────────────────────────────────────────
 
+const BROAD_TRIGGER_WORDS = new Set([
+  "a", "an", "any", "he", "her", "hers", "him", "his", "it", "she", "that", "the", "their", "them", "they", "this", "those", "we", "you", "your",
+]);
+
+function normalizeTrigger(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s']/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function isBroadTrigger(key: string, card: StoryCard): boolean {
+  const norm = normalizeTrigger(key);
+  if (!norm || norm === normalizeTrigger(card.title)) return true;
+  const tokens = norm.split(/\s+/).filter(Boolean);
+  if (BROAD_TRIGGER_WORDS.has(norm) || tokens.every((token) => BROAD_TRIGGER_WORDS.has(token))) return true;
+  return tokens.length === 1 && norm.length < 4;
+}
+
+function detectBroadTriggers(cards: StoryCard[]): AuditRecommendation[] {
+  return cards
+    .filter((card) => card.active && card.keys.some((key) => isBroadTrigger(key, card)))
+    .map((card) => {
+      const suggestedKeys = card.keys.filter((key) => !isBroadTrigger(key, card));
+      return makeRec(
+        `det-broad-keys-${card.id}`,
+        "edit",
+        card,
+        "Broad trigger keys can pull this card into unrelated context; remove pronouns, articles, tiny aliases, and duplicate title keys.",
+        {
+          suggestedKeys,
+          editedKeys: suggestedKeys.join(", "),
+        },
+      );
+    });
+}
+
 function buildPrompt(cards: StoryCard[], rollingSummary: string, recentStory: string): string {
   const cardList = cards
-    .map((c) => `[${c.id}] "${c.title}" (${c.type}) keys: ${c.keys.join(", ")}\n${c.content.slice(0, 150)}`)
+    .map((c) => `[${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}) keys: ${c.keys.join(", ") || "(title trigger only)"}\n${c.content.slice(0, 2200)}`)
     .join("\n\n---\n\n");
 
-  return `You are auditing story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged — focus on semantic accuracy, consolidation, trigger bleed, living-card updates, and gaps.
+  return `You are cleaning up story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged - focus on semantic accuracy, consolidation, trigger bleed, living-card updates, profile bloat, and missing historical/living child cards.
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}
 
@@ -178,16 +214,22 @@ RECENT STORY:
 ${recentStory || "(none)"}
 
 Return ONLY a JSON array — no markdown, no prose. Each item must be one of:
-- {"action":"edit","cardId":"...","title":"...","rationale":"...","suggestedContent":"...","suggestedKeys":["..."],"suggestedType":"character"|"location"|"lore"|"plot"|"custom"}
+- {"action":"edit","cardId":"...","title":"...","rationale":"...","suggestedContent":"...","suggestedKeys":["..."],"suggestedType":"character"|"location"|"lore"|"plot"|"custom","suggestedMemoryMode":"static"|"living"|"historical"}
 - {"action":"delete","cardId":"...","title":"...","rationale":"..."}
-- {"action":"create","title":"...","rationale":"...","suggestedContent":"...","suggestedKeys":["..."],"suggestedType":"character"|"location"|"lore"|"plot"|"custom"}
+- {"action":"create","title":"...","rationale":"...","suggestedContent":"...","suggestedKeys":["..."],"suggestedType":"character"|"location"|"lore"|"plot"|"custom","suggestedMemoryMode":"static"|"living"|"historical"}
 
 Rules:
 - Edit: card content is outdated or factually wrong based on recent events
 - Delete: card covers something that no longer exists in the story
 - Create: a recurring entity or fact has no card at all
+- Static character/location/lore cards should hold durable identity/rules only. Do not leave current mission state or completed event timelines inside static profile cards.
+- If a static profile card contains current-state or completed-event bullets, return BOTH: an edit for the profile card with those dynamic/history bullets removed, and one or more create recommendations for focused living or historical child cards preserving that information.
+- Use suggestedMemoryMode "living" for current evolving subjects, relationships, investigations, arrangements, and pressure.
+- Use suggestedMemoryMode "historical" for completed decisions, votes, confrontations, deaths, promises kept/broken, discoveries, or resolved beats.
 - Prefer editing or consolidating an existing living card over creating a sibling card for the same evolving subject
 - Remove broad character-name triggers from subplot/event/relationship cards when those names already belong to identity cards
+- Never use pronouns, articles, or broad words as triggers: The, This, That, She, He, His, Her, They, Any.
+- Event, relationship, and subplot cards should use event/place/object/relationship phrases instead of broad character names.
 - Historical/completed event cards should be past tense
 - Be selective — only changes with clear story justification
 - Rationale: one specific sentence
@@ -195,31 +237,46 @@ Rules:
 }
 
 const VALID_TYPES = new Set(["character", "location", "lore", "plot", "custom"]);
+const VALID_MEMORY_MODES = new Set(["static", "living", "historical"]);
 
 function parseLLMResponse(raw: string): AuditRecommendation[] {
-  const cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-  if (!cleaned || cleaned === "[]" || !cleaned.startsWith("[")) return [];
+  let cleaned = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  if (!cleaned || cleaned === "[]") return [];
 
-  let parsed: unknown[];
+  let parsed: unknown;
   try {
-    parsed = JSON.parse(cleaned) as unknown[];
+    parsed = JSON.parse(cleaned) as unknown;
   } catch {
     return [];
   }
 
-  return (parsed as unknown[])
+  const items = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && Array.isArray((parsed as Record<string, unknown>).recommendations)
+      ? (parsed as Record<string, unknown>).recommendations as unknown[]
+      : [];
+
+  return items
     .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
     .filter((item) => typeof item.action === "string" && ["edit", "delete", "create"].includes(item.action as string))
     .filter((item) => typeof item.title === "string" && (item.title as string).trim())
     .filter((item) => typeof item.rationale === "string" && (item.rationale as string).trim())
+    .filter((item) => item.action === "create" || typeof item.cardId === "string")
     .map((item, i) => {
-      const suggestedContent = typeof item.suggestedContent === "string" ? item.suggestedContent : "";
+      const suggestedContent =
+        typeof item.suggestedContent === "string" ? item.suggestedContent :
+        typeof item.content === "string" ? item.content :
+        "";
       const suggestedKeys = Array.isArray(item.suggestedKeys)
         ? (item.suggestedKeys as unknown[]).filter((k): k is string => typeof k === "string")
+        : Array.isArray(item.keys)
+          ? (item.keys as unknown[]).filter((k): k is string => typeof k === "string")
         : [];
-      const suggestedType = typeof item.suggestedType === "string" && VALID_TYPES.has(item.suggestedType)
-        ? item.suggestedType
-        : "custom";
+      const suggestedTypeRaw = typeof item.suggestedType === "string" ? item.suggestedType : typeof item.type === "string" ? item.type : "";
+      const suggestedType = VALID_TYPES.has(suggestedTypeRaw) ? suggestedTypeRaw as StoryCardType : "custom";
+      const modeRaw = typeof item.suggestedMemoryMode === "string" ? item.suggestedMemoryMode : typeof item.memoryMode === "string" ? item.memoryMode : "";
+      const suggestedMemoryMode = VALID_MEMORY_MODES.has(modeRaw) ? modeRaw as StoryCardMemoryMode : "static";
       return {
         id: `llm-${Date.now()}-${i}`,
         action: item.action as AuditAction,
@@ -230,6 +287,7 @@ function parseLLMResponse(raw: string): AuditRecommendation[] {
         suggestedContent,
         suggestedKeys,
         suggestedType,
+        suggestedMemoryMode,
         decision: "pending" as AuditDecision,
         editedContent: suggestedContent,
         editedKeys: suggestedKeys.join(", "),
@@ -252,10 +310,12 @@ export async function runStoryCardAudit(
   const detNoKeys = detectNoKeys(adventure.storyCards);
   const detTiny = detectTinyContent(adventure.storyCards);
   const detFreq = detectZeroFrequency(adventure.storyCards, recentMessages, summary);
-  const detRecs = [...detRedundant, ...detNoKeys, ...detTiny, ...detFreq];
+  const detBroad = detectBroadTriggers(adventure.storyCards);
+  const detRecs = [...detRedundant, ...detNoKeys, ...detTiny, ...detFreq, ...detBroad];
 
-  // Cards already handled deterministically — exclude from LLM
-  const flaggedIds = new Set(detRecs.map((r) => r.cardId).filter(Boolean) as string[]);
+  // Delete recommendations are skipped. Editable issues still go to AI cleanup
+  // so it can suggest splits, consolidation, or mode changes.
+  const flaggedIds = new Set(detRecs.filter((r) => r.action === "delete").map((r) => r.cardId).filter(Boolean) as string[]);
 
   // Also skip cards auto-updated within the review window
   const currentTurn = adventure.activeState.turn;
@@ -265,7 +325,7 @@ export async function runStoryCardAudit(
     return true;
   });
 
-  // LLM pass — only for cards that passed the deterministic filter
+  // LLM pass
   let llmRecs: AuditRecommendation[] = [];
   if (llmCards.length > 0) {
     const config = resolvedProviderConfig(adventure, providerConfig);
@@ -277,7 +337,7 @@ export async function runStoryCardAudit(
         config,
         messages: [
           { role: "system", content: prompt },
-          { role: "user", content: "Audit these story cards and return your recommendations as a JSON array." },
+          { role: "user", content: "Clean up these story cards and return your recommendations as a JSON array." },
         ],
       });
       llmRecs = parseLLMResponse(response.content);
