@@ -2167,8 +2167,11 @@ button.primary-action:hover:not(:disabled),
 .play-sidebar-panel-body {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
+  max-width: 100%;
   min-height: 0;
+  min-width: 0;
 }
 
 /* Dense content inside sidebar panel */
@@ -2184,6 +2187,19 @@ button.primary-action:hover:not(:disabled),
 .play-sidebar-panel-body .page {
   gap: 10px;
   padding: 0;
+}
+
+.play-sidebar-panel-body .editor-surface,
+.play-sidebar-panel-body .editor-surface > *,
+.play-sidebar-panel-body .split-editor-list,
+.play-sidebar-panel-body .split-editor-item,
+.play-sidebar-panel-body .item-inspector,
+.play-sidebar-panel-body .brain-inspector,
+.play-sidebar-panel-body .component-inspector,
+.play-sidebar-panel-body .item-focus-section,
+.play-sidebar-panel-body .brain-focus-section {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .play-sidebar-panel-body .editor-page-summary {
@@ -2221,6 +2237,52 @@ button.primary-action:hover:not(:disabled),
 
 .play-sidebar-panel-body .story-card-item > summary {
   padding: 9px 10px;
+}
+
+.play-sidebar-panel-body .story-card-summary,
+.play-sidebar-panel-body .proposal-card-summary,
+.play-sidebar-panel-body .trigger-rule-summary {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.play-sidebar-panel-body .split-editor-item[open] > summary .story-card-summary,
+.play-sidebar-panel-body .component-editor-item[open] > summary .story-card-summary,
+.play-sidebar-panel-body .brain-item[open] > summary .story-card-summary {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.play-sidebar-panel-body .story-card-badges {
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.play-sidebar-panel-body .story-card-title,
+.play-sidebar-panel-body .story-card-keys,
+.play-sidebar-panel-body .story-card-summary .search-snippet {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.play-sidebar-panel-body .story-card-inspector > .grid.story-card-primary-fields,
+.play-sidebar-panel-body .story-card-inspector > .grid,
+.play-sidebar-panel-body .component-inspector > .grid,
+.play-sidebar-panel-body .brain-inspector > .grid,
+.play-sidebar-panel-body .trigger-rule-editor > .grid,
+.play-sidebar-panel-body .item-secondary-details .grid,
+.play-sidebar-panel-body .brain-secondary-details .grid,
+.play-sidebar-panel-body .component-arc-details .grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.play-sidebar-panel-body .editor-surface input,
+.play-sidebar-panel-body .editor-surface select,
+.play-sidebar-panel-body .editor-surface textarea,
+.play-sidebar-panel-body .editor-surface button {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .play-sidebar-panel-body .brains-page > .list:has(.brain-item[open]) {
