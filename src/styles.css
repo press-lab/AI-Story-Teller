@@ -3605,14 +3605,16 @@ mark.search-highlight {
 /* ── Story card maintenance tools ───────────────────── */
 
 .story-card-maintenance-grid,
-.component-maintenance-grid {
+.component-maintenance-grid,
+.brain-maintenance-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 10px;
 }
 
 .story-card-tool-card,
-.component-tool-card {
+.component-tool-card,
+.brain-tool-card {
   display: grid;
   align-content: space-between;
   gap: 12px;
@@ -3623,31 +3625,36 @@ mark.search-highlight {
 }
 
 .story-card-tool-card-primary,
-.component-tool-card-primary {
+.component-tool-card-primary,
+.brain-tool-card-primary {
   border-color: color-mix(in srgb, #d89425 46%, var(--border));
   background: color-mix(in srgb, var(--surface) 78%, #f0a82f 9%);
 }
 
 .story-card-tool-copy,
-.component-tool-copy {
+.component-tool-copy,
+.brain-tool-copy {
   display: grid;
   gap: 4px;
 }
 
 .story-card-tool-copy h3,
-.component-tool-copy h3 {
+.component-tool-copy h3,
+.brain-tool-copy h3 {
   margin: 0;
   font-size: 15px;
 }
 
 .story-card-tool-copy .muted,
-.component-tool-copy .muted {
+.component-tool-copy .muted,
+.brain-tool-copy .muted {
   margin: 0;
   line-height: 1.45;
 }
 
 .story-card-tool-controls,
 .component-tool-controls,
+.brain-tool-controls,
 .story-card-json-actions {
   display: flex;
   align-items: center;
@@ -4742,12 +4749,14 @@ summary {
 
   .story-card-maintenance-grid,
   .component-maintenance-grid,
+  .brain-maintenance-grid,
   .story-card-settings-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .story-card-tool-controls,
   .component-tool-controls,
+  .brain-tool-controls,
   .story-card-json-actions {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -4756,6 +4765,7 @@ summary {
 
   .story-card-tool-controls button,
   .component-tool-controls button,
+  .brain-tool-controls button,
   .story-card-json-actions button {
     width: 100%;
   }

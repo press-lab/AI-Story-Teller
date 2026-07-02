@@ -6,6 +6,7 @@ import { generateArcContinuations, generateArcDirector, generateArcFromHistory, 
 import { PLOT_ESSENTIALS_BEST_PRACTICES } from "../ai/authoringBestPractices";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { runComponentAudit, type ComponentAuditRecommendation } from "../memory/componentAudit";
+import { runBrainAudit, type BrainAuditRecommendation } from "../memory/brainAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { adventureReducer } from "../state/adventureReducer";
 import {
@@ -527,6 +528,11 @@ export function useAdventureRuntime(
     return runComponentAudit(adventure, activeProviderConfig, nTurns);
   }
 
+  async function auditBrains(nTurns: number): Promise<BrainAuditRecommendation[]> {
+    if (!adventure) return [];
+    return runBrainAudit(adventure, activeProviderConfig, nTurns);
+  }
+
   async function regenerateMemoryProposal(proposalId: string): Promise<void> {
     if (!adventure) return;
     const proposal = adventure.activeState.memoryProposals.find((p) => p.id === proposalId);
@@ -669,6 +675,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     buildPlotMemory,
     auditStoryCards,
     auditComponents,
+    auditBrains,
     regenerateMemoryProposal,
     regeneratePlotEssentials,
     generateComponent,

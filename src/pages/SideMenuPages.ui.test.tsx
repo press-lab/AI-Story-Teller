@@ -165,6 +165,28 @@ describe("side menu page smoke coverage", () => {
     expect(onAuditComponents).toHaveBeenCalledWith(20);
   });
 
+  it("surfaces Character Brain cleanup as a maintenance action", async () => {
+    const user = userEvent.setup();
+    const onAuditBrains = vi.fn(async () => []);
+
+    renderWithAdventure((adventure, dispatch) => (
+      <BrainsPage
+        adventure={adventure}
+        dispatch={dispatch}
+        loading={false}
+        onUpdateBrainNow={async () => undefined}
+        onAuditBrains={onAuditBrains}
+      />
+    ));
+
+    expect(screen.getByText("Review and Maintain Character Brains")).toBeInTheDocument();
+    expect(screen.getByText("Clean up existing brains")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clean Up Brains" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clean Up Brains" }));
+    expect(onAuditBrains).toHaveBeenCalledWith(20);
+  });
+
   it("filters Story Cards by active status and living mode", async () => {
     const user = userEvent.setup();
     const adventure: Adventure = {

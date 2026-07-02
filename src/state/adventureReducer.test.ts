@@ -388,6 +388,7 @@ describe("adventureReducer", () => {
     });
     expect(state.brains.find((entry) => entry.id === brain.id)).toMatchObject({
       thoughts: { generated: "12 → generated thought" },
+      archivedThoughts: { seed: "1 → thinking" },
       lastUpdatedTurn: 12,
       lastGeneratedUpdatePreview: "preview",
     });
@@ -415,6 +416,64 @@ describe("adventureReducer", () => {
     // Append kept the newest, pruned the oldest into the archive (non-destructive).
     expect(Object.keys(updated.thoughts)).toEqual(["second"]);
     expect(updated.archivedThoughts.first).toBe("1 → oldest thought here");
+  });
+
+  it("turns overwritten AI Brain fields into pending historical Story Card proposals", () => {
+    const brain = makeBrain({
+      id: "brain-margo-history",
+      characterName: "Margo",
+      triggers: ["Margo"],
+      currentState: "Margo privately believes Seth is using jokes to dodge a real promise.",
+      thoughts: { old_read: "7 → He jokes when the room gets too sincere. I should not let that work twice." },
+    });
+    let state = { ...baseAdventure(), brains: [brain] };
+
+    state = reduce(state, {
+      type: "APPLY_BRAIN_UPDATE",
+      brainId: "brain-margo-history",
+      mode: "replace",
+      turn: 8,
+      patch: {
+        currentState: "Margo now believes Seth meant the promise but is afraid to name it.",
+        thoughts: { new_read: "8 → He meant it. That is worse, somehow." },
+      },
+    });
+
+    const updated = state.brains.find((entry) => entry.id === "brain-margo-history");
+    expect(updated?.currentState).toBe("Margo now believes Seth meant the promise but is afraid to name it.");
+    expect(updated?.archivedThoughts.old_read).toContain("jokes");
+    const outgoing = state.activeState.memoryProposals.filter(
+      (proposal) => proposal.proposedType === "storyCard" && proposal.status === "pending",
+    );
+    expect(outgoing.some((proposal) => proposal.content.includes("using jokes to dodge a real promise"))).toBe(true);
+    expect(outgoing.every((proposal) => proposal.memoryMode === "historical")).toBe(true);
+  });
+
+  it("auto-approves overwritten Brain field history when Story Cards are auto-approved", () => {
+    const brain = makeBrain({
+      id: "brain-margo-auto-history",
+      characterName: "Margo",
+      triggers: ["Margo"],
+      relationshipPressure: "Margo treats the ward-room jokes as proof Seth still keeps her at arm's length.",
+    });
+    let state = {
+      ...baseAdventure(),
+      brains: [brain],
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, storyCard: true },
+    };
+
+    state = reduce(state, {
+      type: "APPLY_BRAIN_UPDATE",
+      brainId: "brain-margo-auto-history",
+      mode: "replace",
+      turn: 9,
+      patch: {
+        relationshipPressure: "Margo now reads the jokes as cover for mutual trust neither of them will name.",
+      },
+    });
+
+    expect(state.storyCards.some((card) => card.content.includes("arm's length") && card.memoryMode === "historical")).toBe(true);
+    expect(state.activeState.memoryProposals.some((proposal) => proposal.status === "approved" && proposal.content.includes("arm's length"))).toBe(true);
   });
 
   it("does not append duplicate brain thoughts under new keys", () => {

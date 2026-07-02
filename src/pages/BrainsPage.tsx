@@ -1,4 +1,5 @@
 import type { BrainEntry, ContextInclusionPolicy } from "../types/adventure";
+import type { BrainAuditRecommendation } from "../memory/brainAudit";
 import { makeBrain } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
@@ -9,9 +10,16 @@ const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "man
 interface BrainsPageProps extends AdventurePageProps {
   loading: boolean;
   onUpdateBrainNow: (brainId: string) => Promise<void>;
+  onAuditBrains?: (nTurns: number) => Promise<BrainAuditRecommendation[]>;
   /** Generate a character Brain from just a name, with a behavioral voice contract. */
   onGenerateBrain?: (name: string) => Promise<void>;
 }
+
+type BrainAuditState = {
+  status: "running" | "done" | "error";
+  recommendations: BrainAuditRecommendation[];
+  errorMessage?: string;
+};
 
 function BrainTriggerInput({
   triggers,
@@ -151,10 +159,12 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
   );
 }
 
-export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onGenerateBrain }: BrainsPageProps) {
+export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onAuditBrains, onGenerateBrain }: BrainsPageProps) {
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [openBrainId, setOpenBrainId] = useState<string | null>(null);
+  const [brainAuditTurns, setBrainAuditTurns] = useState(20);
+  const [brainAudit, setBrainAudit] = useState<BrainAuditState | null>(null);
   const searchLower = search.toLowerCase().trim();
   const visibleBrains = [...adventure.brains]
     .sort((a, b) => b.priority - a.priority)
@@ -165,6 +175,64 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
       || Object.values(brain.thoughts).some((thought) => thought.toLowerCase().includes(searchLower))
       || Object.values(brain.archivedThoughts).some((thought) => thought.toLowerCase().includes(searchLower)));
   const activeCount = adventure.brains.filter((brain) => brain.active).length;
+
+  function updateBrainAuditRec(id: string, patch: Partial<BrainAuditRecommendation>) {
+    setBrainAudit((prev) => prev && {
+      ...prev,
+      recommendations: prev.recommendations.map((rec) => rec.id === id ? { ...rec, ...patch } : rec),
+    });
+  }
+
+  function approveBrainAuditRec(rec: BrainAuditRecommendation) {
+    if (rec.action === "delete" && rec.brainId) {
+      dispatch({ type: "DELETE_BRAIN", brainId: rec.brainId });
+    } else if (rec.action === "edit" && rec.brainId) {
+      dispatch({
+        type: "UPDATE_BRAIN",
+        brainId: rec.brainId,
+        patch: {
+          characterName: rec.editedCharacterName,
+          triggers: fromCommaList(rec.editedTriggers),
+          currentState: rec.editedCurrentState,
+          relationshipPressure: rec.editedRelationshipPressure,
+          emotionalInterpretation: rec.editedEmotionalInterpretation,
+          recentDevelopments: rec.editedRecentDevelopments,
+          notes: rec.editedNotes,
+          thoughts: parseThoughts(rec.editedThoughts),
+        },
+      });
+    } else if (rec.action === "create") {
+      dispatch({
+        type: "UPSERT_BRAIN",
+        brain: makeBrain({
+          characterName: rec.editedCharacterName || rec.title,
+          triggers: fromCommaList(rec.editedTriggers),
+          currentState: rec.editedCurrentState,
+          relationshipPressure: rec.editedRelationshipPressure,
+          emotionalInterpretation: rec.editedEmotionalInterpretation,
+          recentDevelopments: rec.editedRecentDevelopments,
+          notes: rec.editedNotes,
+          thoughts: parseThoughts(rec.editedThoughts),
+        }),
+      });
+    }
+    updateBrainAuditRec(rec.id, { decision: "approved" });
+  }
+
+  async function runBrainAudit() {
+    if (!onAuditBrains) return;
+    setBrainAudit({ status: "running", recommendations: [] });
+    try {
+      const recommendations = await onAuditBrains(brainAuditTurns);
+      setBrainAudit({ status: "done", recommendations });
+    } catch (err) {
+      setBrainAudit({
+        status: "error",
+        recommendations: [],
+        errorMessage: err instanceof Error ? err.message : "Brain cleanup failed.",
+      });
+    }
+  }
 
   return (
     <section className="page editor-surface brains-page">
@@ -221,6 +289,45 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
             >
               {loading ? "Generating..." : "✨ Generate from name"}
             </button>
+          </div>
+        </details>
+      )}
+
+      {onAuditBrains && (
+        <details className="panel editor-tools-panel brain-maintenance-panel" open>
+          <summary>Review and Maintain Character Brains</summary>
+          <div className="brain-maintenance-grid">
+            <section className="brain-tool-card brain-tool-card-primary">
+              <div className="brain-tool-copy">
+                <h3>Clean up existing brains</h3>
+                <p className="muted">
+                  Find duplicate character brains, repeated thoughts, broad aliases, empty stubs, and public facts that should live on Story Cards instead.
+                </p>
+              </div>
+              <div className="brain-tool-controls">
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={loading || brainAudit?.status === "running"}
+                  onClick={runBrainAudit}
+                  title="Review existing Character Brains and get cleanup suggestions."
+                >
+                  {brainAudit?.status === "running" ? "Cleaning..." : "Clean Up Brains"}
+                </button>
+                <label className="turn-window-field">
+                  <span>Review last</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={brainAuditTurns}
+                    onChange={(event) => setBrainAuditTurns(Math.max(1, Number(event.target.value)))}
+                    className="audit-turns-input"
+                  />
+                  <span>turns</span>
+                </label>
+              </div>
+            </section>
           </div>
         </details>
       )}
@@ -426,6 +533,125 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onG
           </details>
         ))}
       </div>
+
+      {brainAudit && brainAudit.status !== "running" && (
+        <div className="audit-modal-overlay" onClick={(event) => { if (event.target === event.currentTarget) setBrainAudit(null); }}>
+          <div className="audit-modal">
+            <div className="audit-modal-header">
+              <h3>Character Brain Cleanup</h3>
+              <button type="button" className="audit-modal-close" onClick={() => setBrainAudit(null)}>x</button>
+            </div>
+
+            {brainAudit.status === "error" && (
+              <p className="audit-error">{brainAudit.errorMessage}</p>
+            )}
+
+            {brainAudit.status === "done" && brainAudit.recommendations.length === 0 && (
+              <p className="muted">No changes recommended - your character brains look good.</p>
+            )}
+
+            {brainAudit.recommendations.map((rec) => (
+              <div key={rec.id} className={`audit-rec ${rec.decision !== "pending" ? `audit-rec-${rec.decision}` : ""}`}>
+                <div className="audit-rec-header">
+                  <span className={`audit-badge audit-badge-${rec.action}`}>{rec.action.toUpperCase()}</span>
+                  {rec.source === "deterministic" && <span className="audit-badge audit-badge-det">DETECTED</span>}
+                  <span className="audit-rec-title">{rec.title}</span>
+                  {rec.decision !== "pending" && (
+                    <span className={`audit-badge audit-badge-decision-${rec.decision}`}>{rec.decision}</span>
+                  )}
+                </div>
+                <p className="audit-rec-rationale">{rec.rationale}</p>
+
+                {rec.action !== "delete" && (
+                  <div className="audit-rec-fields">
+                    <div className="field-row">
+                      <Field label="Character Name">
+                        <input
+                          value={rec.editedCharacterName}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedCharacterName: event.target.value, title: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                      <Field label="Aliases">
+                        <input
+                          value={rec.editedTriggers}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedTriggers: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                    </div>
+                    <div className="field-row">
+                      <Field label="Current State">
+                        <textarea
+                          rows={3}
+                          value={rec.editedCurrentState}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedCurrentState: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                      <Field label="Relationship Pressure">
+                        <textarea
+                          rows={3}
+                          value={rec.editedRelationshipPressure}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedRelationshipPressure: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                    </div>
+                    <div className="field-row">
+                      <Field label="Emotional Interpretation">
+                        <textarea
+                          rows={3}
+                          value={rec.editedEmotionalInterpretation}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedEmotionalInterpretation: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                      <Field label="Recent Developments">
+                        <textarea
+                          rows={3}
+                          value={rec.editedRecentDevelopments}
+                          onChange={(event) => updateBrainAuditRec(rec.id, { editedRecentDevelopments: event.target.value })}
+                          disabled={rec.decision !== "pending"}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Thoughts">
+                      <textarea
+                        rows={5}
+                        value={rec.editedThoughts}
+                        onChange={(event) => updateBrainAuditRec(rec.id, { editedThoughts: event.target.value })}
+                        disabled={rec.decision !== "pending"}
+                      />
+                    </Field>
+                    <Field label="Notes">
+                      <textarea
+                        rows={3}
+                        value={rec.editedNotes}
+                        onChange={(event) => updateBrainAuditRec(rec.id, { editedNotes: event.target.value })}
+                        disabled={rec.decision !== "pending"}
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                <div className="audit-rec-actions">
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => approveBrainAuditRec(rec)}>
+                    Approve
+                  </button>
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => updateBrainAuditRec(rec.id, { decision: "rejected" })}>
+                    Reject
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            <div className="audit-modal-footer">
+              <button type="button" onClick={() => setBrainAudit(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

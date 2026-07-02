@@ -395,7 +395,7 @@ function applyBrainUpdate(
 
   const { thoughts: nextThoughts, archivedThoughts: nextArchivedThoughts } = thoughtsPatch
     ? mode === "replace"
-      ? mergeThoughts({}, brain.archivedThoughts, thoughtsPatch, false)
+      ? mergeThoughts({}, { ...brain.archivedThoughts, ...brain.thoughts }, thoughtsPatch, false)
       : mergeThoughts(brain.thoughts, brain.archivedThoughts, thoughtsPatch)
     : { thoughts: brain.thoughts, archivedThoughts: brain.archivedThoughts };
 
@@ -767,6 +767,65 @@ function outgoingPlotEssentialsProposals(state: Adventure, proposal: MemoryPropo
     state.components.find((component) => component.id === proposal.targetId && component.type === "plotEssentials") ??
     state.components.find((component) => component.type === "plotEssentials");
   return outgoingPlotEssentialsProposalsForReplacement(state, target, proposal.content, proposal.sourceTurnId ?? String(state.activeState.turn));
+}
+
+const BRAIN_ARCHIVE_FIELDS: Array<[Exclude<BrainStateField, "thoughts">, string]> = [
+  ["currentState", "Current state"],
+  ["relationshipPressure", "Relationship pressure"],
+  ["emotionalInterpretation", "Emotional interpretation"],
+  ["recentDevelopments", "Recent developments"],
+  ["notes", "Notes"],
+];
+
+function outgoingBrainFieldProposalsForReplacement(
+  state: Adventure,
+  brain: BrainEntry,
+  patch: BrainPatch,
+  mode: "replace" | "append" | undefined,
+  sourceTurnId = String(state.activeState.turn),
+): MemoryProposal[] {
+  if (mode === "append") return [];
+  const now = nowIso();
+  const results: MemoryProposal[] = [];
+  for (const [field, label] of BRAIN_ARCHIVE_FIELDS) {
+    const nextValue = patch[field];
+    if (typeof nextValue !== "string") continue;
+    const previous = (brain[field] as string | undefined)?.trim();
+    if (!previous) continue;
+    const previousNormalized = normalizedReplacementContent(previous);
+    const nextNormalized = normalizedReplacementContent(nextValue);
+    if (!previousNormalized || previousNormalized === nextNormalized || nextNormalized.includes(previousNormalized)) continue;
+    if (state.storyCards.some((card) => contentLooksDuplicate(card.content, previous) || normalizedReplacementContent(card.content).includes(previousNormalized))) continue;
+    const content = `• ${label}: ${previous}`;
+    const routed = resolveMemoryTarget(state, {
+      proposedType: "storyCard",
+      title: `${brain.characterName}: Brain History`,
+      content,
+      sourceText: previous,
+      suggestedTriggers: [brain.characterName, ...brain.triggers],
+      memoryMode: "historical",
+      rationale: `${label} left ${brain.characterName}'s Brain during a replacement. Approve if it remains useful as durable historical context; reject if it was obsolete or purely private clutter.`,
+    });
+    results.push({
+      id: createId("proposal"),
+      sourceTurnId,
+      sourceText: previous,
+      proposedType: "storyCard",
+      title: routed.title,
+      content: routed.content,
+      suggestedTriggers: routed.suggestedTriggers,
+      confidence: 0.68,
+      rationale: routed.rationale ?? `${label} left ${brain.characterName}'s Brain during a replacement. Approve if it remains useful as durable historical context; reject if it was obsolete or purely private clutter.`,
+      status: "pending",
+      targetId: routed.targetId,
+      appendContent: routed.appendContent,
+      memoryMode: routed.memoryMode ?? "historical",
+      createdAt: now,
+      updatedAt: now,
+    });
+    if (results.length >= 3) break;
+  }
+  return results;
 }
 
 function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal): Partial<Adventure> {
@@ -1368,12 +1427,28 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         brains: updateById(state.brains, action.brainId, (item) => updateBrainField(item, action.field, action.text, "replace")),
       });
-    case "APPLY_BRAIN_UPDATE":
-      return touchAdventure(state, {
+    case "APPLY_BRAIN_UPDATE": {
+      const target = state.brains.find((brain) => brain.id === action.brainId);
+      if (!target) return state;
+      const basePatch: Partial<Adventure> = {
         brains: updateById(state.brains, action.brainId, (item) =>
           applyBrainUpdate(item, action.patch, action.mode, action.turn, action.preview),
         ),
+      };
+      const outgoing = outgoingBrainFieldProposalsForReplacement(state, target, action.patch, action.mode, String(action.turn ?? state.activeState.turn));
+      const companionResult = applyCompanionMemoryProposals(state, basePatch, outgoing);
+      return touchAdventure(state, {
+        ...companionResult.patch,
+        ...(companionResult.proposals.length > 0
+          ? {
+              activeState: {
+                ...state.activeState,
+                memoryProposals: [...companionResult.proposals, ...state.activeState.memoryProposals],
+              },
+            }
+          : {}),
       });
+    }
     case "UPSERT_TRIGGER_RULE":
       return touchAdventure(state, { triggerRules: upsertById(state.triggerRules, touch(action.triggerRule)) });
     case "DELETE_TRIGGER_RULE":
