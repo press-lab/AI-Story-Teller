@@ -84,6 +84,26 @@ function correctionConfig(config: RuntimeProviderSettings, responseLengthHint: n
   return { ...bounded, maxOutputTokens: Math.min(bounded.maxOutputTokens, correctionCap) };
 }
 
+export function combineProviderUsage(...usages: Array<ProviderUsage | undefined>): ProviderUsage | undefined {
+  const present = usages.filter((usage): usage is ProviderUsage => usage !== undefined);
+  if (present.length === 0) return undefined;
+  const promptTokens = present.reduce((sum, usage) => sum + usage.promptTokens, 0);
+  const completionTokens = present.reduce((sum, usage) => sum + usage.completionTokens, 0);
+  const totalTokens = present.reduce(
+    (sum, usage) => sum + (usage.totalTokens || usage.promptTokens + usage.completionTokens),
+    0,
+  );
+  const cacheRead = present.reduce((sum, usage) => sum + (usage.cacheReadTokens ?? 0), 0);
+  const cacheWrite = present.reduce((sum, usage) => sum + (usage.cacheCreationTokens ?? 0), 0);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    ...(present.some((usage) => usage.cacheReadTokens !== undefined) ? { cacheReadTokens: cacheRead } : {}),
+    ...(present.some((usage) => usage.cacheCreationTokens !== undefined) ? { cacheCreationTokens: cacheWrite } : {}),
+  };
+}
+
 async function sendStoryCompletionWithGuard({
   messages,
   config,
@@ -109,7 +129,7 @@ async function sendStoryCompletionWithGuard({
     messages: correctionMessages,
     config: correctionConfig(config, responseLengthHint),
   });
-  return { content: corrected.content, usage: corrected.usage };
+  return { content: corrected.content, usage: combineProviderUsage(response.usage, corrected.usage) };
 }
 
 function stripThinkTags(text: string): string {

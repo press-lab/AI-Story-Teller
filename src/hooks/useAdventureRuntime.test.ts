@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyResponseLengthHint } from "./useAdventureRuntime";
+import { applyResponseLengthHint, combineProviderUsage } from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
 
 const baseConfig: RuntimeProviderSettings = {
@@ -33,5 +33,23 @@ describe("applyResponseLengthHint", () => {
   it("clamps unsafe word targets before deriving the cap", () => {
     expect(applyResponseLengthHint(baseConfig, 999).maxOutputTokens).toBe(830);
     expect(applyResponseLengthHint(baseConfig, 10).maxOutputTokens).toBe(155);
+  });
+});
+
+describe("combineProviderUsage", () => {
+  it("adds first-draft and correction-pass usage for guarded story turns", () => {
+    expect(combineProviderUsage(
+      { promptTokens: 17_000, completionTokens: 650, totalTokens: 17_650, cacheReadTokens: 12_000 },
+      { promptTokens: 900, completionTokens: 90, totalTokens: 990, cacheReadTokens: 0 },
+    )).toEqual({
+      promptTokens: 17_900,
+      completionTokens: 740,
+      totalTokens: 18_640,
+      cacheReadTokens: 12_000,
+    });
+  });
+
+  it("returns undefined when neither provider call reports usage", () => {
+    expect(combineProviderUsage(undefined, undefined)).toBeUndefined();
   });
 });
