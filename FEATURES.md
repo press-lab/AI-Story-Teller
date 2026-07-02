@@ -322,7 +322,7 @@ Stores `targetType` (component/storyCard/brain), `targetId`, `expiresTurn`. Cont
 **Files:** `pages/SettingsPage.tsx`, `hooks/useAdventureRuntime.ts`
 
 ### Provider Presets:
-Multiple named presets stored in localStorage. Each: label, base URL, API key (localStorage only, never in adventure JSON), model, temperature, max output tokens, optional request throttle (enabled, min seconds between requests, max per minute).
+Multiple named presets stored in localStorage. Each: label, base URL, API key (localStorage only, never in adventure JSON), model, temperature, max output tokens, prompt caching/sticky-session preference, optional OpenRouter routing sort, and optional request throttle (enabled, min seconds between requests, max per minute).
 
 ### Background Provider Config:
 `SemanticEvaluationSettings.backgroundProviderConfig` — when set, all background LLM calls (semantic eval, memory cycle, brain updates, continuity lint) route through this provider. Primary pattern: fast/cheap model (e.g., Groq llama) for background, powerful model for story generation.

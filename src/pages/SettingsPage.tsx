@@ -6,6 +6,7 @@ import type {
   MemoryAutoApproveSettings,
   MemoryDetectionSettings,
   MemoryPriorityMode,
+  OpenRouterProviderSort,
   ProviderRequestThrottle,
   SemanticEvaluationSettings,
   TokenBudgetSettings,
@@ -324,10 +325,29 @@ export function SettingsPage({
                     {advanced && (
                       <>
                         <CheckboxField
-                          label="Enable prompt caching"
+                          label="Enable prompt caching / sticky sessions"
                           checked={preset.promptCaching ?? false}
                           onChange={(promptCaching) => updatePreset(preset.id, { promptCaching })}
                         />
+                        <Field label="OpenRouter routing preference">
+                          <select
+                            value={preset.openRouterProviderSort ?? ""}
+                            onChange={(e) =>
+                              updatePreset(preset.id, {
+                                openRouterProviderSort: (e.target.value || undefined) as OpenRouterProviderSort | undefined,
+                              })
+                            }
+                          >
+                            <option value="">Balanced default</option>
+                            <option value="price">Lowest price</option>
+                            <option value="latency">Lowest latency</option>
+                            <option value="throughput">Highest throughput</option>
+                          </select>
+                        </Field>
+                        <p className="muted">
+                          OpenRouter's default already weighs lower price with uptime. Lowest price disables that
+                          load balancing; use latency or throughput if the model is feeling slow.
+                        </p>
                         <h4>API Throttle</h4>
                         <CheckboxField
                           label="Enable API request throttle"

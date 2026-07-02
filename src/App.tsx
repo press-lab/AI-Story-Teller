@@ -164,6 +164,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (providerPresets.length === 0) return;
+    let changed = false;
+    const hydrated = providerPresets.map((preset) => {
+      if (preset.promptCaching !== undefined) return preset;
+      changed = true;
+      return { ...preset, promptCaching: defaultModelConfig.promptCaching };
+    });
+    if (changed) setProviderPresets(hydrated);
+  }, [providerPresets, setProviderPresets]);
+
+  useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark-mode", uiPreferences.darkMode);
     root.setAttribute("data-density", uiPreferences.density);

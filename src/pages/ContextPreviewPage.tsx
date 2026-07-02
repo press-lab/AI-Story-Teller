@@ -80,6 +80,8 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const messagesWithUsage = adventure.messages.filter((m) => m.usage != null);
   const totalActualIn = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
   const totalActualOut = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.completionTokens ?? 0), 0);
+  const totalCacheRead = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.cacheReadTokens ?? 0), 0);
+  const totalCacheWrite = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.cacheCreationTokens ?? 0), 0);
   const hasActualUsage = messagesWithUsage.length > 0;
   const lastSentTokens = [...messagesWithUsage].reverse()[0]?.usage?.promptTokens;
   const avgSentTokens = hasActualUsage ? Math.round(totalActualIn / messagesWithUsage.length) : undefined;
@@ -199,6 +201,8 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           <span title="Average prompt tokens per story turn">avg {avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
           <span title="Total tokens used by background AI calls (brain updates, story card updates, plot updates, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
+          <span className="token-metrics-sep">·</span>
+          <span title="Prompt-cache tokens reported by the provider across story turns">cache {totalCacheRead > 0 || totalCacheWrite > 0 ? `${totalCacheRead.toLocaleString()} read ${totalCacheWrite.toLocaleString()} write` : "—"}</span>
         </span>
         {dedupError && (
           <span className="context-inline-error">

@@ -71,6 +71,7 @@ export const defaultModelConfig: ProviderConfig = {
   presencePenalty: 0.8,
   frequencyPenalty: 0,
   requestThrottle: defaultProviderRequestThrottle,
+  promptCaching: true,
 };
 
 export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
@@ -424,6 +425,12 @@ function normalizeComponentEntry(component: ComponentEntry): ComponentEntry {
     : component;
 }
 
+function persistedProviderConfig(config: ProviderConfig | undefined): Partial<ProviderConfig> {
+  if (!config) return {};
+  const { apiKey: _apiKey, sessionId: _sessionId, ...persisted } = config;
+  return persisted;
+}
+
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   const messages = removeMirroredOpeningMessage(adventure);
@@ -580,7 +587,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     },
     modelConfig: {
       ...defaultModelConfig,
-      ...(adventure.modelConfig ?? {}),
+      ...persistedProviderConfig(adventure.modelConfig),
       requestThrottle: {
         ...defaultProviderRequestThrottle,
         ...(adventure.modelConfig?.requestThrottle ?? {}),

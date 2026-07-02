@@ -47,6 +47,26 @@ function messageRows(message: Message): number {
   return Math.max(3, Math.min(12, message.content.split(/\n/).length + 2));
 }
 
+function usageTooltip(usage: NonNullable<Message["usage"]>): string {
+  const total = usage.totalTokens || usage.promptTokens + usage.completionTokens;
+  return [
+    `Prompt: ${usage.promptTokens}`,
+    `Completion: ${usage.completionTokens}`,
+    `Total: ${total}`,
+    usage.cacheReadTokens !== undefined ? `Cache read: ${usage.cacheReadTokens}` : undefined,
+    usage.cacheCreationTokens !== undefined ? `Cache write: ${usage.cacheCreationTokens}` : undefined,
+  ].filter(Boolean).join(" | ");
+}
+
+function usageInlineText(usage: NonNullable<Message["usage"]>): string {
+  return [
+    `in ${usage.promptTokens}`,
+    `out ${usage.completionTokens}`,
+    usage.cacheReadTokens ? `cache ${usage.cacheReadTokens}` : undefined,
+    usage.cacheCreationTokens ? `write ${usage.cacheCreationTokens}` : undefined,
+  ].filter(Boolean).join(" ");
+}
+
 export function PlayPage({
   adventure,
   dispatch,
@@ -372,8 +392,8 @@ export function PlayPage({
                   {message.role === "assistant" && (message.usage || (message.id === lastAssistant?.id && pendingMemoryCount > 0)) && (
                     <span className="message-usage muted">
                       {message.usage && (
-                        <span title={`Prompt: ${message.usage.promptTokens} · Completion: ${message.usage.completionTokens} · Total: ${message.usage.promptTokens + message.usage.completionTokens}`}>
-                          ↑{message.usage.promptTokens} ↓{message.usage.completionTokens}
+                        <span title={usageTooltip(message.usage)}>
+                          {usageInlineText(message.usage)}
                         </span>
                       )}
                       {message.id === lastAssistant?.id && adventure.activeState.backgroundTokenUsage.promptTokens > 0 && (

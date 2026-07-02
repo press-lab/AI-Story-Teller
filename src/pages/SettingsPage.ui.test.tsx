@@ -18,6 +18,7 @@ function makePreset(): ProviderPreset {
     apiKey: "test-key",
     id: "preset-test",
     label: "Test Model",
+    promptCaching: false,
   };
 }
 
@@ -56,7 +57,7 @@ describe("SettingsPage API throttle controls", () => {
     render(<StatefulSettingsPage />);
 
     await user.click(screen.getByRole("button", { name: /Test Model/ }));
-    await user.click(screen.getByLabelText("Enable prompt caching"));
+    await user.click(screen.getByLabelText("Enable prompt caching / sticky sessions"));
 
     expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
       expect.arrayContaining([
@@ -70,6 +71,54 @@ describe("SettingsPage API throttle controls", () => {
       expect.objectContaining({
         type: "SET_MODEL_CONFIG",
         config: expect.objectContaining({ promptCaching: true }),
+      }),
+    );
+  });
+
+  it("lets the user choose an OpenRouter routing preference", async () => {
+    const user = userEvent.setup();
+    const onProviderPresetsChange = vi.fn();
+    const dispatch = vi.fn<(action: AdventureAction) => void>();
+    const advancedPrefs: UiPreferences = { ...defaultUiPreferences, showAdvancedSettings: true };
+
+    function StatefulSettingsPage() {
+      const [presets, setPresets] = useState([makePreset()]);
+      return (
+        <SettingsPage
+          adventure={createDefaultAdventure("Routing Test")}
+          dispatch={dispatch}
+          providerPresets={presets}
+          activePresetId="preset-test"
+          onProviderPresetsChange={(next) => {
+            setPresets(next);
+            onProviderPresetsChange(next);
+          }}
+          onSelectPreset={vi.fn()}
+          uiPreferences={advancedPrefs}
+          onUiPreferencesChange={vi.fn()}
+          globalAdventureSettings={defaultGlobalAdventureSettings}
+          onGlobalAdventureSettingsChange={vi.fn()}
+        />
+      );
+    }
+
+    render(<StatefulSettingsPage />);
+
+    await user.click(screen.getByRole("button", { name: /Test Model/ }));
+    await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "price");
+
+    expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "preset-test",
+          openRouterProviderSort: "price",
+        }),
+      ]),
+    );
+    expect(dispatch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "SET_MODEL_CONFIG",
+        config: expect.objectContaining({ openRouterProviderSort: "price" }),
       }),
     );
   });

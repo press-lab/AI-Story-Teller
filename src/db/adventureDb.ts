@@ -47,7 +47,7 @@ function transaction<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) =
 }
 
 function sanitizeAdventure(adventure: Adventure): Adventure {
-  const { apiKey: _apiKey, ...modelConfig } = adventure.modelConfig;
+  const { apiKey: _apiKey, sessionId: _sessionId, ...modelConfig } = adventure.modelConfig;
   return { ...adventure, modelConfig };
 }
 

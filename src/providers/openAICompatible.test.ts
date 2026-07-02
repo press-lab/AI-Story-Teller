@@ -168,7 +168,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
         { role: "system", content: "You are a story engine." },
         { role: "user", content: "Continue." },
       ],
-      config: { ...config, promptCaching: true },
+      config: { ...config, baseUrl: "https://openrouter.ai/api/v1", promptCaching: true },
     });
 
     const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
@@ -183,6 +183,43 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     expect(body.messages[1]).toEqual({ role: "user", content: "Continue." });
   });
 
+  it("adds OpenRouter sticky session and routing preferences when configured", async () => {
+    const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
+    await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "user", content: "Hi" }],
+      config: {
+        ...config,
+        baseUrl: "https://openrouter.ai/api/v1",
+        promptCaching: true,
+        sessionId: "ai-story-teller:adv-test",
+        openRouterProviderSort: "latency",
+      },
+    });
+
+    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
+    expect(body.session_id).toBe("ai-story-teller:adv-test");
+    expect(body.provider).toEqual({ sort: "latency" });
+  });
+
+  it("does not send OpenRouter-specific request fields to native providers", async () => {
+    const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
+    await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "system", content: "Stable context" }],
+      config: {
+        ...config,
+        baseUrl: "https://api.deepseek.com",
+        promptCaching: true,
+        sessionId: "ai-story-teller:adv-test",
+        openRouterProviderSort: "price",
+      },
+    });
+
+    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
+    expect(body.session_id).toBeUndefined();
+    expect(body.provider).toBeUndefined();
+    expect(body.messages[0].content).toBe("Stable context");
+  });
+
   it("reports OpenAI-compatible cache usage fields", async () => {
     mockFetch(200, {
       choices: [{ message: { content: "ok" } }],
@@ -190,7 +227,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
         prompt_tokens: 100,
         completion_tokens: 20,
         total_tokens: 120,
-        prompt_tokens_details: { cached_tokens: 80 },
+        prompt_tokens_details: { cached_tokens: 80, cache_write_tokens: 40 },
       },
     });
 
@@ -204,7 +241,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
       completionTokens: 20,
       totalTokens: 120,
       cacheReadTokens: 80,
-      cacheCreationTokens: undefined,
+      cacheCreationTokens: 40,
     });
   });
 

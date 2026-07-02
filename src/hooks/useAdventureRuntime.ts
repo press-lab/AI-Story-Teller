@@ -40,7 +40,8 @@ import { createId, nowIso } from "../utils/id";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
 
 function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
-  return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey };
+  const sessionId = `ai-story-teller:${adventure.id}`.slice(0, 256);
+  return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey, sessionId };
 }
 
 export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number, hiddenReserveTokens = 0): RuntimeProviderSettings {

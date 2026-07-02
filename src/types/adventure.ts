@@ -291,8 +291,12 @@ export interface ProviderConfig {
   /** Penalty scaled by how often a token has appeared. */
   frequencyPenalty?: number;
   requestThrottle?: ProviderRequestThrottle;
-  /** When true, mark the system message with cache_control so stable context is cached. Supported by Anthropic (direct or via OpenRouter). */
+  /** When true, enable provider prompt-cache hints and OpenRouter sticky routing where supported. */
   promptCaching?: boolean;
+  /** Runtime-only OpenRouter session key. Not persisted into adventure saves. */
+  sessionId?: string;
+  /** OpenRouter-only provider routing preference. Empty/undefined keeps OpenRouter's balanced default. */
+  openRouterProviderSort?: OpenRouterProviderSort;
 }
 
 export interface ProviderRequestThrottle {
@@ -300,6 +304,8 @@ export interface ProviderRequestThrottle {
   minSecondsBetweenRequests: number;
   maxRequestsPerMinute: number;
 }
+
+export type OpenRouterProviderSort = "price" | "throughput" | "latency";
 
 /** Target word count for AI responses (50–200). Injected into every turn as a RESPONSE LENGTH instruction. */
 export type ResponseLengthHint = number;

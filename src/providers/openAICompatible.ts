@@ -3,6 +3,7 @@ import type { ChatMessage, ProviderConfig, ProviderRequestThrottle, ProviderUsag
 type CacheBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
 type CacheableContent = string | CacheBlock[];
 type CacheableMessage = { role: string; content: CacheableContent };
+type OpenRouterProviderPreferences = { sort?: "price" | "throughput" | "latency" };
 
 /** Mark the last system message with an ephemeral cache breakpoint so stable context is reused. */
 function applyPromptCaching(messages: ChatMessage[]): CacheableMessage[] {
@@ -48,6 +49,29 @@ function openAIEndpoint(baseUrl: string): string {
   if (trimmed.endsWith("/chat/completions")) return trimmed;
   if (trimmed.endsWith("/v1")) return `${trimmed}/chat/completions`;
   return `${trimmed}/v1/chat/completions`;
+}
+
+function isOpenRouterProvider(config: Pick<ProviderConfig, "baseUrl">): boolean {
+  try {
+    const hostname = new URL(config.baseUrl).hostname.toLowerCase();
+    return hostname === "openrouter.ai" || hostname.endsWith(".openrouter.ai");
+  } catch {
+    return config.baseUrl.toLowerCase().includes("openrouter.ai");
+  }
+}
+
+function openRouterSessionId(config: ProviderConfig): string | undefined {
+  if (!config.promptCaching || !config.sessionId || !isOpenRouterProvider(config)) return undefined;
+  return config.sessionId.slice(0, 256);
+}
+
+function openRouterProviderPreferences(config: ProviderConfig): OpenRouterProviderPreferences | undefined {
+  if (!isOpenRouterProvider(config) || !config.openRouterProviderSort) return undefined;
+  return { sort: config.openRouterProviderSort };
+}
+
+function shouldApplyOpenAIMessageCacheControl(config: ProviderConfig): boolean {
+  return Boolean(config.promptCaching && isOpenRouterProvider(config));
 }
 
 function anthropicEndpoint(baseUrl: string): string {
@@ -130,7 +154,9 @@ async function sendOpenAIRequest(
   responseFormat?: SendChatCompletionOptions["responseFormat"],
   thinking?: SendChatCompletionOptions["thinking"],
 ): Promise<ProviderResponse> {
-  const outMessages = config.promptCaching ? applyPromptCaching(messages) : messages;
+  const outMessages = shouldApplyOpenAIMessageCacheControl(config) ? applyPromptCaching(messages) : messages;
+  const sessionId = openRouterSessionId(config);
+  const provider = openRouterProviderPreferences(config);
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -151,6 +177,8 @@ async function sendOpenAIRequest(
         ...(config.frequencyPenalty !== undefined ? { frequency_penalty: config.frequencyPenalty } : {}),
         ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
         ...(thinking ? { thinking: { type: thinking } } : {}),
+        ...(sessionId ? { session_id: sessionId } : {}),
+        ...(provider ? { provider } : {}),
       }),
     });
   } catch (err) {
@@ -159,7 +187,7 @@ async function sendOpenAIRequest(
   }
 
   const rawText = await response.text().catch(() => "");
-  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } } };
+  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number } } };
   try {
     raw = JSON.parse(rawText) as typeof raw;
   } catch {
@@ -180,7 +208,7 @@ async function sendOpenAIRequest(
         completionTokens: raw.usage.completion_tokens ?? 0,
         totalTokens: raw.usage.total_tokens ?? 0,
         cacheReadTokens: raw.usage.cache_read_input_tokens ?? raw.usage.prompt_tokens_details?.cached_tokens,
-        cacheCreationTokens: raw.usage.cache_creation_input_tokens,
+        cacheCreationTokens: raw.usage.cache_creation_input_tokens ?? raw.usage.prompt_tokens_details?.cache_write_tokens,
       }
     : undefined;
 

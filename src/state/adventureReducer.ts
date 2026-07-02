@@ -435,7 +435,7 @@ function applyBrainUpdate(
 }
 
 function stripProviderKey(config: ProviderConfig): ProviderConfig {
-  const { apiKey: _apiKey, ...safeConfig } = config;
+  const { apiKey: _apiKey, sessionId: _sessionId, ...safeConfig } = config;
   return safeConfig;
 }
 

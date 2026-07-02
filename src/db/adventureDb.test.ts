@@ -30,9 +30,13 @@ describe("adventureDb IndexedDB persistence", () => {
     await deleteDb();
   });
 
-  it("saves and reloads adventures without persisting provider API keys", async () => {
+  it("saves and reloads adventures without persisting provider API keys or runtime session ids", async () => {
     const adventure = createDefaultAdventure("Persisted");
-    adventure.modelConfig = { ...adventure.modelConfig, apiKey: "test key should not persist" };
+    adventure.modelConfig = {
+      ...adventure.modelConfig,
+      apiKey: "test key should not persist",
+      sessionId: "runtime-session-should-not-persist",
+    };
     adventure.activeState.storyUndoStack = [
       {
         id: "story-edit-test",
@@ -48,6 +52,7 @@ describe("adventureDb IndexedDB persistence", () => {
     const loaded = await getAdventure(adventure.id);
     expect(loaded?.title).toBe("Persisted");
     expect(loaded?.modelConfig.apiKey).toBeUndefined();
+    expect(loaded?.modelConfig.sessionId).toBeUndefined();
     expect(loaded?.activeState.storyUndoStack).toEqual([
       {
         id: "story-edit-test",
