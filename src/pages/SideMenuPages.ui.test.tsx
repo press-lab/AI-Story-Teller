@@ -7,7 +7,7 @@ import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { adventureReducer } from "../state/adventureReducer";
-import { createDefaultAdventure, makeComponent, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import type { Adventure, AdventureAction } from "../types/adventure";
 
 import { BrainsPage } from "./BrainsPage";
@@ -141,7 +141,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
-  it("shows memory update timestamps on Story Card and Component summaries", () => {
+  it("shows update timestamps on editor item summaries", () => {
     const adventure: Adventure = {
       ...seedAdventure(),
       storyCards: [
@@ -150,6 +150,7 @@ describe("side menu page smoke coverage", () => {
           content: "Changes over time.",
           active: true,
           lastMemoryUpdatedAt: timestamp,
+          updatedAt: timestamp,
         }),
       ],
       components: [
@@ -158,16 +159,39 @@ describe("side menu page smoke coverage", () => {
           type: "plotEssentials",
           content: "The Beast is hunting Seth.",
           lastMemoryUpdatedAt: timestamp,
+          updatedAt: timestamp,
+        }),
+      ],
+      brains: [
+        makeBrain({
+          characterName: "Margo",
+          updatedAt: timestamp,
+        }),
+      ],
+      triggerRules: [
+        makeTriggerRule({
+          name: "Door opens",
+          updatedAt: timestamp,
         }),
       ],
     };
 
     render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
+    expect(screen.getByTitle(/Updated:/)).toHaveTextContent("Updated");
     expect(screen.getByTitle(/Last memory update:/)).toHaveTextContent("Memory");
     cleanup();
 
     render(<ComponentsPage adventure={adventure} dispatch={() => undefined} />);
+    expect(screen.getByTitle(/Updated:/)).toHaveTextContent("Updated");
     expect(screen.getByTitle(/Last memory update:/)).toHaveTextContent("Memory");
+    cleanup();
+
+    render(<BrainsPage adventure={adventure} dispatch={() => undefined} loading={false} onUpdateBrainNow={async () => undefined} />);
+    expect(screen.getByTitle(/Updated:/)).toHaveTextContent("Updated");
+    cleanup();
+
+    render(<TriggersPage adventure={adventure} dispatch={() => undefined} />);
+    expect(screen.getByTitle(/Updated:/)).toHaveTextContent("Updated");
   });
 
   it("covers Memory Inbox proposal creation and approval", async () => {

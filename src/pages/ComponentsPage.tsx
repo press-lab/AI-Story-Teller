@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import { makeComponent, makeStoryCard } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, contentSnippet, formatCompactTimestamp } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -239,6 +239,7 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
         {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
+        <UpdatedAtBadge value={component.updatedAt} />
         {memoryUpdatedAt && (
           <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>
             Memory {memoryUpdatedAt}

@@ -3551,6 +3551,12 @@ details.story-card-item:not([open]) > .editor-card {
   font-variant-numeric: tabular-nums;
 }
 
+.badge-updated {
+  background: #f1f5f9;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+}
+
 :root.dark-mode .badge-pinned {
   background: #1b3326;
   color: #8ecfa8;
@@ -3566,6 +3572,11 @@ details.story-card-item:not([open]) > .editor-card {
 :root.dark-mode .badge-memory-update {
   background: #0f2d3d;
   color: #7dd3fc;
+}
+
+:root.dark-mode .badge-updated {
+  background: #1e293b;
+  color: #cbd5e1;
 }
 
 

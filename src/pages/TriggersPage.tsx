@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { InlineMemoryCategory, TriggerEvaluationMode, TriggerMatchType, TriggerSource } from "../types/adventure";
 import { makeTriggerRule } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, JsonTextarea, NumberInput, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, JsonTextarea, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
 
 const sources: TriggerSource[] = ["input", "output", "both"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
@@ -176,6 +176,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                       <span className="badge badge-type">{rule.evaluationMode ?? "semantic"}</span>
                       <span className={rule.enabled ? "badge" : "badge badge-inactive"}>{rule.enabled ? "Enabled" : "Off"}</span>
                       {rule.actions.length > 0 && <span className="badge">{rule.actions.length} actions</span>}
+                      <UpdatedAtBadge value={rule.updatedAt} />
                     </span>
                     <span className="story-card-keys">{rule.patterns.length > 0 ? rule.patterns.join(", ") : "No patterns"}</span>
                     <span className="search-snippet">{rule.condition || rule.updatePrompt || "No condition set."}</span>

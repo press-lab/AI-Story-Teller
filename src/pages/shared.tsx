@@ -129,6 +129,16 @@ export function formatCompactTimestamp(value: string | undefined): string {
   }).format(date);
 }
 
+export function UpdatedAtBadge({ value, label = "Updated" }: { value: string | undefined; label?: string }) {
+  const timestamp = formatCompactTimestamp(value);
+  if (!timestamp) return null;
+  return (
+    <span className="badge badge-updated" title={`${label}: ${timestamp}`}>
+      {label} {timestamp}
+    </span>
+  );
+}
+
 function snapshotMeta(snapshot: MemoryUpdateSnapshot | null): string {
   if (!snapshot) return "New memory item";
   const values = [

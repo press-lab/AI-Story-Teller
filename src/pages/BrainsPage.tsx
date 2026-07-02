@@ -1,7 +1,7 @@
 import type { BrainEntry, ContextInclusionPolicy } from "../types/adventure";
 import { makeBrain } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
 import { useEffect, useState } from "react";
 
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
@@ -139,6 +139,7 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
         {brain.priority > 0 && <span className="badge badge-priority">p{brain.priority}</span>}
         {thoughtCount > 0 && <span className="badge badge-priority">{thoughtCount} thoughts</span>}
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
+        <UpdatedAtBadge value={brain.updatedAt} />
       </span>
       {brain.triggers.length > 0 && (
         <span className="story-card-keys">
