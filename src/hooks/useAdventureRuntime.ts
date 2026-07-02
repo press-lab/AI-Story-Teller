@@ -16,6 +16,11 @@ import {
   runTurnPipeline,
 } from "../state/turnPipeline";
 import {
+  buildStoryResponseCorrectionMessages,
+  evaluateStoryResponseGuard,
+  storyResponseWordLimit,
+} from "../state/storyResponseGuard";
+import {
   runManualBrainUpdate,
   runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
@@ -29,11 +34,13 @@ import {
 import type {
   Adventure,
   AdventureAction,
+  ChatMessage,
   ContextBuildResult,
   InputMode,
   MemoryDetectionSettings,
   PendingAdventureUpdate,
   PlotAIBuilderRequest,
+  ProviderUsage,
   StoryCardAIBuilderRequest,
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
@@ -60,6 +67,49 @@ function hiddenOutputReserveTokens(context: ContextBuildResult): number {
   const thoughtExamples = payloadText.match(/<thought\s+name=/gi)?.length ?? 0;
   const memoryTaggingReserve = payloadText.includes("[MEMORY TAGGING]") ? 120 : 0;
   return thoughtExamples * 42 + memoryTaggingReserve;
+}
+
+function correctionConfig(config: RuntimeProviderSettings, responseLengthHint: number): RuntimeProviderSettings {
+  const bounded = applyResponseLengthHint(
+    {
+      ...config,
+      temperature: Math.min(config.temperature, 0.2),
+      presencePenalty: 0,
+      frequencyPenalty: 0,
+    },
+    responseLengthHint,
+    0,
+  );
+  const correctionCap = Math.ceil(storyResponseWordLimit(responseLengthHint) * 1.15) + 35;
+  return { ...bounded, maxOutputTokens: Math.min(bounded.maxOutputTokens, correctionCap) };
+}
+
+async function sendStoryCompletionWithGuard({
+  messages,
+  config,
+  responseLengthHint,
+  playerInput,
+}: {
+  messages: ChatMessage[];
+  config: RuntimeProviderSettings;
+  responseLengthHint: number;
+  playerInput: string;
+}): Promise<{ content: string; usage?: ProviderUsage }> {
+  const response = await sendOpenAICompatibleChatCompletion({ messages, config });
+  const guard = evaluateStoryResponseGuard(response.content, responseLengthHint, playerInput);
+  if (!guard.needsCorrection) return response;
+
+  const correctionMessages = buildStoryResponseCorrectionMessages({
+    playerInput,
+    draft: response.content,
+    wordLimit: guard.visibleWordLimit,
+    reasons: guard.reasons,
+  });
+  const corrected = await sendOpenAICompatibleChatCompletion({
+    messages: correctionMessages,
+    config: correctionConfig(config, responseLengthHint),
+  });
+  return { content: corrected.content, usage: corrected.usage };
 }
 
 function stripThinkTags(text: string): string {
@@ -277,7 +327,15 @@ export function useAdventureRuntime(
             snapshot.activeState.responseLengthHint,
             hiddenOutputReserveTokens(context),
           );
-          return sendOpenAICompatibleChatCompletion({ messages, config: storyConfig });
+          if (mode === "comms") {
+            return sendOpenAICompatibleChatCompletion({ messages, config: storyConfig });
+          }
+          return sendStoryCompletionWithGuard({
+            messages,
+            config: storyConfig,
+            responseLengthHint: snapshot.activeState.responseLengthHint,
+            playerInput: text,
+          });
         },
       });
 
@@ -342,7 +400,12 @@ export function useAdventureRuntime(
             snapshot.activeState.responseLengthHint,
             hiddenOutputReserveTokens(context),
           );
-          return sendOpenAICompatibleChatCompletion({ messages, config: continueConfig });
+          return sendStoryCompletionWithGuard({
+            messages,
+            config: continueConfig,
+            responseLengthHint: snapshot.activeState.responseLengthHint,
+            playerInput: "[continue]",
+          });
         },
       });
       let next = result.adventure;
@@ -384,7 +447,12 @@ export function useAdventureRuntime(
         next.activeState.responseLengthHint,
         hiddenOutputReserveTokens(context),
       );
-      const response = await sendOpenAICompatibleChatCompletion({ messages: context.messages, config: regenConfig });
+      const response = await sendStoryCompletionWithGuard({
+        messages: context.messages,
+        config: regenConfig,
+        responseLengthHint: next.activeState.responseLengthHint,
+        playerInput: lastUser,
+      });
       const applied = await applyProviderResponse({
         adventure: next,
         response,
