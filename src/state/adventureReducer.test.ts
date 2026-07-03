@@ -86,6 +86,7 @@ const testedActionTypes = [
   "ADVANCE_ARC_PACING",
   "SET_ARC_PHASE",
   "SET_ARC_CONTINUATIONS",
+  "COMPLETE_ARC_TO_STORY_CARD",
   "APPLY_ARC_CONTINUATION",
 ] as const satisfies AdventureAction["type"][];
 
@@ -1410,6 +1411,43 @@ describe("adventureReducer", () => {
     expect(get().content).toBe("");
     expect(get().arcState?.phase).toBe("simmer");
     expect(get().arcContinuationOptions).toBeUndefined();
+  });
+
+  it("completes the current arc directly into a historical Story Card", () => {
+    let state = baseAdventure();
+    const arc = makeComponent({
+      title: "Current Story Arc",
+      type: "currentArc",
+      content: "Renzan fell; the Society survived.",
+      arcPremise: "Take down Lord Renzan.",
+      arcThreadKeys: ["thread-renzan"],
+      arcSimmerInstruction: "Renzan moves through proxies.",
+      arcBreakInstruction: "Renzan forces the confrontation.",
+      arcState: { phase: "aftermath", tier: 5, threadEngagement: { "thread-renzan": 8 }, pendingBreak: false },
+    });
+    state = reduce(state, { type: "UPSERT_COMPONENT", component: arc });
+
+    const cardsBefore = state.storyCards.length;
+    state = reduce(state, { type: "COMPLETE_ARC_TO_STORY_CARD", componentId: arc.id });
+
+    expect(state.storyCards.length).toBe(cardsBefore + 1);
+    const archived = state.storyCards.at(-1);
+    expect(archived).toMatchObject({
+      title: "Take down Lord Renzan.",
+      type: "plot",
+      memoryMode: "historical",
+      active: true,
+      state: "archivedArc",
+    });
+    expect(archived?.content).toContain("Arc: Take down Lord Renzan.");
+    expect(archived?.content).toContain("Renzan fell; the Society survived.");
+
+    const resetArc = state.components.find((component) => component.id === arc.id);
+    expect(resetArc?.arcPremise).toBe("");
+    expect(resetArc?.content).toBe("");
+    expect(resetArc?.arcThreadKeys).toEqual([]);
+    expect(resetArc?.arcState?.phase).toBe("simmer");
+    expect(resetArc?.arcContinuationOptions).toBeUndefined();
   });
 
   it("tracks story text undo and redo for adds, edits, erases, and opening scene edits", () => {

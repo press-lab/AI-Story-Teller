@@ -120,6 +120,39 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Break armed for next output");
   });
 
+  it("completes the Current Arc into a Story Card with visible feedback", async () => {
+    const user = userEvent.setup();
+    const arcAdventure: Adventure = {
+      ...seedAdventure(),
+      components: [
+        makeComponent({
+          title: "Current Story Arc",
+          type: "currentArc",
+          content: "The Red Ring fell apart after the tower fight.",
+          arcPremise: "Break the Red Ring",
+          arcThreadKeys: ["baddie"],
+          arcBreakInstruction: "The baddie forces the confrontation.",
+        }),
+      ],
+    };
+
+    renderWithAdventure(
+      (adventure, dispatch) => (
+        <>
+          <ComponentsPage adventure={adventure} dispatch={dispatch} />
+          <span data-testid="story-card-count">{adventure.storyCards.length}</span>
+        </>
+      ),
+      arcAdventure,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Complete Arc -> Story Card" }));
+
+    expect(screen.getByRole("status")).toHaveTextContent("Completed arc saved as Story Card: Break the Red Ring.");
+    expect(screen.getByTestId("story-card-count")).toHaveTextContent("1");
+    expect(screen.getByRole("button", { name: "Complete Arc -> Story Card" })).toBeDisabled();
+  });
+
   it("sends a guided Story Card builder request to the AI memory suggestion flow", async () => {
     const user = userEvent.setup();
     const onBuildStoryCardMemory = vi.fn(async () => undefined);

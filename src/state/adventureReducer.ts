@@ -266,6 +266,35 @@ function setArcPhase(component: ComponentEntry, phase: ArcPhase, turn: number | 
   return touch({ ...component, arcState: { ...state, phase, pendingBreak: false, brokeAtTurn, threadEngagement, tier } });
 }
 
+function arcArchiveCard(component: ComponentEntry): StoryCard | undefined {
+  const cardTitle = component.arcPremise?.trim() || component.title;
+  const cardBody = [component.arcPremise?.trim() ? `Arc: ${component.arcPremise.trim()}` : "", component.content.trim()]
+    .filter(Boolean)
+    .join("\n");
+  if (!cardBody.trim()) return undefined;
+  return makeStoryCard({
+    title: cardTitle,
+    content: cardBody,
+    type: "plot",
+    memoryMode: "historical",
+    active: true,
+    state: "archivedArc",
+  });
+}
+
+function clearCompletedArc(component: ComponentEntry): ComponentEntry {
+  return touch({
+    ...component,
+    arcPremise: "",
+    content: "",
+    arcThreadKeys: [],
+    arcSimmerInstruction: "",
+    arcBreakInstruction: "",
+    arcContinuationOptions: undefined,
+    arcState: defaultArcState(),
+  });
+}
+
 function updateBrainField(brain: BrainEntry, field: BrainStateField | undefined, text: string, mode: "append" | "replace"): BrainEntry {
   const targetField = field ?? "currentState";
   if (targetField === "thoughts") return brain; // thoughts is a Record — use APPLY_BRAIN_UPDATE instead
@@ -1371,21 +1400,25 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       return touchAdventure(state, {
         components: updateById(state.components, action.componentId, (item) => touch({ ...item, arcContinuationOptions: action.options })),
       });
+    case "COMPLETE_ARC_TO_STORY_CARD": {
+      const comp = state.components.find((c) => c.id === action.componentId);
+      if (!comp) return state;
+      const archived = arcArchiveCard(comp);
+      if (!archived) return state;
+      return touchAdventure(state, {
+        storyCards: [...state.storyCards, archived],
+        components: updateById(state.components, action.componentId, clearCompletedArc),
+      });
+    }
     case "APPLY_ARC_CONTINUATION": {
       const comp = state.components.find((c) => c.id === action.componentId);
       if (!comp) return state;
       const opt = action.option;
       // Bank the resolved arc as a Story Card so previous arcs are preserved, then reseed
       // this component as the next arc and start its climb fresh.
-      const cardTitle = comp.arcPremise?.trim() || comp.title;
-      const cardBody = [comp.arcPremise?.trim() ? `Arc: ${comp.arcPremise.trim()}` : "", comp.content.trim()]
-        .filter(Boolean)
-        .join("\n");
-      const archived = cardBody.trim()
-        ? [makeStoryCard({ title: cardTitle, content: cardBody, type: "plot", memoryMode: "historical", active: true })]
-        : [];
+      const archived = arcArchiveCard(comp);
       return touchAdventure(state, {
-        storyCards: [...state.storyCards, ...archived],
+        storyCards: archived ? [...state.storyCards, archived] : state.storyCards,
         components: updateById(state.components, action.componentId, (item) =>
           touch({
             ...item,

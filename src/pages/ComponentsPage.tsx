@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import type { ComponentAuditRecommendation } from "../memory/componentAudit";
-import { makeComponent, makeStoryCard } from "../state/defaults";
+import { makeComponent } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
 
@@ -33,12 +33,14 @@ function ArcDirector({
   loading?: boolean;
 }) {
   const [concept, setConcept] = useState("");
+  const [arcActionStatus, setArcActionStatus] = useState("");
   const arc = component.arcState ?? { phase: "simmer" as ArcPhase, tier: 0, threadEngagement: {}, pendingBreak: false };
   const threadKeys = component.arcThreadKeys ?? [];
   const threadSet = new Set(threadKeys);
   const turn = adventure.activeState.turn;
   const configured = threadKeys.length > 0;
   const totalEngagement = threadKeys.reduce((sum, key) => sum + (arc.threadEngagement[key] ?? 0), 0);
+  const canCompleteArc = Boolean(component.arcPremise?.trim() || component.content.trim());
 
   const candidates = [
     ...adventure.storyCards.map((card) => ({ id: card.id, label: card.title, kind: "Card" })),
@@ -47,8 +49,21 @@ function ArcDirector({
 
   const patch = (next: Partial<ComponentEntry>) =>
     dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: next });
-  const setPhase = (phase: ArcPhase) =>
+  const setPhase = (phase: ArcPhase) => {
+    const statusByPhase: Record<ArcPhase, string> = {
+      simmer: "Arc reset to simmer. Engagement counters are cleared.",
+      escalate: "Arc moved to escalate. It will keep building until the break gate opens.",
+      break: "Break armed for next output. Press Continue or take a turn to let the model see the cost instruction.",
+      aftermath: "Arc moved to aftermath. Complete it into a Story Card or choose the next direction.",
+    };
+    setArcActionStatus(statusByPhase[phase]);
     dispatch({ type: "SET_ARC_PHASE", componentId: component.id, phase, turn });
+  };
+  const completeArcToStoryCard = () => {
+    const title = component.arcPremise?.trim() || component.title;
+    dispatch({ type: "COMPLETE_ARC_TO_STORY_CARD", componentId: component.id });
+    setArcActionStatus(`Completed arc saved as Story Card: ${title}. Current Arc is clear and simmering.`);
+  };
   const toggleThread = (id: string, on: boolean) =>
     patch({ arcThreadKeys: on ? [...threadKeys, id] : threadKeys.filter((key) => key !== id) });
 
@@ -189,21 +204,31 @@ function ArcDirector({
         />
       </Field>
 
-      {configured && (
+      {(configured || canCompleteArc || arcActionStatus) && (
         <div className="row" style={{ gap: "0.5rem", marginTop: "0.5rem" }}>
           <button
             type="button"
-            disabled={arc.phase === "break"}
+            disabled={!configured || arc.phase === "break"}
             onClick={() => setPhase("break")}
             title="Force the climax now, regardless of pacing."
           >
             {arc.phase === "break" ? "Break armed" : "Spring it now"}
           </button>
-          <button type="button" onClick={() => setPhase("aftermath")} title="Mark the arc resolved.">Resolve arc</button>
-          <button type="button" onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
-          {arc.phase === "break" && (
+          <button type="button" disabled={!configured} onClick={() => setPhase("aftermath")} title="Mark the arc resolved, without archiving it yet.">Move to aftermath</button>
+          <button
+            type="button"
+            disabled={!canCompleteArc}
+            onClick={completeArcToStoryCard}
+            title="Create a historical plot Story Card from this arc log, then clear Current Arc for the next arc."
+          >
+            {"Complete Arc -> Story Card"}
+          </button>
+          <button type="button" disabled={!configured} onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
+          {(arcActionStatus || arc.phase === "break" || arc.phase === "aftermath") && (
             <span className="badge badge-protected" role="status">
-              Break armed for next output
+              {arcActionStatus || (arc.phase === "break"
+                ? "Break armed for next output. Press Continue or take a turn."
+                : "Arc is in aftermath. Complete it to a Story Card or choose the next direction.")}
             </span>
           )}
         </div>
@@ -317,6 +342,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [pePreview, setPePreview] = useState<Record<string, string>>({});
   const [peRegenerating, setPeRegenerating] = useState<string | null>(null);
   const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
+  const [graduateStatus, setGraduateStatus] = useState<{ componentId: string; message: string } | null>(null);
   const [openComponentId, setOpenComponentId] = useState<string | null>(null);
   const [componentAuditTurns, setComponentAuditTurns] = useState(20);
   const [componentAudit, setComponentAudit] = useState<ComponentAuditState | null>(null);
@@ -379,20 +405,17 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   }
 
   function handleGraduateArc(component: ComponentEntry) {
+    const canGraduate = Boolean(component.arcPremise?.trim() || component.content.trim());
+    if (!canGraduate) return;
     if (graduateConfirm !== component.id) {
       setGraduateConfirm(component.id);
+      setGraduateStatus(null);
       return;
     }
-    // Create a story card from the arc content
-    const cardTitle = component.arcPremise?.trim() || component.title;
-    const cardContent = [
-      component.arcPremise?.trim() ? `Arc: ${component.arcPremise.trim()}\n` : "",
-      component.content.trim(),
-    ].filter(Boolean).join("\n");
-    dispatch({ type: "UPSERT_STORY_CARD", storyCard: makeStoryCard({ title: cardTitle, content: cardContent, type: "plot", active: true }) });
-    // Clear the arc for the next story arc
-    dispatch({ type: "UPDATE_COMPONENT", componentId: component.id, patch: { content: "", arcPremise: "" } });
+    const title = component.arcPremise?.trim() || component.title;
+    dispatch({ type: "COMPLETE_ARC_TO_STORY_CARD", componentId: component.id });
     setGraduateConfirm(null);
+    setGraduateStatus({ componentId: component.id, message: `Completed arc saved as Story Card: ${title}.` });
   }
 
   async function handleRegeneratePE(componentId: string) {
@@ -879,6 +902,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                   <button
                     type="button"
                     className={graduateConfirm === component.id ? "danger" : ""}
+                    disabled={!component.arcPremise?.trim() && !component.content.trim()}
                     title="Graduate the completed arc to a permanent Story Card and reset the arc log."
                     onClick={() => handleGraduateArc(component)}
                   >
@@ -887,6 +911,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 )}
                 {graduateConfirm === component.id && (
                   <button type="button" onClick={() => setGraduateConfirm(null)}>Cancel</button>
+                )}
+                {graduateStatus?.componentId === component.id && (
+                  <span className="badge badge-protected" role="status">{graduateStatus.message}</span>
                 )}
                 {component.type === "plotEssentials" && onRegeneratePlotEssentials && (
                   <button

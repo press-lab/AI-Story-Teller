@@ -748,6 +748,7 @@ export type AdventureAction =
   | { type: "ADVANCE_ARC_PACING"; triggeredIds: string[]; turn: number }
   | { type: "SET_ARC_PHASE"; componentId: string; phase: ArcPhase; turn?: number }
   | { type: "SET_ARC_CONTINUATIONS"; componentId: string; options: ArcContinuationOption[] }
+  | { type: "COMPLETE_ARC_TO_STORY_CARD"; componentId: string }
   | { type: "APPLY_ARC_CONTINUATION"; componentId: string; option: ArcContinuationOption }
   | { type: "REORDER_STORY_CARD"; storyCardId: string; direction: "up" | "down" }
   | { type: "UPSERT_BRAIN"; brain: BrainEntry }
