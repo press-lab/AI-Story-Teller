@@ -29,9 +29,12 @@ function seedAdventure(): Adventure {
   };
 }
 
-function renderWithAdventure(renderPage: (adventure: Adventure, dispatch: (action: AdventureAction) => void) => ReactNode) {
+function renderWithAdventure(
+  renderPage: (adventure: Adventure, dispatch: (action: AdventureAction) => void) => ReactNode,
+  initialAdventure: Adventure = seedAdventure(),
+) {
   function StatefulPage() {
-    const [adventure, setAdventure] = useState(seedAdventure());
+    const [adventure, setAdventure] = useState(initialAdventure);
     const dispatch = (action: AdventureAction) => setAdventure((current) => adventureReducer(current, action));
     return <>{renderPage(adventure, dispatch)}</>;
   }
@@ -89,6 +92,32 @@ describe("side menu page smoke coverage", () => {
       <BrainsPage adventure={adventure} dispatch={dispatch} loading={false} onUpdateBrainNow={async () => undefined} onGenerateBrain={async () => undefined} />
     ));
     expect(screen.getByRole("button", { name: "✨ Generate from name" })).toBeInTheDocument();
+  });
+
+  it("shows when the Current Arc break has been manually armed", async () => {
+    const user = userEvent.setup();
+    const arcAdventure: Adventure = {
+      ...seedAdventure(),
+      components: [
+        makeComponent({
+          title: "Current Story Arc",
+          type: "currentArc",
+          content: "The Red Ring tightens.",
+          arcThreadKeys: ["baddie"],
+          arcBreakInstruction: "The baddie forces the confrontation.",
+        }),
+      ],
+    };
+
+    renderWithAdventure(
+      (adventure, dispatch) => <ComponentsPage adventure={adventure} dispatch={dispatch} />,
+      arcAdventure,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Spring it now" }));
+
+    expect(screen.getByRole("button", { name: "Break armed" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Break armed for next output");
   });
 
   it("sends a guided Story Card builder request to the AI memory suggestion flow", async () => {

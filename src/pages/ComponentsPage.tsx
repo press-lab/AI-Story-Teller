@@ -191,9 +191,21 @@ function ArcDirector({
 
       {configured && (
         <div className="row" style={{ gap: "0.5rem", marginTop: "0.5rem" }}>
-          <button type="button" onClick={() => setPhase("break")} title="Force the climax now, regardless of pacing.">Spring it now</button>
+          <button
+            type="button"
+            disabled={arc.phase === "break"}
+            onClick={() => setPhase("break")}
+            title="Force the climax now, regardless of pacing."
+          >
+            {arc.phase === "break" ? "Break armed" : "Spring it now"}
+          </button>
           <button type="button" onClick={() => setPhase("aftermath")} title="Mark the arc resolved.">Resolve arc</button>
           <button type="button" onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
+          {arc.phase === "break" && (
+            <span className="badge badge-protected" role="status">
+              Break armed for next output
+            </span>
+          )}
         </div>
       )}
     </div>
