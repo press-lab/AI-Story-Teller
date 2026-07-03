@@ -175,15 +175,23 @@ function BrainThoughtHistory({
           );
         }
 
+        const startEditing = () => {
+          setEditingEntry({ state: entry.state, key: entry.key });
+          setDraft(entry.value);
+        };
+
         return (
-          <button
+          <article
             key={`${entry.state}-${entry.key}`}
-            type="button"
-            className="brain-history-entry brain-history-entry-button"
+            className="brain-history-entry brain-history-entry-action"
+            role="button"
+            tabIndex={0}
             aria-label={`Edit ${entry.state} thought ${entry.key}`}
-            onClick={() => {
-              setEditingEntry({ state: entry.state, key: entry.key });
-              setDraft(entry.value);
+            onClick={startEditing}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              startEditing();
             }}
           >
             <span className="brain-history-meta">
@@ -193,7 +201,7 @@ function BrainThoughtHistory({
               </span>
             </span>
             <span className="brain-history-text">{entry.value}</span>
-          </button>
+          </article>
         );
       })}
     </div>

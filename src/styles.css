@@ -3379,6 +3379,11 @@ details.story-card-item:not([open]) > .editor-card {
   padding-right: 2px;
 }
 
+.brain-history-list {
+  display: flex;
+  flex-direction: column;
+}
+
 .item-history-entry,
 .brain-history-entry {
   display: grid;
@@ -3391,15 +3396,25 @@ details.story-card-item:not([open]) > .editor-card {
   max-width: 100%;
 }
 
-.brain-history-entry-button {
+.brain-history-entry {
+  flex: 0 0 auto;
+}
+
+.brain-history-entry-action {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  min-height: 0;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  white-space: normal;
 }
 
-.brain-history-entry-button:hover,
-.brain-history-entry-button:focus-visible {
+.brain-history-entry-action:hover,
+.brain-history-entry-action:focus-visible {
   border-color: var(--border-strong);
   background: var(--control-hover);
 }
@@ -3415,6 +3430,9 @@ details.story-card-item:not([open]) > .editor-card {
 
 .brain-history-text {
   display: block;
+  overflow: hidden;
+  max-height: calc(1.45em * 2);
+  white-space: normal;
 }
 
 .item-history-meta,
