@@ -2775,6 +2775,7 @@ button.primary-action:hover:not(:disabled),
 
 .composer-input-row textarea {
   font-size: 17px;
+  padding-right: 62px;
 }
 
 /* Composer closed: hide input + mode selector on all screen sizes */
@@ -2889,13 +2890,14 @@ button.primary-action:hover:not(:disabled),
 }
 
 .composer-input-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 8px;
+  position: relative;
+  display: block;
 }
 
 .composer-send-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5345,6 +5347,7 @@ summary {
   /* Composer input row: textarea + send button side by side */
   .composer-input-row {
     display: flex;
+    position: static;
     align-items: flex-end;
     gap: 6px;
   }
@@ -5353,11 +5356,15 @@ summary {
     flex: 1;
     min-height: 44px;
     max-height: 28vh;
+    padding-right: 11px;
     rows: unset;
   }
 
   /* Circular send button */
   .composer-send-btn {
+    position: static;
+    right: auto;
+    bottom: auto;
     display: flex;
     align-items: center;
     justify-content: center;
