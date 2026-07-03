@@ -68,13 +68,16 @@ describe("adventureDb IndexedDB persistence", () => {
   it("lists adventures newest-first and deletes by id", async () => {
     const older = createDefaultAdventure("Older");
     older.updatedAt = "2026-01-01T00:00:00.000Z";
+    older.activeState.turn = 3;
     const newer = createDefaultAdventure("Newer");
     newer.updatedAt = "2026-01-02T00:00:00.000Z";
+    newer.activeState.turn = 12;
 
     await saveAdventure(older);
     await saveAdventure(newer);
 
     expect((await listAdventures()).map((adventure) => adventure.title)).toEqual(["Newer", "Older"]);
+    expect((await listAdventures()).map((adventure) => adventure.actionCount)).toEqual([12, 3]);
 
     await deleteAdventure(newer.id);
 

@@ -11,6 +11,7 @@ export interface AdventureSummary {
   title: string;
   updatedAt: string;
   createdAt: string;
+  actionCount: number;
   thumbnailImage?: AdventureThumbnailImage;
 }
 
@@ -73,6 +74,7 @@ export async function listAdventures(): Promise<AdventureSummary[]> {
       title: adventure.title,
       createdAt: adventure.createdAt,
       updatedAt: adventure.updatedAt,
+      actionCount: Math.max(0, Math.floor(adventure.activeState.turn)),
       thumbnailImage: getAdventureThumbnail(adventure),
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

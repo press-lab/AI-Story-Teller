@@ -229,6 +229,7 @@ describe("AdventuresPage new adventure setup", () => {
           title: "Thumbnail Adventure",
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-02T00:00:00.000Z",
+          actionCount: 12,
           thumbnailImage: {
             dataUrl: "data:image/png;base64,abc",
             altText: "A painted fire city",
@@ -240,5 +241,22 @@ describe("AdventuresPage new adventure setup", () => {
     const image = screen.getByAltText("A painted fire city");
     expect(image).toHaveAttribute("src", "data:image/png;base64,abc");
     expect(screen.getByRole("heading", { name: "Thumbnail Adventure" })).toBeInTheDocument();
+    expect(screen.getByText(/12 actions taken/)).toBeInTheDocument();
+  });
+
+  it("shows singular action count text in the Library", () => {
+    renderAdventuresPage(undefined, {
+      adventures: [
+        {
+          id: "adv-one-action",
+          title: "One Action Adventure",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          actionCount: 1,
+        },
+      ],
+    });
+
+    expect(screen.getByText(/1 action taken/)).toBeInTheDocument();
   });
 });

@@ -208,6 +208,11 @@ function formatUtc(iso: string): string {
   return iso.replace("T", " ").replace(/\.\d{3}Z$/, " UTC").replace(/Z$/, " UTC");
 }
 
+function formatActionCount(count: number | undefined): string {
+  const normalized = Number.isFinite(count) ? Math.max(0, Math.floor(count ?? 0)) : 0;
+  return `${normalized.toLocaleString()} ${normalized === 1 ? "action" : "actions"}`;
+}
+
 function downloadText(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -983,7 +988,7 @@ export function AdventuresPage({
             <div>
               <h3>{adventure.title}</h3>
               <p className="muted">
-                Updated {new Date(adventure.updatedAt).toLocaleString()} · Created{" "}
+                {formatActionCount(adventure.actionCount)} taken · Updated {new Date(adventure.updatedAt).toLocaleString()} · Created{" "}
                 {new Date(adventure.createdAt).toLocaleString()}
               </p>
               {currentAdventure?.id === adventure.id && <p className="status-pill">Open</p>}

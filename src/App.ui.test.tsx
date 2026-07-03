@@ -17,6 +17,7 @@ vi.mock("./db/adventureDb", () => ({
       title: adventure.title,
       createdAt: adventure.createdAt,
       updatedAt: adventure.updatedAt,
+      actionCount: adventure.activeState.turn,
     })),
   ),
   saveAdventure: vi.fn(async (adventure: Adventure) => {
