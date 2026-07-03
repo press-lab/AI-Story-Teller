@@ -35,6 +35,11 @@ const MODE_PLACEHOLDERS: Record<InputMode, string> = {
   comms: "Ask the AI a question or give it direction (out of character)...",
 };
 
+const PLAY_TOOLKIT_COMPACT_WIDTH = 160;
+const PLAY_TOOLKIT_MIN_WIDTH = 120;
+const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420;
+const PLAY_TOOLKIT_MAX_WIDTH = 600;
+
 function transformInput(text: string, mode: InputMode): string {
   if (mode === "do" && !/^(you |i |i'|she |he |they |we )/i.test(text)) {
     return "You " + text.charAt(0).toLowerCase() + text.slice(1);
@@ -109,9 +114,9 @@ export function PlayPage({
   const [toolkitWidth, setToolkitWidth] = useState(() => {
     try {
       const stored = localStorage.getItem("play-toolkit-width");
-      return stored ? parseInt(stored, 10) : 160;
+      return stored ? parseInt(stored, 10) : PLAY_TOOLKIT_COMPACT_WIDTH;
     } catch {
-      return 160;
+      return PLAY_TOOLKIT_COMPACT_WIDTH;
     }
   });
 
@@ -154,15 +159,26 @@ export function PlayPage({
     summaryTruncated && "summary truncated",
   ].filter(Boolean).join(" · ");
 
+  function updateToolkitWidth(next: number) {
+    setToolkitWidth(next);
+    try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    if (!playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return;
+    updateToolkitWidth(PLAY_TOOLKIT_PANEL_MIN_WIDTH);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playPanelContent, toolkitWidth]);
+
   function startToolkitResize(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     const startX = e.clientX;
     const startWidth = toolkitWidth;
+    const minWidth = playPanelContent ? PLAY_TOOLKIT_PANEL_MIN_WIDTH : PLAY_TOOLKIT_MIN_WIDTH;
     const el = e.currentTarget;
     el.onpointermove = (ev: PointerEvent) => {
-      const next = Math.round(Math.max(120, Math.min(600, startWidth + startX - ev.clientX)));
-      setToolkitWidth(next);
-      try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
+      const next = Math.round(Math.max(minWidth, Math.min(PLAY_TOOLKIT_MAX_WIDTH, startWidth + startX - ev.clientX)));
+      updateToolkitWidth(next);
     };
     el.onpointerup = () => { el.onpointermove = null; el.onpointerup = null; };
   }

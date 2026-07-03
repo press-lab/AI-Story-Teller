@@ -2180,6 +2180,15 @@ button.primary-action:hover:not(:disabled),
   padding: 8px;
 }
 
+.play-sidebar-panel-body .story-card-item,
+.play-sidebar-panel-body .split-editor-item,
+.play-sidebar-panel-body .brain-item,
+.play-sidebar-panel-body .component-editor-item {
+  display: block;
+  list-style-position: inside;
+  padding: 0;
+}
+
 .play-sidebar-panel-body .grid {
   gap: 8px;
 }
@@ -2239,7 +2248,17 @@ button.primary-action:hover:not(:disabled),
 }
 
 .play-sidebar-panel-body .story-card-item > summary {
+  list-style-position: inside;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   padding: 9px 10px;
+}
+
+.play-sidebar-panel-body .story-card-item > .editor-card {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 }
 
 .play-sidebar-panel-body .story-card-summary,
@@ -3495,6 +3514,20 @@ details.story-card-item:not([open]) > .editor-card {
   border-radius: 0;
   padding: 0;
   background: transparent;
+}
+
+.arc-thread-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  max-width: 100%;
+  font-size: 0.9em;
+  overflow-wrap: anywhere;
+}
+
+.arc-thread-option > span {
+  min-width: 0;
 }
 
 .story-card-inspector > .item-inspector-heading,

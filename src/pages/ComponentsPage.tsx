@@ -161,9 +161,11 @@ function ArcDirector({
         <div style={{ maxHeight: "9rem", overflowY: "auto", border: "1px solid #444", borderRadius: "4px", padding: "0.4rem" }}>
           {candidates.length === 0 && <p className="muted" style={{ margin: 0 }}>Create Story Cards or Brains first.</p>}
           {candidates.map((candidate) => (
-            <label key={candidate.id} style={{ display: "block", fontSize: "0.9em" }}>
-              <input type="checkbox" checked={threadSet.has(candidate.id)} onChange={(event) => toggleThread(candidate.id, event.target.checked)} />{" "}
-              {candidate.label} <span className="muted">({candidate.kind})</span>
+            <label key={candidate.id} className="arc-thread-option">
+              <input type="checkbox" checked={threadSet.has(candidate.id)} onChange={(event) => toggleThread(candidate.id, event.target.checked)} />
+              <span>
+                {candidate.label} <span className="muted">({candidate.kind})</span>
+              </span>
             </label>
           ))}
         </div>
