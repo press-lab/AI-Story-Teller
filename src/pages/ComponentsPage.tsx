@@ -41,6 +41,13 @@ function ArcDirector({
   const configured = threadKeys.length > 0;
   const totalEngagement = threadKeys.reduce((sum, key) => sum + (arc.threadEngagement[key] ?? 0), 0);
   const canCompleteArc = Boolean(component.arcPremise?.trim() || component.content.trim());
+  const phaseStatus = arc.phase === "break"
+    ? "Break armed for next output. Press Continue or take a turn."
+    : arc.phase === "aftermath"
+      ? canCompleteArc
+        ? "Arc is in aftermath. Complete it to a Story Card or choose the next direction."
+        : "No arc premise or log to save yet."
+      : "";
 
   const candidates = [
     ...adventure.storyCards.map((card) => ({ id: card.id, label: card.title, kind: "Card" })),
@@ -204,7 +211,7 @@ function ArcDirector({
         />
       </Field>
 
-      {(configured || canCompleteArc || arcActionStatus) && (
+      {(configured || canCompleteArc || arcActionStatus || phaseStatus) && (
         <div className="row" style={{ gap: "0.5rem", marginTop: "0.5rem" }}>
           <button
             type="button"
@@ -224,11 +231,9 @@ function ArcDirector({
             {"Complete Arc -> Story Card"}
           </button>
           <button type="button" disabled={!configured} onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
-          {(arcActionStatus || arc.phase === "break" || arc.phase === "aftermath") && (
+          {(arcActionStatus || phaseStatus) && (
             <span className="badge badge-protected" role="status">
-              {arcActionStatus || (arc.phase === "break"
-                ? "Break armed for next output. Press Continue or take a turn."
-                : "Arc is in aftermath. Complete it to a Story Card or choose the next direction.")}
+              {arcActionStatus || phaseStatus}
             </span>
           )}
         </div>
@@ -766,8 +771,14 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 </Field>
               )}
               {component.type === "currentArc" && (
-                <details className="brain-secondary-details item-secondary-details component-arc-details">
-                  <summary>Arc Director</summary>
+                <details className="brain-secondary-details item-secondary-details component-arc-details" open>
+                  <summary className="component-arc-summary">
+                    <span>Arc Director</span>
+                    <span className="badge badge-priority">{(component.arcState?.phase ?? "simmer").toUpperCase()}</span>
+                    {!(component.arcPremise?.trim() || component.content.trim()) && (
+                      <span className="badge badge-type">No arc log</span>
+                    )}
+                  </summary>
                   <ArcDirector adventure={adventure} component={component} dispatch={dispatch} onGenerateArc={onGenerateArc} onProposeArcFromHistory={onProposeArcFromHistory} loading={loading} />
                 </details>
               )}

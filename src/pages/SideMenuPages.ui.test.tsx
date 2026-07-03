@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -118,6 +118,44 @@ describe("side menu page smoke coverage", () => {
 
     expect(screen.getByRole("button", { name: "Break armed" })).toBeDisabled();
     expect(screen.getByRole("status")).toHaveTextContent("Break armed for next output");
+  });
+
+  it("keeps Arc Director controls visible in the Play sidebar for an empty aftermath arc", async () => {
+    const user = userEvent.setup();
+    const arcAdventure: Adventure = {
+      ...seedAdventure(),
+      components: [
+        makeComponent({
+          title: "Current Story Arc",
+          type: "currentArc",
+          content: "",
+          arcPremise: "",
+          arcThreadKeys: ["baddie"],
+          arcState: { phase: "aftermath", tier: 0, threadEngagement: {}, pendingBreak: false },
+        }),
+      ],
+    };
+
+    renderWithAdventure(
+      (adventure, dispatch) => (
+        <div className="play-sidebar-panel-body">
+          <ComponentsPage adventure={adventure} dispatch={dispatch} />
+        </div>
+      ),
+      arcAdventure,
+    );
+
+    const arcSummary = screen.getByText("Current Story Arc", { selector: ".story-card-title" }).closest("summary");
+    expect(arcSummary).toBeTruthy();
+    await user.click(arcSummary as HTMLElement);
+
+    const arcDetails = document.querySelector(".component-arc-details");
+    expect(arcDetails).toHaveAttribute("open");
+    expect(within(arcDetails as HTMLElement).getByText("Arc Director")).toBeInTheDocument();
+    expect(within(arcDetails as HTMLElement).getAllByText("AFTERMATH")).toHaveLength(2);
+    expect(within(arcDetails as HTMLElement).getByText("No arc log")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("No arc premise or log to save yet.");
+    expect(screen.getByRole("button", { name: "Complete Arc -> Story Card" })).toBeDisabled();
   });
 
   it("completes the Current Arc into a Story Card with visible feedback", async () => {
