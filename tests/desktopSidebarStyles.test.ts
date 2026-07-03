@@ -32,5 +32,15 @@ describe("desktop play sidebar layout contract", () => {
     expect(desktopCss).toMatch(
       /\.play-sidebar-panel-body \.component-inspector > \.item-focus-section\s*{[^}]*order:\s*2/s,
     );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.split-editor-list:has\(\.split-editor-item\[open\]\) \.split-editor-item,[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.brains-page > \.list:has\(\.brain-item\[open\]\) \.brain-item,[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible/s,
+    );
+    expect(desktopCss).not.toMatch(/\.play-sidebar-panel-body[\s\S]*?max-height:\s*min\(62vh,\s*520px\)/s);
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.component-arc-details \.field > \.row > input,[\s\S]*?flex:\s*1 1 100%/s,
+    );
   });
 });
