@@ -20,5 +20,17 @@ describe("desktop play sidebar layout contract", () => {
     expect(desktopCss).toMatch(
       /\.play-sidebar-panel-body \.editor-surface input,\s*\n\.play-sidebar-panel-body \.editor-surface select,\s*\n\.play-sidebar-panel-body \.editor-surface textarea,\s*\n\.play-sidebar-panel-body \.editor-surface button\s*{[^}]*max-width:\s*100%/s,
     );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.editor-command-bar\s*{[^}]*position:\s*static/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.component-editor-item\[open\] > summary[\s\S]*?position:\s*static/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.component-inspector > \.component-arc-details\s*{[^}]*order:\s*1/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.component-inspector > \.item-focus-section\s*{[^}]*order:\s*2/s,
+    );
   });
 });

@@ -2212,6 +2212,9 @@ button.primary-action:hover:not(:disabled),
 }
 
 .play-sidebar-panel-body .editor-command-bar {
+  position: static;
+  top: auto;
+  z-index: auto;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: stretch;
   padding: 7px;
@@ -2252,6 +2255,14 @@ button.primary-action:hover:not(:disabled),
   grid-template-columns: minmax(0, 1fr);
 }
 
+.play-sidebar-panel-body .split-editor-item[open] > summary,
+.play-sidebar-panel-body .component-editor-item[open] > summary,
+.play-sidebar-panel-body .brain-item[open] > summary {
+  position: static;
+  top: auto;
+  z-index: auto;
+}
+
 .play-sidebar-panel-body .story-card-badges {
   justify-content: flex-start;
   min-width: 0;
@@ -2275,6 +2286,14 @@ button.primary-action:hover:not(:disabled),
 .play-sidebar-panel-body .brain-secondary-details .grid,
 .play-sidebar-panel-body .component-arc-details .grid {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.play-sidebar-panel-body .component-inspector > .component-arc-details {
+  order: 1;
+}
+
+.play-sidebar-panel-body .component-inspector > .item-focus-section {
+  order: 2;
 }
 
 .play-sidebar-panel-body .editor-surface input,
