@@ -25,6 +25,13 @@ import type {
 import { cardMatchesName, defaultArcState, defaultNextTurnNote, makeComponent, makeStoryCard } from "./defaults";
 import { createId, nowIso } from "../utils/id";
 import { isLivingStoryCard, resolveMemoryTarget, sanitizeStoryCardTriggers } from "../memory/resolveMemoryTarget";
+import {
+  applyGuardedStoryCardPolicy,
+  isGuardedStoryCardFact,
+  isGuardedStoryCardMemory,
+  normalizeStoryCardFact,
+  restoreGuardedFactsToLiveContent,
+} from "../memory/storyCardPolicy";
 import { dedupeBrainThoughts, normalizeThoughtForDedupe } from "../memory/thoughtDedupe";
 
 function touch<T extends { updatedAt: string }>(entry: T): T {
@@ -365,15 +372,42 @@ function mergeCardContentToBudget(
   newContent: string,
   archived: string,
   budget: number,
+  guardedCard?: StoryCard,
 ): { content: string; archivedFacts: string } {
-  const existingFacts = splitCardFacts(existingContent);
-  const incoming = splitCardFacts(newContent).filter(
-    (fact) => !existingFacts.some((e) => e.toLowerCase() === fact.toLowerCase()),
-  );
-  const kept = [...existingFacts, ...incoming]; // newest facts last
   const archivedFacts = splitCardFacts(archived);
+  const guardSource = guardedCard && isGuardedStoryCardMemory(guardedCard, newContent)
+    ? { ...guardedCard, content: [guardedCard.content, newContent].filter(Boolean).join("\n") }
+    : undefined;
+  const kept: string[] = [];
+  const seen = new Set<string>();
+  const addFact = (fact: string) => {
+    const normalized = normalizeStoryCardFact(fact);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    kept.push(fact);
+  };
+
+  if (guardSource) {
+    archivedFacts
+      .filter((fact) => isGuardedStoryCardFact(guardSource, fact))
+      .forEach(addFact);
+  }
+  splitCardFacts(existingContent).forEach(addFact);
+  splitCardFacts(newContent).forEach(addFact); // newest facts last
   const total = (facts: string[]) => facts.reduce((sum, f) => sum + f.length, 0);
   while (kept.length > 1 && total(kept) > budget) {
+    if (guardSource) {
+      const archiveIndex = kept.findIndex((fact) => !isGuardedStoryCardFact(guardSource, fact));
+      if (archiveIndex < 0) break;
+      if (archiveIndex > 0) {
+        const [archivedFact] = kept.splice(archiveIndex, 1);
+        const normalized = normalizeStoryCardFact(archivedFact);
+        if (!archivedFacts.some((fact) => normalizeStoryCardFact(fact) === normalized)) {
+          archivedFacts.push(archivedFact);
+        }
+        continue;
+      }
+    }
     archivedFacts.push(kept.shift()!); // oldest live fact → archive
   }
   return { content: kept.join("\n"), archivedFacts: archivedFacts.join("\n") };
@@ -387,6 +421,19 @@ function appendCardContent(existingContent: string, newContent: string): string 
     return normalized && !seen.has(normalized);
   });
   return [...existingFacts, ...incoming].join("\n");
+}
+
+function guardStoryCard(card: StoryCard): StoryCard {
+  return applyGuardedStoryCardPolicy(restoreGuardedFactsToLiveContent(card));
+}
+
+function replacementContentWithGuardedFacts(existing: StoryCard, replacementContent: string): string {
+  const archivedFacts = [existing.archivedFacts, existing.content].filter(Boolean).join("\n");
+  return restoreGuardedFactsToLiveContent({
+    ...existing,
+    content: replacementContent,
+    archivedFacts,
+  }).content;
 }
 
 /**
@@ -887,29 +934,32 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       if (shouldManageAsLiving) {
         // Living-card update: append the new fact to existing content, archive the oldest facts beyond
         // budget so context stays bounded and superseded facts don't read as current.
-        const budget = existing.tokenBudget && existing.tokenBudget > 0 ? existing.tokenBudget * 4 : DEFAULT_CARD_CONTENT_BUDGET;
-        const merged = mergeCardContentToBudget(existing.content, safeContent, existing.archivedFacts ?? "", budget);
+        const preparedExisting = guardStoryCard(existing);
+        const budget = preparedExisting.tokenBudget && preparedExisting.tokenBudget > 0
+          ? preparedExisting.tokenBudget * 4
+          : DEFAULT_CARD_CONTENT_BUDGET;
+        const merged = mergeCardContentToBudget(preparedExisting.content, safeContent, preparedExisting.archivedFacts ?? "", budget, preparedExisting);
         storyCard = recordStoryCardMemoryUpdate(
           existing,
-          {
-            ...existing,
+          guardStoryCard({
+            ...preparedExisting,
             content: merged.content,
             archivedFacts: merged.archivedFacts,
             keys: Array.from(new Set([
-              ...existing.keys,
-              ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id, "living"),
+              ...preparedExisting.keys,
+              ...sanitizeStoryCardTriggers(state, preparedExisting.title, proposal.suggestedTriggers, preparedExisting.id, "living"),
             ])),
             memoryMode: "living",
             // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
-            state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
-            ...automationPatch(existing),
-          },
+            state: Array.from(new Set([...(preparedExisting.state ? preparedExisting.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
+            ...automationPatch(preparedExisting),
+          }),
           proposalMemoryMeta("append"),
         );
       } else {
         storyCard = recordStoryCardMemoryUpdate(
           existing,
-          {
+          guardStoryCard({
             ...existing,
             content: appendCardContent(existing.content, safeContent),
             keys: Array.from(new Set([
@@ -919,16 +969,16 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             memoryMode: existing.memoryMode ?? proposal.memoryMode,
             state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
             ...automationPatch(existing),
-          },
+          }),
           proposalMemoryMeta("append"),
         );
       }
     } else if (existing) {
       storyCard = recordStoryCardMemoryUpdate(
         existing,
-        {
+        guardStoryCard({
           ...existing,
-          content: safeContent,
+          content: replacementContentWithGuardedFacts(existing, safeContent),
           // Merge, never overwrite, keys — a sparse update must not strip a card's aliases (which would
           // break alias-matching and let the card be duplicated again later).
           keys: Array.from(new Set([
@@ -939,13 +989,13 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           type: proposal.storyCardType ?? existing.type,
           state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
           ...automationPatch(existing),
-        },
+        }),
         proposalMemoryMeta("replace"),
       );
     } else {
       storyCard = recordStoryCardMemoryUpdate(
         undefined,
-        makeStoryCard({
+        guardStoryCard(makeStoryCard({
           title: cardTitle,
           content: safeContent,
           keys: sanitizeStoryCardTriggers(state, cardTitle, proposal.suggestedTriggers, undefined, proposal.memoryMode ?? "static"),
@@ -956,7 +1006,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           autoUpdate: proposal.autoUpdate ?? false,
           autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
           state: "memoryProposal",
-        }),
+        })),
         proposalMemoryMeta("create"),
       );
     }
@@ -968,7 +1018,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     if (!existing) {
       const storyCard = recordStoryCardMemoryUpdate(
         undefined,
-        makeStoryCard({
+        guardStoryCard(makeStoryCard({
           title: proposal.title || "Memory Proposal",
           content: proposal.content,
           keys: sanitizeStoryCardTriggers(state, proposal.title || "Memory Proposal", proposal.suggestedTriggers, undefined, proposal.memoryMode ?? "static"),
@@ -976,7 +1026,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           type: "character",
           active: true,
           state: "memoryProposal routedFromMissingBrain",
-        }),
+        })),
         proposalMemoryMeta("create"),
       );
       return { storyCards: upsertById(state.storyCards, storyCard) };
@@ -1370,10 +1420,13 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       if (action.content === undefined && (!action.patch || Object.keys(action.patch).length === 0)) return state;
       return touchAdventure(state, {
         storyCards: updateById(state.storyCards, action.storyCardId, (item) => {
-          const content = action.content !== undefined ? stripLeadingCardTitle(item.title, action.content) : item.content;
+          const stripped = action.content !== undefined ? stripLeadingCardTitle(item.title, action.content) : item.content;
+          const content = action.content !== undefined
+            ? replacementContentWithGuardedFacts(item, stripped)
+            : stripped;
           return recordStoryCardMemoryUpdate(
             item,
-            { ...item, ...action.patch, content },
+            guardStoryCard({ ...item, ...action.patch, content }),
             { source: "aiMemoryUpdate", operation: action.content !== undefined ? "replace" : "patch" },
           );
         }),

@@ -100,6 +100,37 @@ describe("resolveMemoryTarget", () => {
     expect(routed.appendContent).toBe(true);
     expect(routed.memoryMode).toBe("historical");
   });
+
+  it("routes guarded exact-title updates to the existing compact card despite memory-mode drift", () => {
+    const adventure = {
+      ...createDefaultAdventure("Routing"),
+      storyCards: [
+        makeStoryCard({
+          id: "card-jinx-pact",
+          title: "Seth's Pact with Jinx",
+          type: "plot",
+          memoryMode: "living",
+          content: "- Seth and Jinx have a secret pact.",
+          keys: ["Jinx pact"],
+        }),
+      ],
+    };
+
+    const routed = resolveMemoryTarget(adventure, {
+      proposedType: "storyCard",
+      title: "Seth's Pact with Jinx",
+      content: "- Mel's official cover story keeps Seth on the Council as a political shield.",
+      suggestedTriggers: ["official cover", "Council shield"],
+      memoryMode: "historical",
+    });
+
+    expect(routed).toMatchObject({
+      title: "Seth's Pact with Jinx",
+      targetId: "card-jinx-pact",
+      appendContent: true,
+      memoryMode: "living",
+    });
+  });
 });
 
 describe("sanitizeStoryCardTriggers", () => {

@@ -1,4 +1,5 @@
 import type { Adventure, MemoryProposalType, StoryCard, StoryCardMemoryMode } from "../types/adventure";
+import { isGuardedStoryCardMemory } from "./storyCardPolicy";
 
 export interface MemoryTargetDraft {
   proposedType: MemoryProposalType;
@@ -68,6 +69,9 @@ function isHistoricalStoryCard(card: Pick<StoryCard, "memoryMode">): boolean {
 export function inferStoryCardMemoryMode(draft: Pick<MemoryTargetDraft, "title" | "content" | "sourceText" | "category" | "memoryMode">): StoryCardMemoryMode {
   if (draft.memoryMode) return draft.memoryMode;
   const text = normalize([draft.title, draft.content, draft.sourceText].filter(Boolean).join(" "));
+  if (isGuardedStoryCardMemory({ title: draft.title, content: [draft.content, draft.sourceText].filter(Boolean).join("\n"), memoryMode: "living" })) {
+    return "living";
+  }
   if (draft.category === "plot_beat") return "historical";
   if (draft.category === "relationship" || draft.category === "status_change") return "living";
   if (draft.category === "character_reveal" || draft.category === "world_fact") return "static";
@@ -86,14 +90,27 @@ function targetAcceptsMode(card: StoryCard, inferredMode: StoryCardMemoryMode): 
   return inferredMode === "static";
 }
 
+function guardedExactTitleTarget(card: StoryCard, draft: MemoryTargetDraft): boolean {
+  return card.type !== "character" &&
+    normalize(card.title) === normalize(draft.title) &&
+    isGuardedStoryCardMemory(
+      {
+        ...card,
+        content: [card.content, draft.content, draft.sourceText].filter(Boolean).join("\n"),
+      },
+    );
+}
+
 function exactStoryCardTarget(adventure: Adventure, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): StoryCard | undefined {
   if (draft.targetId) {
     const target = adventure.storyCards.find((card) => card.id === draft.targetId);
+    if (target && guardedExactTitleTarget(target, draft)) return target;
     if (target && targetAcceptsMode(target, inferredMode)) return target;
     return undefined;
   }
   const titleNorm = normalize(draft.title);
   const exactTitle = adventure.storyCards.find((card) => card.active && normalize(card.title) === titleNorm);
+  if (exactTitle && guardedExactTitleTarget(exactTitle, draft)) return exactTitle;
   if (
     exactTitle &&
     targetAcceptsMode(exactTitle, inferredMode) &&
@@ -127,8 +144,10 @@ function bestRelatedTarget(adventure: Adventure, draft: MemoryTargetDraft, infer
 
 function incompatibleTarget(adventure: Adventure, draft: MemoryTargetDraft, inferredMode: StoryCardMemoryMode): StoryCard | undefined {
   const target = draft.targetId ? adventure.storyCards.find((card) => card.id === draft.targetId) : undefined;
+  if (target && guardedExactTitleTarget(target, draft)) return undefined;
   if (target && !targetAcceptsMode(target, inferredMode)) return target;
   const exactTitle = adventure.storyCards.find((card) => card.active && normalize(card.title) === normalize(draft.title));
+  if (exactTitle && guardedExactTitleTarget(exactTitle, draft)) return undefined;
   return exactTitle && !targetAcceptsMode(exactTitle, inferredMode) ? exactTitle : undefined;
 }
 

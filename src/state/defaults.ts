@@ -15,6 +15,7 @@ import type {
   ProviderRequestThrottle,
 } from "../types/adventure";
 import { dedupeBrainThoughts } from "../memory/thoughtDedupe";
+import { applyGuardedStoryCardPolicy, restoreGuardedFactsToLiveContent } from "../memory/storyCardPolicy";
 import { createId, nowIso } from "../utils/id";
 
 export const defaultTokenBudgetSettings: TokenBudgetSettings = {
@@ -425,6 +426,27 @@ function normalizeComponentEntry(component: ComponentEntry): ComponentEntry {
     : component;
 }
 
+function normalizeStoryCardEntry(card: StoryCard, migrateGuardedFacts: boolean): StoryCard {
+  const normalized: StoryCard = {
+    ...card,
+    matchType: card.matchType ?? "phrase",
+    memoryMode: card.memoryMode ?? (
+      (card.state ?? "").split(/\s+/).includes("living")
+        ? "living"
+        : (card.state ?? "").split(/\s+/).includes("archivedArc")
+          ? "historical"
+          : "static"
+    ),
+    protected: card.protected ?? false,
+    inclusionPolicy: card.inclusionPolicy ?? "triggered",
+    autoUpdate: card.autoUpdate ?? false,
+    autoUpdateCooldownTurns: card.autoUpdateCooldownTurns ?? 3,
+  };
+  return migrateGuardedFacts
+    ? applyGuardedStoryCardPolicy(restoreGuardedFactsToLiveContent(normalized))
+    : normalized;
+}
+
 function persistedProviderConfig(config: ProviderConfig | undefined): Partial<ProviderConfig> {
   if (!config) return {};
   const { apiKey: _apiKey, sessionId: _sessionId, ...persisted } = config;
@@ -434,6 +456,7 @@ function persistedProviderConfig(config: ProviderConfig | undefined): Partial<Pr
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   const messages = removeMirroredOpeningMessage(adventure);
+  const migrateGuardedStoryCards = !adventure.activeState?.stateFlags?.guardedStoryCardsMigrated;
   return {
     ...baseline,
     ...adventure,
@@ -455,7 +478,11 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         ...(adventure.activeState?.nextTurnNote ?? {}),
       },
       rawImports: adventure.activeState?.rawImports ?? [],
-      stateFlags: { ...(adventure.activeState?.stateFlags ?? {}), brainsAppendMigrated: true },
+      stateFlags: {
+        ...(adventure.activeState?.stateFlags ?? {}),
+        brainsAppendMigrated: true,
+        guardedStoryCardsMigrated: true,
+      },
       triggerLog: adventure.activeState?.triggerLog ?? [],
       forceIncludeNextTurn: adventure.activeState?.forceIncludeNextTurn ?? [],
       // Coerce old string hints ("short"/"medium"/"long") from pre-slider saves to numbers
@@ -501,21 +528,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       ...migrateBrainThoughts(brain),
       linkedStoryCardId: brain.linkedStoryCardId,
     })),
-    storyCards: (adventure.storyCards ?? []).map((card) => ({
-      ...card,
-      matchType: card.matchType ?? "phrase",
-      memoryMode: card.memoryMode ?? (
-        (card.state ?? "").split(/\s+/).includes("living")
-          ? "living"
-          : (card.state ?? "").split(/\s+/).includes("archivedArc")
-            ? "historical"
-            : "static"
-      ),
-      protected: card.protected ?? false,
-      inclusionPolicy: card.inclusionPolicy ?? "triggered",
-      autoUpdate: card.autoUpdate ?? false,
-      autoUpdateCooldownTurns: card.autoUpdateCooldownTurns ?? 3,
-    })),
+    storyCards: (adventure.storyCards ?? []).map((card) => normalizeStoryCardEntry(card, migrateGuardedStoryCards)),
     components: (() => {
       const existing = adventure.components ?? baseline.components;
       const normalized = existing.map((component) => {

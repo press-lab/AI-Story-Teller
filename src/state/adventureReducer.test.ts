@@ -1095,7 +1095,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "bad-arc")).toBe(false);
   });
 
-  it("living-card update: approving an append proposal merges the new fact and archives the oldest over budget", () => {
+  it("living-card update: guarded compact facts stay live while ordinary facts archive first", () => {
     const card = makeStoryCard({
       id: "card-living",
       title: "Setu and Nyxa",
@@ -1120,10 +1120,11 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-card-update" });
 
     const merged = state.storyCards.find((c) => c.id === "card-living");
-    // Newest fact is live; oldest fact pushed to archive; no sibling card created.
-    expect(merged?.content).toContain("private chambers");
-    expect(merged?.archivedFacts).toContain("Their bond was a court secret");
-    expect(merged?.content).not.toContain("Their bond was a court secret");
+    expect(merged?.content).toContain("Their bond was a court secret");
+    expect(merged?.archivedFacts).toContain("private chambers");
+    expect(merged?.content).not.toContain("private chambers");
+    expect(merged?.pinned).toBe(true);
+    expect(merged?.protected).toBe(true);
     expect(state.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
     expect(merged?.keys).toContain("chambers");
     expect(merged?.memoryUpdateHistory?.[0]).toMatchObject({
@@ -1131,8 +1132,79 @@ describe("adventureReducer", () => {
       operation: "append",
       proposalId: "proposal-card-update",
       previous: { content: expect.stringContaining("They spar as equals") },
-      next: { content: expect.stringContaining("private chambers") },
+      next: { content: expect.stringContaining("court secret") },
     });
+  });
+
+  it("living-card update: ordinary cards still archive the oldest fact over budget", () => {
+    const card = makeStoryCard({
+      id: "card-ordinary-living",
+      title: "Setu and Nyxa Training",
+      memoryMode: "living",
+      content: "- Their lessons began during the market festival.\n- They spar as equals.",
+      keys: ["training"],
+      tokenBudget: 10,
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [card] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "proposal-ordinary-living",
+        proposedType: "storyCard",
+        title: "Setu and Nyxa Training",
+        targetId: "card-ordinary-living",
+        appendContent: true,
+        content: "- Setu has now brought her into his private chambers.",
+        suggestedTriggers: ["chambers"],
+      }),
+    });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-ordinary-living" });
+
+    const merged = state.storyCards.find((c) => c.id === "card-ordinary-living");
+    expect(merged?.content).toContain("private chambers");
+    expect(merged?.archivedFacts).toContain("lessons began during the market festival");
+    expect(merged?.content).not.toContain("lessons began during the market festival");
+    expect(merged?.pinned).toBe(false);
+    expect(merged?.protected).toBe(false);
+  });
+
+  it("story-card replacements preserve guarded compact facts from live content and archives", () => {
+    const card = makeStoryCard({
+      id: "card-jinx-pact",
+      title: "Seth's Pact with Jinx",
+      memoryMode: "living",
+      content: "- Seth and Jinx have a secret pact: Jinx stops killing except in self-protection.",
+      archivedFacts: "- Mel's official cover story keeps Seth on the Council as a political shield.",
+      keys: ["Jinx pact"],
+      active: true,
+    });
+    let state = { ...baseAdventure(), storyCards: [card] };
+
+    state = reduce(state, {
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: makeMemoryProposal({
+        id: "proposal-jinx-pact-replace",
+        proposedType: "storyCard",
+        title: "Seth's Pact with Jinx",
+        targetId: "card-jinx-pact",
+        appendContent: false,
+        content: "- Jinx is repairing the Sump air filter with Seth's arcane help.",
+        suggestedTriggers: ["Sump air filter"],
+        memoryMode: "living",
+      }),
+    });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-jinx-pact-replace" });
+
+    const updated = state.storyCards.find((c) => c.id === "card-jinx-pact");
+    expect(updated?.content).toContain("secret pact");
+    expect(updated?.content).toContain("official cover story");
+    expect(updated?.content).toContain("Sump air filter");
+    expect(updated?.pinned).toBe(true);
+    expect(updated?.protected).toBe(true);
+    expect(updated?.priority).toBeGreaterThanOrEqual(80);
+    expect(updated?.tokenBudget).toBeGreaterThanOrEqual(450);
   });
 
   it("applies Story Card proposal type and auto-update settings when approving AI builder drafts", () => {
