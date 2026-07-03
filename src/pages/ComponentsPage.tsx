@@ -2,8 +2,9 @@ import { useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import type { ComponentAuditRecommendation } from "../memory/componentAudit";
 import { makeComponent } from "../state/defaults";
+import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -271,9 +272,28 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
 
+function componentContextText(component: ComponentEntry): string {
+  if (component.type !== "currentArc") return component.content;
+
+  const phase = component.arcState?.phase ?? "simmer";
+  const phaseDirection =
+    phase === "break"
+      ? component.arcBreakInstruction?.trim()
+      : phase === "simmer" || phase === "escalate"
+        ? component.arcSimmerInstruction?.trim()
+        : undefined;
+
+  if (!component.content.trim() && !component.arcPremise?.trim() && !phaseDirection) return "";
+
+  const premiseHeader = component.arcPremise?.trim() ? `[Arc Premise: ${component.arcPremise.trim()}]\n` : "";
+  const directionBlock = phaseDirection ? `\n\n[ARC DIRECTION \u2014 ${phase.toUpperCase()}]\n${phaseDirection}` : "";
+  return premiseHeader + (component.content.trim() || "(no entries yet)") + directionBlock;
+}
+
 function ComponentSummary({ component, query }: { component: ComponentEntry; query: string }) {
   const snippet = contentSnippet(component.content, query);
   const memoryUpdatedAt = formatCompactTimestamp(component.lastMemoryUpdatedAt);
+  const tokenEstimate = approximateTokenCount(componentContextText(component));
   return (
     <span className="story-card-summary">
       <span className="story-card-title"><Highlight text={TYPE_LABELS[component.type]} query={query} /></span>
@@ -282,6 +302,7 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
         {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
+        <TokenCountBadge count={tokenEstimate} title="Estimated tokens in plot context" />
         <UpdatedAtBadge value={component.updatedAt} />
         {memoryUpdatedAt && (
           <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>

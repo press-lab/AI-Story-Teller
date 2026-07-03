@@ -139,6 +139,14 @@ export function UpdatedAtBadge({ value, label = "Updated" }: { value: string | u
   );
 }
 
+export function TokenCountBadge({ count, title = "Estimated context tokens" }: { count: number; title?: string }) {
+  return (
+    <span className="badge badge-priority" title={`${title}: ${count.toLocaleString()}`}>
+      {count.toLocaleString()} tokens
+    </span>
+  );
+}
+
 function snapshotMeta(snapshot: MemoryUpdateSnapshot | null): string {
   if (!snapshot) return "New memory item";
   const values = [

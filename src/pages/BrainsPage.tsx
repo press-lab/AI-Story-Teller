@@ -1,8 +1,10 @@
 import type { BrainEntry, ContextInclusionPolicy } from "../types/adventure";
 import type { BrainAuditRecommendation } from "../memory/brainAudit";
+import { dedupeThoughtRecord } from "../memory/thoughtDedupe";
 import { makeBrain } from "../state/defaults";
+import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, NumberInput, TokenCountBadge, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
 import { useEffect, useState } from "react";
 
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
@@ -71,6 +73,10 @@ function formatThoughts(thoughts: Record<string, string>): string {
   return brainThoughtEntries(thoughts).map(([key, value]) => `${key}: ${value}`).join("\n");
 }
 
+function brainContextText(brain: BrainEntry): string {
+  return Object.entries(dedupeThoughtRecord(brain.thoughts)).map(([key, value]) => `${key}: ${value}`).join("\n");
+}
+
 function parseThoughts(text: string): Record<string, string> {
   const record: Record<string, string> = {};
   for (const line of text.split("\n")) {
@@ -134,6 +140,7 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
   const thoughtCount = Object.keys(brain.thoughts).length;
   const archivedCount = Object.keys(brain.archivedThoughts).length;
   const latestThought = brainThoughtEntries(brain.thoughts)[0]?.[1] ?? brainThoughtEntries(brain.archivedThoughts)[0]?.[1];
+  const tokenEstimate = approximateTokenCount(brainContextText(brain));
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -147,6 +154,7 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
         {brain.priority > 0 && <span className="badge badge-priority">p{brain.priority}</span>}
         {thoughtCount > 0 && <span className="badge badge-priority">{thoughtCount} thoughts</span>}
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
+        <TokenCountBadge count={tokenEstimate} title="Estimated tokens in live brain thoughts" />
         <UpdatedAtBadge value={brain.updatedAt} />
       </span>
       {brain.triggers.length > 0 && (
