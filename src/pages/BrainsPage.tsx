@@ -107,10 +107,20 @@ function BrainThoughtList({ thoughts }: { thoughts: Record<string, string> }) {
   );
 }
 
-function BrainThoughtHistory({ brain }: { brain: BrainEntry }) {
+type BrainThoughtTimelineState = "current" | "archived";
+
+function BrainThoughtHistory({
+  brain,
+  onSaveThought,
+}: {
+  brain: BrainEntry;
+  onSaveThought: (entry: { state: BrainThoughtTimelineState; key: string; value: string }) => void;
+}) {
+  const [editingEntry, setEditingEntry] = useState<{ state: BrainThoughtTimelineState; key: string } | null>(null);
+  const [draft, setDraft] = useState("");
   const entries = [
-    ...Object.entries(brain.thoughts).map(([key, value]) => ({ key, value, state: "current" as const })),
-    ...Object.entries(brain.archivedThoughts).map(([key, value]) => ({ key, value, state: "archived" as const })),
+    ...Object.entries(brain.thoughts).map(([key, value]) => ({ key, value, state: "current" as BrainThoughtTimelineState })),
+    ...Object.entries(brain.archivedThoughts).map(([key, value]) => ({ key, value, state: "archived" as BrainThoughtTimelineState })),
   ]
     .filter((entry) => entry.value.trim())
     .sort((a, b) => thoughtTurnValue(b.key, b.value) - thoughtTurnValue(a.key, a.value) || b.key.localeCompare(a.key));
@@ -121,17 +131,71 @@ function BrainThoughtHistory({ brain }: { brain: BrainEntry }) {
 
   return (
     <div className="brain-history-list">
-      {entries.map((entry) => (
-        <article key={`${entry.state}-${entry.key}`} className="brain-history-entry">
-          <div className="brain-history-meta">
-            <span>{entry.key}</span>
-            <span className={`badge ${entry.state === "current" ? "badge-priority" : "badge-inactive"}`}>
-              {entry.state}
+      {entries.map((entry) => {
+        const isEditing = editingEntry?.state === entry.state && editingEntry.key === entry.key;
+        if (isEditing) {
+          return (
+            <article key={`${entry.state}-${entry.key}`} className="brain-history-entry brain-history-editor">
+              <div className="brain-history-meta">
+                <span>{entry.key}</span>
+                <span className={`badge ${entry.state === "current" ? "badge-priority" : "badge-inactive"}`}>
+                  {entry.state}
+                </span>
+              </div>
+              <Field label={`Thought text (${entry.key})`}>
+                <textarea
+                  rows={4}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                />
+              </Field>
+              <div className="brain-history-editor-actions">
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={!draft.trim()}
+                  onClick={() => {
+                    onSaveThought({ state: entry.state, key: entry.key, value: draft.trim() });
+                    setEditingEntry(null);
+                  }}
+                >
+                  Save thought
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingEntry(null);
+                    setDraft("");
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </article>
+          );
+        }
+
+        return (
+          <button
+            key={`${entry.state}-${entry.key}`}
+            type="button"
+            className="brain-history-entry brain-history-entry-button"
+            aria-label={`Edit ${entry.state} thought ${entry.key}`}
+            onClick={() => {
+              setEditingEntry({ state: entry.state, key: entry.key });
+              setDraft(entry.value);
+            }}
+          >
+            <span className="brain-history-meta">
+              <span>{entry.key}</span>
+              <span className={`badge ${entry.state === "current" ? "badge-priority" : "badge-inactive"}`}>
+                {entry.state}
+              </span>
             </span>
-          </div>
-          <p>{entry.value}</p>
-        </article>
-      ))}
+            <span className="brain-history-text">{entry.value}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -402,7 +466,24 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                   {Object.keys(brain.thoughts).length} current · {Object.keys(brain.archivedThoughts).length} archived
                 </span>
               </div>
-              <BrainThoughtHistory brain={brain} />
+              <BrainThoughtHistory
+                brain={brain}
+                onSaveThought={({ state, key, value }) => {
+                  if (state === "current") {
+                    dispatch({
+                      type: "UPDATE_BRAIN",
+                      brainId: brain.id,
+                      patch: { thoughts: { ...brain.thoughts, [key]: value } },
+                    });
+                  } else {
+                    dispatch({
+                      type: "UPDATE_BRAIN",
+                      brainId: brain.id,
+                      patch: { archivedThoughts: { ...brain.archivedThoughts, [key]: value } },
+                    });
+                  }
+                }}
+              />
               <details className="brain-inline-details">
                 <summary>Edit current thoughts</summary>
                 <Field label="Thoughts (key: turnN -> first-person observation, one per line)">

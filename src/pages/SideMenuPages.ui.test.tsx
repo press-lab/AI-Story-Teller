@@ -343,6 +343,48 @@ describe("side menu page smoke coverage", () => {
     expect(within(brainRow as HTMLElement).getByTitle("Estimated tokens in live brain thoughts: 5")).toHaveTextContent("5 tokens");
   });
 
+  it("edits visible current and archived brain thoughts inline", async () => {
+    const user = userEvent.setup();
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      brains: [
+        makeBrain({
+          id: "brain-margo",
+          characterName: "Margo",
+          thoughts: { turn_4: "4 -> I am watching the ward for cracks." },
+          archivedThoughts: { turn_1: "1 -> The first read was too simple." },
+        }),
+      ],
+    };
+
+    renderWithAdventure(
+      (adventureState, dispatch) => (
+        <BrainsPage adventure={adventureState} dispatch={dispatch} loading={false} onUpdateBrainNow={async () => undefined} />
+      ),
+      adventure,
+    );
+
+    const brainSummary = screen.getByText("Margo", { selector: ".story-card-title" }).closest("summary");
+    expect(brainSummary).toBeTruthy();
+    await user.click(brainSummary as HTMLElement);
+
+    await user.click(screen.getByRole("button", { name: "Edit current thought turn_4" }));
+    const currentText = screen.getByLabelText("Thought text (turn_4)");
+    await user.clear(currentText);
+    await user.type(currentText, "4 -> Edited current thought.");
+    await user.click(screen.getByRole("button", { name: "Save thought" }));
+    expect(screen.getAllByText("4 -> Edited current thought.")).toHaveLength(2);
+    expect(screen.queryByText("4 -> I am watching the ward for cracks.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Edit archived thought turn_1" }));
+    const archivedText = screen.getByLabelText("Thought text (turn_1)");
+    await user.clear(archivedText);
+    await user.type(archivedText, "1 -> Edited archived thought.");
+    await user.click(screen.getByRole("button", { name: "Save thought" }));
+    expect(screen.getByText("1 -> Edited archived thought.")).toBeInTheDocument();
+    expect(screen.queryByText("1 -> The first read was too simple.")).not.toBeInTheDocument();
+  });
+
   it("shows update timestamps on editor item summaries", () => {
     const adventure: Adventure = {
       ...seedAdventure(),

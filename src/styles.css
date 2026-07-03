@@ -3413,12 +3413,30 @@ details.story-card-item:not([open]) > .editor-card {
   max-width: 100%;
 }
 
+.brain-history-entry-button {
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.brain-history-entry-button:hover,
+.brain-history-entry-button:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--control-hover);
+}
+
 .item-history-entry p,
-.brain-history-entry p {
+.brain-history-entry p,
+.brain-history-text {
   margin: 0;
   line-height: 1.45;
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.brain-history-text {
+  display: block;
 }
 
 .item-history-meta,
@@ -3446,6 +3464,24 @@ details.story-card-item:not([open]) > .editor-card {
 .item-history-meta .badge,
 .brain-history-meta .badge {
   flex: 0 0 auto;
+}
+
+.brain-history-editor {
+  background: color-mix(in srgb, var(--surface-soft) 70%, var(--surface));
+}
+
+.brain-history-editor .field {
+  margin: 0;
+}
+
+.brain-history-editor textarea {
+  min-height: 92px;
+}
+
+.brain-history-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .item-secondary-details,
