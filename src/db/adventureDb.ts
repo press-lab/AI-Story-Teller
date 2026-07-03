@@ -11,8 +11,19 @@ export interface AdventureSummary {
   title: string;
   updatedAt: string;
   createdAt: string;
-  actionCount: number;
+  turnCount: number;
+  storyEntryCount: number;
   thumbnailImage?: AdventureThumbnailImage;
+}
+
+function normalizeCount(value: number | undefined): number {
+  return Number.isFinite(value) ? Math.max(0, Math.floor(value ?? 0)) : 0;
+}
+
+function countStoryEntries(adventure: Adventure): number {
+  return adventure.messages.filter(
+    (message) => message.role === "user" || message.role === "assistant",
+  ).length;
 }
 
 function openDatabase(): Promise<IDBDatabase> {
@@ -74,7 +85,8 @@ export async function listAdventures(): Promise<AdventureSummary[]> {
       title: adventure.title,
       createdAt: adventure.createdAt,
       updatedAt: adventure.updatedAt,
-      actionCount: Math.max(0, Math.floor(adventure.activeState.turn)),
+      turnCount: normalizeCount(adventure.activeState.turn),
+      storyEntryCount: countStoryEntries(adventure),
       thumbnailImage: getAdventureThumbnail(adventure),
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

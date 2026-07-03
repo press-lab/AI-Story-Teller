@@ -17,7 +17,10 @@ vi.mock("./db/adventureDb", () => ({
       title: adventure.title,
       createdAt: adventure.createdAt,
       updatedAt: adventure.updatedAt,
-      actionCount: adventure.activeState.turn,
+      turnCount: adventure.activeState.turn,
+      storyEntryCount: adventure.messages.filter(
+        (message) => message.role === "user" || message.role === "assistant",
+      ).length,
     })),
   ),
   saveAdventure: vi.fn(async (adventure: Adventure) => {

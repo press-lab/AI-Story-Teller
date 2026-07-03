@@ -69,15 +69,27 @@ describe("adventureDb IndexedDB persistence", () => {
     const older = createDefaultAdventure("Older");
     older.updatedAt = "2026-01-01T00:00:00.000Z";
     older.activeState.turn = 3;
+    older.messages = [
+      { id: "old-system", role: "system", content: "System note", createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: "old-user", role: "user", content: "I open the gate.", createdAt: "2026-01-01T00:01:00.000Z" },
+      { id: "old-assistant", role: "assistant", content: "The gate groans open.", createdAt: "2026-01-01T00:02:00.000Z" },
+    ];
     const newer = createDefaultAdventure("Newer");
     newer.updatedAt = "2026-01-02T00:00:00.000Z";
     newer.activeState.turn = 12;
+    newer.messages = [
+      { id: "new-user-1", role: "user", content: "I call Margo.", createdAt: "2026-01-02T00:01:00.000Z" },
+      { id: "new-assistant-1", role: "assistant", content: "Margo answers.", createdAt: "2026-01-02T00:02:00.000Z" },
+      { id: "new-user-2", role: "user", content: "I ask about the ward.", createdAt: "2026-01-02T00:03:00.000Z" },
+      { id: "new-assistant-2", role: "assistant", content: "She lowers her voice.", createdAt: "2026-01-02T00:04:00.000Z" },
+    ];
 
     await saveAdventure(older);
     await saveAdventure(newer);
 
     expect((await listAdventures()).map((adventure) => adventure.title)).toEqual(["Newer", "Older"]);
-    expect((await listAdventures()).map((adventure) => adventure.actionCount)).toEqual([12, 3]);
+    expect((await listAdventures()).map((adventure) => adventure.turnCount)).toEqual([12, 3]);
+    expect((await listAdventures()).map((adventure) => adventure.storyEntryCount)).toEqual([4, 2]);
 
     await deleteAdventure(newer.id);
 
