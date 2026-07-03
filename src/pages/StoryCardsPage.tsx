@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, StoryCardMemoryMode, StoryCardType, TriggerMatchType, StoryCardAIBuilderRequest } from "../types/adventure";
+import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, StoryCardCompactKind, StoryCardCompactStatus, StoryCardMemoryMode, StoryCardType, TriggerMatchType, StoryCardAIBuilderRequest } from "../types/adventure";
 import type { AuditRecommendation } from "../memory/storyCardAudit";
+import { storyCardContextContent } from "../memory/storyCardPolicy";
 import { makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
@@ -8,6 +9,16 @@ import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, Toke
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 const MEMORY_MODE_OPTIONS: StoryCardMemoryMode[] = ["static", "living", "historical"];
+const COMPACT_KIND_OPTIONS: Array<{ value: StoryCardCompactKind; label: string }> = [
+  { value: "pact", label: "Pact / deal" },
+  { value: "promise", label: "Promise / oath" },
+  { value: "coverStory", label: "Cover story / shield" },
+  { value: "alliance", label: "Alliance / truce" },
+  { value: "debt", label: "Debt / obligation" },
+  { value: "secret", label: "Secret" },
+  { value: "truce", label: "Truce" },
+];
+const COMPACT_STATUS_OPTIONS: StoryCardCompactStatus[] = ["active", "strained", "broken", "resolved", "superseded"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
@@ -46,11 +57,12 @@ export function isLivingCard(card: StoryCard): boolean {
 export const LIVING_CARD_PREFIX = "⟳ ";
 
 function CardSummary({ card, query }: { card: StoryCard; query: string }) {
-  const snippet = contentSnippet(card.content, query);
+  const contextContent = storyCardContextContent(card);
+  const snippet = contentSnippet(contextContent, query);
   const living = isLivingCard(card);
   const archivedCount = card.archivedFacts?.split("\n").filter((line) => line.trim()).length ?? 0;
   const memoryUpdatedAt = formatCompactTimestamp(card.lastMemoryUpdatedAt);
-  const tokenEstimate = approximateTokenCount(card.content);
+  const tokenEstimate = approximateTokenCount(contextContent);
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -59,6 +71,8 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
       </span>
       <span className="story-card-badges">
         <span className="badge badge-type">{TYPE_LABELS[card.type]}</span>
+        {card.compactKind && <span className="badge badge-priority">{card.compactKind}</span>}
+        {card.compactStatus && <span className="badge badge-priority">{card.compactStatus}</span>}
         {!card.active && <span className="badge badge-inactive">Inactive</span>}
         {card.pinned && <span className="badge badge-pinned">Pinned</span>}
         {card.protected && <span className="badge badge-protected">Protected</span>}
@@ -83,6 +97,17 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
 
 function cardFactLines(text: string | undefined): string[] {
   return (text ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function factListText(facts: string[] | undefined): string {
+  return (facts ?? []).join("\n");
+}
+
+function factListFromText(text: string): string[] {
+  return text
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean);
@@ -249,7 +274,18 @@ export function StoryCardsPage({
   const searchLower = search.toLowerCase().trim();
   function cardMatchesSearch(card: StoryCard): boolean {
     if (!searchLower) return true;
-    return card.title.toLowerCase().includes(searchLower) || card.keys.some((k) => k.toLowerCase().includes(searchLower)) || card.content.toLowerCase().includes(searchLower);
+    const compactText = [
+      card.compactKind,
+      card.compactStatus,
+      ...(card.coreFacts ?? []),
+      ...(card.currentFacts ?? []),
+      ...(card.recentDevelopments ?? []),
+      ...(card.sourceTurnIds ?? []),
+    ].filter(Boolean).join(" ");
+    return card.title.toLowerCase().includes(searchLower) ||
+      card.keys.some((k) => k.toLowerCase().includes(searchLower)) ||
+      card.content.toLowerCase().includes(searchLower) ||
+      compactText.toLowerCase().includes(searchLower);
   }
 
   function cardMatchesFilters(card: StoryCard): boolean {
@@ -802,6 +838,82 @@ export function StoryCardsPage({
                     </Field>
                   </div>
                   </details>
+                  <section className="item-focus-section">
+                    <div className="item-section-heading">
+                      <div>
+                        <p className="eyebrow">compact memory</p>
+                        <h4>Structured compact facts</h4>
+                      </div>
+                      {card.compactKind && <span className="badge badge-priority">{card.compactStatus ?? "active"}</span>}
+                    </div>
+                    <div className="grid two">
+                      <Field label="Compact Kind">
+                        <select
+                          value={card.compactKind ?? ""}
+                          onChange={(event) => {
+                            const value = event.target.value as StoryCardCompactKind | "";
+                            dispatch({
+                              type: "UPDATE_STORY_CARD",
+                              storyCardId: card.id,
+                              patch: value
+                                ? { compactKind: value, compactStatus: card.compactStatus ?? "active", memoryMode: "living" }
+                                : { compactKind: undefined, compactStatus: undefined },
+                            });
+                          }}
+                        >
+                          <option value="">none</option>
+                          {COMPACT_KIND_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>{option.label}</option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Compact Status">
+                        <select
+                          value={card.compactStatus ?? "active"}
+                          onChange={(event) =>
+                            dispatch({
+                              type: "UPDATE_STORY_CARD",
+                              storyCardId: card.id,
+                              patch: { compactStatus: event.target.value as StoryCardCompactStatus },
+                            })
+                          }
+                        >
+                          {COMPACT_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>{status}</option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field label="Core Facts">
+                      <textarea
+                        rows={4}
+                        value={factListText(card.coreFacts)}
+                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { coreFacts: factListFromText(event.target.value) } })}
+                      />
+                    </Field>
+                    <Field label="Current Facts">
+                      <textarea
+                        rows={3}
+                        value={factListText(card.currentFacts)}
+                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { currentFacts: factListFromText(event.target.value) } })}
+                      />
+                    </Field>
+                    <Field label="Recent Developments">
+                      <textarea
+                        rows={3}
+                        value={factListText(card.recentDevelopments)}
+                        onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { recentDevelopments: factListFromText(event.target.value) } })}
+                      />
+                    </Field>
+                    {card.sourceTurnIds?.length ? (
+                      <Field label="Source Turns">
+                        <input
+                          value={card.sourceTurnIds.join(", ")}
+                          onChange={(event) => dispatch({ type: "UPDATE_STORY_CARD", storyCardId: card.id, patch: { sourceTurnIds: fromCommaList(event.target.value) } })}
+                        />
+                      </Field>
+                    ) : null}
+                  </section>
                   <section className="item-focus-section">
                     <div className="item-section-heading">
                       <div>

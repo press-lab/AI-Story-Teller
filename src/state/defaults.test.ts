@@ -24,11 +24,12 @@ describe("normalizeAdventure", () => {
     const normalized = normalizeAdventure(adventure);
     const card = normalized.storyCards.find((entry) => entry.id === "card-jinx-pact");
 
-    expect(normalized.activeState.stateFlags.guardedStoryCardsMigrated).toBe(true);
-    expect(card?.content).toContain("secret pact");
-    expect(card?.content).toContain("official cover story");
-    expect(card?.content).toContain("Sump air filter");
+    expect(normalized.activeState.stateFlags.compactStoryCardsMigrated).toBe(true);
+    expect(card?.compactKind).toBe("coverStory");
+    expect(card?.coreFacts?.join("\n")).toContain("secret pact");
+    expect(card?.coreFacts?.join("\n")).toContain("official cover story");
+    expect([...(card?.currentFacts ?? []), ...(card?.recentDevelopments ?? [])].join("\n")).toContain("Sump air filter");
     expect(card?.pinned).toBe(true);
-    expect(card?.protected).toBe(true);
+    expect(card?.protected).toBe(false);
   });
 });

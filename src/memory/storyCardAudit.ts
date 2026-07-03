@@ -1,6 +1,7 @@
 import type { Adventure, Message, ProviderConfig, StoryCard, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { STORY_CARD_BEST_PRACTICES, TRIGGER_BEST_PRACTICES } from "../ai/authoringBestPractices";
+import { storyCardContextContent } from "./storyCardPolicy";
 
 export type AuditAction = "edit" | "delete" | "create";
 export type AuditDecision = "pending" | "approved" | "rejected";
@@ -95,8 +96,8 @@ function detectRedundant(cards: StoryCard[]): AuditRecommendation[] {
       const a = cards[i];
       const b = cards[j];
       if (flagged.has(a.id) || flagged.has(b.id)) continue;
-      const wordsA = wordSet(a.content);
-      const wordsB = wordSet(b.content);
+      const wordsA = wordSet(storyCardContextContent(a));
+      const wordsB = wordSet(storyCardContextContent(b));
       if (wordsA.size < 10 || wordsB.size < 10) continue;
       const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
       const overlap = intersection / Math.min(wordsA.size, wordsB.size);
@@ -129,7 +130,7 @@ function detectNoKeys(cards: StoryCard[]): AuditRecommendation[] {
 
 function detectTinyContent(cards: StoryCard[]): AuditRecommendation[] {
   return cards
-    .filter((c) => c.active && c.content.trim().split(/\s+/).filter(Boolean).length < 15)
+    .filter((c) => c.active && storyCardContextContent(c).trim().split(/\s+/).filter(Boolean).length < 15)
     .map((c) => makeRec(
       `det-tiny-${c.id}`,
       "edit",
@@ -197,7 +198,7 @@ function detectBroadTriggers(cards: StoryCard[]): AuditRecommendation[] {
 
 function buildPrompt(cards: StoryCard[], rollingSummary: string, recentStory: string): string {
   const cardList = cards
-    .map((c) => `[${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}) keys: ${c.keys.join(", ") || "(title trigger only)"}\n${c.content.slice(0, 2200)}`)
+    .map((c) => `[${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}) keys: ${c.keys.join(", ") || "(title trigger only)"}\n${storyCardContextContent(c).slice(0, 2200)}`)
     .join("\n\n---\n\n");
 
   return `You are cleaning up story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged - focus on semantic accuracy, consolidation, trigger bleed, living-card updates, profile bloat, and missing historical/living child cards.

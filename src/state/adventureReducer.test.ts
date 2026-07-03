@@ -595,7 +595,12 @@ describe("adventureReducer", () => {
       operation: "create",
       proposalId: "proposal-story",
       previous: null,
-      next: { title: "Promise", content: "Seth promised Margo he would return." },
+      next: {
+        title: "Promise",
+        content: "",
+        compactKind: "promise",
+        coreFacts: expect.arrayContaining(["Seth promised Margo he would return."]),
+      },
     });
 
     const brain = makeBrain({ id: "brain-proposal", characterName: "Margo", recentDevelopments: "old" });
@@ -1095,7 +1100,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "bad-arc")).toBe(false);
   });
 
-  it("living-card update: guarded compact facts stay live while ordinary facts archive first", () => {
+  it("living-card update: compact facts move into structured fields without auto-protecting the card", () => {
     const card = makeStoryCard({
       id: "card-living",
       title: "Setu and Nyxa",
@@ -1120,11 +1125,13 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-card-update" });
 
     const merged = state.storyCards.find((c) => c.id === "card-living");
-    expect(merged?.content).toContain("Their bond was a court secret");
-    expect(merged?.archivedFacts).toContain("private chambers");
-    expect(merged?.content).not.toContain("private chambers");
+    expect(merged?.compactKind).toBe("secret");
+    expect(merged?.compactStatus).toBe("active");
+    expect(merged?.coreFacts?.join("\n")).toContain("Their bond was a court secret");
+    expect([...(merged?.currentFacts ?? []), ...(merged?.recentDevelopments ?? [])].join("\n")).toContain("private chambers");
+    expect(merged?.content).not.toContain("court secret");
     expect(merged?.pinned).toBe(true);
-    expect(merged?.protected).toBe(true);
+    expect(merged?.protected).toBe(false);
     expect(state.storyCards.filter((c) => c.title === "Setu and Nyxa")).toHaveLength(1);
     expect(merged?.keys).toContain("chambers");
     expect(merged?.memoryUpdateHistory?.[0]).toMatchObject({
@@ -1132,7 +1139,7 @@ describe("adventureReducer", () => {
       operation: "append",
       proposalId: "proposal-card-update",
       previous: { content: expect.stringContaining("They spar as equals") },
-      next: { content: expect.stringContaining("court secret") },
+      next: { coreFacts: expect.arrayContaining([expect.stringContaining("court secret")]) },
     });
   });
 
@@ -1198,11 +1205,12 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-jinx-pact-replace" });
 
     const updated = state.storyCards.find((c) => c.id === "card-jinx-pact");
-    expect(updated?.content).toContain("secret pact");
-    expect(updated?.content).toContain("official cover story");
-    expect(updated?.content).toContain("Sump air filter");
+    expect(updated?.compactKind).toBe("coverStory");
+    expect(updated?.coreFacts?.join("\n")).toContain("secret pact");
+    expect(updated?.coreFacts?.join("\n")).toContain("official cover story");
+    expect([...(updated?.currentFacts ?? []), ...(updated?.recentDevelopments ?? [])].join("\n")).toContain("Sump air filter");
     expect(updated?.pinned).toBe(true);
-    expect(updated?.protected).toBe(true);
+    expect(updated?.protected).toBe(false);
     expect(updated?.priority).toBeGreaterThanOrEqual(80);
     expect(updated?.tokenBudget).toBeGreaterThanOrEqual(450);
   });

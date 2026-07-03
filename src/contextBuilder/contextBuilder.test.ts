@@ -278,6 +278,32 @@ describe("buildContext", () => {
     expect(laterContext.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).not.toContain("card-opening");
   });
 
+  it("renders structured compact story-card facts into context", () => {
+    const pact = makeStoryCard({
+      id: "card-pact",
+      title: "Seth's Pact with Jinx",
+      content: "",
+      compactKind: "pact",
+      compactStatus: "active",
+      coreFacts: ["Jinx stops killing except in self-protection."],
+      currentFacts: ["Mel keeps Seth on the Council under an official cover story."],
+      recentDevelopments: ["Jinx is repairing the Sump air filter."],
+      pinned: true,
+    });
+    const adventure = { ...createDefaultAdventure("Compact Context"), storyCards: [pact] };
+
+    const result = buildContext(adventure);
+    const content = result.sections.find((section) => section.id === "storyCards")?.items[0]?.content ?? "";
+
+    expect(content).toContain("Compact: pact (active)");
+    expect(content).toContain("Core facts:");
+    expect(content).toContain("Jinx stops killing except in self-protection.");
+    expect(content).toContain("Current facts:");
+    expect(content).toContain("official cover story");
+    expect(content).toContain("Recent developments:");
+    expect(content).toContain("Sump air filter");
+  });
+
   it("drops oldest recent messages before cutting other sections", () => {
     const adventure = {
       ...adventureForContext(),

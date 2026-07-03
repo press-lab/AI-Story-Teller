@@ -26,6 +26,7 @@ import { cardMatchesName, defaultArcState, defaultNextTurnNote, makeComponent, m
 import { createId, nowIso } from "../utils/id";
 import { isLivingStoryCard, resolveMemoryTarget, sanitizeStoryCardTriggers } from "../memory/resolveMemoryTarget";
 import {
+  appendSourceTurnIds,
   applyGuardedStoryCardPolicy,
   isGuardedStoryCardFact,
   isGuardedStoryCardMemory,
@@ -67,6 +68,12 @@ function storyCardMemorySnapshot(card: StoryCard): MemoryUpdateSnapshot {
     keys: [...card.keys],
     type: card.type,
     memoryMode: card.memoryMode,
+    compactKind: card.compactKind,
+    compactStatus: card.compactStatus,
+    coreFacts: card.coreFacts ? [...card.coreFacts] : undefined,
+    currentFacts: card.currentFacts ? [...card.currentFacts] : undefined,
+    recentDevelopments: card.recentDevelopments ? [...card.recentDevelopments] : undefined,
+    sourceTurnIds: card.sourceTurnIds ? [...card.sourceTurnIds] : undefined,
     archivedFacts: card.archivedFacts,
   };
 }
@@ -950,6 +957,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
               ...sanitizeStoryCardTriggers(state, preparedExisting.title, proposal.suggestedTriggers, preparedExisting.id, "living"),
             ])),
             memoryMode: "living",
+            sourceTurnIds: appendSourceTurnIds(preparedExisting.sourceTurnIds, proposal.sourceTurnId),
             // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
             state: Array.from(new Set([...(preparedExisting.state ? preparedExisting.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
             ...automationPatch(preparedExisting),
@@ -967,6 +975,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
               ...sanitizeStoryCardTriggers(state, existing.title, proposal.suggestedTriggers, existing.id, existing.memoryMode ?? proposal.memoryMode),
             ])),
             memoryMode: existing.memoryMode ?? proposal.memoryMode,
+            sourceTurnIds: appendSourceTurnIds(existing.sourceTurnIds, proposal.sourceTurnId),
             state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
             ...automationPatch(existing),
           }),
@@ -987,6 +996,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           ])),
           memoryMode: proposal.memoryMode ?? existing.memoryMode,
           type: proposal.storyCardType ?? existing.type,
+          sourceTurnIds: appendSourceTurnIds(existing.sourceTurnIds, proposal.sourceTurnId),
           state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
           ...automationPatch(existing),
         }),
@@ -1005,6 +1015,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           pinned: false,
           autoUpdate: proposal.autoUpdate ?? false,
           autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
+          sourceTurnIds: appendSourceTurnIds(undefined, proposal.sourceTurnId),
           state: "memoryProposal",
         })),
         proposalMemoryMeta("create"),
@@ -1025,6 +1036,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           memoryMode: proposal.memoryMode ?? "static",
           type: "character",
           active: true,
+          sourceTurnIds: appendSourceTurnIds(undefined, proposal.sourceTurnId),
           state: "memoryProposal routedFromMissingBrain",
         })),
         proposalMemoryMeta("create"),

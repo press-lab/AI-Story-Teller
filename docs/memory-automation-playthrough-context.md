@@ -44,27 +44,32 @@ The AI should only assist with semantic judgment and prose:
 
 ## Implemented Solution
 
-The implementation adds deterministic guarded Story Card policy for compact-style memory: pacts, deals, promises, oaths, truce terms, secret alliances, official cover stories, political shields, debts, obligations, accomplice/fugitive arrangements, and similar ongoing constraints.
+The implementation adds deterministic compact Story Card policy for compact-style memory: pacts, deals, promises, oaths, truce terms, secret alliances, official cover stories, political shields, debts, obligations, accomplice/fugitive arrangements, and similar ongoing constraints.
 
-Guarded cards now get these protections when created or updated through memory automation:
+Compact cards now get these protections when created or updated through memory automation:
 
 - pinned;
-- protected;
 - priority raised to at least 80;
 - token budget raised to 450 tokens if the user has not set an explicit card budget;
 - state tagged with `guardedMemory`;
-- guarded archived facts restored into live content during old-save normalization;
-- guarded facts preserved on append/replace so newer churn does not push core terms out first.
+- `compactKind` and `compactStatus` fields;
+- `coreFacts`, `currentFacts`, `recentDevelopments`, and `sourceTurnIds`;
+- guarded archived facts restored into structured compact fields during old-save normalization;
+- compact context rendered from structured fields instead of raw card text.
+
+`protected` is not set automatically. Protected remains a user control for truly non-droppable context.
 
 The reducer still allows ordinary living cards to behave like bounded event feeds. Only compact/promise/cover-style memory gets the stronger treatment.
 
 ## Important Files
 
-- `src/memory/storyCardPolicy.ts`: deterministic guarded-memory detection and card policy.
+- `src/memory/storyCardPolicy.ts`: deterministic compact-memory detection, field promotion, and context rendering.
 - `src/memory/resolveMemoryTarget.ts`: exact-title compact routing even when the AI drifts on memory mode.
-- `src/state/adventureReducer.ts`: guarded append/replace behavior and memory proposal application.
-- `src/state/defaults.ts`: old-save normalization and one-time guarded fact rehydration.
-- `src/state/adventureReducer.test.ts`: reducer coverage for guarded compacts and ordinary living-card pruning.
+- `src/state/adventureReducer.ts`: compact append/replace behavior and memory proposal application.
+- `src/state/defaults.ts`: old-save normalization and one-time compact field migration.
+- `src/contextBuilder/contextBuilder.ts`: compact Story Card context rendering.
+- `src/pages/StoryCardsPage.tsx`: visible compact kind/status/core/current/recent/source fields.
+- `src/state/adventureReducer.test.ts`: reducer coverage for compact cards and ordinary living-card pruning.
 - `src/memory/resolveMemoryTarget.test.ts`: routing coverage for exact-title compact updates.
 - `src/state/defaults.test.ts`: old-save migration coverage.
 

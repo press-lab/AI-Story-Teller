@@ -291,6 +291,12 @@ export function makeStoryCard(overrides: Partial<StoryCard> & Pick<StoryCard, "t
     content: overrides.content,
     type: overrides.type ?? "custom",
     memoryMode,
+    compactKind: overrides.compactKind,
+    compactStatus: overrides.compactStatus,
+    coreFacts: overrides.coreFacts,
+    currentFacts: overrides.currentFacts,
+    recentDevelopments: overrides.recentDevelopments,
+    sourceTurnIds: overrides.sourceTurnIds,
     active: overrides.active ?? true,
     pinned: overrides.pinned ?? false,
     protected: overrides.protected ?? false,
@@ -441,6 +447,10 @@ function normalizeStoryCardEntry(card: StoryCard, migrateGuardedFacts: boolean):
     inclusionPolicy: card.inclusionPolicy ?? "triggered",
     autoUpdate: card.autoUpdate ?? false,
     autoUpdateCooldownTurns: card.autoUpdateCooldownTurns ?? 3,
+    coreFacts: card.coreFacts ?? [],
+    currentFacts: card.currentFacts ?? [],
+    recentDevelopments: card.recentDevelopments ?? [],
+    sourceTurnIds: card.sourceTurnIds ?? [],
   };
   return migrateGuardedFacts
     ? applyGuardedStoryCardPolicy(restoreGuardedFactsToLiveContent(normalized))
@@ -456,7 +466,7 @@ function persistedProviderConfig(config: ProviderConfig | undefined): Partial<Pr
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   const messages = removeMirroredOpeningMessage(adventure);
-  const migrateGuardedStoryCards = !adventure.activeState?.stateFlags?.guardedStoryCardsMigrated;
+  const migrateGuardedStoryCards = !adventure.activeState?.stateFlags?.compactStoryCardsMigrated;
   return {
     ...baseline,
     ...adventure,
@@ -482,6 +492,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
         ...(adventure.activeState?.stateFlags ?? {}),
         brainsAppendMigrated: true,
         guardedStoryCardsMigrated: true,
+        compactStoryCardsMigrated: true,
       },
       triggerLog: adventure.activeState?.triggerLog ?? [],
       forceIncludeNextTurn: adventure.activeState?.forceIncludeNextTurn ?? [],

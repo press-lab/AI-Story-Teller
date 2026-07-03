@@ -66,6 +66,12 @@ export interface MemoryUpdateSnapshot {
   keys?: string[];
   type?: ComponentType | StoryCardType;
   memoryMode?: StoryCardMemoryMode;
+  compactKind?: StoryCardCompactKind;
+  compactStatus?: StoryCardCompactStatus;
+  coreFacts?: string[];
+  currentFacts?: string[];
+  recentDevelopments?: string[];
+  sourceTurnIds?: string[];
   archivedFacts?: string;
   arcPremise?: string;
   arcThreadKeys?: string[];
@@ -127,6 +133,15 @@ export interface ComponentEntry {
 
 export type StoryCardType = "character" | "location" | "lore" | "plot" | "custom";
 export type StoryCardMemoryMode = "static" | "living" | "historical";
+export type StoryCardCompactKind =
+  | "pact"
+  | "promise"
+  | "coverStory"
+  | "alliance"
+  | "debt"
+  | "secret"
+  | "truce";
+export type StoryCardCompactStatus = "active" | "strained" | "broken" | "resolved" | "superseded";
 
 export interface StoryCard {
   id: string;
@@ -148,6 +163,18 @@ export interface StoryCard {
   state: string;
   /** Token cap for this card's live content; overflow is moved to archivedFacts. 0/undefined = default. */
   tokenBudget?: number;
+  /** Structured compact memory type for pacts, promises, cover stories, debts, and similar ongoing constraints. */
+  compactKind?: StoryCardCompactKind;
+  /** Lifecycle for compact memory. Active/strained/broken compacts stay prominent; resolved/superseded compacts can age out. */
+  compactStatus?: StoryCardCompactStatus;
+  /** Non-prunable compact terms. These are rendered before current/recent compact facts in context. */
+  coreFacts?: string[];
+  /** Current operating facts for the compact. */
+  currentFacts?: string[];
+  /** Recent compact developments. Budgeted lower than core/current facts. */
+  recentDevelopments?: string[];
+  /** Source turns that produced compact facts, when known. */
+  sourceTurnIds?: string[];
   /** Superseded facts pruned out of live content so they stay on record without bloating context. Never injected. */
   archivedFacts?: string;
   /** When true, the LLM will automatically update this card after relevant scenes. */

@@ -11,6 +11,7 @@ import type {
   MemoryProposal,
   Message,
 } from "../types/adventure";
+import { storyCardContextContent } from "../memory/storyCardPolicy";
 import { dedupeThoughtRecord } from "../memory/thoughtDedupe";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { matchPatterns } from "../triggers/matching";
@@ -490,7 +491,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     if (match.matched) triggeredThreadIds.add(card.id);
     const matched = card.inclusionPolicy === "always" || card.pinned || forced || (card.inclusionPolicy !== "manual" && match.matched);
     if (matched) {
-      const next = item(card.id, "storyCard", card.title, card.content, card.priority, card.protected, card.pinned, card.active, card.inclusionPolicy, "user");
+      const next = item(card.id, "storyCard", card.title, storyCardContextContent(card), card.priority, card.protected, card.pinned, card.active, card.inclusionPolicy, "user");
       pushIncluded(next, `Story card included by ${card.pinned ? "pin" : forced ? "manual force" : card.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${card.priority}; protected=${card.protected}.`);
       storyCardItems.push(next);
     } else {
