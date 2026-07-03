@@ -42,5 +42,23 @@ describe("desktop play sidebar layout contract", () => {
     expect(desktopCss).toMatch(
       /\.play-sidebar-panel-body \.component-arc-details \.field > \.row > input,[\s\S]*?flex:\s*1 1 100%/s,
     );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-preview-page\s*{[^}]*max-width:\s*100%/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-table-wrap\s*{[^}]*overflow-x:\s*hidden/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-table thead\s*{[^}]*display:\s*none/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-item-row\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-table \.col-actions\s*{[^}]*grid-column:\s*2/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-action-btn\s*{[^}]*white-space:\s*nowrap/s,
+    );
   });
 });
