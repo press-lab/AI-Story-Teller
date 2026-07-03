@@ -49,16 +49,23 @@ describe("desktop play sidebar layout contract", () => {
       /\.play-sidebar-panel-body \.context-table-wrap\s*{[^}]*overflow-x:\s*hidden/s,
     );
     expect(desktopCss).toMatch(
-      /\.play-sidebar-panel-body \.context-table thead\s*{[^}]*display:\s*none/s,
+      /\.play-sidebar-panel-body \.context-table\s*{[^}]*table-layout:\s*fixed/s,
     );
     expect(desktopCss).toMatch(
-      /\.play-sidebar-panel-body \.context-item-row\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\) auto/s,
+      /\.play-sidebar-panel-body \.context-item-row\s*{[^}]*display:\s*table-row/s,
     );
     expect(desktopCss).toMatch(
-      /\.play-sidebar-panel-body \.context-table \.col-actions\s*{[^}]*grid-column:\s*2/s,
+      /\.play-sidebar-panel-body \.context-table \.col-title\s*{[^}]*overflow:\s*hidden;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?white-space:\s*nowrap/s,
     );
     expect(desktopCss).toMatch(
-      /\.play-sidebar-panel-body \.context-action-btn\s*{[^}]*white-space:\s*nowrap/s,
+      /\.play-sidebar-panel-body \.context-table \.col-priority,[\s\S]*?\.play-sidebar-panel-body \.context-table \.col-policy\s*{[^}]*display:\s*none/s,
     );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-table \.col-actions\s*{[^}]*width:\s*76px/s,
+    );
+    expect(desktopCss).toMatch(
+      /\.play-sidebar-panel-body \.context-action-btn\s*{[^}]*min-height:\s*24px/s,
+    );
+    expect(desktopCss).not.toMatch(/\.play-sidebar-panel-body \.context-table thead\s*{[^}]*display:\s*none/s);
   });
 });
