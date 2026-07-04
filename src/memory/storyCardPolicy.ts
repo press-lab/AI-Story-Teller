@@ -198,7 +198,11 @@ export function appendSourceTurnIds(existing: string[] | undefined, sourceTurnId
 }
 
 export function storyCardContextContent(card: StoryCard): string {
-  if (!card.compactKind && !card.coreFacts?.length && !card.currentFacts?.length && !card.recentDevelopments?.length) {
+  const hasStructuredFacts =
+    (card.coreFacts?.length ?? 0) > 0 ||
+    (card.currentFacts?.length ?? 0) > 0 ||
+    (card.recentDevelopments?.length ?? 0) > 0;
+  if (!hasStructuredFacts) {
     return card.content;
   }
 

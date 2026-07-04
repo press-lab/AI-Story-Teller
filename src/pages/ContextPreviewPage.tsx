@@ -1,9 +1,9 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { runCondenseContent, runContextDedup, type DedupInputItem, type DedupProposal } from "../ai/contextAI";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
-import type { ContextBuildResult, ContextItem, ContextSection, ProviderConfig } from "../types/adventure";
+import type { ContextBuildResult, ContextItem, ContextSection, ProviderConfig, StoryCard } from "../types/adventure";
 
 interface DuplicateWarning {
   a: ContextItem;
@@ -31,6 +31,20 @@ function detectDuplicateContent(sections: ContextSection[]): DuplicateWarning[] 
 
 function canCondense(sourceType: ContextItem["sourceType"]): boolean {
   return sourceType === "storyCard" || sourceType === "component" || sourceType === "summary";
+}
+
+function storyCardCondensePatch(card: StoryCard | undefined, content: string): Partial<StoryCard> {
+  const patch: Partial<StoryCard> = { content };
+  const hasStructuredContext =
+    (card?.coreFacts?.length ?? 0) > 0 ||
+    (card?.currentFacts?.length ?? 0) > 0 ||
+    (card?.recentDevelopments?.length ?? 0) > 0;
+  if (hasStructuredContext) {
+    patch.coreFacts = [];
+    patch.currentFacts = [];
+    patch.recentDevelopments = [];
+  }
+  return patch;
 }
 
 function sectionShortLabel(sectionId: string): string {
@@ -68,7 +82,8 @@ interface ContextPreviewPageProps extends AdventurePageProps {
 }
 
 export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuildContext, providerConfig }: ContextPreviewPageProps) {
-  const result = contextResult ?? buildContext(adventure);
+  const [preferLivePreview, setPreferLivePreview] = useState(false);
+  const result = preferLivePreview ? buildContext(adventure) : (contextResult ?? buildContext(adventure));
   const duplicates = detectDuplicateContent(result.sections);
 
   const [expandedId, setExpandedId] = useState<string | undefined>();
@@ -94,6 +109,10 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const nonEmptySections = result.sections.filter((s) => s.items.length > 0);
   const allItems = result.sections.flatMap((s) => s.items);
 
+  useEffect(() => {
+    setPreferLivePreview(false);
+  }, [adventure.id]);
+
   function patchCondense(itemId: string, patch: Partial<CondenseEntry>) {
     setCondenseMap((m) => ({ ...m, [itemId]: { ...{ phase: "idle" as const }, ...m[itemId], ...patch } }));
   }
@@ -118,7 +137,11 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   function applyCondenseToItem(item: ContextItem, content: string) {
     switch (item.sourceType) {
       case "storyCard":
-        dispatch({ type: "UPDATE_STORY_CARD", storyCardId: item.id, patch: { content } });
+        dispatch({
+          type: "UPDATE_STORY_CARD",
+          storyCardId: item.id,
+          patch: storyCardCondensePatch(adventure.storyCards.find((card) => card.id === item.id), content),
+        });
         break;
       case "component":
         dispatch({ type: "UPDATE_COMPONENT", componentId: item.id, patch: { content } });
@@ -127,6 +150,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         dispatch({ type: "UPDATE_ROLLING_SUMMARY", content });
         break;
     }
+    setPreferLivePreview(true);
     patchCondense(item.id, { phase: "idle", draft: undefined, editValue: undefined });
     setExpandedId(undefined);
   }
@@ -185,7 +209,15 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
       </div>
 
       <div className="editor-command-bar context-preview-toolbar">
-        <button type="button" onClick={onBuildContext}>Rebuild Preview</button>
+        <button
+          type="button"
+          onClick={() => {
+            setPreferLivePreview(false);
+            onBuildContext();
+          }}
+        >
+          Rebuild Preview
+        </button>
         {providerConfig && (
           <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
             {dedupLoading ? "Analyzing…" : "Auto Dedup"}
