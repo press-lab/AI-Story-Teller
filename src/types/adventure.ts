@@ -455,7 +455,7 @@ export interface MemoryProposal {
 }
 
 export interface MemoryReconcileRequest {
-  directive: string;
+  directive?: string;
   entryCount: number;
   includeBrains: boolean;
 }

@@ -15,8 +15,8 @@ The save audit showed that auto-approval was not the core issue. The issue was s
 
 The Memory page now includes **Check Recent Entries**:
 
-- The user supplies a directive and an entry count.
-- Code deterministically scans the selected recent entries plus the directive for related Plot Essentials, Active Pressure, Current Arc, Story Cards, and optionally Brains.
+- The user supplies an entry count and may optionally add a directive.
+- Code deterministically scans the selected recent entries, plus the optional directive when present, for related Plot Essentials, Active Pressure, Current Arc, Story Cards, and optionally Brains.
 - The deterministic target list is fixed before the AI call. The AI may generate replacement/update content only for those targets.
 - Resolved/removal wording applies deterministic patches such as unpinning, unprotecting, changing compact status to `resolved` or `superseded`, or deactivating removal targets.
 - The generated changes become normal Memory Suggestions. They are applied only through reducer approval/auto-approval behavior.
@@ -47,4 +47,4 @@ Use this when the player says something like:
 
 > Ambessa is defeated and no longer an active pressure. The Council accepts my work with Jinx on the filter. Caitlyn can still be angry personally about Jinx.
 
-Set the entry count to the relevant recent window, usually 10-30 entries, and run Check Recent Entries. Review the Memory Suggestions that appear. If Story Card or Plot auto-approval is enabled, those proposal types may apply immediately, but the reducer still records the approved proposal unless it is an ephemeral Active Pressure update.
+Set the entry count to the relevant recent window, usually 10-30 entries, and run Check Recent Entries. The "What changed?" field is optional; leave it blank to infer updates from the selected recent entries alone, or use it to steer cleanup toward a specific resolved/removed thread. Review the Memory Suggestions that appear. If Story Card or Plot auto-approval is enabled, those proposal types may apply immediately, but the reducer still records the approved proposal unless it is an ephemeral Active Pressure update.

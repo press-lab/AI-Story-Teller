@@ -1348,7 +1348,8 @@ function deterministicComponentPatchFor(component: ComponentEntry, directive: st
 
 function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcileRequest): { recent: string; terms: string[]; targets: ReconcileTarget[] } {
   const recent = storyEntriesForReconcile(adventure, request.entryCount);
-  const directiveTerms = extractReconcileTerms(request.directive, true);
+  const directive = request.directive ?? "";
+  const directiveTerms = extractReconcileTerms(directive, true);
   const recentTerms = extractReconcileTerms(recent, false);
   const terms = uniqTerms([...directiveTerms, ...recentTerms]);
   const strongTerms = directiveTerms.length > 0 ? directiveTerms : terms;
@@ -1374,12 +1375,12 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
       currentContent: component.content,
       matchedTerms: matched.length ? matched : strongTerms.slice(0, 3),
       score: 100 + matched.length * 15 + (component.type === "activePressure" ? 20 : 0),
-      deterministicComponentPatch: deterministicComponentPatchFor(component, request.directive),
+      deterministicComponentPatch: deterministicComponentPatchFor(component, directive),
     });
   }
 
   for (const card of adventure.storyCards) {
-    if (!card.active && !directiveLooksRemoval(request.directive)) continue;
+    if (!card.active && !directiveLooksRemoval(directive)) continue;
     const titleMatches = matchedReconcileTerms(`${card.title}\n${card.keys.join("\n")}`, strongTerms);
     const contentMatches = matchedReconcileTerms(storyCardSearchText(card), strongTerms);
     const matched = uniqTerms([...titleMatches, ...contentMatches]);
@@ -1403,7 +1404,7 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
       currentContent: storyCardContextContent(card),
       matchedTerms: matched,
       score,
-      deterministicStoryCardPatch: deterministicStoryPatchFor(card, request.directive, duplicateIndex),
+      deterministicStoryCardPatch: deterministicStoryPatchFor(card, directive, duplicateIndex),
     });
   }
 
@@ -1480,7 +1481,7 @@ export async function runMemoryReconcile(
   config: ProviderConfig,
   request: MemoryReconcileRequest,
 ): Promise<SemanticRunResult> {
-  const directive = request.directive.trim();
+  const directive = request.directive?.trim() ?? "";
   const emptyLog: EvaluationLogEntry = {
     id: createId("evaluation"),
     turn: adventure.activeState.turn,
@@ -1491,14 +1492,9 @@ export async function runMemoryReconcile(
     generatedContent: [],
     errors: [],
   };
-  if (!directive) {
-    const logEntry = { ...emptyLog, errors: ["Memory reconcile needs a directive."] };
-    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
-  }
-
   const { recent, terms, targets } = discoverReconcileTargets(adventure, request);
   if (targets.length === 0) {
-    const logEntry = { ...emptyLog, errors: ["No related memory targets found for this directive."] };
+    const logEntry = { ...emptyLog, errors: ["No related memory targets found for the selected entries."] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 
@@ -1519,7 +1515,7 @@ export async function runMemoryReconcile(
 The target list was selected deterministically. Do not add targets. Do not invent target IDs. Generate replacement/update content only for the listed targets.
 
 Rules:
-- The user's directive is authoritative for current continuity.
+- If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the recent entries.
 - Remove stale active pressure. Preserve true completed events as historical facts.
 - Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
 - Active Pressure: exactly one sentence naming the current external pressure.
@@ -1545,7 +1541,7 @@ Respond ONLY with valid JSON:
 }`;
 
   const userPrompt = `Directive:
-${directive}
+${directive || "(none supplied; infer updates from recent entries)"}
 
 Recent entries checked:
 ${recent || "(none)"}
@@ -1586,7 +1582,7 @@ ${JSON.stringify(targetList, null, 2)}`;
     const now = nowIso();
     const sourceTurnId = adventure.messages.at(-1)?.id ?? String(adventure.activeState.turn);
     const sourceText = `Memory Reconcile
-Directive: ${directive}
+Directive: ${directive || "(none supplied)"}
 Entries checked: ${Math.max(1, Math.min(100, Math.round(request.entryCount || 10)))}
 Terms: ${terms.join(", ")}
 

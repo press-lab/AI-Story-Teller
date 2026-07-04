@@ -451,6 +451,22 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText(/· approved/i)).toBeInTheDocument();
   });
 
+  it("allows Memory reconcile without a What changed value", async () => {
+    const user = userEvent.setup();
+    const onReconcileMemory = vi.fn(async () => undefined);
+    renderWithAdventure((adventure, dispatch) => (
+      <MemoryInboxPage adventure={adventure} dispatch={dispatch} onReconcileMemory={onReconcileMemory} />
+    ));
+
+    await user.click(screen.getByRole("button", { name: "Check & Draft Updates" }));
+
+    expect(onReconcileMemory).toHaveBeenCalledWith({
+      directive: "",
+      entryCount: 20,
+      includeBrains: true,
+    });
+  });
+
   it("covers Inspector pages and Chronicle/Summary entry points", async () => {
     const user = userEvent.setup();
     const onBuildContext = vi.fn();

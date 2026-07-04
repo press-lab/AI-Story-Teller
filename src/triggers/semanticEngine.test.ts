@@ -620,6 +620,70 @@ describe("AI memory builders", () => {
       .toContain("Caitlyn's fury");
   });
 
+  it("reconciles from recent entries when no directive is provided", async () => {
+    const plot = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "- Ambessa is still maneuvering against the Council.",
+      active: true,
+    });
+    const ambessa = makeStoryCard({
+      id: "card-ambessa",
+      title: "Ambessa",
+      type: "plot",
+      memoryMode: "living",
+      content: "Ambessa is pressuring Piltover.",
+      keys: ["Ambessa"],
+      active: true,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [plot],
+      storyCards: [ambessa],
+      messages: [
+        ...baseAdventure().messages,
+        {
+          id: "m3",
+          role: "assistant" as const,
+          content: "Ambessa is escorted to the docks under guard while the Council turns to Caitlyn's report.",
+          createdAt: "2026-01-01T00:02:00.000Z",
+        },
+      ],
+    };
+
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        updates: [
+          {
+            targetId: "component-plot",
+            title: "Plot Essentials",
+            content: "- Ambessa has been escorted to the docks under guard.\n- Caitlyn's report is now the current pressure.",
+            rationale: "Recent entries changed the current plot state.",
+          },
+          {
+            targetId: "card-ambessa",
+            title: "Ambessa",
+            content: "Ambessa was escorted to the docks under guard.",
+            rationale: "The recent entry changes Ambessa's status.",
+          },
+        ],
+      }),
+      raw: {},
+    });
+
+    const result = await runMemoryReconcile(adventure, providerConfig, {
+      entryCount: 20,
+      includeBrains: false,
+    });
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    expect(mockProvider.mock.calls[0][0].messages[1].content).toContain("(none supplied; infer updates from recent entries)");
+    const proposals = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposals).toHaveLength(2);
+    expect(result.logEntry.errors).toEqual([]);
+  });
+
   it("drafts a living auto-updating Story Card proposal from a guided request", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({

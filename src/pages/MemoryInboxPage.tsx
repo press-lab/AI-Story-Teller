@@ -87,7 +87,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
 
   async function runReconcile() {
     const directive = reconcileDirective.trim();
-    if (!directive || !onReconcileMemory) return;
+    if (!onReconcileMemory) return;
     await onReconcileMemory({
       directive,
       entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
@@ -164,15 +164,15 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
             onChange={setReconcileIncludeBrains}
           />
         </div>
-        <Field label="What changed?">
+        <Field label="What changed? (optional)">
           <textarea
             rows={3}
             value={reconcileDirective}
             onChange={(event) => setReconcileDirective(event.target.value)}
-            placeholder="Example: Ambessa is defeated and no longer an active pressure; keep Caitlyn angry about Jinx as a personal conflict."
+            placeholder="Optional: Ambessa is defeated and no longer an active pressure; keep Caitlyn angry about Jinx as a personal conflict."
           />
         </Field>
-        <button type="button" disabled={!onReconcileMemory || loading || !reconcileDirective.trim()} onClick={() => void runReconcile()}>
+        <button type="button" disabled={!onReconcileMemory || loading} onClick={() => void runReconcile()}>
           {loading ? "Checking..." : "Check & Draft Updates"}
         </button>
       </details>
