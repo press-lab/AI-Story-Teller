@@ -36,6 +36,9 @@ type CardMemoryFilter = "all" | "living";
 type CardFlagFilter = "all" | "flagged" | "pinned" | "protected";
 type StoryCardModeChoice = "auto" | StoryCardMemoryMode;
 
+const DEFAULT_AI_RECENT_MESSAGE_COUNT = 8;
+const MAX_AI_RECENT_MESSAGE_COUNT = 50;
+
 const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: string }> = [
   { value: "relationship", label: "Relationship / dynamic" },
   { value: "character", label: "Character / voice" },
@@ -48,6 +51,11 @@ const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: stri
   { value: "event", label: "Completed event" },
   { value: "auto", label: "Let AI choose" },
 ];
+
+function clampAiRecentMessageCount(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(MAX_AI_RECENT_MESSAGE_COUNT, Math.round(value)));
+}
 
 /** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
 export function isLivingCard(card: StoryCard): boolean {
@@ -190,6 +198,7 @@ export function StoryCardsPage({
   const [aiDescription, setAiDescription] = useState("");
   const [aiIntent, setAiIntent] = useState<StoryCardAIBuilderIntent>("relationship");
   const [aiMemoryMode, setAiMemoryMode] = useState<StoryCardModeChoice>("living");
+  const [aiRecentMessageCount, setAiRecentMessageCount] = useState(DEFAULT_AI_RECENT_MESSAGE_COUNT);
   const [aiTargetCardId, setAiTargetCardId] = useState("");
   const [aiAutoUpdate, setAiAutoUpdate] = useState(true);
   const [aiAutoUpdateCooldown, setAiAutoUpdateCooldown] = useState(3);
@@ -322,6 +331,7 @@ export function StoryCardsPage({
       description: aiDescription.trim(),
       intent: aiIntent,
       memoryMode: aiMemoryMode === "auto" ? undefined : aiMemoryMode,
+      recentMessageCount: aiRecentMessageCount,
       targetCardId: aiTargetCardId || undefined,
       autoUpdate: aiAutoUpdate,
       autoUpdateCooldownTurns: aiAutoUpdate ? aiAutoUpdateCooldown : undefined,
@@ -354,7 +364,7 @@ export function StoryCardsPage({
         <details className="panel">
           <summary>Draft a Story Card with AI</summary>
           <p className="muted">
-            Pick what you want to track, choose whether it should be living, and the AI will draft a pending Memory Suggestion using Story Card best practices.
+            Describe what you want generated, choose how many recent messages should ground it, and the AI will draft a pending Memory Suggestion using Story Card best practices.
           </p>
           <div className="grid three">
             <Field label="Card focus">
@@ -392,7 +402,15 @@ export function StoryCardsPage({
               </select>
             </Field>
           </div>
-          <div className="grid two">
+          <div className="grid three">
+            <Field label="Use last messages">
+              <NumberInput
+                value={aiRecentMessageCount}
+                min={0}
+                max={MAX_AI_RECENT_MESSAGE_COUNT}
+                onChange={(recentMessageCount) => setAiRecentMessageCount(clampAiRecentMessageCount(recentMessageCount))}
+              />
+            </Field>
             <CheckboxField
               label="Let AI keep this card updated after relevant scenes"
               checked={aiAutoUpdate}
@@ -408,12 +426,12 @@ export function StoryCardsPage({
               />
             </Field>
           </div>
-          <Field label="Story Card description">
+          <Field label="Describe what to generate">
             <textarea
               rows={5}
               value={aiDescription}
               onChange={(event) => setAiDescription(event.target.value)}
-              placeholder="Example: Seth and Margo keep pretending their alliance is only practical, but the ward-room jokes have become a private trust signal neither of them is ready to name."
+              placeholder="Example: Generate a location card for Jinx's hideout from the recent scene, focusing on durable layout, sensory details, hazards, and trigger phrases."
             />
           </Field>
           <div className="toolbar">

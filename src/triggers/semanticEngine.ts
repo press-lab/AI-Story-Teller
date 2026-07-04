@@ -59,9 +59,19 @@ function providerConfigWarnings(adventure: Adventure): string[] {
   return issue ? [issue] : [];
 }
 
-function recentExcerpt(adventure: Adventure): string {
+const DEFAULT_STORY_CARD_BUILDER_RECENT_MESSAGES = 8;
+const MAX_STORY_CARD_BUILDER_RECENT_MESSAGES = 50;
+
+function sanitizeMessageCount(value: number | undefined, fallback: number, max = Number.POSITIVE_INFINITY): number {
+  const raw = Number.isFinite(value) ? Number(value) : fallback;
+  return Math.max(0, Math.min(max, Math.round(raw)));
+}
+
+function recentExcerpt(adventure: Adventure, messageCount = adventure.semanticEvaluationSettings.messagesIncluded): string {
+  const count = sanitizeMessageCount(messageCount, adventure.semanticEvaluationSettings.messagesIncluded);
+  if (count <= 0) return "";
   return adventure.messages
-    .slice(-adventure.semanticEvaluationSettings.messagesIncluded)
+    .slice(-count)
     .map((message) => `${message.role}: ${message.content}`)
     .join("\n\n");
 }
@@ -918,6 +928,15 @@ export async function runStoryCardAIBuilder(
   const selectedCard = request.targetCardId ? adventure.storyCards.find((card) => card.id === request.targetCardId) : undefined;
   const requestedMode = request.memoryMode ?? (request.intent === "relationship" || request.intent === "subplot" ? "living" : undefined);
   const requestedType = defaultStoryCardType(request.intent);
+  const recentMessageCount = sanitizeMessageCount(
+    request.recentMessageCount,
+    DEFAULT_STORY_CARD_BUILDER_RECENT_MESSAGES,
+    MAX_STORY_CARD_BUILDER_RECENT_MESSAGES,
+  );
+  const recent = recentMessageCount > 0 ? recentExcerpt(adventure, recentMessageCount) : "";
+  const recentBlock = recentMessageCount > 0
+    ? recent || "(none available)"
+    : "(not included by user choice)";
   const cardList = adventure.storyCards
     .filter((c) => c.active)
     .map((c) => `[ID: ${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}${c.autoUpdate ? ", auto-updating" : ""}; keys: ${c.keys.join(", ") || "title"})\n${c.content.slice(0, 350)}`)
@@ -936,6 +955,7 @@ Builder focus:
 - Requested memory mode: ${requestedMode ?? "infer from subject"}
 - Requested card type: ${requestedType ?? "infer from subject"}
 - Selected existing card: ${selectedCard ? `"${selectedCard.title}" [ID: ${selectedCard.id}]` : "none"}
+- Recent messages included: ${recentMessageCount > 0 ? recentMessageCount : "none"}
 - Auto-update requested: ${request.autoUpdate === undefined ? "infer" : request.autoUpdate ? "yes" : "no"}
 
 ${storyCardIntentGuidance(request.intent)}
@@ -949,6 +969,9 @@ Rules:
 - For relationship cards, write the current dynamic in present tense. Include concrete pressure, leverage, attraction, trust, debt, rivalry, promise, or boundary.
 - For living cards, set memoryMode "living" and set autoUpdate true when the user asked for an evolving/current tracker.
 - Use narrow trigger keys. Relationship/subplot cards should not rely only on broad character names when those characters have their own cards.
+- Use the user brief to choose the card subject, then use the recent story messages as source evidence for concrete details.
+- Keep only durable facts that should matter when the card triggers later. Do not store generic movement, temporary room position, or one-scene mood.
+- Do not invent details that are absent from both the brief and provided adventure context.
 - Prefer one proposal. Return multiple proposals only when the brief clearly contains separate durable subjects.
 
 Respond ONLY with valid JSON:
@@ -975,6 +998,9 @@ ${description}
 
 Selected card:
 ${selectedCard ? `[ID: ${selectedCard.id}] "${selectedCard.title}" (${selectedCard.type}, ${selectedCard.memoryMode})\nKeys: ${selectedCard.keys.join(", ") || "(none)"}\nAuto-update: ${selectedCard.autoUpdate ? "yes" : "no"}\n${selectedCard.content}` : "(none)"}
+
+Recent story messages${recentMessageCount > 0 ? ` (last ${recentMessageCount})` : ""}:
+${recentBlock}
 
 Existing Story Cards:
 ${cardList || "(none)"}
@@ -1019,8 +1045,13 @@ ${brainList || "(none)"}`;
 Intent: ${request.intent}
 Requested mode: ${requestedMode ?? "infer"}
 Selected card: ${selectedCard?.title ?? "none"}
+Recent messages included: ${recentMessageCount > 0 ? recentMessageCount : "none"}
 
-${description}`;
+User brief:
+${description}
+
+Recent story messages:
+${recentBlock}`;
 
     for (const p of parsed.proposals.slice(0, 3)) {
       const memoryMode = validMemoryMode(p.memoryMode) ?? requestedMode ?? "static";

@@ -204,13 +204,14 @@ describe("side menu page smoke coverage", () => {
     ));
 
     const description = "Margo is a ward engineer who hides fear behind dry teasing.";
-    await user.type(screen.getByLabelText("Story Card description"), description);
+    await user.type(screen.getByLabelText("Describe what to generate"), description);
     await user.click(screen.getByRole("button", { name: "Draft Card Suggestion" }));
 
     expect(onBuildStoryCardMemory).toHaveBeenCalledWith({
       description,
       intent: "relationship",
       memoryMode: "living",
+      recentMessageCount: 8,
       targetCardId: undefined,
       autoUpdate: true,
       autoUpdateCooldownTurns: 3,

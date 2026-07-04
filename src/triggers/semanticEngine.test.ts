@@ -727,6 +727,65 @@ describe("AI memory builders", () => {
     });
   });
 
+  it("grounds Story Card builder prompts on the requested recent message window", async () => {
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        proposals: [{
+          action: "create",
+          title: "Jinx's Hideout",
+          storyCardType: "location",
+          memoryMode: "static",
+          content: "Jinx's hideout is a fan-choked workshop that smells of ozone and oil.",
+          keys: ["Jinx's hideout", "fan-choked workshop"],
+        }],
+        rationale: "The recent messages describe a durable recurring location.",
+      }),
+      raw: {},
+    });
+    const adventure = {
+      ...baseAdventure(),
+      messages: [
+        { id: "m1", role: "user" as const, content: "I enter the old market.", createdAt: "2026-01-01T00:00:00.000Z" },
+        { id: "m2", role: "assistant" as const, content: "A merchant waves from a dry stall.", createdAt: "2026-01-01T00:01:00.000Z" },
+        { id: "m3", role: "user" as const, content: "I follow Jinx through the fan-choked passage.", createdAt: "2026-01-01T00:02:00.000Z" },
+        { id: "m4", role: "assistant" as const, content: "Jinx's hideout smells of ozone, paint, and hot oil.", createdAt: "2026-01-01T00:03:00.000Z" },
+      ],
+    };
+
+    const result = await runStoryCardAIBuilder(
+      adventure,
+      providerConfig,
+      {
+        description: "Generate a location card for Jinx's hideout.",
+        intent: "location",
+        memoryMode: "static",
+        recentMessageCount: 2,
+        autoUpdate: false,
+      },
+    );
+
+    const prompt = mockProvider.mock.calls[0][0].messages[1].content;
+    expect(prompt).toContain("Recent story messages (last 2):");
+    expect(prompt).toContain("user: I follow Jinx through the fan-choked passage.");
+    expect(prompt).toContain("assistant: Jinx's hideout smells of ozone, paint, and hot oil.");
+    expect(prompt).not.toContain("I enter the old market.");
+    expect(prompt).not.toContain("A merchant waves from a dry stall.");
+
+    const proposalAction = result.actions.find((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalAction).toMatchObject({
+      type: "ADD_MEMORY_PROPOSAL",
+      proposal: {
+        title: "Jinx's Hideout",
+        storyCardType: "location",
+        memoryMode: "static",
+        autoUpdate: false,
+      },
+    });
+    if (proposalAction?.type !== "ADD_MEMORY_PROPOSAL") throw new Error("Expected story card proposal.");
+    expect(proposalAction.proposal.sourceText).toContain("Recent messages included: 2");
+    expect(proposalAction.proposal.sourceText).toContain("assistant: Jinx's hideout smells of ozone, paint, and hot oil.");
+  });
+
   it("drafts a Plot Essentials proposal from a guided plot request", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({
