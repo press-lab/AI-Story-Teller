@@ -20,12 +20,45 @@ global.IntersectionObserver = class {
 Element.prototype.scrollBy = () => {};
 Element.prototype.scrollIntoView = () => {};
 
+const originalInnerWidth = window.innerWidth;
+const originalMatchMedia = window.matchMedia;
 const timestamp = "2026-01-01T00:00:00.000Z";
 type SubmitTurnHandler = (text: string, mode: InputMode) => Promise<void>;
 type AsyncHandler = () => Promise<void>;
 
 const noopSubmitTurn: SubmitTurnHandler = async () => undefined;
 const noopAsync: AsyncHandler = async () => undefined;
+
+function mediaQueryList(query: string, matches: boolean): MediaQueryList {
+  return {
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(() => false),
+  } as unknown as MediaQueryList;
+}
+
+function setMobileComposerViewport() {
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 390 });
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: vi.fn((query: string) => mediaQueryList(query, query.includes("max-width: 640px") || query.includes("pointer: coarse"))),
+  });
+}
+
+function restoreViewport() {
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: originalInnerWidth });
+  if (originalMatchMedia) {
+    Object.defineProperty(window, "matchMedia", { configurable: true, writable: true, value: originalMatchMedia });
+  } else {
+    Reflect.deleteProperty(window, "matchMedia");
+  }
+}
 
 function playAdventure(): Adventure {
   return {
@@ -69,6 +102,7 @@ function StatefulPlayPage({
 describe("PlayPage AID-style controls", () => {
   afterEach(() => {
     cleanup();
+    restoreViewport();
   });
 
   it("submits a turn, continues, and retries through the visible controls", async () => {
@@ -100,6 +134,24 @@ describe("PlayPage AID-style controls", () => {
     await user.type(screen.getByPlaceholderText("What does your character do?"), "draw your sword");
     await user.keyboard("{Enter}");
 
+    expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+  });
+
+  it("does not submit with Enter in the mobile composer", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.keyboard("{Enter}");
+
+    expect(onSubmitTurn).not.toHaveBeenCalled();
+    expect(input).toHaveValue("draw your sword\n");
+
+    await user.click(screen.getByRole("button", { name: "Send" }));
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
   });
 

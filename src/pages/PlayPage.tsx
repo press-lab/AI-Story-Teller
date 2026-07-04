@@ -39,6 +39,7 @@ const PLAY_TOOLKIT_COMPACT_WIDTH = 160;
 const PLAY_TOOLKIT_MIN_WIDTH = 120;
 const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420;
 const PLAY_TOOLKIT_MAX_WIDTH = 600;
+const MOBILE_COMPOSER_QUERY = "(max-width: 640px), (hover: none) and (pointer: coarse)";
 
 function transformInput(text: string, mode: InputMode): string {
   if (mode === "do" && !/^(you |i |i'|she |he |they |we )/i.test(text)) {
@@ -50,6 +51,12 @@ function transformInput(text: string, mode: InputMode): string {
 
 function messageRows(message: Message): number {
   return Math.max(3, Math.min(12, message.content.split(/\n/).length + 2));
+}
+
+function isMobileComposerKeyboard(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia === "function" && window.matchMedia(MOBILE_COMPOSER_QUERY).matches) return true;
+  return window.innerWidth <= 640;
 }
 
 function usageTooltip(usage: NonNullable<Message["usage"]>): string {
@@ -280,6 +287,7 @@ export function PlayPage({
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+      if (isMobileComposerKeyboard()) return;
       event.preventDefault();
       void submit();
     }

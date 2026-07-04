@@ -937,7 +937,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
             behavior without it appearing as story text. Wrapped in <code>[Out of Character: …]</code> in the transcript.
           </dd>
         </dl>
-        <p>Press <strong>Enter</strong> to submit. Press <strong>Shift+Enter</strong> to insert a newline without submitting.</p>
+        <p>On desktop, press <strong>Enter</strong> to submit. Press <strong>Shift+Enter</strong> to insert a newline without submitting. On mobile, use the Send button.</p>
       </>
     ),
   },
