@@ -76,7 +76,7 @@ describe("runStoryCardAudit", () => {
       raw: {},
     });
 
-    const recommendations = await runStoryCardAudit(adventure, providerConfig, 20);
+    const recommendations = await runStoryCardAudit(adventure, providerConfig, 20, { includeAI: true });
 
     expect(mockProvider).toHaveBeenCalledTimes(1);
     expect(recommendations).toEqual(
@@ -93,6 +93,37 @@ describe("runStoryCardAudit", () => {
           suggestedType: "plot",
           suggestedMemoryMode: "living",
           editedKeys: "Viktor protocol, notification protocol",
+        }),
+      ]),
+    );
+  });
+
+  it("runs deterministic cleanup without calling the provider by default", async () => {
+    const adventure = {
+      ...createDefaultAdventure("Audit"),
+      storyCards: [
+        makeStoryCard({
+          id: "card-duplicate-lines",
+          title: "Duplicate Lines",
+          content: "- Seth keeps the red key.\n- Seth keeps the red key.\n- Margo watches the door.",
+          keys: ["red key", "red key", "The"],
+        }),
+      ],
+    };
+
+    const recommendations = await runStoryCardAudit(adventure, providerConfig, 20);
+
+    expect(mockProvider).not.toHaveBeenCalled();
+    expect(recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "det-duplicate-lines-card-duplicate-lines",
+          source: "deterministic",
+          editedContent: "- Seth keeps the red key.\n- Margo watches the door.",
+        }),
+        expect.objectContaining({
+          id: "det-trigger-keys-card-duplicate-lines",
+          editedKeys: "red key",
         }),
       ]),
     );

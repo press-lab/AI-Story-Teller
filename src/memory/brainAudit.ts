@@ -33,6 +33,10 @@ export interface BrainAuditRecommendation {
   editedThoughts: string;
 }
 
+export interface BrainAuditOptions {
+  includeAI?: boolean;
+}
+
 const BROAD_ALIAS_WORDS = new Set([
   "a", "an", "any", "he", "her", "hers", "him", "his", "it", "she", "that", "the", "their", "them", "they", "this", "those", "we", "you", "your",
 ]);
@@ -339,10 +343,13 @@ export async function runBrainAudit(
   adventure: Adventure,
   providerConfig: ProviderConfig,
   nTurns: number,
+  options: BrainAuditOptions = {},
 ): Promise<BrainAuditRecommendation[]> {
   const reviewWindow = Number.isFinite(nTurns) ? Math.max(1, Math.min(500, Math.floor(nTurns))) : 20;
   const recentMessages = lastNTurns(adventure.messages, reviewWindow);
   const deterministic = deterministicRecommendations(adventure.brains);
+  if (!options.includeAI) return deterministic;
+
   const flaggedDeleteIds = new Set(deterministic.filter((rec) => rec.action === "delete").map((rec) => rec.brainId).filter(Boolean) as string[]);
   const llmBrains = adventure.brains.filter((brain) => !flaggedDeleteIds.has(brain.id));
 

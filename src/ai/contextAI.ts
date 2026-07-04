@@ -12,6 +12,7 @@ export interface DedupInputItem {
 
 export interface DedupProposal {
   id: string;
+  source: "deterministic" | "llm";
   description: string;
   keepItemId: string;
   keepItemTitle: string;
@@ -79,8 +80,8 @@ export async function runContextDedup(
   });
 
   try {
-    const parsed = parseJsonFenced<{ proposals: Omit<DedupProposal, "id">[] }>(response.content);
-    return (parsed.proposals ?? []).map((p, i) => ({ ...p, id: `dedup-${i}` }));
+    const parsed = parseJsonFenced<{ proposals: Omit<DedupProposal, "id" | "source">[] }>(response.content);
+    return (parsed.proposals ?? []).map((p, i) => ({ ...p, id: `dedup-${i}`, source: "llm" as const }));
   } catch {
     return [];
   }

@@ -236,11 +236,12 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("Review and Maintain Cards")).toBeInTheDocument();
     expect(screen.getByText("Clean up existing cards")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Clean Up Cards" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Include AI semantic pass")).not.toBeChecked();
     expect(screen.getByText("Automatic Card Updates")).toBeInTheDocument();
     expect(screen.getByText("Story Card JSON")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Clean Up Cards" }));
-    expect(onAuditStoryCards).toHaveBeenCalledWith(20);
+    expect(onAuditStoryCards).toHaveBeenCalledWith(20, false);
   });
 
   it("surfaces Plot Component cleanup as a maintenance action", async () => {
@@ -261,9 +262,10 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("Review and Maintain Components")).toBeInTheDocument();
     expect(screen.getByText("Clean up plot components")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Clean Up Components" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Include AI semantic pass")).not.toBeChecked();
 
     await user.click(screen.getByRole("button", { name: "Clean Up Components" }));
-    expect(onAuditComponents).toHaveBeenCalledWith(20);
+    expect(onAuditComponents).toHaveBeenCalledWith(20, false);
   });
 
   it("surfaces Character Brain cleanup as a maintenance action", async () => {
@@ -283,9 +285,10 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("Review and Maintain Character Brains")).toBeInTheDocument();
     expect(screen.getByText("Clean up existing brains")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Clean Up Brains" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Include AI semantic pass")).not.toBeChecked();
 
     await user.click(screen.getByRole("button", { name: "Clean Up Brains" }));
-    expect(onAuditBrains).toHaveBeenCalledWith(20);
+    expect(onAuditBrains).toHaveBeenCalledWith(20, false);
   });
 
   it("filters Story Cards by active status and living mode", async () => {

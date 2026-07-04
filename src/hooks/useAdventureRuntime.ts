@@ -621,19 +621,19 @@ export function useAdventureRuntime(
     }
   }
 
-  async function auditStoryCards(nTurns: number): Promise<AuditRecommendation[]> {
+  async function auditStoryCards(nTurns: number, includeAI = false): Promise<AuditRecommendation[]> {
     if (!adventure) return [];
-    return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
+    return runStoryCardAudit(adventure, activeProviderConfig, nTurns, { includeAI });
   }
 
-  async function auditComponents(nTurns: number): Promise<ComponentAuditRecommendation[]> {
+  async function auditComponents(nTurns: number, includeAI = false): Promise<ComponentAuditRecommendation[]> {
     if (!adventure) return [];
-    return runComponentAudit(adventure, activeProviderConfig, nTurns);
+    return runComponentAudit(adventure, activeProviderConfig, nTurns, { includeAI });
   }
 
-  async function auditBrains(nTurns: number): Promise<BrainAuditRecommendation[]> {
+  async function auditBrains(nTurns: number, includeAI = false): Promise<BrainAuditRecommendation[]> {
     if (!adventure) return [];
-    return runBrainAudit(adventure, activeProviderConfig, nTurns);
+    return runBrainAudit(adventure, activeProviderConfig, nTurns, { includeAI });
   }
 
   async function regenerateMemoryProposal(proposalId: string): Promise<void> {

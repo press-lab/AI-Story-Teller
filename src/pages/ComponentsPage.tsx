@@ -321,7 +321,7 @@ interface ComponentsPageProps extends AdventurePageProps {
   loading?: boolean;
   onSuggestPlotUpdates?: () => Promise<void>;
   onBuildPlotMemory?: (request: PlotAIBuilderRequest) => Promise<void>;
-  onAuditComponents?: (nTurns: number) => Promise<ComponentAuditRecommendation[]>;
+  onAuditComponents?: (nTurns: number, includeAI: boolean) => Promise<ComponentAuditRecommendation[]>;
   onRegeneratePlotEssentials?: (componentId: string) => Promise<string>;
   onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
   /** Generate fresh content for Narration Rules / AI Instructions / Author's Note. Returns a string for review. */
@@ -373,6 +373,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [graduateStatus, setGraduateStatus] = useState<{ componentId: string; message: string } | null>(null);
   const [openComponentId, setOpenComponentId] = useState<string | null>(null);
   const [componentAuditTurns, setComponentAuditTurns] = useState(20);
+  const [componentAuditIncludeAI, setComponentAuditIncludeAI] = useState(false);
   const [componentAudit, setComponentAudit] = useState<ComponentAuditState | null>(null);
 
   function updateComponentAuditRec(id: string, patch: Partial<ComponentAuditRecommendation>) {
@@ -421,7 +422,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     if (!onAuditComponents) return;
     setComponentAudit({ status: "running", recommendations: [] });
     try {
-      const recommendations = await onAuditComponents(componentAuditTurns);
+      const recommendations = await onAuditComponents(componentAuditTurns, componentAuditIncludeAI);
       setComponentAudit({ status: "done", recommendations });
     } catch (err) {
       setComponentAudit({
@@ -656,6 +657,11 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     />
                     <span>turns</span>
                   </label>
+                  <CheckboxField
+                    label="Include AI semantic pass"
+                    checked={componentAuditIncludeAI}
+                    onChange={setComponentAuditIncludeAI}
+                  />
                 </div>
               </section>
             )}

@@ -2,15 +2,16 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { adventureReducer } from "../state/adventureReducer";
-import { createDefaultAdventure, makeStoryCard } from "../state/defaults";
+import { createDefaultAdventure, makeComponent, makeStoryCard } from "../state/defaults";
 import type { Adventure, AdventureAction, ProviderConfig } from "../types/adventure";
 import { ContextPreviewPage } from "./ContextPreviewPage";
+import { runContextDedup } from "../ai/contextAI";
 
 vi.mock("../ai/contextAI", () => ({
   runCondenseContent: vi.fn(async () => "Condensed pact context."),
@@ -40,6 +41,12 @@ function renderWithAdventure(
 }
 
 describe("ContextPreviewPage condense", () => {
+  const mockRunContextDedup = vi.mocked(runContextDedup);
+
+  afterEach(() => {
+    cleanup();
+  });
+
   it("updates compact Story Card context immediately after accepting a condensed draft", async () => {
     const user = userEvent.setup();
     const card = makeStoryCard({
@@ -79,5 +86,54 @@ describe("ContextPreviewPage condense", () => {
     expect(screen.queryByText(/OLD CORE FACT SHOULD DISAPPEAR/)).not.toBeInTheDocument();
     expect(screen.queryByText(/OLD CURRENT FACT SHOULD DISAPPEAR/)).not.toBeInTheDocument();
     expect(screen.queryByText(/OLD RECENT FACT SHOULD DISAPPEAR/)).not.toBeInTheDocument();
+  });
+
+  it("runs Auto Dedup deterministically unless the AI pass is checked", async () => {
+    mockRunContextDedup.mockClear();
+    const user = userEvent.setup();
+    const duplicateText = [
+      "The red ward key opens the sealed archive under the east tower.",
+      "Margo hid the red ward key inside the brass lamp before the gala.",
+      "Seth must keep the red ward key away from the Red Ring scouts.",
+      "The archive door answers only to the red ward key and Margo's voice.",
+    ].join("\n");
+    const adventure = {
+      ...createDefaultAdventure("Dedup Test"),
+      components: [
+        makeComponent({
+          id: "component-ward-key",
+          title: "Ward Key Plot",
+          type: "plotEssentials",
+          content: duplicateText,
+          alwaysOn: true,
+          active: true,
+        }),
+      ],
+      storyCards: [
+        makeStoryCard({
+          id: "card-ward-key",
+          title: "Red Ward Key",
+          content: duplicateText,
+          active: true,
+          inclusionPolicy: "always",
+          priority: 20,
+        }),
+      ],
+    };
+
+    renderWithAdventure((current, dispatch) => (
+      <ContextPreviewPage
+        adventure={current}
+        dispatch={dispatch}
+        onBuildContext={() => undefined}
+        providerConfig={providerConfig}
+      />
+    ), adventure);
+
+    await user.click(screen.getByRole("button", { name: "Auto Dedup" }));
+
+    expect(mockRunContextDedup).not.toHaveBeenCalled();
+    expect(await screen.findByText("DETECTED")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Delete Duplicate" })).toBeInTheDocument();
   });
 });

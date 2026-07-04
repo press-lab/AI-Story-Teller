@@ -12,7 +12,7 @@ const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "man
 interface BrainsPageProps extends AdventurePageProps {
   loading: boolean;
   onUpdateBrainNow: (brainId: string) => Promise<void>;
-  onAuditBrains?: (nTurns: number) => Promise<BrainAuditRecommendation[]>;
+  onAuditBrains?: (nTurns: number, includeAI: boolean) => Promise<BrainAuditRecommendation[]>;
   /** Generate a character Brain from just a name, with a behavioral voice contract. */
   onGenerateBrain?: (name: string) => Promise<void>;
 }
@@ -244,6 +244,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
   const [search, setSearch] = useState("");
   const [openBrainId, setOpenBrainId] = useState<string | null>(null);
   const [brainAuditTurns, setBrainAuditTurns] = useState(20);
+  const [brainAuditIncludeAI, setBrainAuditIncludeAI] = useState(false);
   const [brainAudit, setBrainAudit] = useState<BrainAuditState | null>(null);
   const searchLower = search.toLowerCase().trim();
   const visibleBrains = [...adventure.brains]
@@ -303,7 +304,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
     if (!onAuditBrains) return;
     setBrainAudit({ status: "running", recommendations: [] });
     try {
-      const recommendations = await onAuditBrains(brainAuditTurns);
+      const recommendations = await onAuditBrains(brainAuditTurns, brainAuditIncludeAI);
       setBrainAudit({ status: "done", recommendations });
     } catch (err) {
       setBrainAudit({
@@ -406,6 +407,11 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                   />
                   <span>turns / thoughts</span>
                 </label>
+                <CheckboxField
+                  label="Include AI semantic pass"
+                  checked={brainAuditIncludeAI}
+                  onChange={setBrainAuditIncludeAI}
+                />
               </div>
             </section>
           </div>

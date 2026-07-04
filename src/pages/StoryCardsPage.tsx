@@ -177,7 +177,7 @@ interface StoryCardsPageProps extends AdventurePageProps {
   loading?: boolean;
   onBuildStoryCardMemory?: (request: StoryCardAIBuilderRequest) => Promise<void>;
   onSuggestCardUpdates?: () => Promise<void>;
-  onAuditStoryCards?: (nTurns: number) => Promise<AuditRecommendation[]>;
+  onAuditStoryCards?: (nTurns: number, includeAI: boolean) => Promise<AuditRecommendation[]>;
 }
 
 type AuditState = {
@@ -210,6 +210,7 @@ export function StoryCardsPage({
   const [search, setSearch] = useState("");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [auditTurns, setAuditTurns] = useState(20);
+  const [auditIncludeAI, setAuditIncludeAI] = useState(false);
   const [audit, setAudit] = useState<AuditState | null>(null);
   const newCardRef = useRef<HTMLDetailsElement | null>(null);
 
@@ -257,7 +258,7 @@ export function StoryCardsPage({
     if (!onAuditStoryCards) return;
     setAudit({ status: "running", recommendations: [] });
     try {
-      const recs = await onAuditStoryCards(auditTurns);
+      const recs = await onAuditStoryCards(auditTurns, auditIncludeAI);
       setAudit({ status: "done", recommendations: recs });
     } catch (err) {
       setAudit({ status: "error", recommendations: [], errorMessage: err instanceof Error ? err.message : "Audit failed." });
@@ -598,6 +599,11 @@ export function StoryCardsPage({
                     />
                     <span>turns</span>
                   </label>
+                  <CheckboxField
+                    label="Include AI semantic pass"
+                    checked={auditIncludeAI}
+                    onChange={setAuditIncludeAI}
+                  />
                 </div>
               </section>
             )}

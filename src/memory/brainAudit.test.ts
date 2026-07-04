@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure, makeBrain } from "../state/defaults";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { runBrainAudit } from "./brainAudit";
@@ -9,6 +9,10 @@ vi.mock("../providers/openAICompatible", () => ({
 
 describe("runBrainAudit", () => {
   const mockProvider = vi.mocked(sendOpenAICompatibleChatCompletion);
+
+  beforeEach(() => {
+    mockProvider.mockClear();
+  });
 
   it("flags duplicate thoughts and broad aliases", async () => {
     const adventure = {
@@ -28,6 +32,7 @@ describe("runBrainAudit", () => {
 
     const recommendations = await runBrainAudit(adventure, adventure.modelConfig, 20);
 
+    expect(mockProvider).not.toHaveBeenCalled();
     expect(recommendations.some((rec) => rec.id === "det-broad-aliases-brain-margo")).toBe(true);
     const duplicateThoughts = recommendations.find((rec) => rec.id === "det-duplicate-thoughts-brain-margo");
     expect(duplicateThoughts?.editedThoughts).toContain("second_read");
@@ -67,7 +72,7 @@ describe("runBrainAudit", () => {
       ],
     };
 
-    await runBrainAudit(adventure, adventure.modelConfig, 2);
+    await runBrainAudit(adventure, adventure.modelConfig, 2, { includeAI: true });
 
     const prompt = mockProvider.mock.calls.at(-1)?.[0].messages[0].content ?? "";
     expect(prompt).not.toContain("Turn one input.");

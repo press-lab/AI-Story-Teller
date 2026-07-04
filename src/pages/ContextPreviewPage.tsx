@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useState } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { runCondenseContent, runContextDedup, type DedupInputItem, type DedupProposal } from "../ai/contextAI";
+import { dedupeTextLines, normalizeCleanupText } from "../memory/deterministicCleanup";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import type { ContextBuildResult, ContextItem, ContextSection, ProviderConfig, StoryCard } from "../types/adventure";
+import { CheckboxField } from "./shared";
 
 interface DuplicateWarning {
   a: ContextItem;
@@ -31,6 +33,69 @@ function detectDuplicateContent(sections: ContextSection[]): DuplicateWarning[] 
 
 function canCondense(sourceType: ContextItem["sourceType"]): boolean {
   return sourceType === "storyCard" || sourceType === "component" || sourceType === "summary";
+}
+
+function contextItemKeepScore(item: ContextItem): number {
+  return item.priority +
+    (item.protected ? 100 : 0) +
+    (item.pinned ? 40 : 0) +
+    (item.sourceType === "storyCard" ? 30 : 0) +
+    Math.min(item.tokenEstimate, 100) / 100;
+}
+
+function removeLinesAlreadyCovered(trimContent: string, keepContent: string): string {
+  const keepLines = new Set(
+    keepContent
+      .split(/\r?\n/)
+      .map((line) => normalizeCleanupText(line))
+      .filter(Boolean),
+  );
+  const kept = trimContent
+    .split(/\r?\n/)
+    .filter((line) => {
+      const normalized = normalizeCleanupText(line);
+      return !normalized || !keepLines.has(normalized);
+    })
+    .join("\n")
+    .trim();
+  return dedupeTextLines(kept).text;
+}
+
+function deterministicDedupProposals(warnings: DuplicateWarning[]): DedupProposal[] {
+  const usedTrimIds = new Set<string>();
+  const proposals: DedupProposal[] = [];
+
+  for (const warning of warnings) {
+    const [keep, trim] = contextItemKeepScore(warning.a) >= contextItemKeepScore(warning.b)
+      ? [warning.a, warning.b]
+      : [warning.b, warning.a];
+    if (usedTrimIds.has(trim.id) || !canCondense(trim.sourceType)) continue;
+    usedTrimIds.add(trim.id);
+
+    const normalizedKeep = normalizeCleanupText(keep.content);
+    const normalizedTrim = normalizeCleanupText(trim.content);
+    const exactDuplicate = normalizedKeep.length > 0 && normalizedKeep === normalizedTrim;
+    const canDeleteTrim = trim.sourceType === "component" || trim.sourceType === "storyCard";
+    const suggestedContent = exactDuplicate ? "" : removeLinesAlreadyCovered(trim.content, keep.content);
+    const changed = (exactDuplicate && canDeleteTrim) || suggestedContent !== trim.content.trim();
+
+    proposals.push({
+      id: `det-dedup-${trim.id}-${keep.id}`,
+      source: "deterministic",
+      description: changed
+        ? `${Math.round(warning.overlap * 100)}% overlap found by local word matching; keep the higher-priority item and trim duplicated lines from the other.`
+        : `${Math.round(warning.overlap * 100)}% overlap found by local word matching; no exact duplicate lines were safe to trim automatically.`,
+      keepItemId: keep.id,
+      keepItemTitle: keep.title,
+      trimItemId: trim.id,
+      trimItemTitle: trim.title,
+      trimItemSourceType: trim.sourceType,
+      suggestedContent,
+      isConflict: !changed,
+    });
+  }
+
+  return proposals;
 }
 
 function storyCardCondensePatch(card: StoryCard | undefined, content: string): Partial<StoryCard> {
@@ -91,6 +156,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const [dedupProposals, setDedupProposals] = useState<DedupProposal[]>([]);
   const [dedupLoading, setDedupLoading] = useState(false);
   const [dedupError, setDedupError] = useState<string | undefined>();
+  const [dedupIncludeAI, setDedupIncludeAI] = useState(false);
 
   const messagesWithUsage = adventure.messages.filter((m) => m.usage != null);
   const totalActualIn = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
@@ -156,13 +222,12 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   }
 
   async function runDedup() {
-    if (!providerConfig) return;
     setDedupLoading(true);
     setDedupError(undefined);
     try {
       const items: DedupInputItem[] = result.sections.flatMap((s) =>
         s.items
-          .filter((item) => item.content.trim().length > 80 && item.sourceType !== "system" && item.sourceType !== "message")
+          .filter((item) => item.content.trim().length > 80 && canCondense(item.sourceType))
           .map((item) => ({
             id: item.id,
             sourceType: item.sourceType,
@@ -172,9 +237,13 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
             isStoryCard: item.sourceType === "storyCard",
           })),
       );
-      const proposals = await runContextDedup(items, providerConfig);
+      const proposals = dedupIncludeAI && providerConfig
+        ? await runContextDedup(items, providerConfig)
+        : deterministicDedupProposals(duplicates);
       setDedupProposals(proposals);
-      if (proposals.length === 0) setDedupError("No significant duplicates found.");
+      if (proposals.length === 0) {
+        setDedupError(dedupIncludeAI ? "No significant duplicates found." : "No deterministic duplicates found.");
+      }
     } catch (err) {
       setDedupError(err instanceof Error ? err.message : "Dedup analysis failed.");
     } finally {
@@ -183,10 +252,11 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   }
 
   function applyDedupProposal(proposal: DedupProposal) {
-    if (!proposal.suggestedContent || proposal.isConflict) return;
+    if (proposal.isConflict) return;
     const trimItem = allItems.find((item) => item.id === proposal.trimItemId);
     if (!trimItem) return;
-    applyCondenseToItem(trimItem, proposal.suggestedContent);
+    if (proposal.suggestedContent) applyCondenseToItem(trimItem, proposal.suggestedContent);
+    else deleteItem(trimItem);
     setDedupProposals((prev) => prev.filter((p) => p.id !== proposal.id));
   }
 
@@ -218,11 +288,15 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         >
           Rebuild Preview
         </button>
-        {providerConfig && (
-          <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
-            {dedupLoading ? "Analyzing…" : "Auto Dedup"}
-          </button>
-        )}
+        <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
+          {dedupLoading ? "Analyzing…" : "Auto Dedup"}
+        </button>
+        <CheckboxField
+          label="Include AI semantic pass"
+          checked={dedupIncludeAI}
+          disabled={!providerConfig}
+          onChange={setDedupIncludeAI}
+        />
         <span className="muted token-metrics">
           <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} est</span>
           <span className="token-metrics-sep">·</span>
@@ -254,6 +328,9 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
                 <strong>{proposal.trimItemTitle}</strong>
                 <span className="muted"> overlaps </span>
                 <strong>{proposal.keepItemTitle}</strong>
+                <span className="badge badge-priority" style={{ marginLeft: "0.4rem" }}>
+                  {proposal.source === "llm" ? "AI" : "DETECTED"}
+                </span>
                 {proposal.isConflict && <span className="badge badge-warning" style={{ marginLeft: "0.4rem" }}>Conflict — manual review</span>}
               </div>
               <p className="muted" style={{ margin: "0.2rem 0 0.4rem" }}>{proposal.description}</p>
@@ -264,9 +341,9 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
                 </details>
               )}
               <div className="toolbar">
-                {proposal.suggestedContent && !proposal.isConflict && (
+                {!proposal.isConflict && (
                   <button type="button" className="primary-action" onClick={() => applyDedupProposal(proposal)}>
-                    Apply Trim
+                    {proposal.suggestedContent ? "Apply Trim" : "Delete Duplicate"}
                   </button>
                 )}
                 <button type="button" onClick={() => dismissProposal(proposal.id)}>Skip</button>
@@ -281,7 +358,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         <details className="panel duplicate-warnings">
           <summary>Duplicate Content Warnings ({duplicates.length})</summary>
           <p className="muted" style={{ margin: "0.25rem 0" }}>
-            These items share &gt;50% word overlap. Run <strong>Auto Dedup</strong> for AI-suggested fixes.
+            These items share &gt;50% word overlap. Run <strong>Auto Dedup</strong> for reviewable fixes.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.25rem" }}>
             {duplicates.map(({ a, b, overlap }, idx) => (

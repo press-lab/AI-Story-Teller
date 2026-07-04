@@ -2,6 +2,7 @@ import type { Adventure, Message, ProviderConfig, StoryCard, StoryCardMemoryMode
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
 import { STORY_CARD_BEST_PRACTICES, TRIGGER_BEST_PRACTICES } from "../ai/authoringBestPractices";
+import { cleanupWordSet, dedupeStringList, dedupeTextLines } from "./deterministicCleanup";
 import { storyCardContextContent } from "./storyCardPolicy";
 
 export type AuditAction = "edit" | "delete" | "create";
@@ -22,6 +23,10 @@ export interface AuditRecommendation {
   decision: AuditDecision;
   editedContent: string;
   editedKeys: string;
+}
+
+export interface StoryCardAuditOptions {
+  includeAI?: boolean;
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -49,10 +54,6 @@ function formatMessages(messages: Message[]): string {
 }
 
 // ── Deterministic checks ──────────────────────────────────────────────────────
-
-function wordSet(text: string): Set<string> {
-  return new Set(text.toLowerCase().split(/\W+/).filter((w) => w.length > 4));
-}
 
 function makeRec(
   id: string,
@@ -87,8 +88,8 @@ function detectRedundant(cards: StoryCard[]): AuditRecommendation[] {
       const a = cards[i];
       const b = cards[j];
       if (flagged.has(a.id) || flagged.has(b.id)) continue;
-      const wordsA = wordSet(storyCardContextContent(a));
-      const wordsB = wordSet(storyCardContextContent(b));
+      const wordsA = cleanupWordSet(storyCardContextContent(a));
+      const wordsB = cleanupWordSet(storyCardContextContent(b));
       if (wordsA.size < 10 || wordsB.size < 10) continue;
       const intersection = [...wordsA].filter((w) => wordsB.has(w)).length;
       const overlap = intersection / Math.min(wordsA.size, wordsB.size);
@@ -130,6 +131,23 @@ function detectTinyContent(cards: StoryCard[]): AuditRecommendation[] {
     ));
 }
 
+function detectDuplicateContentLines(cards: StoryCard[]): AuditRecommendation[] {
+  return cards.flatMap((card) => {
+    const cleaned = dedupeTextLines(card.content);
+    if (cleaned.removedCount === 0 || cleaned.text === card.content.trim()) return [];
+    return [makeRec(
+      `det-duplicate-lines-${card.id}`,
+      "edit",
+      card,
+      `${cleaned.removedCount} duplicate content line${cleaned.removedCount === 1 ? "" : "s"} can be removed without changing the card's facts.`,
+      {
+        suggestedContent: cleaned.text,
+        editedContent: cleaned.text,
+      },
+    )];
+  });
+}
+
 function detectZeroFrequency(cards: StoryCard[], recentMessages: Message[], rollingSummary: string): AuditRecommendation[] {
   const corpus = [
     ...recentMessages.filter((m) => m.role !== "system").map((m) => m.content),
@@ -169,19 +187,30 @@ function isBroadTrigger(key: string, card: StoryCard): boolean {
   return tokens.length === 1 && norm.length < 4;
 }
 
-function detectBroadTriggers(cards: StoryCard[]): AuditRecommendation[] {
+function detectTriggerKeyCleanup(cards: StoryCard[]): AuditRecommendation[] {
   return cards
-    .filter((card) => card.active && card.keys.some((key) => isBroadTrigger(key, card)))
+    .filter((card) => card.active)
     .map((card) => {
-      const suggestedKeys = card.keys.filter((key) => !isBroadTrigger(key, card));
+      const deduped = dedupeStringList(card.keys, normalizeTrigger);
+      const suggestedKeys = deduped.values.filter((key) => !isBroadTrigger(key, card));
+      const changed =
+        suggestedKeys.length !== card.keys.length ||
+        suggestedKeys.some((key, index) => key !== card.keys[index]);
+      return { card, suggestedKeys, changed, removedCount: card.keys.length - suggestedKeys.length };
+    })
+    .filter((entry) => entry.changed)
+    .map((card) => {
+      const rationale = [
+        card.removedCount > 0 && "broad, blank, duplicate, or title-equivalent keys were removed",
+      ].filter(Boolean).join("; ");
       return makeRec(
-        `det-broad-keys-${card.id}`,
+        `det-trigger-keys-${card.card.id}`,
         "edit",
-        card,
-        "Broad trigger keys can pull this card into unrelated context; remove pronouns, articles, tiny aliases, and duplicate title keys.",
+        card.card,
+        `Trigger cleanup is deterministic: ${rationale || "keys were normalized to remove duplicates"}.`,
         {
-          suggestedKeys,
-          editedKeys: suggestedKeys.join(", "),
+          suggestedKeys: card.suggestedKeys,
+          editedKeys: card.suggestedKeys.join(", "),
         },
       );
     });
@@ -293,6 +322,7 @@ export async function runStoryCardAudit(
   adventure: Adventure,
   providerConfig: ProviderConfig,
   nTurns: number,
+  options: StoryCardAuditOptions = {},
 ): Promise<AuditRecommendation[]> {
   const recentMessages = lastNTurns(adventure.messages, nTurns);
   const summary = adventure.rollingSummary.content;
@@ -302,8 +332,11 @@ export async function runStoryCardAudit(
   const detNoKeys = detectNoKeys(adventure.storyCards);
   const detTiny = detectTinyContent(adventure.storyCards);
   const detFreq = detectZeroFrequency(adventure.storyCards, recentMessages, summary);
-  const detBroad = detectBroadTriggers(adventure.storyCards);
-  const detRecs = [...detRedundant, ...detNoKeys, ...detTiny, ...detFreq, ...detBroad];
+  const detDuplicateLines = detectDuplicateContentLines(adventure.storyCards);
+  const detTriggerKeys = detectTriggerKeyCleanup(adventure.storyCards);
+  const detRecs = [...detRedundant, ...detNoKeys, ...detTiny, ...detFreq, ...detDuplicateLines, ...detTriggerKeys];
+
+  if (!options.includeAI) return detRecs;
 
   // Delete recommendations are skipped. Editable issues still go to AI cleanup
   // so it can suggest splits, consolidation, or mode changes.

@@ -1,6 +1,7 @@
 import type { Adventure, ComponentEntry, ComponentType, Message, ProviderConfig } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
+import { cleanupContentOverlap, compactFirstSentence, dedupeTextLines, normalizeCleanupText } from "./deterministicCleanup";
 import { lastNTurns } from "./storyCardAudit";
 
 export type ComponentAuditAction = "edit" | "delete" | "create";
@@ -18,6 +19,10 @@ export interface ComponentAuditRecommendation {
   suggestedType: ComponentType;
   decision: ComponentAuditDecision;
   editedContent: string;
+}
+
+export interface ComponentAuditOptions {
+  includeAI?: boolean;
 }
 
 const TYPE_LABELS: Record<ComponentType, string> = {
@@ -68,6 +73,14 @@ function wordCount(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function componentKeepScore(component: ComponentEntry): number {
+  return component.priority +
+    (component.protected ? 100 : 0) +
+    (component.pinned ? 40 : 0) +
+    (component.active ? 20 : 0) +
+    Math.min(wordCount(component.content), 100) / 100;
+}
+
 function makeRec(
   id: string,
   action: ComponentAuditAction,
@@ -92,7 +105,35 @@ function makeRec(
 
 function deterministicRecommendations(components: ComponentEntry[]): ComponentAuditRecommendation[] {
   const results: ComponentAuditRecommendation[] = [];
+  const duplicateDeletes = new Set<string>();
+
+  for (let i = 0; i < components.length; i++) {
+    for (let j = i + 1; j < components.length; j++) {
+      const a = components[i];
+      const b = components[j];
+      if (duplicateDeletes.has(a.id) || duplicateDeletes.has(b.id)) continue;
+      const normalizedA = normalizeCleanupText(a.content);
+      const normalizedB = normalizeCleanupText(b.content);
+      const exactDuplicate = normalizedA.length > 0 && normalizedA === normalizedB;
+      const overlap = cleanupContentOverlap(a.content, b.content);
+      if (!exactDuplicate && overlap <= 0.75) continue;
+
+      const [keep, drop] = componentKeepScore(a) >= componentKeepScore(b) ? [a, b] : [b, a];
+      duplicateDeletes.add(drop.id);
+      results.push(makeRec(
+        `det-duplicate-component-${drop.id}`,
+        "delete",
+        drop,
+        exactDuplicate
+          ? `Duplicate always-on content already exists in "${keep.title || TYPE_LABELS[keep.type]}".`
+          : `${Math.round(overlap * 100)}% word overlap with "${keep.title || TYPE_LABELS[keep.type]}" makes this likely redundant.`,
+        { suggestedContent: "", editedContent: "" },
+      ));
+    }
+  }
+
   for (const component of components) {
+    if (duplicateDeletes.has(component.id)) continue;
     if (component.type === "immediateMomentum") {
       results.push(makeRec(
         `det-legacy-${component.id}`,
@@ -113,6 +154,20 @@ function deterministicRecommendations(components: ComponentEntry[]): ComponentAu
       ));
     }
 
+    const cleanedLines = dedupeTextLines(component.content);
+    if (cleanedLines.removedCount > 0 && cleanedLines.text !== component.content.trim()) {
+      results.push(makeRec(
+        `det-duplicate-lines-${component.id}`,
+        "edit",
+        component,
+        `${cleanedLines.removedCount} duplicate content line${cleanedLines.removedCount === 1 ? "" : "s"} can be removed without changing this block's facts.`,
+        {
+          suggestedContent: cleanedLines.text,
+          editedContent: cleanedLines.text,
+        },
+      ));
+    }
+
     if (component.type === "plotEssentials" && lineCount(component.content) > 10) {
       results.push(makeRec(
         `det-pe-long-${component.id}`,
@@ -123,11 +178,13 @@ function deterministicRecommendations(components: ComponentEntry[]): ComponentAu
     }
 
     if (component.type === "activePressure" && (lineCount(component.content) > 1 || wordCount(component.content) > 35)) {
+      const compact = compactFirstSentence(component.content, 35);
       results.push(makeRec(
         `det-pressure-long-${component.id}`,
         "edit",
         component,
         "Active Pressure should be one compact sentence naming the current external threat, obligation, or force.",
+        compact ? { suggestedContent: compact, editedContent: compact } : {},
       ));
     }
   }
@@ -218,12 +275,15 @@ export async function runComponentAudit(
   adventure: Adventure,
   providerConfig: ProviderConfig,
   nTurns: number,
+  options: ComponentAuditOptions = {},
 ): Promise<ComponentAuditRecommendation[]> {
   const recentMessages = lastNTurns(adventure.messages, nTurns);
   const summary = adventure.rollingSummary.content;
   const auditable = adventure.components.filter((component) => AUDITABLE_TYPES.has(component.type));
 
   const deterministic = deterministicRecommendations(auditable);
+  if (!options.includeAI) return deterministic;
+
   const flaggedDeleteIds = new Set(deterministic.filter((rec) => rec.action === "delete").map((rec) => rec.componentId).filter(Boolean) as string[]);
 
   const currentTurn = adventure.activeState.turn;
