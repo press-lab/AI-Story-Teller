@@ -311,6 +311,43 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
+  it("filters Story Cards by pinned and protected flags", async () => {
+    const user = userEvent.setup();
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      storyCards: [
+        makeStoryCard({ title: "Pinned Plot", content: "Load this before triggered cards.", pinned: true }),
+        makeStoryCard({ title: "Protected Secret", content: "Cannot be dropped by token truncation.", protected: true }),
+        makeStoryCard({ title: "Loose Note", content: "Normal triggered context." }),
+      ],
+    };
+
+    render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
+    const flagFilter = screen.getByRole("group", { name: "Card flag filter" });
+
+    await user.click(within(flagFilter).getByRole("button", { name: "Flagged" }));
+    let visibleCards = document.querySelectorAll(".story-card-editor-item");
+    expect(visibleCards).toHaveLength(2);
+    expect(visibleCards[0]).toHaveTextContent("Pinned Plot");
+    expect(visibleCards[1]).toHaveTextContent("Protected Secret");
+    expect(screen.getByText("2 shown")).toBeInTheDocument();
+
+    await user.click(within(flagFilter).getByRole("button", { name: "Pinned" }));
+    visibleCards = document.querySelectorAll(".story-card-editor-item");
+    expect(visibleCards).toHaveLength(1);
+    expect(visibleCards[0]).toHaveTextContent("Pinned Plot");
+    expect(visibleCards[0]).not.toHaveTextContent("Protected Secret");
+    expect(visibleCards[0]).not.toHaveTextContent("Loose Note");
+
+    await user.click(within(flagFilter).getByRole("button", { name: "Protected" }));
+    visibleCards = document.querySelectorAll(".story-card-editor-item");
+    expect(visibleCards).toHaveLength(1);
+    expect(visibleCards[0]).toHaveTextContent("Protected Secret");
+    expect(visibleCards[0]).not.toHaveTextContent("Pinned Plot");
+    expect(visibleCards[0]).not.toHaveTextContent("Loose Note");
+    expect(screen.getByText("1 shown")).toBeInTheDocument();
+  });
+
   it("shows token estimates on plot, card, and brain summaries", () => {
     const adventure: Adventure = {
       ...seedAdventure(),

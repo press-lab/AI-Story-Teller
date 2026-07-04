@@ -33,6 +33,7 @@ const TYPE_LABELS: Record<StoryCardType, string> = {
 type SortMode = "alpha" | "recent";
 type CardStatusFilter = "all" | "active" | "inactive";
 type CardMemoryFilter = "all" | "living";
+type CardFlagFilter = "all" | "flagged" | "pinned" | "protected";
 type StoryCardModeChoice = "auto" | StoryCardMemoryMode;
 
 const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: string }> = [
@@ -196,6 +197,7 @@ export function StoryCardsPage({
   const [sortMode, setSortMode] = useState<SortMode>("alpha");
   const [statusFilter, setStatusFilter] = useState<CardStatusFilter>("all");
   const [memoryFilter, setMemoryFilter] = useState<CardMemoryFilter>("all");
+  const [flagFilter, setFlagFilter] = useState<CardFlagFilter>("all");
   const [search, setSearch] = useState("");
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [auditTurns, setAuditTurns] = useState(20);
@@ -294,7 +296,12 @@ export function StoryCardsPage({
       (statusFilter === "active" && card.active) ||
       (statusFilter === "inactive" && !card.active);
     const memoryMatches = memoryFilter === "all" || isLivingCard(card);
-    return statusMatches && memoryMatches;
+    const flagMatches =
+      flagFilter === "all" ||
+      (flagFilter === "flagged" && (card.pinned || card.protected)) ||
+      (flagFilter === "pinned" && card.pinned) ||
+      (flagFilter === "protected" && card.protected);
+    return statusMatches && memoryMatches && flagMatches;
   }
 
   // Group cards by type, only include types that have at least one card
@@ -307,7 +314,7 @@ export function StoryCardsPage({
   const activeCount = activeCards.length;
   const visibleCount = groups.reduce((sum, group) => sum + group.cards.length, 0);
   const livingCount = adventure.storyCards.filter(isLivingCard).length;
-  const filtersActive = statusFilter !== "all" || memoryFilter !== "all";
+  const filtersActive = statusFilter !== "all" || memoryFilter !== "all" || flagFilter !== "all";
 
   async function handleBuildStoryCardMemory() {
     if (!onBuildStoryCardMemory || !aiDescription.trim()) return;
@@ -473,6 +480,40 @@ export function StoryCardsPage({
               onClick={() => setMemoryFilter("living")}
             >
               Living
+            </button>
+          </div>
+          <div className="sort-toggle" role="group" aria-label="Card flag filter">
+            <button
+              type="button"
+              className={flagFilter === "all" ? "active" : ""}
+              aria-pressed={flagFilter === "all"}
+              onClick={() => setFlagFilter("all")}
+            >
+              Any
+            </button>
+            <button
+              type="button"
+              className={flagFilter === "flagged" ? "active" : ""}
+              aria-pressed={flagFilter === "flagged"}
+              onClick={() => setFlagFilter("flagged")}
+            >
+              Flagged
+            </button>
+            <button
+              type="button"
+              className={flagFilter === "pinned" ? "active" : ""}
+              aria-pressed={flagFilter === "pinned"}
+              onClick={() => setFlagFilter("pinned")}
+            >
+              Pinned
+            </button>
+            <button
+              type="button"
+              className={flagFilter === "protected" ? "active" : ""}
+              aria-pressed={flagFilter === "protected"}
+              onClick={() => setFlagFilter("protected")}
+            >
+              Protected
             </button>
           </div>
         </div>
