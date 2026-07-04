@@ -334,17 +334,24 @@ RULES:
 - One Story Card memory tag per response. If nothing durable changed, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
 }
 
-function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string, lengthHintText?: string, thoughtCaptureText?: string) {
+function buildTurnScopeContract(responseLengthHint: number | undefined): string {
+  const wordTarget = typeof responseLengthHint === "number"
+    ? Math.max(50, Math.min(500, responseLengthHint))
+    : 250;
+  const minWords = Math.floor(wordTarget * 0.55);
+  return `TURN SCOPE CONTRACT: The player's selected visible limit is ${wordTarget} words. Aim for ${minWords}-${wordTarget} visible words; shorter is acceptable when the next playable beat is clear. Do not mention word counts or pad prose. This is a scope ceiling, not a quota. If any other instruction asks for a fuller, substantial, complete, or cinematic scene, obey this turn scope contract first. Write only the next immediate exchange or consequence. Do not advance through multiple beats, tour multiple locations, wrap up the scene, or resolve a major outcome the player has not earned. Never narrate the player's unspoken actions, reactions, dialogue, consent, movement, commitments, or decisions. Stop as soon as the player could reasonably act, answer, interrupt, refuse, choose, or redirect. Hidden <thought> and <memory> tags do not count toward the visible limit, and they must not cause the visible prose to expand. End on a live in-scene moment, not an option menu or summary.`;
+}
+
+function buildPayload(sections: ContextSection[], recentMessagesNewestFirst: Message[], openingScene?: string) {
   const contextText = sections
     .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
     .sort((a, b) => a.order - b.order)
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
 
-  const systemContent = [lengthHintText, contextText, thoughtCaptureText].filter(Boolean).join("\n\n");
   const chronologicalRecent = [...recentMessagesNewestFirst].reverse();
   return [
-    { role: "system" as const, content: systemContent },
+    { role: "system" as const, content: contextText },
     ...(openingScene ? [{ role: "assistant" as const, content: openingScene }] : []),
     ...chronologicalRecent.map((message) => ({ role: message.role, content: message.content })),
   ];
@@ -360,7 +367,12 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   const triggerText = recentText(adventure, options);
   const triggeredThreadIds = new Set<string>();
   const budgetSettings = adventure.tokenBudgetSettings;
-
+  const turnScopeText = buildTurnScopeContract(adventure.activeState.responseLengthHint);
+  const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);
+  const thoughtCaptureText = captureEligible.length > 0 ? buildThoughtCaptureInstruction(captureEligible) : undefined;
+  const memoryCategories = options.skipThoughtCapture ? [] : enabledMemoryCategories(adventure);
+  const existingCardTitles = adventure.storyCards.map((c) => c.title);
+  const memoryTagText = memoryCategories.length > 0 ? buildMemoryTagInstruction(memoryCategories, existingCardTitles) : undefined;
   function pushExcluded(
     sourceType: ExcludedContextItem["sourceType"],
     id: string,
@@ -379,6 +391,16 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
   // A. System Shell
   const systemItem = item("system-shell", "system", "System Shell", SYSTEM_SHELL, 1000, true, false, true, "always", "system");
   pushIncluded(systemItem, "System shell is always included and protected.");
+  const turnScopeItem = item("turn-scope-contract", "system", "Turn Scope Contract", turnScopeText, 1000, true, false, true, "always", "system");
+  pushIncluded(turnScopeItem, "Turn scope contract is always included and protected.");
+  const thoughtCaptureItem = thoughtCaptureText
+    ? item("thought-capture-instruction", "system", "Character Thought Capture", thoughtCaptureText, 1000, true, false, true, "always", "system")
+    : undefined;
+  if (thoughtCaptureItem) pushIncluded(thoughtCaptureItem, "Thought capture instruction is included for eligible triggered brains.");
+  const memoryTagItem = memoryTagText
+    ? item("memory-tagging-instruction", "system", "Memory Tagging", memoryTagText, 1000, true, false, true, "always", "system")
+    : undefined;
+  if (memoryTagItem) pushIncluded(memoryTagItem, "Memory tagging instruction is included for enabled system trigger categories.");
 
   // Track which component IDs have already been logged as excluded to avoid double-logging
   const loggedExcluded = new Set<string>();
@@ -401,7 +423,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     pushIncluded(next, `Narration Rules loaded; priority=${component.priority}; protected=${component.protected}.`);
     return [next];
   });
-  const systemSection = section("system", "A. System Shell / Global Generation Rules", 0, [systemItem, ...narrationRulesItems]);
+  const runtimeSystemItems = [turnScopeItem, thoughtCaptureItem, memoryTagItem].filter((entry): entry is ContextItem => Boolean(entry));
+  const systemSection = section("system", "A. System Shell / Global Generation Rules", 0, [systemItem, ...runtimeSystemItems, ...narrationRulesItems]);
 
   // B2. AI Instructions — all active components with type === "aiInstructions"
   const aiInstructionItems = prioritySort(adventure.components).flatMap((component) => {
@@ -733,26 +756,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     (proposal) => proposal.status === "pending",
   );
 
-  const wordTarget = typeof adventure.activeState.responseLengthHint === "number"
-    ? Math.max(50, Math.min(500, adventure.activeState.responseLengthHint))
-    : 250;
-  const minWords = Math.floor(wordTarget * 0.55);
-  const lengthHintText = `TURN SCOPE CONTRACT: The player's selected visible limit is ${wordTarget} words. Aim for ${minWords}-${wordTarget} visible words; shorter is acceptable when the next playable beat is clear. Do not mention word counts or pad prose. This is a scope ceiling, not a quota. If any other instruction asks for a fuller, substantial, complete, or cinematic scene, obey this turn scope contract first. Write only the next immediate exchange or consequence. Do not advance through multiple beats, tour multiple locations, wrap up the scene, or resolve a major outcome the player has not earned. Never narrate the player's unspoken actions, reactions, dialogue, consent, movement, commitments, or decisions. Stop as soon as the player could reasonably act, answer, interrupt, refuse, choose, or redirect. Hidden <thought> and <memory> tags do not count toward the visible limit, and they must not cause the visible prose to expand. End on a live in-scene moment, not an option menu or summary.`;
-
-  // Inline thought capture — eligible brains get their thought harvested from the story response itself
-  const captureEligible = options.skipThoughtCapture ? [] : eligibleBrainsForCapture(adventure, triggerText);
-  const thoughtCaptureText = captureEligible.length > 0 ? buildThoughtCaptureInstruction(captureEligible) : undefined;
-
-  // Inline memory tagging — zero-cost story card detection piggybacks on story generation
-  const memoryCategories = options.skipThoughtCapture ? [] : enabledMemoryCategories(adventure);
-  const existingCardTitles = adventure.storyCards.map((c) => c.title);
-  const memoryTagText = memoryCategories.length > 0 ? buildMemoryTagInstruction(memoryCategories, existingCardTitles) : undefined;
-
-  // Combine thought capture and memory tagging into one appended user message
-  const captureText = [thoughtCaptureText, memoryTagText].filter(Boolean).join("\n\n") || undefined;
-
   return {
-    messages: buildPayload(sections, finalRecentMessages, undefined, lengthHintText, captureText),
+    messages: buildPayload(sections, finalRecentMessages),
     sections: sections.sort((a, b) => a.order - b.order),
     totalEstimatedTokens: totalTokens(sections),
     excludedItems,

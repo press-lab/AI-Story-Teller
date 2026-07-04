@@ -59,10 +59,10 @@ Pure function — builds the provider payload each turn. Sections are assembled 
 | 10.5 | `challengeMode` | M. Continuity Challenge | Injected instruction when `challengeMode` is active |
 | 11 | `recentMessages` | K. Recent Messages | Last N messages within token budget |
 
-### Also injected (appended to system section):
-- `[PLAYABILITY RESPONSE TARGET]` - soft target from `responseLengthHint`
-- `[CHARACTER THOUGHT CAPTURE]` — if brains are active, instructs model to emit `<thought>` tags
-- `[MEMORY TAGGING]` — if `systemTriggers.enabled`, instructs model to emit `<memory>` tags
+### Also injected as inspectable system-section items:
+- `Turn Scope Contract` - soft target from `responseLengthHint`
+- `Character Thought Capture` - if brains are active, instructs model to emit `<thought>` tags
+- `Memory Tagging` - if `systemTriggers.enabled`, instructs model to emit `<memory>` tags
 
 ### Token budget management:
 When total exceeds `maxContextTokens`, items are dropped in priority order:

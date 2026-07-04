@@ -624,7 +624,7 @@ export function createDevelopmentAdventure(): Adventure {
     },
     tokenBudgetSettings: {
       ...base.tokenBudgetSettings,
-      maxContextTokens: 9000,
+      maxContextTokens: 16000,
       maxRecentMessages: 18,
       recentMessageWindow: 8,
     },

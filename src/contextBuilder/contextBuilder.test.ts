@@ -77,10 +77,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     .filter((entry) => entry.id !== "recentMessages" && entry.content.length > 0)
     .map((entry) => `# ${entry.label}\n${entry.content}`)
     .join("\n\n");
-  const wordTarget = Math.max(50, Math.min(500, configured.activeState.responseLengthHint));
-  const minWords = Math.floor(wordTarget * 0.55);
-  const lengthHint = `TURN SCOPE CONTRACT: The player's selected visible limit is ${wordTarget} words. Aim for ${minWords}-${wordTarget} visible words; shorter is acceptable when the next playable beat is clear. Do not mention word counts or pad prose. This is a scope ceiling, not a quota. If any other instruction asks for a fuller, substantial, complete, or cinematic scene, obey this turn scope contract first. Write only the next immediate exchange or consequence. Do not advance through multiple beats, tour multiple locations, wrap up the scene, or resolve a major outcome the player has not earned. Never narrate the player's unspoken actions, reactions, dialogue, consent, movement, commitments, or decisions. Stop as soon as the player could reasonably act, answer, interrupt, refuse, choose, or redirect. Hidden <thought> and <memory> tags do not count toward the visible limit, and they must not cause the visible prose to expand. End on a live in-scene moment, not an option menu or summary.`;
-  const expectedSystem = `${lengthHint}\n\n${contextText}`;
+  const expectedSystem = contextText;
   const recentItems = [...(result.sections.find((section) => section.id === "recentMessages")?.items ?? [])].reverse();
   const expectedRecent = recentItems.flatMap((item) => {
     if (item.id === "opening-scene") return [{ role: "assistant" as const, content: configured.openingScene }];
@@ -89,7 +86,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
   });
 
   expect(result.messages[0].role).toBe("system");
-  expect(result.messages[0].content).toContain(expectedSystem);
+  expect(result.messages[0].content).toBe(expectedSystem);
   expect(result.messages.slice(1)).toEqual(expectedRecent);
 }
 
@@ -183,7 +180,11 @@ describe("buildContext", () => {
     const adventure = { ...createDefaultAdventure("Components"), components: [ai, plotLow, pinned, inactive, plotHigh] };
 
     const result = buildContext(adventure);
-    expect(result.sections.find((section) => section.id === "system")?.items.map((item) => item.id)).toEqual(["system-shell"]);
+    expect(result.sections.find((section) => section.id === "system")?.items.map((item) => item.id)).toEqual([
+      "system-shell",
+      "turn-scope-contract",
+      "memory-tagging-instruction",
+    ]);
     // Each type has its own section
     expect(result.sections.find((section) => section.id === "aiInstructions")?.items.map((item) => item.id)).toEqual(["c-ai"]);
     expect(result.sections.find((section) => section.id === "plotEssentials")?.items.map((item) => item.id)).toEqual(["c-plot-high", "c-plot-low"]);
@@ -348,16 +349,17 @@ describe("buildContext", () => {
     const high = makeStoryCard({ title: "High Priority", content: "high ".repeat(100), keys: ["signal"], active: true, priority: 10 });
     const adventure = {
       ...adventureForContext(),
+      components: [],
       storyCards: [low, high],
 
       brains: [],
       messages: [],
       rollingSummary: { content: "", updatedAt: "2026-01-01T00:00:00.000Z" },
-      // Budget sized to fit system-shell + high-priority card only
-      tokenBudgetSettings: budget({ maxContextTokens: 620, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
+      // Budget sized to fit system rows + the high-priority card only.
+      tokenBudgetSettings: budget({ maxContextTokens: 920, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
-    const result = buildContext(adventure, { currentInput: "signal" });
+    const result = buildContext(adventure, { currentInput: "signal", skipThoughtCapture: true });
     const remainingTitles = result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.title);
     expect(remainingTitles).toEqual(["High Priority"]);
     expect(result.excludedItems).toContainEqual(
@@ -380,11 +382,14 @@ describe("buildContext", () => {
       tokenBudgetSettings: budget({ maxContextTokens: 10, maxRecentMessages: 0, recentMessageWindow: 0, sectionBudgets: {} }),
     } satisfies Adventure;
 
-    const result = buildContext(adventure);
+    const result = buildContext(adventure, { skipThoughtCapture: true });
     // Total will exceed budget because protected items can't be dropped
     expect(result.totalEstimatedTokens).toBeGreaterThan(10);
     // System shell always present
-    expect(result.sections.find((section) => section.id === "system")?.items).toHaveLength(1);
+    expect(result.sections.find((section) => section.id === "system")?.items.map((item) => item.id)).toEqual([
+      "system-shell",
+      "turn-scope-contract",
+    ]);
     // Protected Huge survives in E. Components; Pinned Huge is dropped
     const componentItems = result.sections.find((section) => section.id === "components")?.items ?? [];
     expect(componentItems[0].title).toBe("Protected Huge");
@@ -467,7 +472,7 @@ describe("buildContext", () => {
       tokenBudgetSettings: budget({ maxContextTokens: 1000, maxRecentMessages: 1, recentMessageWindow: 1 }),
     } satisfies Adventure;
 
-    const result = buildContext(adventure, { currentInput: "signal" });
+    const result = buildContext(adventure, { currentInput: "signal", skipThoughtCapture: true });
     expect(result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toEqual(["high-priority", "low-priority"]);
     expectPreviewMatchesPayload(adventure, "userLocked");
     expectPreviewMatchesPayload(adventure, "systemSuggested");
@@ -667,7 +672,7 @@ describe("buildContext", () => {
     expect(recentSection?.items[0].id).toBe("msg-49"); // newest
     expect(recentSection?.items[4].id).toBe("msg-45"); // oldest of the window
 
-    // Provider payload: 1 system message + 5 recent messages in chronological order (extra messages like length reminder may follow)
+    // Provider payload: 1 system message + 5 recent messages in chronological order.
     expect(result.messages.length).toBeGreaterThanOrEqual(6);
     expect(result.messages[0].role).toBe("system");
     expect(result.messages[1].content).toBe("Turn 45 content.");
@@ -785,7 +790,7 @@ describe("buildContext", () => {
       "The Beast howls somewhere below.",
       "We hurry toward the threshold.",
     ];
-    // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
+    // Runtime instructions are part of the system section; recent messages still follow in order.
     expect(result.messages.slice(1, 1 + expectedRecent.length).map((message) => message.content)).toEqual(expectedRecent);
 
     // E. Components is present because the golden adventure has a pinned weather component

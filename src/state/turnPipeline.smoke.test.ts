@@ -69,7 +69,7 @@ function expectContextPreviewMatchesProviderPayload(result: ContextBuildResult) 
   ]
     .reverse()
     .map((item) => item.content);
-  // Extra messages (length reminder, thought capture) may follow recent messages — check only the first N
+  // Runtime instructions are part of the system section; recent messages still follow in order.
   expect(result.messages.slice(1, 1 + recentItemsOldestFirst.length).map((message) => message.content)).toEqual(recentItemsOldestFirst);
 }
 
