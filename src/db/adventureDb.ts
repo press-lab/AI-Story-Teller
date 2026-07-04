@@ -1,5 +1,5 @@
 import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
-import { normalizeAdventure } from "../state/defaults";
+import { normalizeAdventure, sanitizeAdventureForPersistence } from "../state/defaults";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 
 const DB_NAME = "ai-story-teller";
@@ -58,13 +58,8 @@ function transaction<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) =
   );
 }
 
-function sanitizeAdventure(adventure: Adventure): Adventure {
-  const { apiKey: _apiKey, sessionId: _sessionId, ...modelConfig } = adventure.modelConfig;
-  return { ...adventure, modelConfig };
-}
-
 export async function saveAdventure(adventure: Adventure): Promise<void> {
-  await transaction("readwrite", (store) => store.put(sanitizeAdventure(adventure)));
+  await transaction("readwrite", (store) => store.put(sanitizeAdventureForPersistence(adventure)));
 }
 
 export async function getAdventure(id: string): Promise<Adventure | undefined> {

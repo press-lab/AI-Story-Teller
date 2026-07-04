@@ -359,7 +359,14 @@ export default function App() {
       case "triggers":
         return <TriggersPage {...common} />;
       case "memoryInbox":
-        return <MemoryInboxPage {...common} onRegenerateProposal={runtime.regenerateMemoryProposal} />;
+        return (
+          <MemoryInboxPage
+            {...common}
+            loading={runtime.loading}
+            onRegenerateProposal={runtime.regenerateMemoryProposal}
+            onReconcileMemory={runtime.reconcileMemory}
+          />
+        );
       case "cloudSaves":
         return (
           <CloudSavesPage

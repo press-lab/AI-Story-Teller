@@ -8,6 +8,7 @@ import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCard
 import { runComponentAudit, type ComponentAuditRecommendation } from "../memory/componentAudit";
 import { runBrainAudit, type BrainAuditRecommendation } from "../memory/brainAudit";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
 import { adventureReducer } from "../state/adventureReducer";
 import {
   applyProviderResponse,
@@ -25,6 +26,7 @@ import {
   runManualPEComponentUpdate,
   runManualPlotEssentialsUpdate,
   runManualStoryCardsUpdate,
+  runMemoryReconcile,
   runPlotAIBuilder,
   runMemoryCycle,
   runRememberThis,
@@ -38,6 +40,7 @@ import type {
   ContextBuildResult,
   InputMode,
   MemoryDetectionSettings,
+  MemoryReconcileRequest,
   PendingAdventureUpdate,
   PlotAIBuilderRequest,
   ProviderUsage,
@@ -148,15 +151,7 @@ const CHALLENGE_PHRASES = [
 
 function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const base = mergeProviderConfig(adventure, settings);
-  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
-  if (!bg?.baseUrl) return base;
-  return {
-    ...base,
-    baseUrl: bg.baseUrl,
-    apiKey: bg.apiKey ?? base.apiKey,
-    model: bg.model || base.model,
-    promptCaching: bg.baseUrl === base.baseUrl ? base.promptCaching : undefined,
-  };
+  return resolveBackgroundProviderConfig(adventure, base) as RuntimeProviderSettings;
 }
 
 export function useAdventureRuntime(
@@ -607,6 +602,25 @@ export function useAdventureRuntime(
     }
   }
 
+  async function reconcileMemory(request: MemoryReconcileRequest) {
+    if (!adventure || loading) return;
+    setLoading(true);
+    setError(undefined);
+    try {
+      const result = await runMemoryReconcile(adventure, activeProviderConfig, request);
+      const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+      applyActionsAndPersist(result.actions);
+      openTab("memoryInbox");
+      if (proposalCount === 0 && result.logEntry.errors.length > 0) {
+        setError(result.logEntry.errors[0]);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Memory reconcile failed.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function auditStoryCards(nTurns: number): Promise<AuditRecommendation[]> {
     if (!adventure) return [];
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns);
@@ -762,6 +776,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     suggestCardUpdates,
     buildStoryCardMemory,
     buildPlotMemory,
+    reconcileMemory,
     auditStoryCards,
     auditComponents,
     auditBrains,

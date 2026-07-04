@@ -8,6 +8,7 @@ import type {
   EvaluatedCondition,
   EvaluationLogEntry,
   GeneratedContentPreview,
+  MemoryReconcileRequest,
   MemoryProposal,
   PlotAIBuilderRequest,
   ProviderConfig,
@@ -19,6 +20,7 @@ import type {
   TriggerRule,
 } from "../types/adventure";
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
 import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
 import {
@@ -30,6 +32,7 @@ import {
 import { createId, nowIso } from "../utils/id";
 import { matchPatterns, splitList } from "./matching";
 import { isTriggerOnCooldown, triggerActionToAdventureActions } from "./triggerEngine";
+import { storyCardContextContent } from "../memory/storyCardPolicy";
 
 const EVALUATION_SYSTEM_PROMPT =
   'You are an evaluation engine. Given a story excerpt, evaluate which conditions are currently true. Respond ONLY with a valid JSON array of condition IDs that are true. No explanation, no prose, no markdown. Example: ["id1", "id3"]';
@@ -48,20 +51,12 @@ export interface SemanticRunResult {
 }
 
 function evaluationConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
-  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
-  if (bg?.baseUrl) {
-    return {
-      ...providerConfig,
-      baseUrl: bg.baseUrl,
-      apiKey: bg.apiKey ?? providerConfig.apiKey,
-      model: bg.model || providerConfig.model,
-      promptCaching: bg.baseUrl === providerConfig.baseUrl ? providerConfig.promptCaching : undefined,
-    };
-  }
-  return {
-    ...providerConfig,
-    model: adventure.semanticEvaluationSettings.evaluationModel || providerConfig.model,
-  };
+  return resolveBackgroundProviderConfig(adventure, providerConfig);
+}
+
+function providerConfigWarnings(adventure: Adventure): string[] {
+  const issue = backgroundProviderConfigIssue(adventure);
+  return issue ? [issue] : [];
 }
 
 function recentExcerpt(adventure: Adventure): string {
@@ -668,6 +663,7 @@ export async function runSemanticPostTurnEvaluation(
   const accum = { promptTokens: 0, completionTokens: 0 };
   const conditions = buildConditions(adventure);
   const { firedIds, errors } = await evaluateConditionIds(adventure, providerConfig, conditions, accum);
+  errors.push(...providerConfigWarnings(adventure));
   const firedCounts: Partial<Record<string, number>> = {};
   const fired = conditions.filter((condition) => {
     if (!firedIds.includes(condition.id)) return false;
@@ -1208,6 +1204,444 @@ ${description}`;
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     const logEntry = { ...emptyLog, errors: [error] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+}
+
+const RECONCILE_STOPWORDS = new Set([
+  "about", "after", "again", "against", "all", "and", "are", "been", "being", "but", "can", "close", "closed",
+  "does", "done", "entries", "entry", "from", "have", "into", "last", "more", "most", "need", "needs", "over",
+  "plot", "really", "remove", "resolved", "should", "that", "their", "them", "there", "these", "thing", "things",
+  "this", "those", "through", "update", "updated", "want", "what", "when", "where", "with", "would", "your",
+]);
+
+type ReconcileTargetType = "component" | "storyCard" | "brain";
+
+interface ReconcileTarget {
+  id: string;
+  targetType: ReconcileTargetType;
+  title: string;
+  subtype: string;
+  currentContent: string;
+  matchedTerms: string[];
+  score: number;
+  deterministicStoryCardPatch?: MemoryProposal["storyCardPatch"];
+  deterministicComponentPatch?: MemoryProposal["componentPatch"];
+}
+
+function storyEntriesForReconcile(adventure: Adventure, entryCount: number): string {
+  return adventure.messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .slice(-Math.max(1, Math.min(100, Math.round(entryCount || 10))))
+    .map((message) => `${message.role}: ${message.content}`)
+    .join("\n\n");
+}
+
+function normalizeReconcileTerm(term: string): string {
+  return term.toLowerCase().replace(/[^\p{L}\p{N}\s']/gu, " ").replace(/\s+/g, " ").trim();
+}
+
+function uniqTerms(terms: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const term of terms) {
+    const normalized = normalizeReconcileTerm(term);
+    if (!normalized || seen.has(normalized)) continue;
+    const tokenCount = normalized.split(/\s+/).length;
+    if (tokenCount === 1 && (normalized.length < 4 || RECONCILE_STOPWORDS.has(normalized))) continue;
+    seen.add(normalized);
+    result.push(normalized);
+  }
+  return result;
+}
+
+function extractReconcileTerms(text: string, includeLowercaseWords: boolean): string[] {
+  const capitalized = [...text.matchAll(/\b[A-Z][\p{L}\p{N}'-]*(?:\s+[A-Z][\p{L}\p{N}'-]*){0,3}\b/gu)]
+    .map((match) => match[0]);
+  const lowercase = includeLowercaseWords
+    ? text.split(/[^\p{L}\p{N}'-]+/u).filter((word) => word.length >= 5)
+    : [];
+  return uniqTerms([...capitalized, ...lowercase]);
+}
+
+function containsReconcileTerm(text: string, term: string): boolean {
+  const haystack = normalizeReconcileTerm(text);
+  if (!haystack || !term) return false;
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?:^|\\s)${escaped}(?:\\s|$)`, "u").test(haystack);
+}
+
+function matchedReconcileTerms(text: string, terms: string[]): string[] {
+  return terms.filter((term) => containsReconcileTerm(text, term));
+}
+
+function storyCardSearchText(card: StoryCard): string {
+  return [
+    card.title,
+    card.keys.join(" "),
+    storyCardContextContent(card),
+    card.archivedFacts ?? "",
+    card.state ?? "",
+  ].join("\n");
+}
+
+function brainSearchText(brain: BrainEntry): string {
+  return [
+    brain.characterName,
+    brain.triggers.join(" "),
+    ...Object.values(brain.thoughts ?? {}),
+  ].join("\n");
+}
+
+function directiveLooksResolved(directive: string): boolean {
+  return /\b(resolved|defeated|closed|over|done|finished|dies|dead|destroyed|sent home|deported|no longer|let go|glaze over)\b/i.test(directive);
+}
+
+function directiveLooksRemoval(directive: string): boolean {
+  return /\b(delete|remove|deactivate|disable|retire|drop|stop using)\b/i.test(directive);
+}
+
+function duplicateTitleIndexes(cards: StoryCard[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  const result = new Map<string, number>();
+  for (const card of cards) {
+    const normalized = normalizeReconcileTerm(card.title);
+    const next = counts.get(normalized) ?? 0;
+    counts.set(normalized, next + 1);
+    result.set(card.id, next);
+  }
+  return result;
+}
+
+function deterministicStoryPatchFor(
+  card: StoryCard,
+  directive: string,
+  duplicateIndex: number,
+): MemoryProposal["storyCardPatch"] | undefined {
+  const patch: MemoryProposal["storyCardPatch"] = {};
+  if (duplicateIndex > 0) {
+    patch.active = false;
+    patch.pinned = false;
+    patch.protected = false;
+    patch.compactStatus = "superseded";
+    patch.state = [card.state, "reconcileSuperseded"].filter(Boolean).join(" ");
+  }
+  if (directiveLooksRemoval(directive)) {
+    patch.active = false;
+    patch.pinned = false;
+    patch.protected = false;
+    patch.compactStatus = card.compactKind ? "superseded" : card.compactStatus;
+  } else if (directiveLooksResolved(directive) && (card.memoryMode === "living" || card.type === "plot" || card.type === "custom" || card.compactKind)) {
+    patch.pinned = false;
+    patch.protected = false;
+    patch.compactStatus = card.compactKind ? "resolved" : card.compactStatus;
+    patch.inclusionPolicy = "triggered";
+  }
+  return Object.keys(patch).length > 0 ? patch : undefined;
+}
+
+function deterministicComponentPatchFor(component: ComponentEntry, directive: string): MemoryProposal["componentPatch"] | undefined {
+  if (!directiveLooksRemoval(directive)) return undefined;
+  if (component.type === "activePressure" || component.type === "plotEssentials") return undefined;
+  return { active: false, pinned: false, protected: false };
+}
+
+function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcileRequest): { recent: string; terms: string[]; targets: ReconcileTarget[] } {
+  const recent = storyEntriesForReconcile(adventure, request.entryCount);
+  const directiveTerms = extractReconcileTerms(request.directive, true);
+  const recentTerms = extractReconcileTerms(recent, false);
+  const terms = uniqTerms([...directiveTerms, ...recentTerms]);
+  const strongTerms = directiveTerms.length > 0 ? directiveTerms : terms;
+  const duplicateIndexes = duplicateTitleIndexes(adventure.storyCards);
+  const targets: ReconcileTarget[] = [];
+
+  const addTarget = (target: ReconcileTarget) => {
+    if (!target.matchedTerms.length) return;
+    targets.push(target);
+  };
+
+  for (const component of adventure.components) {
+    if (!component.active) continue;
+    if (!["plotEssentials", "activePressure", "currentArc"].includes(component.type)) continue;
+    const matched = matchedReconcileTerms(`${component.title}\n${component.content}`, strongTerms);
+    const alwaysCurrent = component.type === "plotEssentials" || component.type === "activePressure";
+    if (!matched.length && !alwaysCurrent) continue;
+    addTarget({
+      id: component.id,
+      targetType: "component",
+      title: component.title,
+      subtype: component.type,
+      currentContent: component.content,
+      matchedTerms: matched.length ? matched : strongTerms.slice(0, 3),
+      score: 100 + matched.length * 15 + (component.type === "activePressure" ? 20 : 0),
+      deterministicComponentPatch: deterministicComponentPatchFor(component, request.directive),
+    });
+  }
+
+  for (const card of adventure.storyCards) {
+    if (!card.active && !directiveLooksRemoval(request.directive)) continue;
+    const titleMatches = matchedReconcileTerms(`${card.title}\n${card.keys.join("\n")}`, strongTerms);
+    const contentMatches = matchedReconcileTerms(storyCardSearchText(card), strongTerms);
+    const matched = uniqTerms([...titleMatches, ...contentMatches]);
+    if (!matched.length) continue;
+    const duplicateIndex = duplicateIndexes.get(card.id) ?? 0;
+    const directTitleHit = titleMatches.length > 0;
+    const score =
+      50 +
+      titleMatches.length * 30 +
+      contentMatches.length * 8 +
+      (card.pinned ? 12 : 0) +
+      (card.protected ? 8 : 0) +
+      (directTitleHit ? 30 : 0) +
+      Math.min(10, Math.max(0, card.priority / 10));
+    if (score < 68 && !directTitleHit) continue;
+    addTarget({
+      id: card.id,
+      targetType: "storyCard",
+      title: card.title,
+      subtype: `${card.type}/${card.memoryMode ?? "static"}`,
+      currentContent: storyCardContextContent(card),
+      matchedTerms: matched,
+      score,
+      deterministicStoryCardPatch: deterministicStoryPatchFor(card, request.directive, duplicateIndex),
+    });
+  }
+
+  if (request.includeBrains) {
+    for (const brain of adventure.brains) {
+      if (!brain.active) continue;
+      const directMatches = matchedReconcileTerms(`${brain.characterName}\n${brain.triggers.join("\n")}`, strongTerms);
+      const contentMatches = matchedReconcileTerms(brainSearchText(brain), strongTerms);
+      const matched = uniqTerms([...directMatches, ...contentMatches]);
+      if (!matched.length) continue;
+      const score = 45 + directMatches.length * 35 + contentMatches.length * 6 + Math.min(10, Math.max(0, (brain.priority ?? 0) / 10));
+      if (score < 65 && !directMatches.length) continue;
+      addTarget({
+        id: brain.id,
+        targetType: "brain",
+        title: brain.characterName,
+        subtype: "brain",
+        currentContent: Object.entries(brain.thoughts ?? {}).map(([key, value]) => `${key}: ${value}`).join("\n"),
+        matchedTerms: matched,
+        score,
+      });
+    }
+  }
+
+  targets.sort((a, b) => {
+    const order = (target: ReconcileTarget) => target.targetType === "component" ? 0 : target.targetType === "storyCard" ? 1 : 2;
+    return order(a) - order(b) || b.score - a.score || a.title.localeCompare(b.title);
+  });
+
+  return { recent, terms, targets: targets.slice(0, 18) };
+}
+
+function proposedTypeForReconcileTarget(target: ReconcileTarget): MemoryProposal["proposedType"] | undefined {
+  if (target.targetType === "storyCard") return "storyCard";
+  if (target.targetType === "brain") return "brainUpdate";
+  if (target.subtype === "plotEssentials") return "plotEssentialsUpdate";
+  if (target.subtype === "activePressure") return "plotPressureUpdate";
+  if (target.subtype === "currentArc") return "currentArcUpdate";
+  return undefined;
+}
+
+function safeStoryCardPatch(value: unknown): MemoryProposal["storyCardPatch"] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const patch: MemoryProposal["storyCardPatch"] = {};
+  if (typeof raw.active === "boolean") patch.active = raw.active;
+  if (typeof raw.pinned === "boolean") patch.pinned = raw.pinned;
+  if (typeof raw.protected === "boolean") patch.protected = raw.protected;
+  if (["always", "triggered", "manual", "systemSuggested"].includes(String(raw.inclusionPolicy))) patch.inclusionPolicy = raw.inclusionPolicy as NonNullable<MemoryProposal["storyCardPatch"]>["inclusionPolicy"];
+  if (typeof raw.priority === "number" && Number.isFinite(raw.priority)) patch.priority = Math.round(raw.priority);
+  if (typeof raw.state === "string") patch.state = raw.state;
+  if (["pact", "coverStory", "debt", "status", "locationState", "arcOutcome"].includes(String(raw.compactKind))) patch.compactKind = raw.compactKind as NonNullable<MemoryProposal["storyCardPatch"]>["compactKind"];
+  if (["active", "strained", "broken", "resolved", "superseded"].includes(String(raw.compactStatus))) patch.compactStatus = raw.compactStatus as NonNullable<MemoryProposal["storyCardPatch"]>["compactStatus"];
+  return Object.keys(patch).length > 0 ? patch : undefined;
+}
+
+function safeComponentPatch(value: unknown): MemoryProposal["componentPatch"] | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const patch: MemoryProposal["componentPatch"] = {};
+  if (typeof raw.active === "boolean") patch.active = raw.active;
+  if (typeof raw.pinned === "boolean") patch.pinned = raw.pinned;
+  if (typeof raw.protected === "boolean") patch.protected = raw.protected;
+  if (["always", "triggered", "manual", "systemSuggested"].includes(String(raw.inclusionPolicy))) patch.inclusionPolicy = raw.inclusionPolicy as NonNullable<MemoryProposal["componentPatch"]>["inclusionPolicy"];
+  if (typeof raw.priority === "number" && Number.isFinite(raw.priority)) patch.priority = Math.round(raw.priority);
+  if (typeof raw.state === "string") patch.state = raw.state;
+  if (typeof raw.autoUpdate === "boolean") patch.autoUpdate = raw.autoUpdate;
+  if (typeof raw.autoUpdateCooldownTurns === "number" && Number.isFinite(raw.autoUpdateCooldownTurns)) patch.autoUpdateCooldownTurns = Math.max(0, Math.round(raw.autoUpdateCooldownTurns));
+  return Object.keys(patch).length > 0 ? patch : undefined;
+}
+
+export async function runMemoryReconcile(
+  adventure: Adventure,
+  config: ProviderConfig,
+  request: MemoryReconcileRequest,
+): Promise<SemanticRunResult> {
+  const directive = request.directive.trim();
+  const emptyLog: EvaluationLogEntry = {
+    id: createId("evaluation"),
+    turn: adventure.activeState.turn,
+    createdAt: nowIso(),
+    conditionsEvaluated: [],
+    conditionsFired: [],
+    actionsExecuted: [],
+    generatedContent: [],
+    errors: [],
+  };
+  if (!directive) {
+    const logEntry = { ...emptyLog, errors: ["Memory reconcile needs a directive."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  const { recent, terms, targets } = discoverReconcileTargets(adventure, request);
+  if (targets.length === 0) {
+    const logEntry = { ...emptyLog, errors: ["No related memory targets found for this directive."] };
+    return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  }
+
+  const targetList = targets.map((target) => ({
+    targetId: target.id,
+    targetType: target.targetType,
+    proposedType: proposedTypeForReconcileTarget(target),
+    title: target.title,
+    subtype: target.subtype,
+    matchedTerms: target.matchedTerms,
+    deterministicStoryCardPatch: target.deterministicStoryCardPatch,
+    deterministicComponentPatch: target.deterministicComponentPatch,
+    currentContent: target.currentContent.slice(0, 2400),
+  }));
+
+  const systemPrompt = `You are reconciling inspectable memory for an interactive fiction game.
+
+The target list was selected deterministically. Do not add targets. Do not invent target IDs. Generate replacement/update content only for the listed targets.
+
+Rules:
+- The user's directive is authoritative for current continuity.
+- Remove stale active pressure. Preserve true completed events as historical facts.
+- Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
+- Active Pressure: exactly one sentence naming the current external pressure.
+- Story Cards: full replacement content for that card. Use present tense for static/living current facts and past tense for historical/resolved facts.
+- Brain updates: return JSON with changed fields or thoughts only. Only update an existing listed Brain.
+- If deterministicStoryCardPatch or deterministicComponentPatch is present, write content that matches that state change.
+
+Respond ONLY with valid JSON:
+{
+  "updates": [
+    {
+      "targetId": "listed-target-id",
+      "content": "replacement or update content",
+      "title": "optional proposal title",
+      "memoryMode": "static|living|historical",
+      "storyCardType": "character|location|lore|plot|custom",
+      "storyCardPatch": { "active": true, "pinned": false, "protected": false, "compactStatus": "resolved", "inclusionPolicy": "triggered" },
+      "componentPatch": { "active": true, "pinned": false, "protected": false },
+      "rationale": "one concrete sentence"
+    }
+  ],
+  "rationale": "brief overall rationale"
+}`;
+
+  const userPrompt = `Directive:
+${directive}
+
+Recent entries checked:
+${recent || "(none)"}
+
+Deterministic terms:
+${terms.join(", ") || "(none)"}
+
+Targets:
+${JSON.stringify(targetList, null, 2)}`;
+
+  try {
+    const resolvedConfig = evaluationConfig(adventure, config);
+    const response = await sendOpenAICompatibleChatCompletion({
+      config: resolvedConfig,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      ...(isNativeDeepSeekProvider(resolvedConfig)
+        ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+        : {}),
+    });
+    const parsed = parseJsonResponse<{
+      updates: Array<{
+        targetId: string;
+        content: string;
+        title?: string;
+        memoryMode?: StoryCardMemoryMode;
+        storyCardType?: StoryCardType;
+        storyCardPatch?: unknown;
+        componentPatch?: unknown;
+        rationale?: string;
+      }>;
+      rationale?: string;
+    }>(response.content);
+
+    const targetById = new Map(targets.map((target) => [target.id, target]));
+    const now = nowIso();
+    const sourceTurnId = adventure.messages.at(-1)?.id ?? String(adventure.activeState.turn);
+    const sourceText = `Memory Reconcile
+Directive: ${directive}
+Entries checked: ${Math.max(1, Math.min(100, Math.round(request.entryCount || 10)))}
+Terms: ${terms.join(", ")}
+
+${recent}`;
+    const actions: AdventureAction[] = [];
+    const generatedContent: GeneratedContentPreview[] = [];
+
+    for (const update of parsed.updates.slice(0, targets.length)) {
+      const target = targetById.get(update.targetId);
+      const proposedType = target ? proposedTypeForReconcileTarget(target) : undefined;
+      if (!target || !proposedType || !update.content?.trim()) continue;
+      const storyCardPatch = target.targetType === "storyCard"
+        ? { ...(safeStoryCardPatch(update.storyCardPatch) ?? {}), ...(target.deterministicStoryCardPatch ?? {}) }
+        : undefined;
+      const componentPatch = target.targetType === "component"
+        ? { ...(safeComponentPatch(update.componentPatch) ?? {}), ...(target.deterministicComponentPatch ?? {}) }
+        : undefined;
+      const proposal: MemoryProposal = {
+        id: createId("proposal"),
+        sourceTurnId,
+        sourceText,
+        proposedType,
+        title: update.title?.trim() || target.title,
+        content: update.content.trim(),
+        suggestedTriggers: target.targetType === "storyCard" ? target.matchedTerms : [],
+        confidence: 0.9,
+        rationale: update.rationale ?? parsed.rationale ?? `Reconciled ${target.title} from recent entries and directive.`,
+        status: "pending",
+        targetId: target.id,
+        appendContent: proposedType === "currentArcUpdate" ? true : false,
+        memoryMode: validMemoryMode(update.memoryMode),
+        storyCardType: validStoryCardType(update.storyCardType),
+        storyCardPatch: storyCardPatch && Object.keys(storyCardPatch).length > 0 ? storyCardPatch : undefined,
+        componentPatch: componentPatch && Object.keys(componentPatch).length > 0 ? componentPatch : undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
+      actions.push({ type: "ADD_MEMORY_PROPOSAL", proposal });
+      generatedContent.push({ targetType: target.targetType === "brain" ? "brain" : target.targetType === "component" ? "component" : "storyCard", targetId: target.id, title: target.title, preview: preview(proposal.content) });
+    }
+
+    const errors = providerConfigWarnings(adventure);
+    if (actions.length === 0) errors.push("Memory reconcile AI response did not contain usable updates for the deterministic targets.");
+    const logEntry: EvaluationLogEntry = {
+      ...emptyLog,
+      conditionsFired: ["memoryReconcile"],
+      actionsExecuted: [`Memory Reconcile: ${actions.length} proposal(s) from ${targets.length} target(s)`],
+      generatedContent,
+      errors,
+    };
+    return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
+  } catch (err) {
+    const issue = backgroundProviderConfigIssue(adventure);
+    const cause = err instanceof Error ? err.message : String(err);
+    const logEntry = { ...emptyLog, errors: [issue, `Memory reconcile failed: ${cause}`].filter((entry): entry is string => Boolean(entry)) };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 }

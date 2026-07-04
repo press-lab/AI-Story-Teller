@@ -1,10 +1,9 @@
 import type { Adventure } from "../types/adventure";
 import { createId, nowIso } from "./id";
-import { normalizeAdventure } from "../state/defaults";
+import { normalizeAdventure, sanitizeAdventureForPersistence } from "../state/defaults";
 
 export function exportAdventureJson(adventure: Adventure): string {
-  const { apiKey: _apiKey, ...modelConfig } = adventure.modelConfig;
-  return JSON.stringify({ ...adventure, modelConfig }, null, 2);
+  return JSON.stringify(sanitizeAdventureForPersistence(adventure), null, 2);
 }
 
 export function importAdventureJson(text: string, duplicate = false): Adventure {
@@ -22,6 +21,5 @@ export function importAdventureJson(text: string, duplicate = false): Adventure 
         updatedAt: timestamp,
       }
     : { ...parsed, updatedAt: timestamp };
-  const { apiKey: _apiKey, ...modelConfig } = adventure.modelConfig ?? {};
-  return normalizeAdventure({ ...adventure, modelConfig });
+  return normalizeAdventure(sanitizeAdventureForPersistence(adventure as Adventure));
 }

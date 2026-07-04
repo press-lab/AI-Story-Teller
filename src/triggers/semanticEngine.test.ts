@@ -3,12 +3,14 @@ import {
   runSemanticPostTurnEvaluation,
   runManualBrainUpdate,
   runMemoryCycle,
+  runMemoryReconcile,
   runPlotAIBuilder,
   runRememberThis,
   runStoryCardAIBuilder,
 } from "./semanticEngine";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard, makeTriggerRule } from "../state/defaults";
 import { adventureReducer } from "../state/adventureReducer";
+import { storyCardContextContent } from "../memory/storyCardPolicy";
 import type { Adventure } from "../types/adventure";
 
 vi.mock("../providers/openAICompatible", () => ({
@@ -502,6 +504,122 @@ describe("runRememberThis", () => {
 });
 
 describe("AI memory builders", () => {
+  it("reconciles recent entries into deterministic target proposals with cleanup patches", async () => {
+    const plot = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "- Ambessa's coup is still the main political pressure.\n- Caitlyn's anger over Jinx is unresolved.",
+      active: true,
+    });
+    const pressure = makeComponent({
+      id: "component-pressure",
+      title: "Active Pressure",
+      type: "activePressure",
+      content: "Ambessa's coup is pressing from outside the workshop.",
+      active: true,
+    });
+    const ambessa = makeStoryCard({
+      id: "card-ambessa",
+      title: "Ambessa's Political Defeat",
+      type: "plot",
+      memoryMode: "living",
+      content: "Ambessa remains an active coup threat and uses Jinx as leverage.",
+      keys: ["Ambessa"],
+      active: true,
+      pinned: true,
+      protected: true,
+      compactKind: "coverStory",
+      compactStatus: "active",
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [plot, pressure],
+      storyCards: [ambessa],
+      memoryAutoApprove: {
+        ...baseAdventure().memoryAutoApprove,
+        plotEssentialsUpdate: true,
+        plotPressureUpdate: true,
+        storyCard: true,
+      },
+      messages: [
+        ...baseAdventure().messages,
+        {
+          id: "m3",
+          role: "user" as const,
+          content: "[Out of Character: Ambessa is defeated and no longer an active pressure.]",
+          createdAt: "2026-01-01T00:02:00.000Z",
+        },
+      ],
+    };
+
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        updates: [
+          {
+            targetId: "component-plot",
+            title: "Plot Essentials",
+            content: "- Ambessa is defeated and being sent home.\n- Caitlyn's anger over Jinx remains a personal conflict.",
+            rationale: "Plot Essentials should keep only the current operating truth.",
+          },
+          {
+            targetId: "component-pressure",
+            title: "Active Pressure",
+            content: "Caitlyn's fury over Jinx collides with Viktor's death in the workshop.",
+            rationale: "The active pressure has shifted away from Ambessa.",
+          },
+          {
+            targetId: "card-ambessa",
+            title: "Ambessa's Political Defeat",
+            memoryMode: "historical",
+            storyCardType: "plot",
+            content: "Ambessa was politically and militarily defeated and is being sent home.",
+            storyCardPatch: { pinned: true, protected: true, compactStatus: "active" },
+            rationale: "Ambessa should remain history, not active pressure.",
+          },
+        ],
+      }),
+      raw: {},
+    });
+
+    const result = await runMemoryReconcile(adventure, providerConfig, {
+      directive: "Ambessa is defeated and no longer an active pressure.",
+      entryCount: 20,
+      includeBrains: false,
+    });
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    const proposals = result.actions.filter(
+      (action): action is Extract<typeof result.actions[number], { type: "ADD_MEMORY_PROPOSAL" }> =>
+        action.type === "ADD_MEMORY_PROPOSAL",
+    );
+    expect(proposals).toHaveLength(3);
+    expect(proposals.map((action) => action.proposal.targetId)).toEqual([
+      "component-plot",
+      "component-pressure",
+      "card-ambessa",
+    ]);
+    const ambessaProposal = proposals.find((action) => action.proposal.targetId === "card-ambessa")?.proposal;
+    expect(ambessaProposal?.storyCardPatch).toMatchObject({
+      pinned: false,
+      protected: false,
+      inclusionPolicy: "triggered",
+      compactStatus: "resolved",
+    });
+
+    const reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
+    const updatedCard = reduced.storyCards.find((card) => card.id === "card-ambessa");
+    expect(updatedCard).toMatchObject({
+      pinned: false,
+      protected: false,
+      inclusionPolicy: "triggered",
+      compactStatus: "resolved",
+    });
+    expect(updatedCard ? storyCardContextContent(updatedCard) : "").toContain("defeated");
+    expect(reduced.components.find((component) => component.id === "component-pressure")?.content)
+      .toContain("Caitlyn's fury");
+  });
+
   it("drafts a living auto-updating Story Card proposal from a guided request", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({

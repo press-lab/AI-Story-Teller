@@ -1,5 +1,6 @@
 import type { Adventure, Message, ProviderConfig, StoryCard, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
 import { STORY_CARD_BEST_PRACTICES, TRIGGER_BEST_PRACTICES } from "../ai/authoringBestPractices";
 import { storyCardContextContent } from "./storyCardPolicy";
 
@@ -26,17 +27,7 @@ export interface AuditRecommendation {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 function resolvedProviderConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
-  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
-  if (bg?.baseUrl) {
-    return {
-      ...providerConfig,
-      baseUrl: bg.baseUrl,
-      apiKey: bg.apiKey ?? providerConfig.apiKey,
-      model: bg.model || providerConfig.model,
-      promptCaching: bg.baseUrl === providerConfig.baseUrl ? providerConfig.promptCaching : undefined,
-    };
-  }
-  return { ...providerConfig, model: adventure.semanticEvaluationSettings.evaluationModel || providerConfig.model };
+  return resolveBackgroundProviderConfig(adventure, providerConfig);
 }
 
 // ── Message helpers ───────────────────────────────────────────────────────────
@@ -342,8 +333,10 @@ export async function runStoryCardAudit(
         ],
       });
       llmRecs = parseLLMResponse(response.content);
-    } catch {
-      // LLM failure — return deterministic results only
+    } catch (err) {
+      const issue = backgroundProviderConfigIssue(adventure);
+      const cause = err instanceof Error ? err.message : String(err);
+      throw new Error([issue, `Story Card cleanup AI pass failed: ${cause}`].filter(Boolean).join(" "));
     }
 
     // Drop LLM recs for cards already handled deterministically

@@ -448,8 +448,16 @@ export interface MemoryProposal {
   storyCardType?: StoryCardType;
   autoUpdate?: boolean;
   autoUpdateCooldownTurns?: number;
+  storyCardPatch?: Partial<Pick<StoryCard, "active" | "pinned" | "protected" | "inclusionPolicy" | "priority" | "state" | "compactKind" | "compactStatus">>;
+  componentPatch?: Partial<Pick<ComponentEntry, "active" | "pinned" | "protected" | "inclusionPolicy" | "priority" | "state" | "autoUpdate" | "autoUpdateCooldownTurns">>;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+}
+
+export interface MemoryReconcileRequest {
+  directive: string;
+  entryCount: number;
+  includeBrains: boolean;
 }
 
 export type StoryCardAIBuilderIntent =

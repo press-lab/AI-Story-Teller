@@ -1,6 +1,7 @@
 import type {
   Adventure,
   ArcPacingState,
+  BackgroundProviderConfig,
   BrainEntry,
   ComponentEntry,
   MemoryAutoApproveSettings,
@@ -463,6 +464,39 @@ function persistedProviderConfig(config: ProviderConfig | undefined): Partial<Pr
   return persisted;
 }
 
+export function persistedBackgroundProviderConfig(
+  config: BackgroundProviderConfig | undefined,
+): BackgroundProviderConfig | undefined {
+  if (!config) return undefined;
+  const baseUrl = config.baseUrl?.trim() ?? "";
+  const model = config.model?.trim() ?? "";
+  if (!baseUrl && !model) return undefined;
+  return { baseUrl, model };
+}
+
+export function persistedSemanticEvaluationSettings(
+  settings: SemanticEvaluationSettings | undefined,
+): SemanticEvaluationSettings {
+  const merged = {
+    ...defaultSemanticEvaluationSettings,
+    ...(settings ?? {}),
+    semanticEvalEveryNTurns: settings?.semanticEvalEveryNTurns ?? 1,
+  };
+  const backgroundProviderConfig = persistedBackgroundProviderConfig(merged.backgroundProviderConfig);
+  return {
+    ...merged,
+    ...(backgroundProviderConfig ? { backgroundProviderConfig } : { backgroundProviderConfig: undefined }),
+  };
+}
+
+export function sanitizeAdventureForPersistence(adventure: Adventure): Adventure {
+  return {
+    ...adventure,
+    modelConfig: persistedProviderConfig(adventure.modelConfig) as ProviderConfig,
+    semanticEvaluationSettings: persistedSemanticEvaluationSettings(adventure.semanticEvaluationSettings),
+  };
+}
+
 export function normalizeAdventure(adventure: Adventure): Adventure {
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   const messages = removeMirroredOpeningMessage(adventure);
@@ -578,11 +612,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       condition: rule.condition ?? "",
       updatePrompt: rule.updatePrompt ?? "",
     })),
-    semanticEvaluationSettings: {
-      ...defaultSemanticEvaluationSettings,
-      ...(adventure.semanticEvaluationSettings ?? {}),
-      semanticEvalEveryNTurns: adventure.semanticEvaluationSettings?.semanticEvalEveryNTurns ?? 1,
-    },
+    semanticEvaluationSettings: persistedSemanticEvaluationSettings(adventure.semanticEvaluationSettings),
     memoryAutoApprove: {
       ...defaultMemoryAutoApproveSettings,
       ...(adventure.memoryAutoApprove ?? {}),

@@ -51,11 +51,20 @@ describe("API key leak regression", () => {
   it("strips provider API keys from IndexedDB, export JSON, and GitHub cloud sync payloads", async () => {
     const adventure = createDefaultAdventure("Secret Safety");
     adventure.modelConfig = { ...adventure.modelConfig, apiKey: SECRET };
+    adventure.semanticEvaluationSettings = {
+      ...adventure.semanticEvaluationSettings,
+      backgroundProviderConfig: {
+        baseUrl: "https://background.example.com/v1",
+        apiKey: SECRET,
+        model: "background-model",
+      },
+    };
 
     await saveAdventure(adventure);
     const loaded = await getAdventure(adventure.id);
     expect(JSON.stringify(loaded)).not.toContain(SECRET);
     expect(loaded?.modelConfig.apiKey).toBeUndefined();
+    expect(loaded?.semanticEvaluationSettings.backgroundProviderConfig?.apiKey).toBeUndefined();
 
     const exported = exportAdventureJson(adventure);
     expect(exported).not.toContain(SECRET);

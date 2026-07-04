@@ -961,6 +961,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             // Tag as a living card so the UI can flag it; "living" marks an auto-managed, self-archiving card.
             state: Array.from(new Set([...(preparedExisting.state ? preparedExisting.state.split(/\s+/) : []), "memoryProposal", "living"])).join(" "),
             ...automationPatch(preparedExisting),
+            ...proposal.storyCardPatch,
           }),
           proposalMemoryMeta("append"),
         );
@@ -978,6 +979,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             sourceTurnIds: appendSourceTurnIds(existing.sourceTurnIds, proposal.sourceTurnId),
             state: Array.from(new Set([...(existing.state ? existing.state.split(/\s+/) : []), "memoryProposal"])).join(" "),
             ...automationPatch(existing),
+            ...proposal.storyCardPatch,
           }),
           proposalMemoryMeta("append"),
         );
@@ -999,6 +1001,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           sourceTurnIds: appendSourceTurnIds(existing.sourceTurnIds, proposal.sourceTurnId),
           state: [existing.state, "memoryProposal"].filter(Boolean).join(" "),
           ...automationPatch(existing),
+          ...proposal.storyCardPatch,
         }),
         proposalMemoryMeta("replace"),
       );
@@ -1017,6 +1020,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
           autoUpdateCooldownTurns: proposal.autoUpdateCooldownTurns ?? 3,
           sourceTurnIds: appendSourceTurnIds(undefined, proposal.sourceTurnId),
           state: "memoryProposal",
+          ...proposal.storyCardPatch,
         })),
         proposalMemoryMeta("create"),
       );
@@ -1081,7 +1085,12 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     const component = target
       ? recordComponentMemoryUpdate(
           target,
-          { ...target, content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content, lastAutoUpdateTurn: turn },
+          {
+            ...target,
+            content: (proposal.appendContent && target.content.trim()) ? `${target.content.trim()}\n${proposal.content}` : proposal.content,
+            lastAutoUpdateTurn: turn,
+            ...proposal.componentPatch,
+          },
           proposalMemoryMeta(proposal.appendContent && target.content.trim() ? "append" : "replace"),
         )
       : recordComponentMemoryUpdate(
@@ -1094,6 +1103,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
             alwaysOn: false,
             pinned: false,
             priority: 250,
+            ...proposal.componentPatch,
           }),
           proposalMemoryMeta("create"),
         );
@@ -1117,7 +1127,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
       return {
         components: upsertById(
           state.components,
-          recordComponentMemoryUpdate(existing, { ...existing, content: proposal.content, lastAutoUpdateTurn: turn }, proposalMemoryMeta("replace")),
+          recordComponentMemoryUpdate(existing, { ...existing, content: proposal.content, lastAutoUpdateTurn: turn, ...proposal.componentPatch }, proposalMemoryMeta("replace")),
         ),
       };
     }
@@ -1131,6 +1141,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         alwaysOn: false,
         pinned: false,
         priority: defaultPriority,
+        ...proposal.componentPatch,
       }),
       proposalMemoryMeta("create"),
     );
@@ -1150,7 +1161,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
         state.components,
         recordComponentMemoryUpdate(
           arcComp,
-          { ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn },
+          { ...arcComp, content: newContent, lastAutoUpdateTurn: state.activeState.turn, ...proposal.componentPatch },
           proposalMemoryMeta(existing ? "append" : "replace"),
         ),
       ),
@@ -1627,6 +1638,9 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         ? state.storyCards.find((card) => card.id === clean.targetId)
         : undefined;
       const isLivingUpdate = isUpdate && targetStoryCard ? isLivingStoryCard(targetStoryCard) : false;
+      const hasMemoryPatch =
+        Boolean(clean.storyCardPatch && Object.keys(clean.storyCardPatch).length > 0) ||
+        Boolean(clean.componentPatch && Object.keys(clean.componentPatch).length > 0);
       const matchesTarget = (p: MemoryProposal) =>
         p.proposedType === clean.proposedType &&
         normalizeProposalTitle(p.title) === normTitle &&
@@ -1658,6 +1672,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const duplicatesExistingTargetContent =
         clean.proposedType === "storyCard" &&
         isUpdate &&
+        !hasMemoryPatch &&
         Boolean(targetStoryCard) &&
         (
           contentLooksDuplicate(targetStoryCard?.content ?? "", clean.content) ||
@@ -1665,6 +1680,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
         );
       const duplicatesCurrentPressure =
         clean.proposedType === "plotPressureUpdate" &&
+        !hasMemoryPatch &&
         state.components.some(
           (component) =>
             component.type === "activePressure" &&

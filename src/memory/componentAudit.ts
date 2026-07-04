@@ -1,5 +1,6 @@
 import type { Adventure, ComponentEntry, ComponentType, Message, ProviderConfig } from "../types/adventure";
 import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
 import { lastNTurns } from "./storyCardAudit";
 
 export type ComponentAuditAction = "edit" | "delete" | "create";
@@ -49,17 +50,7 @@ const VALID_TYPES = new Set<ComponentType>([
 ]);
 
 function resolvedProviderConfig(adventure: Adventure, providerConfig: ProviderConfig): ProviderConfig {
-  const bg = adventure.semanticEvaluationSettings.backgroundProviderConfig;
-  if (bg?.baseUrl) {
-    return {
-      ...providerConfig,
-      baseUrl: bg.baseUrl,
-      apiKey: bg.apiKey ?? providerConfig.apiKey,
-      model: bg.model || providerConfig.model,
-      promptCaching: bg.baseUrl === providerConfig.baseUrl ? providerConfig.promptCaching : undefined,
-    };
-  }
-  return { ...providerConfig, model: adventure.semanticEvaluationSettings.evaluationModel || providerConfig.model };
+  return resolveBackgroundProviderConfig(adventure, providerConfig);
 }
 
 function formatMessages(messages: Message[]): string {
@@ -255,8 +246,10 @@ export async function runComponentAudit(
         ],
       });
       llmRecs = parseLLMResponse(response.content);
-    } catch {
-      // LLM failure - return deterministic results only.
+    } catch (err) {
+      const issue = backgroundProviderConfigIssue(adventure);
+      const cause = err instanceof Error ? err.message : String(err);
+      throw new Error([issue, `Component cleanup AI pass failed: ${cause}`].filter(Boolean).join(" "));
     }
     llmRecs = llmRecs.filter((rec) => !rec.componentId || !flaggedDeleteIds.has(rec.componentId));
   }

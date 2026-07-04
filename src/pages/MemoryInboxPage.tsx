@@ -1,21 +1,36 @@
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
-import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType, StoryCardType } from "../types/adventure";
+import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType, MemoryReconcileRequest, StoryCardType } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, NumberInput, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, JsonTextarea, NumberInput, commaList, fromCommaList } from "./shared";
 
-const proposalTypes: MemoryProposalType[] = ["storyCard", "brainUpdate", "plotEssentialsUpdate", "plotPressureUpdate", "arcProposal", "summaryUpdate", "ignore"];
+const proposalTypes: MemoryProposalType[] = [
+  "storyCard",
+  "brainUpdate",
+  "plotEssentialsUpdate",
+  "currentArcUpdate",
+  "arcProposal",
+  "plotPressureUpdate",
+  "plotMomentumUpdate",
+  "summaryUpdate",
+  "ignore",
+];
 const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 
 interface MemoryInboxPageProps extends AdventurePageProps {
   onRegenerateProposal?: (proposalId: string) => Promise<void>;
+  onReconcileMemory?: (request: MemoryReconcileRequest) => Promise<void>;
+  loading?: boolean;
 }
 
-export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: MemoryInboxPageProps) {
+export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onReconcileMemory, loading = false }: MemoryInboxPageProps) {
   const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [sourceText, setSourceText] = useState("");
+  const [reconcileDirective, setReconcileDirective] = useState("");
+  const [reconcileEntryCount, setReconcileEntryCount] = useState(20);
+  const [reconcileIncludeBrains, setReconcileIncludeBrains] = useState(true);
   const [search, setSearch] = useState("");
   const searchLower = search.toLowerCase().trim();
   const visibleProposals = allProposals.filter((proposal) => !searchLower
@@ -70,6 +85,16 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
     setSourceText("");
   }
 
+  async function runReconcile() {
+    const directive = reconcileDirective.trim();
+    if (!directive || !onReconcileMemory) return;
+    await onReconcileMemory({
+      directive,
+      entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
+      includeBrains: reconcileIncludeBrains,
+    });
+  }
+
   const autoApprove = adventure.memoryAutoApprove;
 
   function setAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
@@ -121,6 +146,35 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal }: M
           <CheckboxField label="Story Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
           <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
         </div>
+      </details>
+
+      <details className="panel">
+        <summary>Check Recent Entries</summary>
+        <div className="grid two">
+          <Field label="Entries to check">
+            <NumberInput
+              value={reconcileEntryCount}
+              min={1}
+              onChange={(value) => setReconcileEntryCount(Math.max(1, Math.min(100, Math.round(value || 20))))}
+            />
+          </Field>
+          <CheckboxField
+            label="Include Character Self"
+            checked={reconcileIncludeBrains}
+            onChange={setReconcileIncludeBrains}
+          />
+        </div>
+        <Field label="What changed?">
+          <textarea
+            rows={3}
+            value={reconcileDirective}
+            onChange={(event) => setReconcileDirective(event.target.value)}
+            placeholder="Example: Ambessa is defeated and no longer an active pressure; keep Caitlyn angry about Jinx as a personal conflict."
+          />
+        </Field>
+        <button type="button" disabled={!onReconcileMemory || loading || !reconcileDirective.trim()} onClick={() => void runReconcile()}>
+          {loading ? "Checking..." : "Check & Draft Updates"}
+        </button>
       </details>
 
       <details className="panel">
@@ -332,6 +386,36 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
                 onChange={(value) => onUpdate(proposal, { autoUpdateCooldownTurns: value })}
               />
             </Field>
+          </div>
+        )}
+        {(proposal.storyCardPatch || proposal.componentPatch) && (
+          <div className="grid two">
+            {proposal.storyCardPatch && (
+              <Field label="Story Card Patch">
+                {isPending ? (
+                  <JsonTextarea
+                    rows={3}
+                    value={proposal.storyCardPatch}
+                    onValidChange={(storyCardPatch) => onUpdate(proposal, { storyCardPatch })}
+                  />
+                ) : (
+                  <textarea rows={3} value={JSON.stringify(proposal.storyCardPatch, null, 2)} readOnly />
+                )}
+              </Field>
+            )}
+            {proposal.componentPatch && (
+              <Field label="Plot Patch">
+                {isPending ? (
+                  <JsonTextarea
+                    rows={3}
+                    value={proposal.componentPatch}
+                    onValidChange={(componentPatch) => onUpdate(proposal, { componentPatch })}
+                  />
+                ) : (
+                  <textarea rows={3} value={JSON.stringify(proposal.componentPatch, null, 2)} readOnly />
+                )}
+              </Field>
+            )}
           </div>
         )}
       </details>
