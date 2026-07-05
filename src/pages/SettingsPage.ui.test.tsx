@@ -198,6 +198,7 @@ describe("SettingsPage API throttle controls", () => {
         onUiPreferencesChange={vi.fn()}
         globalAdventureSettings={defaultGlobalAdventureSettings}
         onGlobalAdventureSettingsChange={vi.fn()}
+        runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
         hideDeveloperControls
         backendSession={{
           sessionToken: "session-test",
@@ -233,6 +234,8 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByRole("button", { name: "Local Google Stub" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Import source")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Backend import JSON")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
@@ -262,6 +265,7 @@ describe("SettingsPage API throttle controls", () => {
           onUiPreferencesChange={vi.fn()}
           globalAdventureSettings={defaultGlobalAdventureSettings}
           onGlobalAdventureSettingsChange={vi.fn()}
+          runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
           hideDeveloperControls
           backendModelMode={mode}
           onBackendModelModeChange={(next) => {
@@ -323,6 +327,7 @@ describe("SettingsPage API throttle controls", () => {
         onUiPreferencesChange={vi.fn()}
         globalAdventureSettings={defaultGlobalAdventureSettings}
         onGlobalAdventureSettingsChange={vi.fn()}
+        runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
         backendSession={{
           sessionToken: "session-admin",
           user: {
@@ -346,7 +351,15 @@ describe("SettingsPage API throttle controls", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Models" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Models" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Background Cost" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Personal Cloud Sync")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Import source")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Backend import JSON")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByText("Model Source")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Platform Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();

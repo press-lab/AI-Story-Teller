@@ -124,7 +124,9 @@ export function SettingsPage({
   onLoadDevelopmentAdventure,
   onLoadDispatchAdventure,
 }: SettingsPageProps) {
-  const advanced = uiPreferences.showAdvancedSettings && !hideDeveloperControls;
+  const isBackendMode = runtimeConfig ? runtimeConfig.mode !== "local" : false;
+  const showLocalDeveloperControls = !isBackendMode && !hideDeveloperControls;
+  const advanced = uiPreferences.showAdvancedSettings && showLocalDeveloperControls;
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState("");
   const [backendInviteToken, setBackendInviteToken] = useState("");
@@ -137,10 +139,10 @@ export function SettingsPage({
   const [backendImportTitle, setBackendImportTitle] = useState("");
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
-  const isBackendMode = runtimeConfig?.mode !== "local";
-  const showRuntimeTechnicalControls = !hideDeveloperControls;
+  const showRuntimeTechnicalControls = showLocalDeveloperControls;
   const showBackendModelSource = isBackendMode && Boolean(backendSession);
-  const showBackendAuthControls = !backendSession || !hideDeveloperControls;
+  const showBackendAuthControls = isBackendMode && !backendSession;
+  const showBackendImportControls = false;
 
   function updateUi(patch: Partial<UiPreferences>) {
     onUiPreferencesChange({ ...uiPreferences, ...patch });
@@ -299,15 +301,18 @@ export function SettingsPage({
       <div className="editor-page-summary">
         <p className="muted">
           {hideDeveloperControls
-            ? "App-wide controls for reading comfort, backend account access, and imports."
-            : "App-wide controls for reading comfort, model routing, background cost, memory detection, and sync."}
-          The common controls stay first; advanced controls stay grouped below.
+            ? "App-wide controls for reading comfort and personal account preferences."
+            : isBackendMode
+              ? "App-wide controls for reading comfort and your optional personal model override. Platform controls live in Admin."
+              : "App-wide controls for reading comfort, local model routing, background cost, memory detection, and sync."}
+          The common controls stay first; platform-wide controls stay out of user settings.
         </p>
         <div className="editor-stat-row" aria-label="Settings summary">
           <span>{uiPreferences.density}</span>
           <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
-          {!hideDeveloperControls && <span>{activeModelLabel}</span>}
-          {!hideDeveloperControls && <span>background {backgroundStatus}</span>}
+          {showLocalDeveloperControls && <span>{activeModelLabel}</span>}
+          {showLocalDeveloperControls && <span>background {backgroundStatus}</span>}
+          {isBackendMode && showBackendModelSource && <span>{backendModelMode === "personal" ? "personal model" : "platform model"}</span>}
           {advanced && <span>advanced</span>}
         </div>
       </div>
@@ -367,7 +372,7 @@ export function SettingsPage({
             checked={uiPreferences.showTokenEstimates}
             onChange={(showTokenEstimates) => updateUi({ showTokenEstimates })}
           />
-          {!hideDeveloperControls && (
+          {showLocalDeveloperControls && (
             <CheckboxField
               label="Show advanced settings"
               checked={uiPreferences.showAdvancedSettings}
@@ -378,7 +383,7 @@ export function SettingsPage({
 
         {/* ── Models ────────────────────────────────── */}
         <article className="panel settings-card settings-runtime-panel">
-          <h3>{hideDeveloperControls ? "Account" : "Runtime"}</h3>
+          <h3>{isBackendMode ? "Account" : "Runtime"}</h3>
           {showRuntimeTechnicalControls && (
             <>
               <Field label="Execution mode">
@@ -522,40 +527,46 @@ export function SettingsPage({
             </details>
           )}
 
-          <div className="grid two">
-            <Field label="Import source">
-              <select
-                value={backendImportSource}
-                onChange={(event) => setBackendImportSource(event.target.value as BackendImportRequest["sourceType"])}
-              >
-                <option value="aist">AIST JSON</option>
-                <option value="aid">AI Dungeon JSON</option>
-                <option value="githubSave">GitHub save JSON</option>
-              </select>
-            </Field>
-          </div>
-          <Field label="Backend import title">
-            <input value={backendImportTitle} onChange={(event) => setBackendImportTitle(event.target.value)} />
-          </Field>
-          <Field label="Backend import JSON">
-            <textarea
-              rows={5}
-              value={backendImportText}
-              onChange={(event) => setBackendImportText(event.target.value)}
-              placeholder="Paste AIST, AI Dungeon, or GitHub save JSON."
-            />
-          </Field>
-          <div className="toolbar">
-            <button type="button" onClick={() => void importBackendJson()} disabled={!backendSession || !backendImportText.trim()}>
-              Import to backend
-            </button>
-          </div>
-          <p className="muted">
-            Browser Local keeps IndexedDB, browser provider settings, JSON backup/restore, and GitHub saves independent from the backend.
-          </p>
+          {showBackendImportControls && (
+            <>
+              <div className="grid two">
+                <Field label="Import source">
+                  <select
+                    value={backendImportSource}
+                    onChange={(event) => setBackendImportSource(event.target.value as BackendImportRequest["sourceType"])}
+                  >
+                    <option value="aist">AIST JSON</option>
+                    <option value="aid">AI Dungeon JSON</option>
+                    <option value="githubSave">GitHub save JSON</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Backend import title">
+                <input value={backendImportTitle} onChange={(event) => setBackendImportTitle(event.target.value)} />
+              </Field>
+              <Field label="Backend import JSON">
+                <textarea
+                  rows={5}
+                  value={backendImportText}
+                  onChange={(event) => setBackendImportText(event.target.value)}
+                  placeholder="Paste AIST, AI Dungeon, or GitHub save JSON."
+                />
+              </Field>
+              <div className="toolbar">
+                <button type="button" onClick={() => void importBackendJson()} disabled={!backendSession || !backendImportText.trim()}>
+                  Import to backend
+                </button>
+              </div>
+            </>
+          )}
+          {!isBackendMode && (
+            <p className="muted">
+              Browser Local keeps IndexedDB, browser provider settings, JSON backup/restore, and GitHub saves independent from the backend.
+            </p>
+          )}
         </article>
 
-        {!hideDeveloperControls && (
+        {showLocalDeveloperControls && (
         <article className="panel settings-card settings-models-panel">
           <div className="preset-list-header">
             <h3 style={{ margin: 0 }}>Models</h3>
@@ -696,7 +707,7 @@ export function SettingsPage({
         )}
 
         {/* ── Background Cost Mode ──────────────────── */}
-        {!hideDeveloperControls && (() => {
+        {showLocalDeveloperControls && (() => {
           const sem = activeSettings.semanticEvaluationSettings;
           const bud = activeSettings.tokenBudgetSettings;
           const mem = globalAdventureSettings.memoryDetectionSettings;
@@ -991,7 +1002,7 @@ export function SettingsPage({
         )}
 
         {/* ── Cloud Sync ────────────────────────────── */}
-        {!hideDeveloperControls && cloudSyncSettings && onCloudSyncSettingsChange && (
+        {showLocalDeveloperControls && cloudSyncSettings && onCloudSyncSettingsChange && (
           <article className="panel settings-card settings-section-full cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
             <div className="panel-heading">
               <div>
