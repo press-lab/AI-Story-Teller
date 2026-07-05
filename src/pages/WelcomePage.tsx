@@ -1,11 +1,8 @@
 import { useState } from "react";
 import type { BackendSessionState } from "../runtime/backendApi";
-import type { RuntimeConfig } from "../runtime/runtimeConfig";
 import { Field } from "./shared";
 
 interface WelcomePageProps {
-  runtimeConfig: RuntimeConfig;
-  onRuntimeConfigChange: (config: RuntimeConfig) => void;
   onSignupPassword: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
   onVerifyEmail: (token: string) => Promise<BackendSessionState>;
   onLoginPassword: (input: { email: string; password: string }) => Promise<BackendSessionState>;
@@ -13,8 +10,6 @@ interface WelcomePageProps {
 }
 
 export function WelcomePage({
-  runtimeConfig,
-  onRuntimeConfigChange,
   onSignupPassword,
   onVerifyEmail,
   onLoginPassword,
@@ -24,7 +19,6 @@ export function WelcomePage({
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
-  const [verificationToken, setVerificationToken] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -63,24 +57,13 @@ export function WelcomePage({
             <div>
               <p className="eyebrow">Account</p>
               <h2>Welcome</h2>
-              <p className="muted">Sign in with an invited account. The API URL should already point at the owner-hosted server.</p>
+              <p className="muted">Create an invited account, log in, or continue with Google after entering an invite token.</p>
             </div>
           </div>
 
           {status && <p className="notice">{status}</p>}
 
           <div className="grid two">
-            <Field label="Backend API URL">
-              <input
-                value={runtimeConfig.apiBaseUrl}
-                onChange={(event) => onRuntimeConfigChange({
-                  ...runtimeConfig,
-                  mode: runtimeConfig.mode === "local" ? "backendLocal" : runtimeConfig.mode,
-                  apiBaseUrl: event.target.value,
-                })}
-                placeholder="https://your-public-api-domain.example"
-              />
-            </Field>
             <Field label="Invite token">
               <input value={inviteToken} onChange={(event) => setInviteToken(event.target.value)} />
             </Field>
@@ -92,9 +75,6 @@ export function WelcomePage({
             </Field>
             <Field label="Password">
               <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </Field>
-            <Field label="Verification token">
-              <input value={verificationToken} onChange={(event) => setVerificationToken(event.target.value)} />
             </Field>
           </div>
 
@@ -110,21 +90,11 @@ export function WelcomePage({
                   password,
                   displayName: displayName.trim() || undefined,
                 });
-                setVerificationToken(result.verificationToken);
-                setStatus("Signup created. Verify the account to continue.");
-              })}
-            >
-              Sign up
-            </button>
-            <button
-              type="button"
-              disabled={busy || !verificationToken.trim()}
-              onClick={() => void run("Verifying", async () => {
-                await onVerifyEmail(verificationToken);
+                await onVerifyEmail(result.verificationToken);
                 setStatus("Signed in.");
               })}
             >
-              Verify
+              Sign up
             </button>
             <button
               type="button"
@@ -138,10 +108,10 @@ export function WelcomePage({
             </button>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !inviteToken.trim()}
               onClick={() => void run("Opening Google", async () => {
                 const result = await onStartGoogleOAuth({
-                  inviteToken: inviteToken.trim() || undefined,
+                  inviteToken: inviteToken.trim(),
                   returnTo: window.location.href,
                 });
                 window.location.assign(result.authUrl);

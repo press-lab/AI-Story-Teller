@@ -33,6 +33,20 @@ internet -> tunnel provider HTTPS edge -> outbound tunnel process on your machin
 
 With that shape, your router does not need inbound port forwarding for the API. Leave Windows Firewall closed to inbound public traffic.
 
+If the owner has a Cloudflare account but no domain, use a Quick Tunnel for temporary UAT:
+
+```sh
+cloudflared tunnel --url http://127.0.0.1:8787
+```
+
+Cloudflare prints a random `https://....trycloudflare.com` URL. Use that as `AIST_PUBLIC_API_BASE_URL`:
+
+```sh
+npm.cmd run pages:set-api -- https://random-name.trycloudflare.com
+```
+
+Quick Tunnel URLs are not stable. If the tunnel restarts and the URL changes, rerun `pages:set-api` with the new URL and wait for GitHub Pages to redeploy.
+
 ## Start The Owner Server
 
 Copy `.env.example` to `.env`, then set the provider, admin, Google OAuth, and policy values.

@@ -12,7 +12,7 @@ The deployed app is account-gated. Without a backend session, users see only the
 
 **Local Backend** is the account-backed test setup. For public UAT, the owner runs one shared local server and GitHub Pages points to that server through an HTTPS tunnel/domain. Testers do not install or run the backend. Backend mode adds invite-gated signup, Google or email/password login, backend adventure saves, Profile, Explore, scenario publishing, admin controls, policy gates, and backend-owned model configuration.
 
-Settings -> Runtime is where the backend API URL is visible. In the public UAT build it should already point at the owner-hosted server.
+The backend API URL is built into the public UAT deployment. Normal users do not enter or edit it.
 
 ## 2. Create Or Sign Into An Account
 

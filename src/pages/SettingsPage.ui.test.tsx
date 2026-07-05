@@ -229,6 +229,9 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Local Google Stub" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runtime" })).toBeInTheDocument();
   });
 

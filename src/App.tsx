@@ -1097,8 +1097,6 @@ export default function App() {
   if (!backendSession?.sessionToken) {
     return (
       <WelcomePage
-        runtimeConfig={normalizedRuntimeConfig}
-        onRuntimeConfigChange={setRuntimeConfig}
         onSignupPassword={(input) => signupBackendPassword(
           { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
           input,

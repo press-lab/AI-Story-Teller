@@ -149,6 +149,8 @@ export function SettingsPage({
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
   const isBackendAdmin = backendSession?.user.role === "admin";
+  const showRuntimeTechnicalControls = !hideDeveloperControls;
+  const showBackendAuthControls = !backendSession || !hideDeveloperControls;
 
   function updateUi(patch: Partial<UiPreferences>) {
     onUiPreferencesChange({ ...uiPreferences, ...patch });
@@ -432,74 +434,88 @@ export function SettingsPage({
         {/* ── Models ────────────────────────────────── */}
         <article className="panel settings-card settings-runtime-panel">
           <h3>Runtime</h3>
-          <Field label="Execution mode">
-            <select
-              value={runtimeConfig?.mode ?? "local"}
-              onChange={(event) => updateRuntime({ mode: event.target.value as RuntimeMode })}
-            >
-              <option value="local">{runtimeModeLabel("local")}</option>
-              <option value="backendLocal">{runtimeModeLabel("backendLocal")}</option>
-              <option value="hostedBackend">{runtimeModeLabel("hostedBackend")}</option>
-            </select>
-          </Field>
-          <Field label="Backend API URL">
-            <input
-              value={runtimeConfig?.apiBaseUrl ?? "http://127.0.0.1:8787"}
-              onChange={(event) => updateRuntime({ apiBaseUrl: event.target.value })}
-              placeholder="http://127.0.0.1:8787"
-            />
-          </Field>
+          {showRuntimeTechnicalControls && (
+            <>
+              <Field label="Execution mode">
+                <select
+                  value={runtimeConfig?.mode ?? "local"}
+                  onChange={(event) => updateRuntime({ mode: event.target.value as RuntimeMode })}
+                >
+                  <option value="local">{runtimeModeLabel("local")}</option>
+                  <option value="backendLocal">{runtimeModeLabel("backendLocal")}</option>
+                  <option value="hostedBackend">{runtimeModeLabel("hostedBackend")}</option>
+                </select>
+              </Field>
+              <Field label="Backend API URL">
+                <input
+                  value={runtimeConfig?.apiBaseUrl ?? "http://127.0.0.1:8787"}
+                  onChange={(event) => updateRuntime({ apiBaseUrl: event.target.value })}
+                  placeholder="http://127.0.0.1:8787"
+                />
+              </Field>
+            </>
+          )}
           <div className="editor-stat-row" aria-label="Backend account summary">
             <span>{backendSession ? backendSession.user.email : "not signed in"}</span>
             <span>{backendSession ? backendSession.user.status : "local only"}</span>
           </div>
           {backendStatus && <p className="notice">{backendStatus}</p>}
 
-          <div className="grid two">
-            {!hideDeveloperControls && (
-              <Field label="Invite note">
-                <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
-              </Field>
-            )}
-            <Field label="Invite token">
-              <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
-            </Field>
-          </div>
-          {!hideDeveloperControls && (
-            <div className="toolbar">
-              <button type="button" onClick={() => void createBackendInviteLink()}>
-                Create invite
-              </button>
-            </div>
-          )}
+          {showBackendAuthControls && (
+            <>
+              <div className="grid two">
+                {!hideDeveloperControls && (
+                  <Field label="Invite note">
+                    <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
+                  </Field>
+                )}
+                <Field label="Invite token">
+                  <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
+                </Field>
+              </div>
+              {!hideDeveloperControls && (
+                <div className="toolbar">
+                  <button type="button" onClick={() => void createBackendInviteLink()}>
+                    Create invite
+                  </button>
+                </div>
+              )}
 
-          <div className="grid two">
-            <Field label="Email">
-              <input value={backendEmail} onChange={(event) => setBackendEmail(event.target.value)} />
-            </Field>
-            <Field label="Display name">
-              <input value={backendDisplayName} onChange={(event) => setBackendDisplayName(event.target.value)} />
-            </Field>
-            <Field label="Password">
-              <input type="password" value={backendPassword} onChange={(event) => setBackendPassword(event.target.value)} />
-            </Field>
-            <Field label="Verification token">
-              <input value={backendVerificationToken} onChange={(event) => setBackendVerificationToken(event.target.value)} />
-            </Field>
-          </div>
+              <div className="grid two">
+                <Field label="Email">
+                  <input value={backendEmail} onChange={(event) => setBackendEmail(event.target.value)} />
+                </Field>
+                <Field label="Display name">
+                  <input value={backendDisplayName} onChange={(event) => setBackendDisplayName(event.target.value)} />
+                </Field>
+                <Field label="Password">
+                  <input type="password" value={backendPassword} onChange={(event) => setBackendPassword(event.target.value)} />
+                </Field>
+                {!hideDeveloperControls && (
+                  <Field label="Verification token">
+                    <input value={backendVerificationToken} onChange={(event) => setBackendVerificationToken(event.target.value)} />
+                  </Field>
+                )}
+              </div>
+              <div className="toolbar">
+                <button type="button" onClick={() => void signupWithBackendPassword()}>
+                  Sign up
+                </button>
+                {!hideDeveloperControls && (
+                  <button type="button" onClick={() => void verifyBackendAccount()}>
+                    Verify
+                  </button>
+                )}
+                <button type="button" onClick={() => void loginWithBackendPassword()}>
+                  Log in
+                </button>
+                <button type="button" onClick={() => void startGoogleOAuth()} disabled={!backendInviteToken.trim()}>
+                  Continue with Google
+                </button>
+              </div>
+            </>
+          )}
           <div className="toolbar">
-            <button type="button" onClick={() => void signupWithBackendPassword()}>
-              Sign up
-            </button>
-            <button type="button" onClick={() => void verifyBackendAccount()}>
-              Verify
-            </button>
-            <button type="button" onClick={() => void loginWithBackendPassword()}>
-              Log in
-            </button>
-            <button type="button" onClick={() => void startGoogleOAuth()}>
-              Continue with Google
-            </button>
             <button type="button" onClick={() => void refreshBackendAccount()} disabled={!backendSession}>
               Refresh
             </button>

@@ -38,16 +38,15 @@ describe("WelcomePage", () => {
     vi.restoreAllMocks();
   });
 
-  it("signs up with an invite and surfaces the verification token", async () => {
+  it("signs up with an invite and verifies without exposing the verification token", async () => {
     const user = userEvent.setup();
     const onSignupPassword = vi.fn(async () => ({ verificationToken: "verify-token" }));
+    const onVerifyEmail = vi.fn(async () => session());
 
     render(
       <WelcomePage
-        runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
-        onRuntimeConfigChange={vi.fn()}
         onSignupPassword={onSignupPassword}
-        onVerifyEmail={vi.fn(async () => session())}
+        onVerifyEmail={onVerifyEmail}
         onLoginPassword={vi.fn(async () => session())}
         onStartGoogleOAuth={vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }))}
       />,
@@ -65,8 +64,9 @@ describe("WelcomePage", () => {
       password: "correct horse battery staple",
       displayName: "Player",
     });
-    expect(screen.getByDisplayValue("verify-token")).toBeInTheDocument();
-    expect(screen.getByText("Signup created. Verify the account to continue.")).toBeInTheDocument();
+    expect(onVerifyEmail).toHaveBeenCalledWith("verify-token");
+    expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
+    expect(screen.getByText("Signed in.")).toBeInTheDocument();
   });
 
   it("logs in existing users without exposing the app shell", async () => {
@@ -75,8 +75,6 @@ describe("WelcomePage", () => {
 
     render(
       <WelcomePage
-        runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
-        onRuntimeConfigChange={vi.fn()}
         onSignupPassword={vi.fn(async () => ({ verificationToken: "verify-token" }))}
         onVerifyEmail={vi.fn(async () => session())}
         onLoginPassword={onLoginPassword}
@@ -90,5 +88,19 @@ describe("WelcomePage", () => {
 
     expect(onLoginPassword).toHaveBeenCalledWith({ email: "player@example.com", password: "password" });
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
+  });
+
+  it("does not expose backend URL controls and requires an invite before Google", async () => {
+    render(
+      <WelcomePage
+        onSignupPassword={vi.fn(async () => ({ verificationToken: "verify-token" }))}
+        onVerifyEmail={vi.fn(async () => session())}
+        onLoginPassword={vi.fn(async () => session())}
+        onStartGoogleOAuth={vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }))}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
   });
 });

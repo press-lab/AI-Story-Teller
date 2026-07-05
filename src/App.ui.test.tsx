@@ -129,7 +129,8 @@ describe("App adventure tool workspace", () => {
     render(<App />);
 
     expect(screen.getByRole("heading", { name: "Sign in to continue." })).toBeInTheDocument();
-    expect(screen.getByLabelText("Backend API URL")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New Adventure" })).not.toBeInTheDocument();
   });
