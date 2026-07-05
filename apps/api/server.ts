@@ -233,8 +233,21 @@ async function handleAdventureRoute(
     return;
   }
   if (request.method === "POST" && segments[2] === "turn") {
-    const { body } = await readJsonBody<{ input: string }>(request);
-    const result = await db.updatePersistingOnError((data) => runBackendTurn(data, userId, adventureId, body.input ?? "", config));
+    const { body } = await readJsonBody<{
+      input: string;
+      mode?: "do" | "story" | "comms";
+      recordUserInput?: boolean;
+      providerCue?: string;
+      regenerateLastAssistant?: boolean;
+    }>(request);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendTurn(data, userId, adventureId, body.input ?? "", config, {
+        mode: body.mode,
+        recordUserInput: body.recordUserInput,
+        providerCue: body.providerCue,
+        regenerateLastAssistant: body.regenerateLastAssistant,
+      }),
+    );
     sendJson(response, 200, result, corsHeaders);
     return;
   }

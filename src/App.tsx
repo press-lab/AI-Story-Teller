@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { adventureReducer } from "./state/adventureReducer";
 import { saveAdventure } from "./db/adventureDb";
 import { defaultCloudSyncSettings } from "./sync/githubSync";
@@ -34,6 +34,28 @@ import { premadeAdventures } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import { defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
+import {
+  createBackendAdventureStore,
+  createBackendContextPreviewSource,
+  createBackendTurnRunner,
+  createLocalAdventureStore,
+  createUnavailableAdventureStore,
+} from "./runtime/adventureStore";
+import {
+  createBackendInvite,
+  createBackendScenario,
+  createBackendScenarioRevision,
+  importAndOpenBackendAdventure,
+  loadBackendSafetyAudit,
+  loadBackendSession,
+  loginBackendPassword,
+  publishBackendScenarioRevision,
+  signupBackendLocalGoogle,
+  signupBackendPassword,
+  verifyBackendEmail,
+  type BackendImportRequest,
+  type BackendSessionState,
+} from "./runtime/backendApi";
 
 type TabId =
   | "adventures"
@@ -144,7 +166,39 @@ export default function App() {
     "ai-story-teller-runtime-config",
     defaultRuntimeConfig,
   );
-  const normalizedRuntimeConfig = normalizeRuntimeConfig(runtimeConfig);
+  const [backendSession, setBackendSession] = useLocalStorage<BackendSessionState | null>(
+    "ai-story-teller-backend-session",
+    null,
+  );
+  const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
+  const backendMode = normalizedRuntimeConfig.mode !== "local";
+  const backendReady = backendMode && Boolean(backendSession?.sessionToken);
+  const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
+  const unavailableBackendStore = useMemo(
+    () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
+    [],
+  );
+  const backendAdventureStore = useMemo(
+    () => backendReady && backendSession
+      ? createBackendAdventureStore(normalizedRuntimeConfig, backendSession.sessionToken)
+      : undefined,
+    [backendReady, backendSession, normalizedRuntimeConfig],
+  );
+  const adventureStore = backendMode ? (backendAdventureStore ?? unavailableBackendStore) : localAdventureStore;
+  const storageLabel = backendMode ? "the local backend" : "IndexedDB";
+  const backendTurnRunner = useMemo(
+    () => backendReady && backendSession
+      ? createBackendTurnRunner(normalizedRuntimeConfig, backendSession.sessionToken)
+      : undefined,
+    [backendReady, backendSession, normalizedRuntimeConfig],
+  );
+  const backendContextPreview = useMemo(
+    () => backendReady && backendSession
+      ? createBackendContextPreviewSource(normalizedRuntimeConfig, backendSession.sessionToken)
+      : undefined,
+    [backendReady, backendSession, normalizedRuntimeConfig],
+  );
+  const reportLibraryError = useCallback((msg: string) => console.error(msg), []);
 
   // Migrate old default font size (15) to new default (20) for existing users
   useEffect(() => {
@@ -267,24 +321,33 @@ export default function App() {
     providerInitial;
 
   const library = useAdventureLibrary(
+    adventureStore,
+    storageLabel,
     setAdventure,
     setContextResult,
     (tab) => navigateTo(tab as TabId),
     () => setModalTab(undefined),
-    (msg) => console.error(msg),
+    reportLibraryError,
+    backendReady && backendSession
+      ? (text) => importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, { sourceType: "aist", text })
+      : undefined,
   );
 
-  useAdventureAutosave(adventure, setSaveStatus, () => void library.refreshAdventures());
+  const activeStoreHasAdventure = !adventure || library.adventures.some((entry) => entry.id === adventure.id);
+  useAdventureAutosave(activeStoreHasAdventure ? adventure : undefined, adventureStore, setSaveStatus, () => void library.refreshAdventures());
 
   const runtime = useAdventureRuntime(
     adventure,
     setAdventure,
     activePreset,
+    adventureStore,
     setSaveStatus,
     setContextResult,
     openTab,
     library.refreshAdventures,
     globalAdventureSettings.memoryDetectionSettings,
+    backendTurnRunner,
+    backendContextPreview,
   );
 
   async function saveSyncedAdventures(syncedAdventures: Adventure[]) {
@@ -299,15 +362,22 @@ export default function App() {
     await library.refreshAdventures();
   }
 
+  async function allLocalSavedAdventures(): Promise<Adventure[]> {
+    const summaries = await localAdventureStore.list();
+    const loaded = await Promise.all(summaries.map((summary) => localAdventureStore.get(summary.id)));
+    return loaded.filter((entry): entry is Adventure => Boolean(entry));
+  }
+
   const { cloudSyncStatus, pushCloudSync, pullCloudSync } = useCloudSyncController(
     cloudSyncSettings,
-    library.allSavedAdventures,
+    allLocalSavedAdventures,
     saveSyncedAdventures,
   );
 
   const gitHubSaves = useGitHubSaves(cloudSyncSettings, gitHubSaveSettings);
 
   useEffect(() => {
+    if (backendMode) return;
     if (!adventure || !adventure.autoSaveEnabled) return;
     void gitHubSaves.autoSaveIfDue(adventure);
     // intentional: fire only when the turn counter increments
@@ -316,6 +386,7 @@ export default function App() {
 
   useEffect(() => {
     const id = setInterval(() => {
+      if (backendMode) return;
       const current = adventure;
       if (current) void gitHubSaves.timedAutoSave(current);
     }, 60 * 1000); // check every minute; timedAutoSave gates on the adventure's configured interval
@@ -325,13 +396,14 @@ export default function App() {
   }, []);
 
   const applyGitHubSave = useCallback(async (loaded: Adventure) => {
+    if (backendMode) return;
     await saveAdventure(loaded);
     setAdventure(loaded);
     await library.refreshAdventures();
     setModalTab(undefined);
     navigateTo("dashboard");
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [library.refreshAdventures]); // setters and navigateTo are stable
+  }, [backendMode, library.refreshAdventures]); // setters and navigateTo are stable
 
   const gitHubSaveLoad = useGitHubSaveLoad(gitHubSaves.loadSave, applyGitHubSave);
 
@@ -347,6 +419,39 @@ export default function App() {
   // clear error whenever the user navigates away from any GitHub saves screen
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, modalTab]);
+
+  async function importToBackend(input: BackendImportRequest) {
+    if (!backendSession) throw new Error("Sign in to the local backend before importing.");
+    const next = await importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, input);
+    setAdventure(next);
+    setContextResult(undefined);
+    setModalTab(undefined);
+    navigateTo("dashboard");
+    await library.refreshAdventures();
+    return next;
+  }
+
+  async function publishCurrentAdventureScenario() {
+    if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
+    if (!adventure) throw new Error("Open an adventure before publishing a scenario revision.");
+    const scenario = await createBackendScenario(normalizedRuntimeConfig, backendSession, {
+      title: adventure.title,
+      description: "Local backend scenario draft.",
+      sourceAdventureId: adventure.id,
+    });
+    const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenario.id, {
+      title: adventure.title,
+      description: "Scenario revision created from the current adventure. Transcript and runtime memory are excluded.",
+      content: {
+        title: adventure.title,
+        openingScene: adventure.openingScene,
+        components: adventure.components,
+        storyCards: adventure.storyCards,
+        thumbnailImage: getAdventureThumbnail(adventure),
+      },
+    });
+    return publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
+  }
 
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
@@ -374,6 +479,15 @@ export default function App() {
           />
         );
       case "cloudSaves":
+        if (backendMode) {
+          return (
+            <section className="page editor-surface">
+              <div className="editor-page-summary">
+                <p className="muted">GitHub save slots are available in Browser Local mode only.</p>
+              </div>
+            </section>
+          );
+        }
         return (
           <CloudSavesPage
             adventure={adventure}
@@ -406,11 +520,45 @@ export default function App() {
             onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
             runtimeConfig={normalizedRuntimeConfig}
             onRuntimeConfigChange={setRuntimeConfig}
+            backendSession={backendSession}
+            onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
+            onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
+            onVerifyBackendEmail={async (token) => {
+              const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
+              setBackendSession(session);
+              return session;
+            }}
+            onLoginBackendPassword={async (input) => {
+              const session = await loginBackendPassword(normalizedRuntimeConfig, input);
+              setBackendSession(session);
+              return session;
+            }}
+            onSignupBackendGoogle={async (input) => {
+              const session = await signupBackendLocalGoogle(normalizedRuntimeConfig, input);
+              setBackendSession(session);
+              return session;
+            }}
+            onRefreshBackendSession={async () => {
+              if (!backendSession) throw new Error("No backend session is active.");
+              const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
+              const session = {
+                sessionToken: refreshed.sessionToken,
+                user: refreshed.user,
+                profile: refreshed.profile,
+                expiresAt: refreshed.expiresAt,
+              };
+              setBackendSession(session);
+              return session;
+            }}
+            onLogoutBackend={() => setBackendSession(null)}
+            onBackendImport={importToBackend}
+            onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
+            onPublishBackendScenario={publishCurrentAdventureScenario}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
-            onPushCloudSync={pushCloudSync}
-            onPullCloudSync={pullCloudSync}
+            onPushCloudSync={backendMode ? undefined : pushCloudSync}
+            onPullCloudSync={backendMode ? undefined : pullCloudSync}
             onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
           />
         );
@@ -445,14 +593,14 @@ export default function App() {
           onCreateAdventureFromImport={library.createAdventureFromImport}
           onDuplicate={library.duplicateAdventure}
           onDelete={(id) => library.removeAdventure(id, adventure?.id)}
-          saveSlots={gitHubSaves.saveSlots}
-          savesStatus={gitHubSaves.savesStatus}
-          loadingSlotId={gitHubSaveLoad.loadingSlotId}
-          loadError={gitHubSaveLoad.loadError}
-          onDismissError={gitHubSaveLoad.clearLoadError}
-          onListSaves={() => void gitHubSaves.listSaves()}
-          onLoadSave={(slot) => void gitHubSaveLoad.initiateLoad(slot)}
-          onDeleteSave={(slot) => void gitHubSaves.deleteSave(slot)}
+          saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
+          savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
+          loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}
+          loadError={backendMode ? undefined : gitHubSaveLoad.loadError}
+          onDismissError={backendMode ? undefined : gitHubSaveLoad.clearLoadError}
+          onListSaves={backendMode ? undefined : () => void gitHubSaves.listSaves()}
+          onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
+          onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
           providerConfig={runtime.activeProviderConfig}
           premadeAdventures={premadeAdventures}
           onLoadPremadeAdventure={library.loadPremadeAdventure}
@@ -479,11 +627,45 @@ export default function App() {
           onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
           runtimeConfig={normalizedRuntimeConfig}
           onRuntimeConfigChange={setRuntimeConfig}
+          backendSession={backendSession}
+          onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
+          onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
+          onVerifyBackendEmail={async (token) => {
+            const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
+            setBackendSession(session);
+            return session;
+          }}
+          onLoginBackendPassword={async (input) => {
+            const session = await loginBackendPassword(normalizedRuntimeConfig, input);
+            setBackendSession(session);
+            return session;
+          }}
+          onSignupBackendGoogle={async (input) => {
+            const session = await signupBackendLocalGoogle(normalizedRuntimeConfig, input);
+            setBackendSession(session);
+            return session;
+          }}
+          onRefreshBackendSession={async () => {
+            if (!backendSession) throw new Error("No backend session is active.");
+            const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
+            const session = {
+              sessionToken: refreshed.sessionToken,
+              user: refreshed.user,
+              profile: refreshed.profile,
+              expiresAt: refreshed.expiresAt,
+            };
+            setBackendSession(session);
+            return session;
+          }}
+          onLogoutBackend={() => setBackendSession(null)}
+          onBackendImport={importToBackend}
+          onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
+          onPublishBackendScenario={publishCurrentAdventureScenario}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}
-          onPushCloudSync={pushCloudSync}
-          onPullCloudSync={pullCloudSync}
+          onPushCloudSync={backendMode ? undefined : pushCloudSync}
+          onPullCloudSync={backendMode ? undefined : pullCloudSync}
           onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
         />
       );
@@ -514,7 +696,7 @@ export default function App() {
             onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
             onRememberThis={runtime.rememberThis}
-            onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
+            onPullLatest={!backendMode && cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             onOpenPlayTool={(tabId) => setPlayPanelTab(tabId as EditorTabId)}
             playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
@@ -541,7 +723,7 @@ export default function App() {
             onBuildContext={runtime.buildPreview}
             onOpenContext={() => openEditor("context")}
             onRememberThis={runtime.rememberThis}
-            onPullLatest={cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
+            onPullLatest={!backendMode && cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
           />
         );

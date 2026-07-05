@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react";
-import { saveAdventure } from "../db/adventureDb";
 import type { Adventure } from "../types/adventure";
+import type { AdventureStore } from "../runtime/adventureStore";
 
 export function useAdventureAutosave(
   adventure: Adventure | undefined,
+  store: AdventureStore,
   onSaveStatusChange: (status: string) => void,
   onSaved: () => void,
 ) {
@@ -17,7 +18,7 @@ export function useAdventureAutosave(
     if (!adventure) return;
     onSaveStatusChangeRef.current("saving");
     const timeout = window.setTimeout(() => {
-      saveAdventure(adventure)
+      store.save(adventure)
         .then(() => {
           onSaveStatusChangeRef.current("saved");
           onSavedRef.current();
@@ -29,5 +30,5 @@ export function useAdventureAutosave(
         );
     }, 350);
     return () => window.clearTimeout(timeout);
-  }, [adventure]);
+  }, [adventure, store]);
 }

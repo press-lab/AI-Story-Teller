@@ -15,6 +15,13 @@ import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, 
 import { defaultUiPreferences } from "./pageTypes";
 import type { RuntimeConfig, RuntimeMode } from "../runtime/runtimeConfig";
 import { runtimeModeLabel } from "../runtime/runtimeConfig";
+import type {
+  BackendImportRequest,
+  BackendPolicyDecision,
+  BackendRestriction,
+  BackendSafetyEvent,
+  BackendSessionState,
+} from "../runtime/backendApi";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -61,6 +68,21 @@ interface SettingsPageProps {
   onGlobalAdventureSettingsChange: (settings: GlobalAdventureSettings) => void;
   runtimeConfig?: RuntimeConfig;
   onRuntimeConfigChange?: (config: RuntimeConfig) => void;
+  backendSession?: BackendSessionState | null;
+  onCreateBackendInvite?: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
+  onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
+  onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
+  onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
+  onSignupBackendGoogle?: (input: { inviteToken: string; email: string; googleSubject: string; displayName?: string }) => Promise<BackendSessionState>;
+  onRefreshBackendSession?: () => Promise<BackendSessionState>;
+  onLogoutBackend?: () => void;
+  onBackendImport?: (input: BackendImportRequest) => Promise<Adventure>;
+  onLoadBackendSafetyAudit?: () => Promise<{
+    events: BackendSafetyEvent[];
+    restrictions: BackendRestriction[];
+    policyDecisions: BackendPolicyDecision[];
+  }>;
+  onPublishBackendScenario?: () => Promise<{ token: string; revision: { status: string } }>;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -83,6 +105,17 @@ export function SettingsPage({
   onGlobalAdventureSettingsChange,
   runtimeConfig,
   onRuntimeConfigChange,
+  backendSession,
+  onCreateBackendInvite,
+  onSignupBackendPassword,
+  onVerifyBackendEmail,
+  onLoginBackendPassword,
+  onSignupBackendGoogle,
+  onRefreshBackendSession,
+  onLogoutBackend,
+  onBackendImport,
+  onLoadBackendSafetyAudit,
+  onPublishBackendScenario,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -93,6 +126,18 @@ export function SettingsPage({
 }: SettingsPageProps) {
   const advanced = uiPreferences.showAdvancedSettings;
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState("");
+  const [backendInviteToken, setBackendInviteToken] = useState("");
+  const [backendInviteNote, setBackendInviteNote] = useState("");
+  const [backendEmail, setBackendEmail] = useState("");
+  const [backendPassword, setBackendPassword] = useState("");
+  const [backendDisplayName, setBackendDisplayName] = useState("");
+  const [backendVerificationToken, setBackendVerificationToken] = useState("");
+  const [backendGoogleSubject, setBackendGoogleSubject] = useState("local-google-user");
+  const [backendImportSource, setBackendImportSource] = useState<BackendImportRequest["sourceType"]>("aist");
+  const [backendImportText, setBackendImportText] = useState("");
+  const [backendImportTitle, setBackendImportTitle] = useState("");
+  const [backendAuditSummary, setBackendAuditSummary] = useState("");
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
 
@@ -108,6 +153,104 @@ export function SettingsPage({
   function updateRuntime(patch: Partial<RuntimeConfig>) {
     if (!runtimeConfig || !onRuntimeConfigChange) return;
     onRuntimeConfigChange({ ...runtimeConfig, ...patch });
+  }
+
+  async function runBackendAction<T>(label: string, action: () => Promise<T>): Promise<T | undefined> {
+    setBackendStatus(`${label}...`);
+    try {
+      const result = await action();
+      setBackendStatus(`${label} complete.`);
+      return result;
+    } catch (error) {
+      setBackendStatus(error instanceof Error ? error.message : `${label} failed.`);
+      return undefined;
+    }
+  }
+
+  async function createBackendInviteLink() {
+    const result = await runBackendAction("Create invite", async () => {
+      if (!onCreateBackendInvite) throw new Error("Backend invite creation is unavailable.");
+      return onCreateBackendInvite({ note: backendInviteNote, maxUses: 1, expiresInDays: 14 });
+    });
+    if (result?.token) setBackendInviteToken(result.token);
+  }
+
+  async function signupWithBackendPassword() {
+    const result = await runBackendAction("Password signup", async () => {
+      if (!onSignupBackendPassword) throw new Error("Backend signup is unavailable.");
+      return onSignupBackendPassword({
+        inviteToken: backendInviteToken,
+        email: backendEmail,
+        password: backendPassword,
+        displayName: backendDisplayName,
+      });
+    });
+    if (result?.verificationToken) setBackendVerificationToken(result.verificationToken);
+  }
+
+  async function verifyBackendAccount() {
+    await runBackendAction("Verify email", async () => {
+      if (!onVerifyBackendEmail) throw new Error("Backend email verification is unavailable.");
+      return onVerifyBackendEmail(backendVerificationToken);
+    });
+  }
+
+  async function loginWithBackendPassword() {
+    await runBackendAction("Password login", async () => {
+      if (!onLoginBackendPassword) throw new Error("Backend login is unavailable.");
+      return onLoginBackendPassword({ email: backendEmail, password: backendPassword });
+    });
+  }
+
+  async function signupWithBackendGoogle() {
+    await runBackendAction("Local Google signup", async () => {
+      if (!onSignupBackendGoogle) throw new Error("Backend Google signup is unavailable.");
+      return onSignupBackendGoogle({
+        inviteToken: backendInviteToken,
+        email: backendEmail,
+        googleSubject: backendGoogleSubject,
+        displayName: backendDisplayName,
+      });
+    });
+  }
+
+  async function refreshBackendAccount() {
+    await runBackendAction("Refresh session", async () => {
+      if (!onRefreshBackendSession) throw new Error("Backend session refresh is unavailable.");
+      return onRefreshBackendSession();
+    });
+  }
+
+  async function importBackendJson() {
+    const result = await runBackendAction("Backend import", async () => {
+      if (!onBackendImport) throw new Error("Backend import is unavailable.");
+      return onBackendImport({
+        sourceType: backendImportSource,
+        text: backendImportText,
+        title: backendImportTitle,
+      });
+    });
+    if (result) setBackendImportText("");
+  }
+
+  async function loadBackendAudit() {
+    const result = await runBackendAction("Load safety audit", async () => {
+      if (!onLoadBackendSafetyAudit) throw new Error("Backend safety audit is unavailable.");
+      return onLoadBackendSafetyAudit();
+    });
+    if (result) {
+      setBackendAuditSummary(
+        `${result.events.length} event(s), ${result.restrictions.length} restriction(s), ${result.policyDecisions.length} decision(s).`,
+      );
+    }
+  }
+
+  async function publishBackendScenario() {
+    const result = await runBackendAction("Publish scenario", async () => {
+      if (!onPublishBackendScenario) throw new Error("Backend scenario publishing is unavailable.");
+      return onPublishBackendScenario();
+    });
+    if (result?.token) setBackendStatus(`Published scenario share token: ${result.token}`);
   }
 
   function updatePreset(id: string, patch: Partial<ProviderPreset>) {
@@ -273,9 +416,103 @@ export function SettingsPage({
               placeholder="http://127.0.0.1:8787"
             />
           </Field>
+          <div className="editor-stat-row" aria-label="Backend account summary">
+            <span>{backendSession ? backendSession.user.email : "not signed in"}</span>
+            <span>{backendSession ? backendSession.user.status : "local only"}</span>
+          </div>
+          {backendStatus && <p className="notice">{backendStatus}</p>}
+
+          <div className="grid two">
+            <Field label="Invite note">
+              <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
+            </Field>
+            <Field label="Invite token">
+              <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
+            </Field>
+          </div>
+          <div className="toolbar">
+            <button type="button" onClick={() => void createBackendInviteLink()}>
+              Create invite
+            </button>
+          </div>
+
+          <div className="grid two">
+            <Field label="Email">
+              <input value={backendEmail} onChange={(event) => setBackendEmail(event.target.value)} />
+            </Field>
+            <Field label="Display name">
+              <input value={backendDisplayName} onChange={(event) => setBackendDisplayName(event.target.value)} />
+            </Field>
+            <Field label="Password">
+              <input type="password" value={backendPassword} onChange={(event) => setBackendPassword(event.target.value)} />
+            </Field>
+            <Field label="Verification token">
+              <input value={backendVerificationToken} onChange={(event) => setBackendVerificationToken(event.target.value)} />
+            </Field>
+          </div>
+          <div className="toolbar">
+            <button type="button" onClick={() => void signupWithBackendPassword()}>
+              Sign up
+            </button>
+            <button type="button" onClick={() => void verifyBackendAccount()}>
+              Verify
+            </button>
+            <button type="button" onClick={() => void loginWithBackendPassword()}>
+              Log in
+            </button>
+            <button type="button" onClick={() => void refreshBackendAccount()} disabled={!backendSession}>
+              Refresh
+            </button>
+            <button type="button" onClick={onLogoutBackend} disabled={!backendSession}>
+              Log out
+            </button>
+          </div>
+
+          <div className="grid two">
+            <Field label="Local Google subject">
+              <input value={backendGoogleSubject} onChange={(event) => setBackendGoogleSubject(event.target.value)} />
+            </Field>
+            <Field label="Import source">
+              <select
+                value={backendImportSource}
+                onChange={(event) => setBackendImportSource(event.target.value as BackendImportRequest["sourceType"])}
+              >
+                <option value="aist">AIST JSON</option>
+                <option value="aid">AI Dungeon JSON</option>
+                <option value="githubSave">GitHub save JSON</option>
+              </select>
+            </Field>
+          </div>
+          <div className="toolbar">
+            <button type="button" onClick={() => void signupWithBackendGoogle()}>
+              Local Google
+            </button>
+          </div>
+          <Field label="Backend import title">
+            <input value={backendImportTitle} onChange={(event) => setBackendImportTitle(event.target.value)} />
+          </Field>
+          <Field label="Backend import JSON">
+            <textarea
+              rows={5}
+              value={backendImportText}
+              onChange={(event) => setBackendImportText(event.target.value)}
+              placeholder="Paste AIST, AI Dungeon, or GitHub save JSON."
+            />
+          </Field>
+          <div className="toolbar">
+            <button type="button" onClick={() => void importBackendJson()} disabled={!backendSession || !backendImportText.trim()}>
+              Import to backend
+            </button>
+            <button type="button" onClick={() => void publishBackendScenario()} disabled={!backendSession || !adventure}>
+              Publish scenario
+            </button>
+            <button type="button" onClick={() => void loadBackendAudit()}>
+              Safety audit
+            </button>
+          </div>
+          {backendAuditSummary && <p className="muted">{backendAuditSummary}</p>}
           <p className="muted">
-            Browser Local remains the default and keeps IndexedDB, browser provider settings, JSON backup/restore,
-            and GitHub saves independent from the local backend.
+            Browser Local keeps IndexedDB, browser provider settings, JSON backup/restore, and GitHub saves independent from the backend.
           </p>
         </article>
 

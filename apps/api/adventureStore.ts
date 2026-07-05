@@ -4,6 +4,7 @@ import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
 import { parseComponentsJson } from "../../src/importers/componentParser";
 import { createDefaultAdventure, makeComponent, normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
+import { adventureReducer } from "../../src/state/adventureReducer";
 import { runTurnPipeline } from "../../src/state/turnPipeline";
 import { importAdventureJson } from "../../src/utils/json";
 import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
@@ -25,6 +26,13 @@ export interface ImportAdventureInput {
 export interface TurnExecutionResult {
   adventure: Adventure;
   responseContent: string;
+}
+
+export interface BackendTurnOptions {
+  mode?: "do" | "story" | "comms";
+  recordUserInput?: boolean;
+  providerCue?: string;
+  regenerateLastAssistant?: boolean;
 }
 
 function asJsonText(input: ImportAdventureInput): string {
@@ -142,6 +150,7 @@ export async function runBackendTurn(
   adventureId: string,
   input: string,
   config: ApiConfig,
+  options: BackendTurnOptions = {},
 ): Promise<TurnExecutionResult> {
   assertCanGenerate(data, ownerUserId);
   const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
@@ -159,9 +168,19 @@ export async function runBackendTurn(
     throw new Error("Backend provider API key is not configured. Set AIST_PROVIDER_API_KEY in .env for backend turns.");
   }
 
+  const baseAdventure = options.regenerateLastAssistant
+    ? adventureReducer(record.adventure, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" })
+    : record.adventure;
+  const lastUser = [...baseAdventure.messages].reverse().find((message) => message.role === "user")?.content;
   const result = await runTurnPipeline({
-    adventure: record.adventure,
+    adventure: baseAdventure,
     text: input,
+    mode: options.mode ?? "story",
+    recordUserInput: options.recordUserInput,
+    providerCue: options.providerCue,
+    currentInputForContext: options.regenerateLastAssistant ? lastUser ?? input : undefined,
+    incrementTurn: !options.regenerateLastAssistant,
+    advanceArcPacing: !options.regenerateLastAssistant,
     providerConfig: config.providerConfig,
     sendChatCompletion: async (messages, snapshot, context) => {
       const contextDecision = recordPolicyDecision(data, {

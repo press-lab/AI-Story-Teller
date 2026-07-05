@@ -1,4 +1,5 @@
 import type { ProviderConfig } from "../../src/types/adventure";
+import { existsSync, readFileSync } from "node:fs";
 
 export type PolicyMode = "reviewOnly" | "enforce";
 
@@ -30,6 +31,7 @@ function boolEnv(name: string, fallback: boolean): boolean {
 }
 
 export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
+  loadDotEnv();
   const providerConfig: ProviderConfig = {
     name: stringEnv("AIST_PROVIDER_NAME", "deepseek"),
     baseUrl: stringEnv("AIST_PROVIDER_BASE_URL", "https://api.deepseek.com"),
@@ -62,4 +64,19 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     ...overrides,
     providerConfig: { ...config.providerConfig, ...overrides.providerConfig },
   };
+}
+
+function loadDotEnv(path = ".env"): void {
+  if (!existsSync(path)) return;
+  const text = readFileSync(path, "utf8");
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const index = line.indexOf("=");
+    if (index <= 0) continue;
+    const key = line.slice(0, index).trim();
+    const rawValue = line.slice(index + 1).trim();
+    if (!key || process.env[key] !== undefined) continue;
+    process.env[key] = rawValue.replace(/^['"]|['"]$/g, "");
+  }
 }

@@ -1,11 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  deleteAdventure as dbDeleteAdventure,
-  getAdventure,
-  listAdventures,
-  saveAdventure,
-  type AdventureSummary,
-} from "../db/adventureDb";
+import type { AdventureSummary } from "../db/adventureDb";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { createDevelopmentAdventure } from "../dev/developmentAdventure";
 import { createDispatchAdventure } from "../dev/dispatchAdventure";
@@ -13,34 +7,43 @@ import { buildPremadeContext, getPremadeAdventure, type PremadeAdventureId } fro
 import { createDefaultAdventure } from "../state/defaults";
 import { latestAssistantOutput } from "../state/turnPipeline";
 import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/adventure";
-import { importAdventureJson } from "../utils/json";
+import { exportAdventureJson, importAdventureJson } from "../utils/json";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
+import type { AdventureStore } from "../runtime/adventureStore";
 
 export function useAdventureLibrary(
+  store: AdventureStore,
+  storageLabel: string,
   setAdventure: (a: Adventure | undefined) => void,
   setContextResult: (r: ContextBuildResult | undefined) => void,
   onNavigate: (tab: string) => void,
   onModalClose: () => void,
   onError: (e: string) => void,
+  importWithBackend?: (text: string) => Promise<Adventure>,
 ) {
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
 
   const refreshAdventures = useCallback(async () => {
-    setAdventures(await listAdventures());
-  }, []);
+    try {
+      setAdventures(await store.list());
+    } catch (error) {
+      setAdventures([]);
+      onError(error instanceof Error ? error.message : "Could not refresh adventures.");
+    }
+  }, [store, onError]);
 
   useEffect(() => {
     void refreshAdventures();
   }, [refreshAdventures]);
 
   async function allSavedAdventures(): Promise<Adventure[]> {
-    const summaries = await listAdventures();
-    const loaded = await Promise.all(summaries.map((s) => getAdventure(s.id)));
+    const summaries = await store.list();
+    const loaded = await Promise.all(summaries.map((s) => store.get(s.id)));
     return loaded.filter((a): a is Adventure => Boolean(a));
   }
 
   async function openAdventure(id: string) {
-    const next = await getAdventure(id);
+    const next = await store.get(id);
     if (!next) { onError("Adventure could not be opened."); return; }
     setAdventure(next);
     setContextResult(undefined);
@@ -64,7 +67,7 @@ export function useAdventureLibrary(
       ],
       storyCards: setup.storyCards,
     };
-    await saveAdventure(next);
+    await store.save(next);
     setAdventure(next);
     onModalClose();
     onNavigate("dashboard");
@@ -72,10 +75,10 @@ export function useAdventureLibrary(
   }
 
   async function duplicateAdventure(id: string) {
-    const existing = await getAdventure(id);
+    const existing = await store.get(id);
     if (!existing) return;
     const copy = importAdventureJson(JSON.stringify(existing), true);
-    await saveAdventure(copy);
+    await store.save(copy);
     setAdventure(copy);
     onModalClose();
     onNavigate("dashboard");
@@ -83,8 +86,8 @@ export function useAdventureLibrary(
   }
 
   async function removeAdventure(id: string, currentAdventureId?: string) {
-    if (!window.confirm("Delete this adventure from IndexedDB?")) return;
-    await dbDeleteAdventure(id);
+    if (!window.confirm(`Delete this adventure from ${storageLabel}?`)) return;
+    await store.delete(id);
     if (currentAdventureId === id) {
       setAdventure(undefined);
       onModalClose();
@@ -94,8 +97,8 @@ export function useAdventureLibrary(
 
   async function importAdventure(text: string) {
     try {
-      const next = importAdventureJson(text);
-      await saveAdventure(next);
+      const next = importWithBackend ? await importWithBackend(text) : importAdventureJson(text);
+      if (!importWithBackend) await store.save(next);
       setAdventure(next);
       onModalClose();
       onNavigate("dashboard");
@@ -106,15 +109,17 @@ export function useAdventureLibrary(
   }
 
   async function createAdventureFromImport(next: Adventure) {
-    await saveAdventure(next);
-    setAdventure(next);
+    const imported = importWithBackend ? await importWithBackend(exportAdventureJson(next)) : undefined;
+    const target = imported ?? next;
+    if (!importWithBackend) await store.save(target);
+    setAdventure(target);
     setContextResult(undefined);
     onModalClose();
     await refreshAdventures();
   }
 
   async function loadDevScenario(next: Awaited<ReturnType<typeof createDevelopmentAdventure>>) {
-    await saveAdventure(next);
+    await store.save(next);
     setAdventure(next);
     setContextResult(buildContext(next, { latestModelOutput: latestAssistantOutput(next) }));
     onModalClose();
@@ -129,7 +134,7 @@ export function useAdventureLibrary(
       return;
     }
     const next = premade.createAdventure();
-    await saveAdventure(next);
+    await store.save(next);
     setAdventure(next);
     setContextResult(buildPremadeContext(next));
     onModalClose();

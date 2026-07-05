@@ -1,5 +1,5 @@
 import { deleteAdventure, getAdventure, listAdventures, saveAdventure, type AdventureSummary } from "../db/adventureDb";
-import type { Adventure, ContextBuildResult } from "../types/adventure";
+import type { Adventure, ContextBuildResult, InputMode } from "../types/adventure";
 import type { RuntimeConfig } from "./runtimeConfig";
 
 export interface AdventureStore {
@@ -16,8 +16,17 @@ export interface TurnResult {
   postTurnContext?: ContextBuildResult;
 }
 
+export interface TurnRequest {
+  adventureId: string;
+  input: string;
+  mode?: InputMode;
+  recordUserInput?: boolean;
+  providerCue?: string;
+  regenerateLastAssistant?: boolean;
+}
+
 export interface TurnRunner {
-  runTurn(adventureId: string, input: string): Promise<TurnResult>;
+  runTurn(request: TurnRequest): Promise<TurnResult>;
 }
 
 export interface ContextPreviewSource {
@@ -33,7 +42,24 @@ export function createLocalAdventureStore(): AdventureStore {
   };
 }
 
-async function apiJson<T>(config: RuntimeConfig, path: string, init: RequestInit = {}): Promise<T> {
+export function createUnavailableAdventureStore(message: string): AdventureStore {
+  return {
+    async list() {
+      return [];
+    },
+    async get() {
+      return undefined;
+    },
+    async save() {
+      throw new Error(message);
+    },
+    async delete() {
+      throw new Error(message);
+    },
+  };
+}
+
+export async function apiJson<T>(config: RuntimeConfig, path: string, init: RequestInit = {}): Promise<T> {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
   const response = await fetch(`${base}${path}`, {
     ...init,
@@ -80,11 +106,17 @@ export function createBackendAdventureStore(config: RuntimeConfig, authToken?: s
 
 export function createBackendTurnRunner(config: RuntimeConfig, authToken: string): TurnRunner {
   return {
-    runTurn(adventureId, input) {
-      return apiJson<TurnResult>(config, `/adventures/${encodeURIComponent(adventureId)}/turn`, {
+    runTurn(request) {
+      return apiJson<TurnResult>(config, `/adventures/${encodeURIComponent(request.adventureId)}/turn`, {
         method: "POST",
         headers: { Authorization: `Bearer ${authToken}` },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({
+          input: request.input,
+          mode: request.mode,
+          recordUserInput: request.recordUserInput,
+          providerCue: request.providerCue,
+          regenerateLastAssistant: request.regenerateLastAssistant,
+        }),
       });
     },
   };

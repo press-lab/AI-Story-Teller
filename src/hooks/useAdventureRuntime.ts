@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { saveAdventure } from "../db/adventureDb";
 import { regenerateProposalContent } from "../memory/memoryDetection";
 import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
 import { PLOT_ESSENTIALS_BEST_PRACTICES } from "../ai/authoringBestPractices";
@@ -48,6 +47,7 @@ import type {
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
+import type { AdventureStore, ContextPreviewSource, TurnRunner } from "../runtime/adventureStore";
 
 function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const sessionId = `ai-story-teller:${adventure.id}`.slice(0, 256);
@@ -158,11 +158,14 @@ export function useAdventureRuntime(
   adventure: Adventure | undefined,
   setAdventure: Dispatch<SetStateAction<Adventure | undefined>>,
   providerSettings: RuntimeProviderSettings,
+  adventureStore: AdventureStore,
   setSaveStatus: (status: string) => void,
   setContextResult: (result: ContextBuildResult | undefined) => void,
   openTab: (tabId: "memoryInbox") => void,
   refreshAdventures: () => Promise<void>,
   globalMemorySettings: MemoryDetectionSettings,
+  backendTurnRunner?: TurnRunner,
+  backendContextPreview?: ContextPreviewSource,
 ) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -204,13 +207,13 @@ export function useAdventureRuntime(
       if (!current) return current;
       const next = reduceActions(current, actions);
       adventureRef.current = next;
-      void saveAdventure(next).then(() => {
+      void adventureStore.save(next).then(() => {
         setSaveStatus("saved");
         void refreshAdventures();
       });
       return next;
     });
-  }, [setAdventure, setSaveStatus, refreshAdventures]);
+  }, [adventureStore, setAdventure, setSaveStatus, refreshAdventures]);
 
   function queuePendingUpdate(actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
     const update: PendingAdventureUpdate = {
@@ -284,8 +287,14 @@ export function useAdventureRuntime(
 
   const buildPreview = useCallback(() => {
     if (!adventure) return;
+    if (backendContextPreview) {
+      void backendContextPreview.build(adventure.id)
+        .then(setContextResult)
+        .catch((error) => setError(error instanceof Error ? error.message : "Backend context preview failed."));
+      return;
+    }
     setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
-  }, [adventure, setContextResult]);
+  }, [adventure, backendContextPreview, setContextResult]);
 
   // When an arc reaches aftermath, draft next-arc directions once so the player can pick
   // where the story goes next without architecting it. Gated by arcContinuationOptions
@@ -320,6 +329,22 @@ export function useAdventureRuntime(
     isSubmittingRef.current = true;
     setLoading(true);
     setError(undefined);
+
+    if (backendTurnRunner) {
+      try {
+        const result = await backendTurnRunner.runTurn({ adventureId: adventure.id, input: text, mode });
+        setAdventure(result.adventure);
+        setContextResult(result.postTurnContext ?? result.preProviderContext);
+        setSaveStatus("saved");
+        await refreshAdventures();
+      } catch (backendError) {
+        setError(backendError instanceof Error ? backendError.message : "Backend turn failed.");
+      } finally {
+        setLoading(false);
+        isSubmittingRef.current = false;
+      }
+      return;
+    }
 
     let base = flushPendingBeforeContext(adventure);
     if (mode !== "comms" && CHALLENGE_PHRASES.some((re) => re.test(text))) {
@@ -357,7 +382,7 @@ export function useAdventureRuntime(
       let next = mergeQueuedUpdates(result.adventure);
       setAdventure(next);
       setContextResult(result.postTurnContext);
-      await saveAdventure(next);
+      await adventureStore.save(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       if (mode !== "comms") {
@@ -384,7 +409,7 @@ export function useAdventureRuntime(
       }
       const errorState = snapshotWithUserMsg ?? base;
       setAdventure(errorState);
-      await saveAdventure(errorState);
+      await adventureStore.save(errorState);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -397,6 +422,28 @@ export function useAdventureRuntime(
     isSubmittingRef.current = true;
     setLoading(true);
     setError(undefined);
+
+    if (backendTurnRunner) {
+      try {
+        const result = await backendTurnRunner.runTurn({
+          adventureId: adventure.id,
+          input: "[continue]",
+          mode: "story",
+          recordUserInput: false,
+          providerCue: "[continue]",
+        });
+        setAdventure(result.adventure);
+        setContextResult(result.postTurnContext ?? result.preProviderContext);
+        setSaveStatus("saved");
+        await refreshAdventures();
+      } catch (backendError) {
+        setError(backendError instanceof Error ? backendError.message : "Backend continue failed.");
+      } finally {
+        setLoading(false);
+        isSubmittingRef.current = false;
+      }
+      return;
+    }
 
     try {
       const base = flushPendingBeforeContext(adventure);
@@ -427,7 +474,7 @@ export function useAdventureRuntime(
       next = mergeQueuedUpdates(next);
       setAdventure(next);
       setContextResult(result.postTurnContext);
-      await saveAdventure(next);
+      await adventureStore.save(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
@@ -436,7 +483,7 @@ export function useAdventureRuntime(
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
       setAdventure(adventure);
-      await saveAdventure(adventure);
+      await adventureStore.save(adventure);
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -449,6 +496,28 @@ export function useAdventureRuntime(
     isSubmittingRef.current = true;
     setLoading(true);
     setError(undefined);
+
+    if (backendTurnRunner) {
+      try {
+        const result = await backendTurnRunner.runTurn({
+          adventureId: adventure.id,
+          input: "[regenerate]",
+          mode: "story",
+          recordUserInput: false,
+          regenerateLastAssistant: true,
+        });
+        setAdventure(result.adventure);
+        setContextResult(result.postTurnContext ?? result.preProviderContext);
+        setSaveStatus("saved");
+        await refreshAdventures();
+      } catch (backendError) {
+        setError(backendError instanceof Error ? backendError.message : "Backend regeneration failed.");
+      } finally {
+        setLoading(false);
+        isSubmittingRef.current = false;
+      }
+      return;
+    }
 
     let next = flushPendingBeforeContext(adventure);
     next = adventureReducer(next, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" });
@@ -481,7 +550,7 @@ export function useAdventureRuntime(
       next = mergeQueuedUpdates(next);
       setAdventure(next);
       setContextResult(buildContext(next, { latestModelOutput: applied.responseContent }));
-      await saveAdventure(next);
+      await adventureStore.save(next);
       setSaveStatus("saved");
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);

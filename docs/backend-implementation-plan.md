@@ -189,7 +189,8 @@ Full-throttle implementation means proceeding continuously through steps 1-13 on
 This branch implements a local owner-testable backend slice for steps 1-13:
 
 - Runtime mode contracts and backend adapter shells: `src/runtime/runtimeConfig.ts`, `src/runtime/adventureStore.ts`.
-- Runtime settings UI: `src/pages/SettingsPage.tsx`; default remains Browser Local.
+- Runtime settings UI and backend account controls: `src/pages/SettingsPage.tsx`; default remains Browser Local.
+- Backend mode frontend wiring: `src/App.tsx`, `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, `src/hooks/useAdventureAutosave.ts`.
 - Local API service: `apps/api/server.ts`, `apps/api/index.ts`.
 - Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
 - Auth/invite gate: `apps/api/auth.ts`.
@@ -200,6 +201,24 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - API coverage: `apps/api/server.test.ts`.
 
 The policy pack includes everything that currently makes sense as a draft, but it is explicitly for owner review. Do not treat the draft category thresholds, refusal behavior, raw-text retention, restriction transitions, or real-user enforcement posture as final until the manual policy review is complete.
+
+## Implementation Status: Steps 1-13
+
+| Step | Status | Implemented Evidence |
+| --- | --- | --- |
+| 1. Baseline branch setup | Done | Work is on `backend-local-implementation`; `main` untouched; baseline hash recorded in chat and prior commit notes; Browser Local remains default. |
+| 2. Runtime mode adapters | Done | `RuntimeMode`, local/backend store adapters, backend turn/context adapters, Settings Runtime selector, and local-only GitHub save gating are implemented. |
+| 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, and `npm.cmd run api:test` exist. |
+| 4. Local database and migrations | Done | Local JSON DB with schema version and migration metadata is implemented at `.local-backend/aist-api-db.json`; docs keep Postgres as hosted target. |
+| 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, local Google stub, hashed passwords, rate limits, sessions, profiles, and no-invite activation tests exist. |
+| 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, AI Dungeon import-as-copy, GitHub save JSON import-as-copy, provider-secret stripping, and no personal GitHub token use are implemented. |
+| 7. Server context preview | Done | Backend context preview uses shared `buildContext`; tests compare backend payload/section order against local output. |
+| 8. Policy engine scaffold | Done | Versioned rule-pack loader, policy decision records, gate interfaces, sanitized fixtures, and review/enforce modes are implemented. |
+| 9. Manual policy review | Ready for owner review | Draft policy pack includes the categories, matchers, severity, safety event triggers, and restriction transitions that currently make sense. Owner approval is still required before real-user enforcement. |
+| 10. Blocking implementation | Done | Input/context/output/memory-write/import/share gates are wired; blocked input/context returns before provider calls; policy decisions persist on blocked requests. |
+| 11. Backend turn execution | Done | `POST /adventures/:id/turn` loads account/adventure/restrictions, builds server context, uses backend provider config only, persists reducer-driven results/usage, and frontend backend mode calls it. |
+| 12. Account safety restrictions | Done | Safety events, restrictions, status history, effective access checks, sharing disablement, generation hold, and admin audit endpoint are implemented. |
+| 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, and share gate are implemented; publish content excludes transcript/private runtime memory by default. |
 
 Local backend commands:
 

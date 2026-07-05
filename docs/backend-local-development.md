@@ -23,6 +23,16 @@ Default local database:
 
 The frontend remains browser-local by default. In Settings -> Runtime, `Browser Local` keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from the backend.
 
+To use backend mode from the frontend:
+
+1. Start the API with `npm.cmd run api:dev`.
+2. Open Settings -> Runtime.
+3. Set Execution mode to `Local Backend`.
+4. Create an invite, sign up, and verify or log in.
+5. Import backend JSON or create/open backend adventures from the Library.
+
+In backend mode, Play submit/continue/regenerate and Context Preview use the local API. GitHub saves and cloud sync remain Browser Local only.
+
 ## Backend Provider Config
 
 Copy `.env.example` to `.env` and set:

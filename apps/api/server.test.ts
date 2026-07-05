@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { createDefaultAdventure } from "../../src/state/defaults";
 import { exportAdventureJson } from "../../src/utils/json";
+import { clearRateLimitsForTests } from "./rateLimit";
 import { createApiServer, type ApiServer } from "./server";
 
 let tempDir = "";
@@ -53,6 +54,7 @@ async function passwordSession(email = "player@example.com"): Promise<string> {
 }
 
 beforeEach(async () => {
+  clearRateLimitsForTests();
   tempDir = await mkdtemp(join(tmpdir(), "aist-api-"));
   api = createApiServer({
     port: 0,
@@ -226,6 +228,39 @@ describe("local API policy gates and sharing", () => {
 
     const audit = await requestJson<{ policyDecisions: Array<{ categories: string[] }> }>("/admin/account-safety-events");
     expect(audit.body.policyDecisions.some((decision) => decision.categories.includes("prompt_injection_or_policy_evasion"))).toBe(true);
+  });
+
+  it("accepts backend continue and regenerate turn options before provider dispatch", async () => {
+    const sessionToken = await passwordSession("turn-options@example.com");
+    const adventure = createDefaultAdventure("Turn Options");
+    adventure.messages = [
+      { id: "msg-user", role: "user", content: "You open the door.", createdAt: "2026-07-04T00:00:00.000Z" },
+      { id: "msg-assistant", role: "assistant", content: "The hallway waits.", createdAt: "2026-07-04T00:01:00.000Z" },
+    ];
+    await requestJson("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    const list = await requestJson<Array<{ id: string }>>("/adventures", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+
+    const continueResult = await requestJson<{ error: string }>(`/adventures/${list.body[0].id}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ input: "[continue]", recordUserInput: false, providerCue: "[continue]" }),
+    });
+    expect(continueResult.status).toBe(400);
+    expect(continueResult.body.error).toMatch(/provider api key/i);
+
+    const regenerateResult = await requestJson<{ error: string }>(`/adventures/${list.body[0].id}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ input: "[regenerate]", recordUserInput: false, regenerateLastAssistant: true }),
+    });
+    expect(regenerateResult.status).toBe(400);
+    expect(regenerateResult.body.error).toMatch(/provider api key/i);
   });
 
   it("creates account safety events and restrictions for severe reviewed policy hits", async () => {
