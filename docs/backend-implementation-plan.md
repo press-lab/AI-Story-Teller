@@ -30,6 +30,136 @@ Before backend generation, imports, public sharing, or account restrictions are 
 
 No implementation task may silently decide these thresholds on its own. The backend can implement the engine and test harness first, but the first active ruleset must be explicitly reviewed before it is enabled outside local owner testing.
 
+## Branch Policy
+
+Backend implementation work should happen on the `backend-local-implementation` branch until the owner explicitly asks to merge to `main`.
+
+Rules:
+
+- Do not commit backend implementation work directly to `main`.
+- Push completed implementation slices to `origin/backend-local-implementation`.
+- Keep each slice scoped and independently validated.
+- Leave unrelated local files, including `.claude/settings.local.json`, unstaged.
+- Report the full commit hash after each pushed slice.
+- Do not open public sharing, backend generation, account restrictions, or policy enforcement for real users until the manual review gate is complete.
+
+## Next Step Execution Checklist
+
+If future context is compressed and the owner says "implement the next step," continue from the first unchecked item below. Do not skip ahead unless the owner explicitly changes priority.
+
+1. **Baseline branch setup**
+   - Confirm current branch is `backend-local-implementation`.
+   - Confirm the latest pre-code baseline hash is recorded in the final response or commit notes.
+   - Confirm local mode still runs from the current app without backend dependency.
+
+2. **Runtime mode adapters**
+   - Add `RuntimeMode = "local" | "backendLocal" | "hostedBackend"`.
+   - Wrap current IndexedDB adventure persistence as the local `AdventureStore`.
+   - Wrap current browser provider turn flow as the local `TurnRunner`.
+   - Add backend adapter shells that fail clearly while the API does not exist.
+   - Default every user to `local` mode.
+   - Validate that local IndexedDB saves, JSON import/export, and GitHub saves still work.
+
+3. **Local API skeleton**
+   - Add `apps/api`.
+   - Add local API start script.
+   - Add `GET /health` and `GET /version`.
+   - Add typed local environment configuration.
+   - Add CORS for local Vite and GitHub Pages owner testing.
+   - Add `.env.example` for backend-owned provider settings.
+   - Add API smoke/unit test command.
+
+4. **Local database and migrations**
+   - Add local database connection.
+   - Add migration runner.
+   - Add initial migrations table or migration-tool metadata.
+   - Add local setup documentation.
+   - Keep Postgres as target unless local setup blocks the first slice.
+
+5. **Invite-gated auth**
+   - Add `users`, `auth_identities`, `password_credentials`, `invite_links`, `signup_intents`, `profiles`, `author_profiles`, and `admin_actions`.
+   - Add invite create/preview/accept endpoints.
+   - Add Google login.
+   - Add email/password signup with hashed passwords.
+   - Add email verification and password reset token flows.
+   - Rate-limit auth, invite, and reset flows.
+   - Prove no account activates without an invite.
+
+6. **Backend adventure persistence**
+   - Add backend adventure snapshot/event tables.
+   - Add backend adventure CRUD.
+   - Add import-as-copy for AIST JSON.
+   - Add import-as-copy for AI Dungeon JSON.
+   - Add import-as-copy for GitHub save JSON files.
+   - Strip runtime provider secrets on import.
+   - Never ask for or use the owner's personal GitHub token.
+
+7. **Server context preview**
+   - Build backend context preview using the shared story engine.
+   - Compare server context output against local context output on fixtures.
+   - Preserve section order, `generatedBy`, pending proposals, and Arc Director gating.
+
+8. **Policy engine scaffold**
+   - Add generic policy engine types and rule-pack loader.
+   - Add `PolicyDecision`.
+   - Add input, context, output, memory-write, import, share, and profile gate interfaces.
+   - Add sanitized fixtures.
+   - Keep active real-user policy disabled pending manual review.
+
+9. **Manual policy review**
+   - Review blocked category definitions, severity thresholds, safety-event triggers, account restriction transitions, fixture coverage, refusal text, admin visibility, raw-text retention, and appeal/export behavior.
+   - Do not enable real-user backend generation, imports, sharing, or account restrictions before this review is complete.
+
+10. **Blocking implementation**
+    - Wire input gate before provider calls.
+    - Wire context gate after context build and before provider calls.
+    - Wire output gate before user display or persistence.
+    - Wire memory-write gate before durable AI memory updates.
+    - Wire import gate before trusted persistence.
+    - Wire share gate before public visibility.
+    - Prove blocked input/context does not call the model.
+
+11. **Backend turn execution**
+    - Add `POST /adventures/:id/turn`.
+    - Load account, profile, adventure, entitlement, and account safety state.
+    - Build context server-side.
+    - Select provider/model from backend config only.
+    - Call provider with backend-owned credentials.
+    - Persist reducer-driven result and usage logs.
+    - Keep local mode browser-provider generation intact.
+
+12. **Account safety restrictions**
+    - Add `account_safety_events`, `account_restrictions`, and `account_status_history`.
+    - Add effective account access resolver.
+    - Restrict sharing/publishing first for severe reviewed hits.
+    - Add admin review endpoints and audit logs.
+
+13. **Scenario and adventure sharing**
+    - Add scenario drafts and immutable revisions.
+    - Add publish/fork/share-link endpoints.
+    - Require share and prompt-injection gates before visibility.
+    - Keep adventure transcript/private runtime memory excluded unless explicitly selected.
+
+14. **Subscriptions and usage**
+    - Add plans, subscriptions, entitlement grants, usage ledger, billing events.
+    - Start with Stripe test mode.
+    - Gate model tier, context tokens, output tokens, backend adventure count, background jobs, and publishing server-side.
+
+15. **Workers**
+    - Add local queue/worker infrastructure.
+    - Move semantic evaluation, memory cycle, audits, import processing, export packaging, and thumbnails to workers for backend adventures.
+
+16. **Admin/support console**
+    - Add invite management, user lookup, adventure diagnostics, model call view, context build view, policy decision view, account safety event view, restriction controls, and admin action audit logs.
+
+Each completed item should end with the repo validation stack when feasible:
+
+```sh
+npm.cmd test
+npm.cmd run build
+npm.cmd run smoke:prod
+```
+
 ## Parallel Setup Preservation
 
 The current setup must survive during backend implementation.
