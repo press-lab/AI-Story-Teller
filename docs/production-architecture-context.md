@@ -6,7 +6,7 @@ It is intentionally full-stack. It describes what should exist, what must remain
 
 Companion docs:
 
-- `docs/backend-architecture.md`: target backend architecture, including parallel local/backend modes, invite-gated Google auth, JSON import compatibility, sharing, deterministic content policy, account safety restrictions, and prompt-injection defenses.
+- `docs/backend-architecture.md`: target backend architecture, including parallel local/backend modes, invite-gated Google and email/password auth, JSON import compatibility, local backend hosting, sharing, deterministic content policy, account safety restrictions, and prompt-injection defenses.
 - `docs/backend-implementation-plan.md`: phased implementation plan with validation gates and current-local-workflow preservation.
 
 ## Current State

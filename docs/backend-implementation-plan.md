@@ -1,6 +1,6 @@
 # Backend Implementation Plan
 
-This is the implementation plan for adding a locally hosted backend, accounts, invite-only signup, Google login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses without breaking the current local setup.
+This is the implementation plan for adding a locally hosted backend, accounts, invite-only signup, Google login, email/password login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses without breaking the current local setup.
 
 The companion architecture document is `docs/backend-architecture.md`.
 
@@ -12,6 +12,7 @@ The companion architecture document is `docs/backend-architecture.md`.
 - Keep reducer and context-builder parity measurable.
 - Treat policy, account safety, prompt-injection defense, usage, and billing as backend concerns.
 - Make public sharing opt-in, versioned, and policy-gated.
+- Keep all backend hosting local for the first implementation pass.
 
 ## Parallel Setup Preservation
 
@@ -145,6 +146,7 @@ Tasks:
 - Add API test setup.
 - Add CORS configuration that allows the GitHub Pages frontend origin and local Vite origin during development.
 - Add `.env.example` placeholders for backend-owned provider configuration.
+- Add local-only startup documentation for API, database, and worker placeholders.
 
 Initial endpoints:
 
@@ -164,15 +166,20 @@ Exit criteria:
 - API tests run.
 - Web local mode is unaffected.
 - GitHub Pages can be configured to call the local backend API for owner testing.
+- No hosted backend dependency exists yet.
 
 ## Phase 3: Auth And Invite Gate
 
-Goal: support invite-only accounts with Google login.
+Goal: support invite-only accounts with Google login and email/password login.
 
 Tasks:
 
 - Choose auth provider.
 - Configure Google OAuth.
+- Add email/password credential flow.
+- Add password hashing with Argon2id or bcrypt.
+- Add email verification token flow.
+- Add password reset token flow.
 - Add invite table and signup intent table.
 - Add admin invite creation endpoint.
 - Add invite preview endpoint.
@@ -186,6 +193,7 @@ Tables:
 ```text
 users
 auth_identities
+password_credentials
 invite_links
 signup_intents
 profiles
@@ -199,13 +207,20 @@ Security requirements:
 - Use high-entropy random invite tokens.
 - Expire signup intents quickly.
 - Mark invite use in the same transaction that creates account state.
-- Bind account creation to the invite redemption session plus Google provider identity.
+- Bind account creation to the invite redemption session plus Google provider identity or verified email/password credential.
+- Do not store raw passwords.
+- Rate-limit login, signup, invite preview, invite accept, and password reset.
+- Lock or slow repeated failed login attempts.
+- Use local mail capture or admin-visible verification links for local development only.
 - Rate-limit invite preview and accept endpoints.
 - Defer Apple integration until hosted HTTPS callback behavior is worth solving.
 
 Exit criteria:
 
 - No account can be activated without a valid invite.
+- A user can sign up with Google after accepting an invite.
+- A user can sign up with email/password after accepting an invite.
+- Email/password users have verified email before normal account activation.
 - Admin can create and revoke invites.
 - Invite use is auditable.
 
@@ -302,6 +317,8 @@ Tasks:
 - Add deterministic unit fixtures.
 - Add adversarial fixtures for hard-block categories.
 - Add safe user-facing blocked-turn messages.
+- Add blocked assistant placeholder behavior.
+- Add context item attribution for blocked context decisions.
 
 Rule storage:
 
@@ -381,6 +398,11 @@ Rules:
 - No durable AI memory write without memory-write gate.
 - No provider call without input and context gates.
 - No assistant output persistence without output gate.
+- Input gate blocks before provider call.
+- Context gate blocks after context build but before provider call.
+- Output gate blocks before text is shown or persisted.
+- Import gate blocks or quarantines imported JSON before it becomes trusted backend adventure material.
+- Share gate blocks public scenario publishing and share links before visibility.
 - Ambiguous or low-confidence hits block content but do not automatically restrict the account.
 - Deterministic severe hard-block matches create an `account_safety_event`.
 - Severe hard-block matches immediately disable public sharing and scenario publishing.
@@ -389,6 +411,17 @@ Rules:
 - Admin review can lift, extend, or convert restrictions.
 - Classifier labels may be used, but deterministic rules decide outcomes.
 
+Blocking behavior:
+
+- Blocked input returns a neutral refusal and no provider request is made.
+- Blocked context identifies the section/item when possible and no provider request is made.
+- Blocked output is never displayed raw to the user.
+- Blocked output stores a placeholder assistant event and a policy decision.
+- Blocked memory writes do not create or update Story Cards, Brains, Plot Essentials, or Active Pressure.
+- Blocked imports remain quarantined or rejected.
+- Blocked shares remain private and unpublished.
+- Severe blocked attempts create account safety events for restriction evaluation.
+
 Exit criteria:
 
 - Hard-block fixtures fail closed.
@@ -396,6 +429,8 @@ Exit criteria:
 - Policy decisions are stored and inspectable.
 - Account safety events are stored and inspectable.
 - Restricted accounts lose sensitive capabilities through entitlement/access checks.
+- Provider-call tests prove blocked input/context does not call the model.
+- Output tests prove blocked output is not persisted as visible assistant text.
 
 ## Phase 7: Prompt-Injection Defense
 

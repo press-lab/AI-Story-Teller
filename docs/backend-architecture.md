@@ -1,6 +1,6 @@
 # Backend Architecture
 
-This is the target architecture for adding accounts, invite-gated signup, Google login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses to AI Story Teller.
+This is the target architecture for adding accounts, invite-gated signup, Google login, email/password login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses to AI Story Teller.
 
 The core product rule remains unchanged: the story engine is the product. The backend exists to make the existing engine durable, account-backed, billable, shareable, and enforceable without turning the model context into hidden server magic.
 
@@ -37,11 +37,24 @@ Production AI Story Teller should become a server-authoritative story platform:
 - Database: Postgres.
 - Queue/cache/rate limit: Redis plus BullMQ.
 - Object storage: S3-compatible storage for thumbnails, exports, scenario assets, and support replay bundles.
-- Auth: Google OAuth first, plus a server-side invite check. Supabase Auth, Clerk, Auth0, or a custom OAuth stack can work. Supabase is attractive because it pairs Postgres, OAuth providers, and auth hooks, but the app domain must still live in our backend. Apple auth is explicitly deferred.
+- Auth: Google OAuth and email/password first, plus a server-side invite check. Supabase Auth, Clerk, Auth0, or a custom auth stack can work, but all first implementation hosting is local. Apple auth is explicitly deferred.
 - Billing: Stripe Billing by default, with our own entitlement and usage ledger.
 - Observability: structured logs, model-call events, policy decision records, metrics, and error tracking.
 
 Start as a modular monolith. Split services only after one module has a clear independent scaling or release need.
+
+## Initial Hosting Target
+
+The first backend implementation is local-only.
+
+- GitHub Pages can continue to host the static frontend.
+- The API runs locally, for example `http://127.0.0.1:8787`.
+- The database runs locally.
+- Redis/worker infrastructure runs locally when introduced.
+- Provider credentials live only in local backend environment/configuration.
+- Hosted backend deployment is a later target after local mode proves the architecture.
+
+Because the backend is local, external users will not be able to use the owner's local API from GitHub Pages unless they run their own backend, use a temporary tunnel, or a hosted backend is added later.
 
 ## Hard Boundary: Local Mode vs Backend Mode
 
@@ -136,6 +149,7 @@ Domain tables:
 ```text
 users
 auth_identities
+password_credentials
 invite_links
 signup_intents
 profiles
@@ -161,11 +175,22 @@ Flow:
 3. Only the token hash is stored.
 4. User opens `/join?invite=...`.
 5. Backend validates the invite and creates a short-lived signup intent.
-6. User signs in with Google.
+6. User completes Google OAuth or creates an email/password credential.
 7. Auth callback or auth hook verifies the signup intent before account activation.
 8. Backend marks invite use transactionally and creates user, default profile, author profile, and starter entitlements.
 
-Do not trust email alone for invite redemption. Bind account creation to the invite redemption session plus the Google provider identity. If Apple is added later, revisit relay-email behavior and callback requirements then.
+Do not trust email alone for invite redemption. Bind account creation to the invite redemption session plus the Google provider identity or verified email/password credential. If Apple is added later, revisit relay-email behavior and callback requirements then.
+
+Email/password requirements:
+
+- Passwords are never stored directly.
+- Use Argon2id or bcrypt with strong cost settings.
+- Require email verification before account activation for real users.
+- Support password reset through signed, short-lived reset tokens.
+- Rate-limit login, signup, reset, and invite checks by IP and account.
+- Lock or slow repeated failed login attempts.
+- Store password credential metadata separately from user profile data.
+- Local development may use a local mail catcher or admin-visible verification links, but production-like user testing must verify email.
 
 Existing signed-in users can be invited to features or private betas without creating another account.
 
@@ -375,6 +400,41 @@ Policy gates:
 - profile gate
 
 The context gate matters because unsafe material can enter from Story Cards, Brains, Plot Essentials, imported scenarios, old transcript, or memory proposals.
+
+### Blocking Flow
+
+Content is blocked through server gates, not through model preference or frontend warnings.
+
+Input blocking:
+
+1. User submits a turn, import, memory action, profile change, or publish request.
+2. Backend normalizes text and metadata into a policy subject.
+3. Backend runs the relevant deterministic ruleset before the subject can reach the model or become public.
+4. If the decision is `block`, the backend stores a `policy_decision`, returns a neutral user-facing refusal, and does not call the provider for that subject.
+5. If the block is a severe hard-floor category, the backend also creates an `account_safety_event`.
+
+Context blocking:
+
+1. Backend builds inspectable context sections.
+2. Backend scans the assembled context before the provider call.
+3. If Story Cards, Brains, imports, transcript, or scenario text pull in blocked material, the provider call is stopped.
+4. The unsafe context item is identified by section/item id where possible so support can diagnose it without a blind prompt dump.
+
+Output blocking:
+
+1. Backend strips hidden/control tags from the provider response.
+2. Backend runs output policy before showing or persisting the response.
+3. If blocked, the raw output is not shown.
+4. Backend stores a blocked assistant placeholder and a `policy_decision`.
+5. Backend may attempt one regeneration with stricter instruction only when the ruleset allows it.
+
+Memory/import/share blocking:
+
+- AI-generated memory proposals and direct updates pass through the memory-write gate before durability.
+- AIST, AI Dungeon, and GitHub save JSON imports pass through import and prompt-injection gates before becoming trusted backend adventure material.
+- Public scenario publishing and adventure share links pass through stricter share gates before visibility.
+
+The result is explicit: blocked content cannot reach the model at input/context gates, cannot be shown at output gates, cannot become durable memory at memory gates, and cannot be published at share gates.
 
 ## Account Safety Restrictions
 
