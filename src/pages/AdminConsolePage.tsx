@@ -252,6 +252,8 @@ export function AdminConsolePage({
     );
   }
 
+  const isLoading = !data && (!status || status.toLowerCase().includes("loading"));
+
   return (
     <section className="page library-page admin-console-page">
       <header className="library-header">
@@ -262,7 +264,7 @@ export function AdminConsolePage({
         </div>
       </header>
 
-      {status && <p className="notice">{status}</p>}
+      {status && data && <p className="notice">{status}</p>}
 
       {data ? (
         <>
@@ -664,10 +666,38 @@ export function AdminConsolePage({
             />
           </Section>
         </>
+      ) : isLoading ? (
+        <AdminConsoleLoading status={status || "Loading admin console..."} />
       ) : (
-        <p className="muted">Admin data loads automatically when this tab opens.</p>
+        <>
+          {status && <p className="notice">{status}</p>}
+          <AdminConsoleLoading status="Waiting for admin data..." />
+        </>
       )}
     </section>
+  );
+}
+
+function AdminConsoleLoading({ status }: { status: string }) {
+  return (
+    <div className="admin-loading" role="status" aria-live="polite">
+      <div className="admin-loading-banner">
+        <span className="admin-loading-spinner" aria-hidden="true" />
+        <div>
+          <p className="admin-loading-title">{status}</p>
+          <p className="muted">Fetching users, adventures, scenarios, safety events, usage, and platform settings.</p>
+        </div>
+      </div>
+      <div className="admin-metric-grid admin-loading-grid" aria-hidden="true">
+        {["Users", "Adventures", "Scenarios", "Safety", "Policy", "Usage"].map((label) => (
+          <article className="panel admin-metric-card admin-metric-card-loading" key={label}>
+            <p className="eyebrow">{label}</p>
+            <span className="skeleton-line skeleton-number" />
+            <span className="skeleton-line skeleton-caption" />
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }
 

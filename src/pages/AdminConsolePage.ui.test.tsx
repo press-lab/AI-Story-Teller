@@ -211,6 +211,27 @@ describe("AdminConsolePage", () => {
     expect(screen.queryByRole("button", { name: "Apply Restriction" })).not.toBeInTheDocument();
   });
 
+  it("shows a structured loading state while admin data loads", () => {
+    render(
+      <AdminConsolePage
+        backendMode
+        backendSession={session("admin")}
+        status="Loading admin console..."
+        onSetUserStatus={vi.fn()}
+        onCreateRestriction={vi.fn()}
+        onUpdateSafetyEvent={vi.fn()}
+        onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Loading admin console...");
+    expect(screen.getByText(/Fetching users, adventures, scenarios/)).toBeInTheDocument();
+    expect(screen.queryByText(/Admin data loads automatically/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create Invite" })).not.toBeInTheDocument();
+  });
+
   it("lets backend admin sessions review users and safety events", async () => {
     const user = userEvent.setup();
     const onSetUserStatus = vi.fn(async () => undefined);
