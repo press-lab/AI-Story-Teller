@@ -145,6 +145,8 @@ describe("App adventure tool workspace", () => {
 
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    const editorNav = screen.getByRole("navigation", { name: "Adventure editor" });
+    expect(within(editorNav).queryByRole("button", { name: "Saves" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Story Cards" }));
 
     // Now in the editor — title is an editable input

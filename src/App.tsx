@@ -118,7 +118,6 @@ const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = 
   { id: "chronicle", label: "Chronicle" },
   { id: "triggers", label: "Automation" },
   { id: "context", label: "Context" },
-  { id: "cloudSaves", label: "Saves" },
   { id: "importExport", label: "Import / Export" },
 ];
 
@@ -975,9 +974,7 @@ export default function App() {
   }
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
-  const visibleEditorTabs = hideBackendUserDeveloperControls
-    ? editorTabs.filter((tab) => tab.id !== "cloudSaves")
-    : editorTabs;
+  const visibleEditorTabs = editorTabs;
 
   function renderAdventureLibrary(embedded = false) {
     return (
