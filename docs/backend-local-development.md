@@ -64,6 +64,8 @@ Provider secrets live only in `.env` or environment variables. Admin-editable pl
 
 Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role.
 
+`npm.cmd run api:serve` is stricter than `api:dev`: it refuses to start without `AIST_ADMIN_EMAILS` or `AIST_API_ADMIN_KEY`, disables the local Google stub, and binds to `127.0.0.1` by default so it can be exposed through an HTTPS tunnel without opening a raw inbound port.
+
 The frontend Admin Console appears only when the signed-in backend session returns `user.role === "admin"`. There is no frontend control to promote a user to admin. Mark admin accounts through backend configuration (`AIST_ADMIN_EMAILS`) or backend data only.
 
 ## Google OAuth
@@ -155,6 +157,7 @@ It intentionally does not expose raw invite tokens, provider API keys, OAuth sec
 Before generating tester invite codes:
 
 - Set `AIST_ADMIN_EMAILS` to the backend admin account email.
+- Keep `AIST_API_HOST=127.0.0.1` unless you intentionally need LAN binding; do not port-forward raw `8787` to the internet.
 - Set provider environment values, especially `AIST_PROVIDER_API_KEY`, `AIST_PROVIDER_BASE_URL`, and `AIST_PROVIDER_MODEL`.
 - Set Google OAuth values and make sure the Google Cloud redirect URI matches `AIST_GOOGLE_REDIRECT_URI`.
 - Add the GitHub Pages origin to `AIST_API_ALLOWED_ORIGINS`.

@@ -25,6 +25,14 @@ Good local-server exposure options:
 
 Avoid a raw public `http://` IP address for Pages UAT. It will fail in normal browsers because of mixed-content blocking.
 
+Do not open port `8787` directly to the internet. The safer setup is an outbound HTTPS tunnel:
+
+```text
+internet -> tunnel provider HTTPS edge -> outbound tunnel process on your machine -> 127.0.0.1:8787
+```
+
+With that shape, your router does not need inbound port forwarding for the API. Leave Windows Firewall closed to inbound public traffic.
+
 ## Start The Owner Server
 
 Copy `.env.example` to `.env`, then set the provider, admin, Google OAuth, and policy values.
@@ -32,13 +40,25 @@ Copy `.env.example` to `.env`, then set the provider, admin, Google OAuth, and p
 For owner-hosted UAT, these values matter most:
 
 ```text
-AIST_API_HOST=0.0.0.0
+AIST_API_HOST=127.0.0.1
 AIST_API_PORT=8787
 AIST_API_DATA_FILE=.local-backend/aist-api-db.json
 AIST_API_ALLOWED_ORIGINS=https://press-lab.github.io,http://localhost:5173,http://127.0.0.1:5173
 AIST_WEB_APP_URL=https://press-lab.github.io/AI-Story-Teller/
 AIST_PUBLIC_API_BASE_URL=https://your-public-api-domain.example
+AIST_ADMIN_EMAILS=owner@example.com
+AIST_API_ALLOW_LOCAL_GOOGLE_STUB=false
 ```
+
+`npm.cmd run api:serve` refuses to start unless `AIST_ADMIN_EMAILS` or `AIST_API_ADMIN_KEY` is set. That prevents accidentally exposing the local-dev open admin routes.
+
+`npm.cmd run api:serve` also binds to `127.0.0.1` by default. If you intentionally bind to `0.0.0.0`, you must set:
+
+```text
+AIST_ALLOW_PUBLIC_BIND=true
+```
+
+Do that only behind a firewall/reverse proxy you understand.
 
 Start the shared backend:
 

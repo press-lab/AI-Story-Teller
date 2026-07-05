@@ -8,6 +8,9 @@ export interface JsonRequest<T = unknown> {
 export function sendJson(response: ServerResponse, status: number, body: unknown, extraHeaders: Record<string, string> = {}): void {
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
     ...extraHeaders,
   });
   response.end(JSON.stringify(body, null, 2));
