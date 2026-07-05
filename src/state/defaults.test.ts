@@ -12,10 +12,10 @@ describe("normalizeAdventure", () => {
       storyCards: [
         makeStoryCard({
           id: "card-jinx-pact",
-          title: "Seth's Pact with Jinx",
+          title: "Avery's Pact with Jinx",
           memoryMode: "living",
-          content: "- Jinx is repairing the Sump air filter with Seth's arcane help.",
-          archivedFacts: "- Seth and Jinx have a secret pact: Jinx stops killing except in self-protection.\n- Mel's official cover story keeps Seth on the Council as a political shield.",
+          content: "- Jinx is repairing the Sump air filter with Avery's arcane help.",
+          archivedFacts: "- Avery and Jinx have a secret pact: Jinx stops killing except in self-protection.\n- Mel's official cover story keeps Avery on the Council as a political shield.",
           keys: ["Jinx pact"],
         }),
       ],

@@ -157,6 +157,7 @@ export default function App() {
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
   const [navForceVisible, setNavForceVisible] = useState(false);
+  const [openAdventureNavCollapsed, setOpenAdventureNavCollapsed] = useState(false);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
@@ -357,6 +358,10 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "play") setNavForceVisible(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    setOpenAdventureNavCollapsed(false);
+  }, [adventure?.id]);
 
   // Browser back/forward support
   useEffect(() => {
@@ -1255,42 +1260,52 @@ export default function App() {
         <nav className="app-nav" aria-label="Primary">
           {adventure && (
             <span
-              className="open-adventure-nav-group"
+              className={`open-adventure-nav-group${openAdventureNavCollapsed ? " collapsed" : ""}`}
               role="group"
               aria-label={`Open adventure navigation for ${adventure.title}`}
             >
-              <span className="open-adventure-label" title={adventure.title}>
+              <button
+                type="button"
+                className="open-adventure-label"
+                title={`${openAdventureNavCollapsed ? "Show" : "Hide"} adventure navigation for ${adventure.title}`}
+                aria-expanded={!openAdventureNavCollapsed}
+                onClick={() => setOpenAdventureNavCollapsed((collapsed) => !collapsed)}
+              >
                 Open: {adventure.title}
-              </span>
-              <button
-                type="button"
-                className={activeTopTab === "dashboard" ? "active" : ""}
-                onClick={() => openTab("dashboard")}
-              >
-                Adventure
               </button>
-              <button
-                type="button"
-                className={activeTopTab === "play" ? "active primary" : ""}
-                onClick={() => openTab("play")}
-              >
-                Play
-              </button>
-              <button
-                type="button"
-                className={activeTopTab === "edit" ? "active" : ""}
-                onClick={() => {
-                  if (activeTab === "edit") {
-                    document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  } else {
-                    openEditor(editorTab);
-                  }
-                }}
-              >
-                Edit
-                {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
-              </button>
+              {!openAdventureNavCollapsed && (
+                <>
+                  <button
+                    type="button"
+                    className={activeTopTab === "dashboard" ? "active" : ""}
+                    onClick={() => openTab("dashboard")}
+                  >
+                    Adventure
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTopTab === "play" ? "active primary" : ""}
+                    onClick={() => openTab("play")}
+                  >
+                    Play
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTopTab === "edit" ? "active" : ""}
+                    onClick={() => {
+                      if (activeTab === "edit") {
+                        document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      } else {
+                        openEditor(editorTab);
+                      }
+                    }}
+                  >
+                    Edit
+                    {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
+                  </button>
+                </>
+              )}
             </span>
           )}
           <button

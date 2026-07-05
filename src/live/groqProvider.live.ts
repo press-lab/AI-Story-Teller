@@ -113,14 +113,14 @@ describe("live Groq provider integration", () => {
           characterName: "Margo",
           currentState: "Margo is guarded.",
           updatePrompt:
-            'Return ONLY valid JSON exactly like this: {"currentState":"Margo is openly worried about Seth after the live test scene."}',
+            'Return ONLY valid JSON exactly like this: {"currentState":"Margo is openly worried about Avery after the live test scene."}',
         }),
       ],
       messages: [
         {
           id: "live-msg-brain",
           role: "assistant" as const,
-          content: "Margo sees Seth step into danger and becomes openly worried.",
+          content: "Margo sees Avery step into danger and becomes openly worried.",
           createdAt: "2026-01-01T00:00:00.000Z",
         },
       ],
@@ -132,7 +132,7 @@ describe("live Groq provider integration", () => {
 
     adventure = reduceAll(adventure, result.actions);
     expect(adventure.brains.find((brain) => brain.id === "brain-live-margo")?.currentState).toContain(
-      "openly worried about Seth",
+      "openly worried about Avery",
     );
   });
 
@@ -144,7 +144,7 @@ describe("live Groq provider integration", () => {
           id: "card-live-margo",
           title: "Margo",
           keys: ["Margo"],
-          content: "Margo is protective of Seth.",
+          content: "Margo is protective of Avery.",
         }),
       ],
       brains: [makeBrain({ id: "brain-live-margo", characterName: "Margo" })],
@@ -153,7 +153,7 @@ describe("live Groq provider integration", () => {
     const result = await runRememberThis(
       adventure,
       liveGroqConfig(),
-      "Margo calls Seth hedge prince as a private joke.",
+      "Margo calls Avery hedge prince as a private joke.",
     );
     expect(result.logEntry.errors).toEqual([]);
     expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);

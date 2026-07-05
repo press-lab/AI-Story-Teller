@@ -30,20 +30,20 @@ describe("runStoryCardAudit", () => {
       ...createDefaultAdventure("Audit"),
       storyCards: [
         makeStoryCard({
-          id: "card-seth",
-          title: "Seth Valis",
+          id: "card-Avery",
+          title: "Avery Valis",
           type: "character",
           memoryMode: "static",
           content:
             "- Player character and adult Council mage with active warding discipline.\n" +
             "- Appearance: tall, controlled, and dressed in practical magical leathers.\n" +
-            "- Never write Seth's dialogue, thoughts, feelings, choices, or consequential actions.\n" +
-            "• Seth is currently managing Viktor's notification protocol while Mel handles the Council.",
-          keys: ["Seth", "The", "His", "Council mandate"],
+            "- Never write Avery's dialogue, thoughts, feelings, choices, or consequential actions.\n" +
+            "• Avery is currently managing Viktor's notification protocol while Mel handles the Council.",
+          keys: ["Avery", "The", "His", "Council mandate"],
         }),
       ],
       messages: [
-        { id: "m1", role: "user" as const, content: "Seth reviews the Council mandate and Viktor protocol.", createdAt: "2026-01-01T00:00:00.000Z" },
+        { id: "m1", role: "user" as const, content: "Avery reviews the Council mandate and Viktor protocol.", createdAt: "2026-01-01T00:00:00.000Z" },
         { id: "m2", role: "assistant" as const, content: "The Council waits while Mel handles the room.", createdAt: "2026-01-01T00:01:00.000Z" },
       ],
     };
@@ -52,22 +52,22 @@ describe("runStoryCardAudit", () => {
       content: JSON.stringify([
         {
           action: "edit",
-          cardId: "card-seth",
-          title: "Seth Valis",
+          cardId: "card-Avery",
+          title: "Avery Valis",
           rationale: "The static profile contains a current protocol-management bullet.",
           suggestedContent:
             "- Player character and adult Council mage with active warding discipline.\n" +
             "- Appearance: tall, controlled, and dressed in practical magical leathers.\n" +
-            "- Never write Seth's dialogue, thoughts, feelings, choices, or consequential actions.",
+            "- Never write Avery's dialogue, thoughts, feelings, choices, or consequential actions.",
           suggestedKeys: ["Council mage", "active warding"],
           suggestedType: "character",
           suggestedMemoryMode: "static",
         },
         {
           action: "create",
-          title: "Seth and Viktor Protocol",
+          title: "Avery and Viktor Protocol",
           rationale: "The protocol is an ongoing arrangement rather than a permanent identity fact.",
-          suggestedContent: "• Seth is currently managing Viktor's notification protocol while Mel handles the Council.",
+          suggestedContent: "• Avery is currently managing Viktor's notification protocol while Mel handles the Council.",
           suggestedKeys: ["Viktor protocol", "notification protocol"],
           suggestedType: "plot",
           suggestedMemoryMode: "living",
@@ -84,12 +84,12 @@ describe("runStoryCardAudit", () => {
         expect.objectContaining({
           action: "edit",
           source: "deterministic",
-          cardId: "card-seth",
-          editedKeys: "Seth, Council mandate",
+          cardId: "card-Avery",
+          editedKeys: "Avery, Council mandate",
         }),
         expect.objectContaining({
           action: "create",
-          title: "Seth and Viktor Protocol",
+          title: "Avery and Viktor Protocol",
           suggestedType: "plot",
           suggestedMemoryMode: "living",
           editedKeys: "Viktor protocol, notification protocol",
@@ -105,7 +105,7 @@ describe("runStoryCardAudit", () => {
         makeStoryCard({
           id: "card-duplicate-lines",
           title: "Duplicate Lines",
-          content: "- Seth keeps the red key.\n- Seth keeps the red key.\n- Margo watches the door.",
+          content: "- Avery keeps the red key.\n- Avery keeps the red key.\n- Margo watches the door.",
           keys: ["red key", "red key", "The"],
         }),
       ],
@@ -119,7 +119,7 @@ describe("runStoryCardAudit", () => {
         expect.objectContaining({
           id: "det-duplicate-lines-card-duplicate-lines",
           source: "deterministic",
-          editedContent: "- Seth keeps the red key.\n- Margo watches the door.",
+          editedContent: "- Avery keeps the red key.\n- Margo watches the door.",
         }),
         expect.objectContaining({
           id: "det-trigger-keys-card-duplicate-lines",

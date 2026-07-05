@@ -1082,7 +1082,7 @@ export function SettingsPage({
                 <p className="eyebrow">Playtest Seed</p>
                 <h3>{developmentAdventureTitle}</h3>
                 <p className="muted">
-                  Loads a complete adult Fire Nation AU scenario with World Blocks, Story Cards, Characters,
+                  Loads a complete adult Fire Nation AU scenario with Plot Components, Story Cards, Characters,
                   semantic triggers, a quest, legacy rolling summary data, and one opening message.
                 </p>
               </div>

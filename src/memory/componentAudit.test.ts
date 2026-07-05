@@ -43,7 +43,7 @@ describe("runComponentAudit", () => {
           title: "Active Pressure",
           type: "activePressure",
           content:
-            "The Red Ring is closing the city gates before Seth can extract Margo. " +
+            "The Red Ring is closing the city gates before Avery can extract Margo. " +
             "\nThis also repeats old history about the first gala and the basement chase.",
           active: true,
         }),
@@ -60,7 +60,7 @@ describe("runComponentAudit", () => {
         }),
         expect.objectContaining({
           id: "det-pressure-long-active-pressure",
-          editedContent: "The Red Ring is closing the city gates before Seth can extract Margo.",
+          editedContent: "The Red Ring is closing the city gates before Avery can extract Margo.",
         }),
       ]),
     );

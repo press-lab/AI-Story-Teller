@@ -75,7 +75,7 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 
 ---
 
-## 3. Component Types (World Blocks)
+## 3. Component Types (Plot Components)
 
 **Files:** `pages/ComponentsPage.tsx`, `contextBuilder/contextBuilder.ts`, `triggers/semanticEngine.ts`
 

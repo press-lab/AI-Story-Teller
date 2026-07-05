@@ -424,7 +424,7 @@ describe("adventureReducer", () => {
       id: "brain-margo-history",
       characterName: "Margo",
       triggers: ["Margo"],
-      currentState: "Margo privately believes Seth is using jokes to dodge a real promise.",
+      currentState: "Margo privately believes Avery is using jokes to dodge a real promise.",
       thoughts: { old_read: "7 → He jokes when the room gets too sincere. I should not let that work twice." },
     });
     let state = { ...baseAdventure(), brains: [brain] };
@@ -435,13 +435,13 @@ describe("adventureReducer", () => {
       mode: "replace",
       turn: 8,
       patch: {
-        currentState: "Margo now believes Seth meant the promise but is afraid to name it.",
+        currentState: "Margo now believes Avery meant the promise but is afraid to name it.",
         thoughts: { new_read: "8 → He meant it. That is worse, somehow." },
       },
     });
 
     const updated = state.brains.find((entry) => entry.id === "brain-margo-history");
-    expect(updated?.currentState).toBe("Margo now believes Seth meant the promise but is afraid to name it.");
+    expect(updated?.currentState).toBe("Margo now believes Avery meant the promise but is afraid to name it.");
     expect(updated?.archivedThoughts.old_read).toContain("jokes");
     const outgoing = state.activeState.memoryProposals.filter(
       (proposal) => proposal.proposedType === "storyCard" && proposal.status === "pending",
@@ -455,7 +455,7 @@ describe("adventureReducer", () => {
       id: "brain-margo-auto-history",
       characterName: "Margo",
       triggers: ["Margo"],
-      relationshipPressure: "Margo treats the ward-room jokes as proof Seth still keeps her at arm's length.",
+      relationshipPressure: "Margo treats the ward-room jokes as proof Avery still keeps her at arm's length.",
     });
     let state = {
       ...baseAdventure(),
@@ -571,8 +571,8 @@ describe("adventureReducer", () => {
       id: "proposal-story",
       proposedType: "storyCard",
       title: "Promise",
-      content: "Seth promised Margo he would return.",
-      suggestedTriggers: ["Seth", "Margo", "promise"],
+      content: "Avery promised Margo he would return.",
+      suggestedTriggers: ["Avery", "Margo", "promise"],
     });
 
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: storyProposal });
@@ -587,7 +587,7 @@ describe("adventureReducer", () => {
 
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-story" });
     expect(state.activeState.memoryProposals[0].status).toBe("approved");
-    expect(state.storyCards.some((card) => card.title === "Promise" && card.keys.includes("Seth") && card.keys.includes("Margo"))).toBe(true);
+    expect(state.storyCards.some((card) => card.title === "Promise" && card.keys.includes("Avery") && card.keys.includes("Margo"))).toBe(true);
     const approvedStoryCard = state.storyCards.find((card) => card.title === "Promise");
     expect(approvedStoryCard?.lastMemoryUpdatedAt).toEqual(expect.any(String));
     expect(approvedStoryCard?.memoryUpdateHistory?.[0]).toMatchObject({
@@ -599,7 +599,7 @@ describe("adventureReducer", () => {
         title: "Promise",
         content: "",
         compactKind: "promise",
-        coreFacts: expect.arrayContaining(["Seth promised Margo he would return."]),
+        coreFacts: expect.arrayContaining(["Avery promised Margo he would return."]),
       },
     });
 
@@ -619,7 +619,7 @@ describe("adventureReducer", () => {
       id: "proposal-plot",
       proposedType: "plotEssentialsUpdate",
       title: "Tonight",
-      content: "The Beast is actively hunting Seth tonight.",
+      content: "The Beast is actively hunting Avery tonight.",
     });
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: plotProposal });
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-plot" });
@@ -631,18 +631,18 @@ describe("adventureReducer", () => {
       operation: "create",
       proposalId: "proposal-plot",
       previous: null,
-      next: { content: "The Beast is actively hunting Seth tonight." },
+      next: { content: "The Beast is actively hunting Avery tonight." },
     });
 
     const summaryProposal = makeMemoryProposal({
       id: "proposal-summary",
       proposedType: "summaryUpdate",
       title: "Summary",
-      content: "Seth and Margo reached the old city.",
+      content: "Avery and Margo reached the old city.",
     });
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: summaryProposal });
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-summary" });
-    expect(state.rollingSummary.content).toBe("Seth and Margo reached the old city.");
+    expect(state.rollingSummary.content).toBe("Avery and Margo reached the old city.");
 
     const momentum = makeComponent({ id: "component-momentum", title: "Immediate Momentum", type: "immediateMomentum", content: "Old next beat." });
     const momentumProposal = makeMemoryProposal({
@@ -720,10 +720,10 @@ describe("adventureReducer", () => {
     state = reduce(state, {
       type: "UPSERT_STORY_CARD",
       storyCard: makeStoryCard({
-        id: "card-seth",
-        title: "Seth Valis",
+        id: "card-Avery",
+        title: "Avery Valis",
         content: "- Player character and Council mage.",
-        keys: ["Seth"],
+        keys: ["Avery"],
         type: "character",
         memoryMode: "static",
       }),
@@ -732,30 +732,30 @@ describe("adventureReducer", () => {
     state = reduce(state, {
       type: "ADD_MEMORY_PROPOSAL",
       proposal: makeMemoryProposal({
-        id: "proposal-seth-current",
+        id: "proposal-Avery-current",
         proposedType: "storyCard",
-        targetId: "card-seth",
-        title: "Seth Valis",
-        content: "• Seth is currently managing Viktor's notification protocol while Mel handles the Council.",
-        suggestedTriggers: ["Seth", "The", "Viktor protocol", "current status"],
+        targetId: "card-Avery",
+        title: "Avery Valis",
+        content: "• Avery is currently managing Viktor's notification protocol while Mel handles the Council.",
+        suggestedTriggers: ["Avery", "The", "Viktor protocol", "current status"],
         appendContent: true,
         memoryMode: "living",
       }),
     });
 
-    const routed = state.activeState.memoryProposals.find((entry) => entry.id === "proposal-seth-current");
+    const routed = state.activeState.memoryProposals.find((entry) => entry.id === "proposal-Avery-current");
     expect(routed).toMatchObject({
-      title: "Seth Valis: Current Status",
+      title: "Avery Valis: Current Status",
       targetId: undefined,
       appendContent: undefined,
       memoryMode: "living",
       suggestedTriggers: ["Viktor protocol"],
     });
 
-    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-seth-current" });
+    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-Avery-current" });
 
-    const profile = state.storyCards.find((card) => card.id === "card-seth");
-    const child = state.storyCards.find((card) => card.title === "Seth Valis: Current Status");
+    const profile = state.storyCards.find((card) => card.id === "card-Avery");
+    const child = state.storyCards.find((card) => card.title === "Avery Valis: Current Status");
     expect(profile?.content).toBe("- Player character and Council mage.");
     expect(child).toMatchObject({
       memoryMode: "living",
@@ -810,9 +810,9 @@ describe("adventureReducer", () => {
       type: "UPSERT_STORY_CARD",
       storyCard: makeStoryCard({
         id: "card-bond",
-        title: "Nix and Seth",
+        title: "Nix and Avery",
         content: "• Their bond is private and unresolved.",
-        keys: ["Nix", "Seth"],
+        keys: ["Nix", "Avery"],
         memoryMode: "living",
       }),
     });
@@ -821,15 +821,15 @@ describe("adventureReducer", () => {
       id: "proposal-bond-1",
       proposedType: "storyCard",
       targetId: "card-bond",
-      title: "Nix and Seth",
-      content: "• Nix is testing whether Seth will keep choosing her chaos.",
+      title: "Nix and Avery",
+      content: "• Nix is testing whether Avery will keep choosing her chaos.",
       appendContent: true,
       memoryMode: "living",
     });
     const second = makeMemoryProposal({
       ...first,
       id: "proposal-bond-2",
-      content: "• Seth and Nix now trust each other with dangerous field experiments.",
+      content: "• Avery and Nix now trust each other with dangerous field experiments.",
     });
 
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: first });
@@ -855,16 +855,16 @@ describe("adventureReducer", () => {
       title: "Gutterglass Escape",
       proposedType: "storyCard",
       content:
-        "• Seth, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
+        "• Avery, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
         "• They used coordinated bending, blue fire, and a maintenance tunnel to leave with the hextech regulator.",
       status: "pending",
     });
     const second = makeMemoryProposal({
       id: "same-event-2",
-      title: "Seth, Quintin, and Jinx's Flight",
+      title: "Avery, Quintin, and Jinx's Flight",
       proposedType: "storyCard",
       content:
-        "• Seth, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
+        "• Avery, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
         "• Their coordinated bending, blue fire, and the maintenance tunnel let them leave with the hextech regulator.",
       status: "pending",
     });
@@ -880,7 +880,7 @@ describe("adventureReducer", () => {
     const card = makeStoryCard({
       title: "Gutterglass Escape",
       content:
-        "• Seth, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
+        "• Avery, Quintin, and Jinx escaped the Gutterglass Pumpworks together, evading Caitlyn and Vi's trap.\n" +
         "• They used coordinated bending, blue fire, and a maintenance tunnel to leave with the hextech regulator.",
       active: true,
     });
@@ -893,7 +893,7 @@ describe("adventureReducer", () => {
         title: "The Escape from Gutterglass",
         proposedType: "storyCard",
         content:
-          "• Seth, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
+          "• Avery, Quintin, and Jinx escaped Caitlyn and Vi inside the Gutterglass Pumpworks.\n" +
           "• Their coordinated bending, blue fire, and the maintenance tunnel let them leave with the hextech regulator.",
         status: "pending",
       }),
@@ -924,13 +924,13 @@ describe("adventureReducer", () => {
         proposedType: "plotPressureUpdate",
         title: "Active Pressure",
         targetId: "comp-pressure",
-        content: "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+        content: "Caitlyn's task force is sealing the Pumpworks around Avery and Jinx.",
         status: "pending",
       }),
     });
 
     expect(state.components.find((component) => component.id === "comp-pressure")?.content).toBe(
-      "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+      "Caitlyn's task force is sealing the Pumpworks around Avery and Jinx.",
     );
     expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-1")).toBe(false);
 
@@ -941,7 +941,7 @@ describe("adventureReducer", () => {
         proposedType: "plotPressureUpdate",
         title: "Active Pressure",
         targetId: "comp-pressure",
-        content: "Caitlyn's task force is sealing the Pumpworks around Seth and Jinx.",
+        content: "Caitlyn's task force is sealing the Pumpworks around Avery and Jinx.",
         status: "pending",
       }),
     });
@@ -954,7 +954,7 @@ describe("adventureReducer", () => {
       id: "component-plot",
       title: "Plot Essentials",
       type: "plotEssentials",
-      content: "Azula revealed the silver warrant to Seth in the council chamber, proving the conspiracy had court access.",
+      content: "Azula revealed the silver warrant to Avery in the council chamber, proving the conspiracy had court access.",
       active: true,
     });
     let state = {
@@ -974,7 +974,7 @@ describe("adventureReducer", () => {
         proposedType: "plotEssentialsUpdate",
         title: "Plot Essentials",
         targetId: "component-plot",
-        content: "Seth has left the council chamber to warn Margo before midnight.",
+        content: "Avery has left the council chamber to warn Margo before midnight.",
       }),
     });
 
@@ -1180,10 +1180,10 @@ describe("adventureReducer", () => {
   it("story-card replacements preserve guarded compact facts from live content and archives", () => {
     const card = makeStoryCard({
       id: "card-jinx-pact",
-      title: "Seth's Pact with Jinx",
+      title: "Avery's Pact with Jinx",
       memoryMode: "living",
-      content: "- Seth and Jinx have a secret pact: Jinx stops killing except in self-protection.",
-      archivedFacts: "- Mel's official cover story keeps Seth on the Council as a political shield.",
+      content: "- Avery and Jinx have a secret pact: Jinx stops killing except in self-protection.",
+      archivedFacts: "- Mel's official cover story keeps Avery on the Council as a political shield.",
       keys: ["Jinx pact"],
       active: true,
     });
@@ -1194,10 +1194,10 @@ describe("adventureReducer", () => {
       proposal: makeMemoryProposal({
         id: "proposal-jinx-pact-replace",
         proposedType: "storyCard",
-        title: "Seth's Pact with Jinx",
+        title: "Avery's Pact with Jinx",
         targetId: "card-jinx-pact",
         appendContent: false,
-        content: "- Jinx is repairing the Sump air filter with Seth's arcane help.",
+        content: "- Jinx is repairing the Sump air filter with Avery's arcane help.",
         suggestedTriggers: ["Sump air filter"],
         memoryMode: "living",
       }),
@@ -1220,8 +1220,8 @@ describe("adventureReducer", () => {
     const proposal = makeMemoryProposal({
       id: "proposal-relationship-card",
       proposedType: "storyCard",
-      title: "Seth and Margo Trust",
-      content: "• Seth and Margo use ward-room jokes as a private trust signal.",
+      title: "Avery and Margo Trust",
+      content: "• Avery and Margo use ward-room jokes as a private trust signal.",
       suggestedTriggers: ["ward-room jokes", "private trust signal"],
       memoryMode: "living",
       storyCardType: "plot",
@@ -1232,7 +1232,7 @@ describe("adventureReducer", () => {
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal });
     state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-relationship-card" });
 
-    const card = state.storyCards.find((entry) => entry.title === "Seth and Margo Trust");
+    const card = state.storyCards.find((entry) => entry.title === "Avery and Margo Trust");
     expect(card).toMatchObject({
       type: "plot",
       memoryMode: "living",
@@ -1324,7 +1324,7 @@ describe("adventureReducer", () => {
       title: "Plot Essentials",
       type: "plotEssentials",
       content:
-        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- The Drowned Choir had already sold Avery a false map to the undercity gate.\n" +
         "- Caitlyn is currently sealing the Pumpworks with a task force.",
       active: true,
     });
@@ -1361,7 +1361,7 @@ describe("adventureReducer", () => {
       title: "Plot Essentials",
       type: "plotEssentials",
       content:
-        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- The Drowned Choir had already sold Avery a false map to the undercity gate.\n" +
         "- Caitlyn is currently sealing the Pumpworks with a task force.",
       active: true,
     });
@@ -1389,7 +1389,7 @@ describe("adventureReducer", () => {
       title: "Plot Essentials",
       type: "plotEssentials",
       content:
-        "- The Drowned Choir had already sold Seth a false map to the undercity gate.\n" +
+        "- The Drowned Choir had already sold Avery a false map to the undercity gate.\n" +
         "- Caitlyn is currently sealing the Pumpworks with a task force.",
       active: true,
     });

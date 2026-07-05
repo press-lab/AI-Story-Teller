@@ -606,7 +606,7 @@ export function AdventuresPage({
           <details className="setup-panel">
             <summary>Starter Components ({starterComponents.length})</summary>
             <p className="muted">
-              Components become World Blocks. Keep Plot Essentials short and factual; use AI Instructions for
+              Components become Plot Components. Keep Plot Essentials short and factual; use AI Instructions for
               persistent generation rules and Author's Note for tone.
             </p>
             <div className="toolbar">
@@ -795,7 +795,7 @@ export function AdventuresPage({
                     rows={10}
                     value={storyCardJsonText}
                     onChange={(event) => setStoryCardJsonText(event.target.value)}
-                    placeholder='[{"title":"Margo","keys":"Margo, hedge prince","entry":"Margo calls Seth hedge prince."}]'
+                    placeholder='[{"title":"Margo","keys":"Margo, hedge prince","entry":"Margo calls Avery hedge prince."}]'
                   />
                 </Field>
                 {jsonImportError && <div className="error-box">{jsonImportError}</div>}

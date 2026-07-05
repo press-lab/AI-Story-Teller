@@ -58,7 +58,7 @@ describe("premade adventure library", () => {
     const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
     const currentArc = adventure.components.find((component) => component.type === "currentArc")?.content ?? "";
     const mel = adventure.storyCards.find((card) => card.title === "Mel Medarda");
-    const AveryMagic = adventure.storyCards.find((card) => card.title === "Avery's Magic");
+    const averyMagic = adventure.storyCards.find((card) => card.title === "Avery's Magic");
     const brainNames = adventure.brains.map((brain) => brain.characterName);
     const thumbnail = getAdventureThumbnail(adventure);
 
@@ -82,7 +82,7 @@ describe("premade adventure library", () => {
     expect(currentArc).toContain("Mel opposes Hextech weaponry");
     expect(currentArc).not.toContain("surviving city leadership wants blood");
     expect(pe).not.toContain("VOICE CONTRACT");
-    expect(AveryMagic?.content).toContain("basic physical wards are always up");
+    expect(averyMagic?.content).toContain("basic physical wards are always up");
     expect(mel?.content).toContain("No romance with Avery");
     expect(mel?.content).toContain("Jayce's patron and romantic partner");
     expect(mel?.content).toContain("opposes using Hextech weaponry");

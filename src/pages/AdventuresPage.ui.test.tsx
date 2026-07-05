@@ -58,7 +58,7 @@ describe("AdventuresPage new adventure setup", () => {
     await user.type(titleFields[titleFields.length - 1], "Margo");
     await user.type(screen.getByLabelText("Triggers / keys"), "Margo, hedge prince");
     const allContentFields = screen.getAllByLabelText("Content");
-    await user.type(allContentFields[allContentFields.length - 1], "Margo calls Seth hedge prince as a private joke.");
+    await user.type(allContentFields[allContentFields.length - 1], "Margo calls Avery hedge prince as a private joke.");
 
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
@@ -79,7 +79,7 @@ describe("AdventuresPage new adventure setup", () => {
     expect(setup.storyCards[0]).toMatchObject({
       title: "Margo",
       keys: ["Margo", "hedge prince"],
-      content: "Margo calls Seth hedge prince as a private joke.",
+      content: "Margo calls Avery hedge prince as a private joke.",
     });
   });
 

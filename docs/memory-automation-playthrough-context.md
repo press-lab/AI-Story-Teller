@@ -6,11 +6,11 @@ This note captures the Arcane playthrough audit from the `Arcane-After-the-Rocke
 
 The memory automation was detecting important beats, but it was not reliably keeping the right facts active in prompt context.
 
-The clearest failure involved Seth's private pact with Jinx and Mel's political shield:
+The clearest failure involved Avery's private pact with Jinx and Mel's political shield:
 
-- Seth and Jinx made a conditional pact: Jinx stops killing except for self-protection, rebuilds from the shadows, avoids Caitlyn and Piltover authorities, and tries to repent.
-- Seth gives Jinx protection, visits, mentorship, a safe outlet, and a rune-etched coin to summon him.
-- Mel gives Seth an official cover story for time spent in Zaun, redirects Caitlyn where possible, and keeps Seth on the Council because his presence is part of the shield around the Jinx situation.
+- Avery and Jinx made a conditional pact: Jinx stops killing except for self-protection, rebuilds from the shadows, avoids Caitlyn and Piltover authorities, and tries to repent.
+- Avery gives Jinx protection, visits, mentorship, a safe outlet, and a rune-etched coin to summon him.
+- Mel gives Avery an official cover story for time spent in Zaun, redirects Caitlyn where possible, and keeps Avery on the Council because his presence is part of the shield around the Jinx situation.
 
 The save did contain these facts. The problem was active-context retention:
 

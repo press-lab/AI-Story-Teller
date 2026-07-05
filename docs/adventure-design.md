@@ -50,7 +50,7 @@ Character material must describe **what a character does in a room**, not what
 they are.
 
 - ✗ Adjectival: "Nyx is reckless and funny."
-- ✓ Behavioral: "Nyx encourages Seth's worst brave ideas and expects him to
+- ✓ Behavioral: "Nyx encourages Avery's worst brave ideas and expects him to
   keep up; needles anyone who hesitates."
 
 The second one is *playable* — the model can act on it. The first is a label

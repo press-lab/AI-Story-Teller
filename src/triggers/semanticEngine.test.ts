@@ -174,7 +174,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     mockProvider
       .mockResolvedValueOnce({ content: "[]", raw: {} })
       .mockResolvedValueOnce({ content: '["storyCard:card-margo"]', raw: {} })
-      .mockResolvedValueOnce({ content: "Margo is protective and now worried about Seth.", raw: {} });
+      .mockResolvedValueOnce({ content: "Margo is protective and now worried about Avery.", raw: {} });
 
     const result = await runMemoryCycle(adventure, providerConfig);
 
@@ -250,7 +250,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     mockProvider
       .mockResolvedValueOnce({ content: "[]", raw: {} })
       .mockResolvedValueOnce({ content: '["storyCard:card-joke"]', raw: {} })
-      .mockResolvedValueOnce({ content: "Margo calls Seth hedge prince only when scared.", raw: {} });
+      .mockResolvedValueOnce({ content: "Margo calls Avery hedge prince only when scared.", raw: {} });
 
     const result = await runMemoryCycle(adventure, providerConfig);
 
@@ -269,7 +269,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(rejected.storyCards[0].content).toBe("Old joke.");
     expect(rejected.activeState.memoryProposals[0].status).toBe("rejected");
     reduced = adventureReducer(withPendingProposal, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: proposal.id });
-    expect(reduced.storyCards[0].content).toBe("Margo calls Seth hedge prince only when scared.");
+    expect(reduced.storyCards[0].content).toBe("Margo calls Avery hedge prince only when scared.");
   });
 
   it("routes Plot Essentials pressure updates to Memory Inbox", async () => {
@@ -307,7 +307,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       id: "component-pe",
       title: "Plot Essentials",
       type: "plotEssentials",
-      content: "The old PE says Seth is trapped in the Pumpworks.",
+      content: "The old PE says Avery is trapped in the Pumpworks.",
       active: true,
       autoUpdate: true,
       autoUpdateCooldownTurns: 60,
@@ -321,7 +321,7 @@ describe("runSemanticPostTurnEvaluation", () => {
 
     mockProvider
       .mockResolvedValueOnce({ content: '["plotEssentialsDrift:component-pe"]', raw: {} })
-      .mockResolvedValueOnce({ content: "- Seth has escaped the Pumpworks and is being hunted along the canal exits.", raw: {} });
+      .mockResolvedValueOnce({ content: "- Avery has escaped the Pumpworks and is being hunted along the canal exits.", raw: {} });
 
     const result = await runMemoryCycle(adventure, providerConfig);
 
@@ -417,15 +417,15 @@ describe("runSemanticPostTurnEvaluation", () => {
 
 describe("runManualBrainUpdate", () => {
   it("calls the brain update prompt and applies the patch", async () => {
-    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
     const adventure = { ...baseAdventure(), brains: [brain] };
-    mockProvider.mockResolvedValueOnce({ content: '{"currentState": "Seth is on edge."}', raw: {} });
+    mockProvider.mockResolvedValueOnce({ content: '{"currentState": "Avery is on edge."}', raw: {} });
 
-    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
 
     expect(mockProvider).toHaveBeenCalledOnce();
     expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(true);
-    expect(result.logEntry.conditionsFired).toContain("manualBrain:brain-seth");
+    expect(result.logEntry.conditionsFired).toContain("manualBrain:brain-Avery");
   });
 
   it("logs an error when the brain ID does not exist", async () => {
@@ -435,32 +435,32 @@ describe("runManualBrainUpdate", () => {
   });
 
   it("logs an error when the LLM returns no recognized brain fields", async () => {
-    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
     const adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({ content: '{"unknownField": "something"}', raw: {} });
 
-    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
     expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(false);
     expect(result.logEntry.errors[0]).toMatch(/no recognized keys/i);
   });
 
   it("accepts thoughts as a Record and ignores non-string values for other fields", async () => {
-    const brain = makeBrain({ id: "brain-seth", characterName: "Seth", active: true });
+    const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
     const adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({
       content:
-        '{"relationshipPressure":"bound by command","thoughts":{"seth_watches_court":"5 → Watch the court. Do not flinch."}}',
+        '{"relationshipPressure":"bound by command","thoughts":{"avery_watches_court":"5 → Watch the court. Do not flinch."}}',
       raw: {},
     });
 
-    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-seth");
+    const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
     const action = result.actions.find((entry) => entry.type === "APPLY_BRAIN_UPDATE") as Extract<
       typeof result.actions[number],
       { type: "APPLY_BRAIN_UPDATE" }
     >;
 
     expect(action.patch.relationshipPressure).toBe("bound by command");
-    expect(action.patch.thoughts).toEqual({ seth_watches_court: "5 → Watch the court. Do not flinch." });
+    expect(action.patch.thoughts).toEqual({ avery_watches_court: "5 → Watch the court. Do not flinch." });
     expect(result.logEntry.errors).toEqual([]);
   });
 });
@@ -689,10 +689,10 @@ describe("AI memory builders", () => {
       content: JSON.stringify({
         proposals: [{
           action: "create",
-          title: "Seth and Margo Trust",
+          title: "Avery and Margo Trust",
           storyCardType: "plot",
           memoryMode: "living",
-          content: "• Seth and Margo use ward-room jokes as a private trust signal.",
+          content: "• Avery and Margo use ward-room jokes as a private trust signal.",
           keys: ["ward-room jokes", "private trust signal"],
         }],
         rationale: "The brief describes an evolving relationship subject.",
@@ -704,7 +704,7 @@ describe("AI memory builders", () => {
       baseAdventure(),
       providerConfig,
       {
-        description: "Seth and Margo keep pretending their alliance is only practical.",
+        description: "Avery and Margo keep pretending their alliance is only practical.",
         intent: "relationship",
         memoryMode: "living",
         autoUpdate: true,
@@ -717,7 +717,7 @@ describe("AI memory builders", () => {
       type: "ADD_MEMORY_PROPOSAL",
       proposal: {
         proposedType: "storyCard",
-        title: "Seth and Margo Trust",
+        title: "Avery and Margo Trust",
         storyCardType: "plot",
         memoryMode: "living",
         autoUpdate: true,

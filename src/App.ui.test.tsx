@@ -123,14 +123,26 @@ describe("App adventure tool workspace", () => {
 
     // After creation the app lands on the dashboard — title appears as a heading
     await screen.findByRole("heading", { name: "Workspace Test" });
-    expect(within(nav).getByText("Open: Workspace Test")).toBeInTheDocument();
+    const openAdventureToggle = within(nav).getByRole("button", { name: "Open: Workspace Test" });
+    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "true");
     expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Open: Workspace Test",
       "Adventure",
       "Play",
       "Edit",
       "Profile",
       "Explore",
     ]);
+
+    await user.click(openAdventureToggle);
+    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "false");
+    expect(within(nav).queryByRole("button", { name: "Adventure" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    await user.click(openAdventureToggle);
+    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "true");
+    expect(within(nav).getByRole("button", { name: "Adventure" })).toBeInTheDocument();
+
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
     await user.click(screen.getByRole("button", { name: "Story Cards" }));

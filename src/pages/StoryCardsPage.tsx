@@ -358,7 +358,7 @@ export function StoryCardsPage({
         Story Cards are <strong>triggered memory</strong> — they enter the model context when their title or trigger keys match
         the current input or recent story. Use them for characters, places, relationships, secrets, rules, and recurring facts
         that are only relevant some of the time. Keep triggers specific; broad keys cause card bleed.
-        For always-on world lore that should load every turn regardless, use a <strong>World Block</strong>.
+        For always-on world lore that should load every turn regardless, use a <strong>Plot Component</strong>.
       </p>
 
       {onBuildStoryCardMemory && (

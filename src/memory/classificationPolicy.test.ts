@@ -3,7 +3,7 @@ import { classifyMemory } from "./classificationPolicy";
 
 describe("classifyMemory", () => {
   it("classifies private jokes as story cards", () => {
-    expect(classifyMemory("Margo calls Seth 'hedge prince' as a private joke").proposedType).toBe("storyCard");
+    expect(classifyMemory("Margo calls Avery 'hedge prince' as a private joke").proposedType).toBe("storyCard");
   });
 
   it("ignores one-off room layouts unless marked important or recurring", () => {
@@ -22,7 +22,7 @@ describe("classifyMemory", () => {
   });
 
   it("routes durable character facts to existing Story Cards or story-card proposals when no Brain exists", () => {
-    const existing = classifyMemory("Margo promised Seth she would return", {
+    const existing = classifyMemory("Margo promised Avery she would return", {
       characterName: "Margo",
       existingStoryCards: [{ id: "card-margo", title: "Margo", keys: ["Margo"] }],
     });
@@ -30,13 +30,13 @@ describe("classifyMemory", () => {
     expect(existing.targetId).toBe("card-margo");
     expect(existing.rationale).toContain("existing Story Card");
 
-    const proposal = classifyMemory("Margo promised Seth she would return", { characterName: "Margo" });
+    const proposal = classifyMemory("Margo promised Avery she would return", { characterName: "Margo" });
     expect(proposal.proposedType).toBe("storyCard");
     expect(proposal.targetId).toBeUndefined();
   });
 
   it("classifies engagement and magical rules as durable story cards", () => {
-    expect(classifyMemory("Seth and Margo are now officially engaged").proposedType).toBe("storyCard");
+    expect(classifyMemory("Avery and Margo are now officially engaged").proposedType).toBe("storyCard");
     expect(classifyMemory("Magic cannot cross the warded threshold").proposedType).toBe("storyCard");
   });
 
@@ -45,7 +45,7 @@ describe("classifyMemory", () => {
   });
 
   it("classifies immediate current threats as Plot Essentials updates", () => {
-    expect(classifyMemory("The Beast is actively hunting Seth tonight").proposedType).toBe("plotEssentialsUpdate");
+    expect(classifyMemory("The Beast is actively hunting Avery tonight").proposedType).toBe("plotEssentialsUpdate");
   });
 
   it("does not create Brain entries for random one-scene NPCs by default", () => {

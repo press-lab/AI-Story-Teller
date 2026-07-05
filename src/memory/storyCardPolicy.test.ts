@@ -5,7 +5,7 @@ import { storyCardContextContent } from "./storyCardPolicy";
 describe("storyCardContextContent", () => {
   it("renders condensed raw content when compact structured facts are cleared", () => {
     const card = makeStoryCard({
-      title: "Seth's Pact",
+      title: "Avery's Pact",
       content: "Condensed pact context.",
       compactKind: "pact",
       compactStatus: "active",

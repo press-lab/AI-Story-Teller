@@ -20,12 +20,12 @@ describe("memory architecture smoke path", () => {
       brains: [makeBrain({ id: "brain-margo", characterName: "Margo", triggers: ["Margo"], currentState: "guarded" })],
     };
 
-    const turnOneClassification = classifyMemory("Margo calls Seth 'hedge prince' as a private joke");
+    const turnOneClassification = classifyMemory("Margo calls Avery 'hedge prince' as a private joke");
     const proposal: MemoryProposal = makeMemoryProposal({
       id: "proposal-1",
       proposedType: turnOneClassification.proposedType,
       title: turnOneClassification.title,
-      content: "Margo's private nickname for Seth is 'hedge prince'.",
+      content: "Margo's private nickname for Avery is 'hedge prince'.",
       suggestedTriggers: turnOneClassification.suggestedTriggers,
       confidence: turnOneClassification.confidence,
       rationale: turnOneClassification.rationale,
@@ -37,7 +37,7 @@ describe("memory architecture smoke path", () => {
     adventure = adventureReducer(adventure, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-1" });
     expect(adventure.activeState.memoryProposals[0].status).toBe("approved");
     expect(adventure.storyCards).toHaveLength(1);
-    expect(buildContext(adventure, { currentInput: "Seth hears Margo say hedge prince." }).sections.find((section) => section.id === "storyCards")?.items[0].title).toBe("Margo");
+    expect(buildContext(adventure, { currentInput: "Avery hears Margo say hedge prince." }).sections.find((section) => section.id === "storyCards")?.items[0].title).toBe("Margo");
 
     const brainUpdate = applyAIMemoryUpdate(adventure, [
       {
@@ -49,7 +49,7 @@ describe("memory architecture smoke path", () => {
       },
     ]);
     adventure = reduceAll(adventure, brainUpdate.actions);
-    const brainSection = buildContext(adventure, { currentInput: "Margo watches Seth." }).sections.find((section) => section.id === "brains");
+    const brainSection = buildContext(adventure, { currentInput: "Margo watches Avery." }).sections.find((section) => section.id === "brains");
     expect(brainSection?.content).toContain("Margo feels jealous but hides it.");
 
     const roomLayout = classifyMemory("The couch is against the west wall");

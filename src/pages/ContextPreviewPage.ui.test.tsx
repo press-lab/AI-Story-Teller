@@ -51,7 +51,7 @@ describe("ContextPreviewPage condense", () => {
     const user = userEvent.setup();
     const card = makeStoryCard({
       id: "card-pact",
-      title: "Seth's Pact",
+      title: "Avery's Pact",
       content: "",
       keys: ["pact"],
       active: true,
@@ -77,7 +77,7 @@ describe("ContextPreviewPage condense", () => {
 
     expect(screen.getByText(/OLD CORE FACT SHOULD DISAPPEAR/)).toBeInTheDocument();
 
-    const cardRow = screen.getByText("Seth's Pact").closest("tr");
+    const cardRow = screen.getByText("Avery's Pact").closest("tr");
     expect(cardRow).not.toBeNull();
     await user.click(within(cardRow!).getByRole("button", { name: "Condense" }));
     await user.click(await screen.findByRole("button", { name: "Accept Draft" }));
@@ -94,7 +94,7 @@ describe("ContextPreviewPage condense", () => {
     const duplicateText = [
       "The red ward key opens the sealed archive under the east tower.",
       "Margo hid the red ward key inside the brass lamp before the gala.",
-      "Seth must keep the red ward key away from the Red Ring scouts.",
+      "Avery must keep the red ward key away from the Red Ring scouts.",
       "The archive door answers only to the red ward key and Margo's voice.",
     ].join("\n");
     const adventure = {

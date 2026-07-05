@@ -24,7 +24,7 @@ function makeSmokeAdventure(): Adventure {
       id: "component-plot",
       title: "Current Premise",
       type: "plotEssentials",
-      content: "The ward is fragile tonight, and Margo is trying to keep Seth alive.",
+      content: "The ward is fragile tonight, and Margo is trying to keep Avery alive.",
       priority: 250,
       active: true,
     }),
@@ -46,7 +46,7 @@ function makeSmokeAdventure(): Adventure {
       id: "brain-margo",
       characterName: "Margo",
       triggers: ["Margo"],
-      thoughts: { turn1_protective: "1 → I keep watching the ward for cracks. If it fails, I'm the one between it and Seth." },
+      thoughts: { turn1_protective: "1 → I keep watching the ward for cracks. If it fails, I'm the one between it and Avery." },
       active: true,
       priority: 70,
     }),
@@ -181,12 +181,12 @@ describe("full turn smoke path", () => {
     let capturedPayload: ChatMessage[] | undefined;
     const provider = vi.fn(async (messages: ChatMessage[]) => {
       capturedPayload = messages;
-      return { content: 'Margo calls Seth "hedge prince" as a private joke.' };
+      return { content: 'Margo calls Avery "hedge prince" as a private joke.' };
     });
 
     const result = await runTurnPipeline({
       adventure,
-      text: "I ask Margo what Seth should do about the ward.",
+      text: "I ask Margo what Avery should do about the ward.",
       mode: "story",
       userMessageId: "smoke-user-1",
       assistantMessageId: "smoke-assistant-1",
@@ -227,7 +227,7 @@ describe("full turn smoke path", () => {
       proposalId: proposal.id,
       editedProposal: {
         title: "Hedge Prince Joke",
-        content: "Margo calls Seth hedge prince as a private joke.",
+        content: "Margo calls Avery hedge prince as a private joke.",
         suggestedTriggers: ["hedge prince"],
       },
     });
@@ -278,7 +278,7 @@ describe("full turn smoke path", () => {
     };
 
     // Turn 1: play the turn, then seed a storyCard proposal (as AI detection would produce).
-    await playTurn("I ask Margo if Seth has a nickname.", 'Margo calls Seth "hedge prince" as a private joke.', 1);
+    await playTurn("I ask Margo if Avery has a nickname.", 'Margo calls Avery "hedge prince" as a private joke.', 1);
     adventure = dispatch(adventure, {
       type: "ADD_MEMORY_PROPOSAL",
       proposal: makeMemoryProposal({
@@ -299,25 +299,25 @@ describe("full turn smoke path", () => {
       proposalId: jokeProposal.id,
       editedProposal: {
         title: "Hedge Prince Joke",
-        content: "Margo calls Seth hedge prince as a private joke.",
-        suggestedTriggers: ["hedge prince", "Margo", "Seth"],
+        content: "Margo calls Avery hedge prince as a private joke.",
+        suggestedTriggers: ["hedge prince", "Margo", "Avery"],
       },
     });
     const jokeCard = adventure.storyCards.find((card) => card.title === "Hedge Prince Joke");
     expect(jokeCard).toBeDefined();
 
-    const turnTwo = await playTurn("Margo says hedge prince again before Seth answers.", "Margo smiles despite herself.", 2);
+    const turnTwo = await playTurn("Margo says hedge prince again before Avery answers.", "Margo smiles despite herself.", 2);
     expect(sectionItemIds(turnTwo.preProviderContext, "storyCards")).toContain(jokeCard?.id);
 
     // Turn 3: play, then seed a brainUpdate proposal for Margo.
-    await playTurn("Seth steps too close to danger.", "Margo feels jealous but hides it because Seth smiled at the merchant.", 3);
+    await playTurn("Avery steps too close to danger.", "Margo feels jealous but hides it because Avery smiled at the merchant.", 3);
     adventure = dispatch(adventure, {
       type: "ADD_MEMORY_PROPOSAL",
       proposal: makeMemoryProposal({
         id: "long-proposal-brain",
         proposedType: "brainUpdate",
         title: "Margo",
-        content: "Margo feels jealous but hides it because Seth smiled at the merchant.",
+        content: "Margo feels jealous but hides it because Avery smiled at the merchant.",
         status: "pending",
         targetId: "brain-margo",
       }),
@@ -330,7 +330,7 @@ describe("full turn smoke path", () => {
     expect(adventure.brains.find((brain) => brain.id === "brain-margo")?.recentDevelopments).toContain(
       "Margo feels jealous but hides it",
     );
-    const brainContext = buildContext(adventure, { currentInput: "Margo watches Seth carefully." });
+    const brainContext = buildContext(adventure, { currentInput: "Margo watches Avery carefully." });
     expect(sectionItemIds(brainContext, "brains")).toContain("brain-margo");
     expectContextPreviewMatchesProviderPayload(brainContext);
 
@@ -427,12 +427,12 @@ describe("full turn smoke path", () => {
     });
 
     const provider = vi.fn(async () => ({
-      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Seth before it answered me.</thought>',
+      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Avery before it answered me.</thought>',
     }));
 
     const result = await runTurnPipeline({
       adventure,
-      text: "Margo watches Seth test the ward.",
+      text: "Margo watches Avery test the ward.",
       userMessageId: "thought-user",
       assistantMessageId: "thought-assistant",
       createdAt: timestamp,
@@ -441,7 +441,7 @@ describe("full turn smoke path", () => {
 
     const thoughts = result.adventure.brains.find((brain) => brain.id === "brain-margo")?.thoughts ?? {};
     expect(thoughts.old_guard).toBe("0 → I am already watching the ward.");
-    expect(Object.values(thoughts).some((value) => value.includes("ward answer Seth"))).toBe(true);
+    expect(Object.values(thoughts).some((value) => value.includes("ward answer Avery"))).toBe(true);
     expect(result.responseContent).not.toContain("<thought");
   });
 
@@ -453,20 +453,20 @@ describe("full turn smoke path", () => {
         id: "brain-margo",
         characterName: "Margo",
         triggers: ["Margo"],
-        thoughts: { old_guard: "0 \u2192 I saw the ward answer Seth before it answered me." },
-        archivedThoughts: { archived_guard: "0 \u2192 I already know the ward listens to Seth first." },
+        thoughts: { old_guard: "0 \u2192 I saw the ward answer Avery before it answered me." },
+        archivedThoughts: { archived_guard: "0 \u2192 I already know the ward listens to Avery first." },
         active: true,
         inclusionPolicy: "always",
       }),
     });
 
     const provider = vi.fn(async () => ({
-      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Seth before it answered me.</thought>',
+      content: 'Margo studies the ward.\n<thought name="Margo" key="new_pattern">I saw the ward answer Avery before it answered me.</thought>',
     }));
 
     const result = await runTurnPipeline({
       adventure,
-      text: "Margo watches Seth test the ward.",
+      text: "Margo watches Avery test the ward.",
       userMessageId: "thought-user",
       assistantMessageId: "thought-assistant",
       createdAt: timestamp,
@@ -475,7 +475,7 @@ describe("full turn smoke path", () => {
 
     const brain = result.adventure.brains.find((entry) => entry.id === "brain-margo");
     expect(brain?.thoughts).toEqual({
-      old_guard: "0 \u2192 I saw the ward answer Seth before it answered me.",
+      old_guard: "0 \u2192 I saw the ward answer Avery before it answered me.",
     });
     expect(result.responseContent).toBe("Margo studies the ward.");
   });
@@ -581,7 +581,7 @@ describe("full turn smoke path", () => {
 
     const result = await runTurnPipeline({
       adventure,
-      text: "Margo waits for Seth to answer.",
+      text: "Margo waits for Avery to answer.",
       userMessageId: "note-user",
       assistantMessageId: "note-assistant",
       createdAt: timestamp,

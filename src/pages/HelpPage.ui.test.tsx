@@ -40,7 +40,7 @@ describe("HelpPage documentation UI", () => {
       "Character Cards — Voice Contract",
       "Characters",
       "Current Story Arc",
-      "World Blocks",
+      "Plot Components",
       "Context Preview",
       "Automations",
       "Import / Export",

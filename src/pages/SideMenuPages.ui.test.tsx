@@ -442,7 +442,7 @@ describe("side menu page smoke coverage", () => {
         makeComponent({
           title: "Plot Essentials",
           type: "plotEssentials",
-          content: "The Beast is hunting Seth.",
+          content: "The Beast is hunting Avery.",
           lastMemoryUpdatedAt: timestamp,
           updatedAt: timestamp,
         }),
@@ -483,10 +483,10 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
     renderWithAdventure((adventure, dispatch) => <MemoryInboxPage adventure={adventure} dispatch={dispatch} />);
 
-    await user.type(screen.getByLabelText("Source Text"), "Margo calls Seth hedge prince as a private joke.");
+    await user.type(screen.getByLabelText("Source Text"), "Margo calls Avery hedge prince as a private joke.");
     await user.click(screen.getByRole("button", { name: "Create Suggestion" }));
 
-    expect(screen.getAllByDisplayValue("Margo calls Seth hedge prince as a private joke.")[0]).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue("Margo calls Avery hedge prince as a private joke.")[0]).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Approve" }));
     expect(screen.getByText(/· approved/i)).toBeInTheDocument();

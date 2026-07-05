@@ -14,7 +14,7 @@ This app wants two things that usually fight each other: every authoring control
 
 ## Current Application
 
-- Plot groups components into Core Story Contract, Current Story State, and Extra World Blocks.
+- Plot groups components into Core Story Contract, Current Story State, and Extra Plot Components.
 - Story Cards use dense rows that surface title, type/status, trigger keys, and a content preview before opening the full editor.
 - Characters use cast rows that surface name, aliases, thought count, and latest active thought before opening the full editor.
 - Memory Suggestions, Automation, Chronicle, Context, Saves, Import / Export, and Settings should follow the same page-summary plus grouped-work pattern.

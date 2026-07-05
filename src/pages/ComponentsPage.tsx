@@ -499,7 +499,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   if (extraComponents.length > 0) {
     componentGroups.push({
       id: "extras",
-      title: "Extra World Blocks",
+      title: "Extra Plot Components",
       description: "Optional always-on or custom context.",
       types: [],
       components: extraComponents,
@@ -526,7 +526,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
           Always-on plot truth, narration rules, author direction, and custom context blocks.
           Use Cards for facts that should only load when relevant.
         </p>
-        <div className="editor-stat-row" aria-label="World block counts">
+        <div className="editor-stat-row" aria-label="Plot Component counts">
           <span>{adventure.components.length} total</span>
           <span>{activeCount} active</span>
           {searchLower && <span>{visibleComponents.length} shown</span>}
@@ -534,7 +534,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </div>
 
       <p className="muted editor-legacy-help" style={{ margin: 0 }}>
-        World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
+        Plot Components are <strong>always-on context</strong> — they load every turn regardless of the story.
         Use them for narration rules, plot state, and author direction.
         For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
         <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons.

@@ -8,29 +8,29 @@ describe("resolveMemoryTarget", () => {
       ...createDefaultAdventure("Routing"),
       storyCards: [
         makeStoryCard({
-          id: "card-seth",
-          title: "Seth Valis",
+          id: "card-Avery",
+          title: "Avery Valis",
           type: "character",
           memoryMode: "static",
           content: "- Player character and Council mage.",
-          keys: ["Seth"],
+          keys: ["Avery"],
         }),
       ],
     };
 
     const routed = resolveMemoryTarget(adventure, {
       proposedType: "storyCard",
-      targetId: "card-seth",
-      title: "Seth Valis",
-      content: "• Seth is currently responsible for managing Viktor's notification protocol.",
-      suggestedTriggers: ["Seth", "The", "Viktor protocol", "current status"],
+      targetId: "card-Avery",
+      title: "Avery Valis",
+      content: "• Avery is currently responsible for managing Viktor's notification protocol.",
+      suggestedTriggers: ["Avery", "The", "Viktor protocol", "current status"],
       appendContent: true,
       memoryMode: "living",
       rationale: "Current arrangement update.",
     });
 
     expect(routed).toMatchObject({
-      title: "Seth Valis: Current Status",
+      title: "Avery Valis: Current Status",
       targetId: undefined,
       appendContent: undefined,
       memoryMode: "living",
@@ -58,7 +58,7 @@ describe("resolveMemoryTarget", () => {
       proposedType: "storyCard",
       targetId: "card-viktor",
       title: "Viktor",
-      content: "• Viktor agreed to notify Seth before engaging points of magical distress in Zaun.",
+      content: "• Viktor agreed to notify Avery before engaging points of magical distress in Zaun.",
       suggestedTriggers: ["Viktor", "notification protocol"],
       appendContent: true,
       memoryMode: "historical",
@@ -82,7 +82,7 @@ describe("resolveMemoryTarget", () => {
           title: "Viktor Protocol",
           type: "plot",
           memoryMode: "historical",
-          content: "• Seth established a notification channel with Viktor.",
+          content: "• Avery established a notification channel with Viktor.",
           keys: ["Viktor protocol"],
         }),
       ],
@@ -107,10 +107,10 @@ describe("resolveMemoryTarget", () => {
       storyCards: [
         makeStoryCard({
           id: "card-jinx-pact",
-          title: "Seth's Pact with Jinx",
+          title: "Avery's Pact with Jinx",
           type: "plot",
           memoryMode: "living",
-          content: "- Seth and Jinx have a secret pact.",
+          content: "- Avery and Jinx have a secret pact.",
           keys: ["Jinx pact"],
         }),
       ],
@@ -118,14 +118,14 @@ describe("resolveMemoryTarget", () => {
 
     const routed = resolveMemoryTarget(adventure, {
       proposedType: "storyCard",
-      title: "Seth's Pact with Jinx",
-      content: "- Mel's official cover story keeps Seth on the Council as a political shield.",
+      title: "Avery's Pact with Jinx",
+      content: "- Mel's official cover story keeps Avery on the Council as a political shield.",
       suggestedTriggers: ["official cover", "Council shield"],
       memoryMode: "historical",
     });
 
     expect(routed).toMatchObject({
-      title: "Seth's Pact with Jinx",
+      title: "Avery's Pact with Jinx",
       targetId: "card-jinx-pact",
       appendContent: true,
       memoryMode: "living",

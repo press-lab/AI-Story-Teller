@@ -22,7 +22,7 @@ describe("AidImportWizard plot component upload", () => {
             {
               title: "Plot Essentials",
               type: "plotEssentials",
-              content: "Nyx remains secret from everyone except Seth.",
+              content: "Nyx remains secret from everyone except Avery.",
               priority: 90,
               alwaysOn: true,
               pinned: true,
@@ -52,7 +52,7 @@ describe("AidImportWizard plot component upload", () => {
     await user.upload(screen.getByLabelText("Plot component files (multi-file OK)"), file);
     await waitFor(() => expect(screen.getByText("Component Preview (2)")).toBeInTheDocument());
     expect(screen.getByText("Opening Scene Preview")).toBeInTheDocument();
-    expect(screen.getByText("Nyx remains secret from everyone except Seth.")).toBeInTheDocument();
+    expect(screen.getByText("Nyx remains secret from everyone except Avery.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
@@ -61,7 +61,7 @@ describe("AidImportWizard plot component upload", () => {
     expect(adventure.openingScene).toBe("Rain falls upward from the Sump tonight.");
     expect(adventure.components.filter((component) => component.type === "plotEssentials")).toHaveLength(1);
     expect(adventure.components.find((component) => component.type === "plotEssentials")).toMatchObject({
-      content: "Nyx remains secret from everyone except Seth.",
+      content: "Nyx remains secret from everyone except Avery.",
       priority: 90,
     });
     expect(adventure.components.filter((component) => component.type === "activePressure")).toHaveLength(1);

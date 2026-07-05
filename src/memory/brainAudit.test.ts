@@ -23,8 +23,8 @@ describe("runBrainAudit", () => {
           characterName: "Margo",
           triggers: ["Margo", "she", "ward engineer"],
           thoughts: {
-            first_read: "4 -> Seth jokes when he is cornered.",
-            second_read: "5 -> Seth jokes when he is cornered.",
+            first_read: "4 -> Avery jokes when he is cornered.",
+            second_read: "5 -> Avery jokes when he is cornered.",
           },
         }),
       ],

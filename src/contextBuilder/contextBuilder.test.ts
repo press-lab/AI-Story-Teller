@@ -70,7 +70,7 @@ function expectExactPayloadFromPreview(adventure: Adventure, mode: MemoryPriorit
     }),
   } satisfies Adventure;
   const result = buildContext(configured, {
-    currentInput: "Margo repeats hedge prince to Seth.",
+    currentInput: "Margo repeats hedge prince to Avery.",
     latestModelOutput: "The Beast howls at the ward.",
   });
   const contextText = result.sections
@@ -282,12 +282,12 @@ describe("buildContext", () => {
   it("renders structured compact story-card facts into context", () => {
     const pact = makeStoryCard({
       id: "card-pact",
-      title: "Seth's Pact with Jinx",
+      title: "Avery's Pact with Jinx",
       content: "",
       compactKind: "pact",
       compactStatus: "active",
       coreFacts: ["Jinx stops killing except in self-protection."],
-      currentFacts: ["Mel keeps Seth on the Council under an official cover story."],
+      currentFacts: ["Mel keeps Avery on the Council under an official cover story."],
       recentDevelopments: ["Jinx is repairing the Sump air filter."],
       pinned: true,
     });
@@ -737,7 +737,7 @@ describe("buildContext", () => {
 
   it("golden adventure context matches the preview and provider payload contract", () => {
     const result = buildContext(goldenAdventure(), {
-      currentInput: "Margo repeats hedge prince to Seth.",
+      currentInput: "Margo repeats hedge prince to Avery.",
       latestModelOutput: "The Beast howls at the ward.",
     });
 
@@ -759,7 +759,7 @@ describe("buildContext", () => {
     expect(result.sections.find((section) => section.id === "authorNote")?.items.map((item) => item.id)).toEqual(["component-author"]);
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual(["component-pinned"]);
     expect(result.sections.find((section) => section.id === "storyCards")?.items.map((item) => item.id)).toEqual(["card-joke", "card-beast"]);
-    expect(result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id)).toEqual(["brain-margo", "brain-seth"]);
+    expect(result.sections.find((section) => section.id === "brains")?.items.map((item) => item.id)).toEqual(["brain-margo", "brain-avery"]);
     expect(result.sections.find((section) => section.id === "nextTurnNote")?.items).toEqual([]);
     expect(result.sections.find((section) => section.id === "recentMessages")?.items.map((item) => item.id)).toEqual([
       "msg-6",
@@ -785,7 +785,7 @@ describe("buildContext", () => {
     const expectedRecent = [
       "Rain tapped against the glass.",
       "I ask Margo about the ward.",
-      "Margo glances toward Seth.",
+      "Margo glances toward Avery.",
       "I repeat the hedge prince joke.",
       "The Beast howls somewhere below.",
       "We hurry toward the threshold.",
@@ -851,7 +851,7 @@ describe("buildContext", () => {
       thoughts: {
         turn9_old: `9 \u2192 ${repeated}`,
         turn10_repeat: `10 \u2192 ${repeated}`,
-        turn11_new: "11 \u2192 The ward answered Seth first. That changes the math.",
+        turn11_new: "11 \u2192 The ward answered Avery first. That changes the math.",
       },
     });
     const adventure: Adventure = { ...createDefaultAdventure("Brain State"), brains: [brain] };

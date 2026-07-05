@@ -2,11 +2,11 @@
 
 Last updated: 2026-06-30
 
-Use this as repo-local context when reviewing, building, or tuning AI Story Teller scenarios for Seth. This profile is based on a read of the supplied AI Dungeon zipped saves from `C:\Users\sethp\Documents\AID Saves\` and the latest on-disk saves per story in `C:\Users\sethp\Documents\GitHub\AI-Stoyer-Teller-Saves\sync\saves\`, plus Seth's correction that forced spy/paperwork arcs are not a favorite.
+Use this as repo-local context when reviewing, building, or tuning AI Story Teller scenarios for Avery. This profile is based on a read of supplied AI Dungeon zipped saves and the latest on-disk saves per story, plus Avery's correction that forced spy/paperwork arcs are not a favorite.
 
 ## Core Taste
 
-Seth likes capable, dangerous protagonists who are useful before they are admired. The fantasy is not passive wish fulfillment or everyone worshiping the player. The fantasy is being able to act, solve, fight, improvise, or push a volatile situation hard enough that institutions, rivals, friends, and love interests have to reassess the player.
+Avery likes capable, dangerous protagonists who are useful before they are admired. The fantasy is not passive wish fulfillment or everyone worshiping the player. The fantasy is being able to act, solve, fight, improvise, or push a volatile situation hard enough that institutions, rivals, friends, and love interests have to reassess the player.
 
 He likes action and things happening. A scenario should produce immediate scene pressure: a fight, mission, rupture, confrontation, escape, rescue, public mistake, intimacy under threat, volatile training, strange system failure, or social event with live consequences. The player should usually have something concrete to do.
 
@@ -64,7 +64,7 @@ Do not make the player spend multiple turns simply following paperwork. If paper
 
 ### Arcane: Zaun
 
-The appeal is volatile faction pressure and intimacy inside collapse. Seth is an unowned Zaun fixer with pressure resonance, caught among Jinx, Vi, Caitlyn, Ekko, Sevika, Piltover raids, chem-baron fallout, and Jinx becoming a symbol. The romance works because Jinx is not fixed or domesticated; Seth sees her clearly without turning into a savior.
+The appeal is volatile faction pressure and intimacy inside collapse. Avery is an unowned Zaun fixer with pressure resonance, caught among Jinx, Vi, Caitlyn, Ekko, Sevika, Piltover raids, chem-baron fallout, and Jinx becoming a symbol. The romance works because Jinx is not fixed or domesticated; Avery sees her clearly without turning into a savior.
 
 ### Arcane: Zaun Reloaded
 
@@ -104,7 +104,7 @@ The appeal is institutional pressure turning into a post-Aegis choice: Piper, Ca
 
 ### The Girl Who Opened the Wrong Window
 
-The appeal is formally unique: Seth is an outside patron interacting through a portal-message exchange with Nix. The fun is asymmetric intimacy, bargaining, limited influence, costs, favors, a heist, and Nix having agency. Keep the format focused on what Nix sends, reveals, risks, and demands.
+The appeal is formally unique: Avery is an outside patron interacting through a portal-message exchange with Nix. The fun is asymmetric intimacy, bargaining, limited influence, costs, favors, a heist, and Nix having agency. Keep the format focused on what Nix sends, reveals, risks, and demands.
 
 ### Wrecklight Academy
 
@@ -112,11 +112,11 @@ The appeal is forced adult academy intake, licensing pressure, dangerous squad c
 
 ### Crown Below
 
-The appeal is original-world infrastructure pressure. Seth is a competent undercity technician, not a famous chosen one. He fixes water pressure before people suffer, discovers forbidden systems, forms a pact with Nyx, and then has to manage Joss, Brass, the Crown, and the evidence. This is a strong model: practical problem first, hidden mythology second, action and consequence always close.
+The appeal is original-world infrastructure pressure. Avery is a competent undercity technician, not a famous chosen one. He fixes water pressure before people suffer, discovers forbidden systems, forms a pact with Nyx, and then has to manage Joss, Brass, the Crown, and the evidence. This is a strong model: practical problem first, hidden mythology second, action and consequence always close.
 
 ## Scenario Design Heuristic
 
-A strong scenario for Seth should answer these questions:
+A strong scenario for Avery should answer these questions:
 
 1. What can the player do in the first three turns that is concrete and interesting?
 2. Which NPCs will push back with distinct motives instead of admiring the player?

@@ -25,7 +25,7 @@ const topics: DocTopic[] = [
         <p>
           Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
           are private playthroughs you can open, edit, or publish as a scenario. Publishing copies setup surfaces such
-          as the opening scene, World Blocks, Story Cards, Characters, automations, and thumbnail, not your transcript.
+          as the opening scene, Plot Components, Story Cards, Characters, automations, and thumbnail, not your transcript.
         </p>
         <p>
           Explore lists built-in and community scenarios. Starting one creates a new adventure in your account. User
@@ -33,32 +33,8 @@ const topics: DocTopic[] = [
           player character.
         </p>
         <p>
-          For deeper reference, see <code>docs/new-user-guide.md</code>, <code>docs/backend-local-development.md</code>,
-          <code>docs/building-a-scenario.md</code>, <code>docs/adventure-design.md</code>, and <code>FEATURES.md</code>.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "overview",
-    title: "Overview",
-    category: "Getting Started",
-    summary: "Local-first architecture, optional backend mode, provider keys, persistence model, and the main operating loop.",
-    tags: ["local-first", "indexeddb", "provider", "browser", "backend"],
-    body: (
-      <>
-        <p>
-          AI Story Teller is account-gated interactive fiction. The public app opens on a welcome screen and requires
-          backend login before Profile, Explore, or Play are available. Browser Local remains an internal
-          signed-in runtime mode for owner testing; Local Backend is the default account-backed path.
-        </p>
-        <pre>{`npm.cmd test
-npm.cmd run build
-npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
-        <p>
-          The application is designed around inspectable context. If text consumes model tokens, it must
-          appear in Context Preview with item IDs, title, reason, priority, pinned/protected state, and
-          generated-by source.
+          For deeper reference, see <code>docs/new-user-guide.md</code>, <code>docs/building-a-scenario.md</code>,
+          <code>docs/adventure-design.md</code>, and <code>FEATURES.md</code>.
         </p>
       </>
     ),
@@ -77,7 +53,7 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           existing adventure, publish a reusable scenario, or delete a private playthrough.
         </p>
         <p>
-          New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
+          New Adventure includes optional setup before play: an opening scene, starter Plot Components, manual
           Story Cards, and Story Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
           opening scene, tight Plot Essentials, one-sentence Active Pressure, optional scenario-specific
           AI Instructions or Author's Note, and recurring Story Cards for review. Native DeepSeek generation uses
@@ -254,7 +230,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          <strong>Current Story Arc</strong> is a World Block component (type: Current Story Arc) that maintains a
+          <strong>Current Story Arc</strong> is a Plot Component type that maintains a
           running log of meaningful events in the active arc. Unlike Plot Essentials — which holds static world
           constants — Current Story Arc grows as the story unfolds and gets retired when the arc resolves.
         </p>
@@ -300,15 +276,15 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     ),
   },
   {
-    id: "side-menu-world-blocks",
-    title: "World Blocks",
+    id: "side-menu-plot-components",
+    title: "Plot Components",
     category: "Side Menu",
     summary: "Manage AI Instructions, Plot Essentials, Current Story Arc, Author's Note, and custom components.",
-    tags: ["world blocks", "components", "plot essentials", "current arc", "author note", "ai instructions"],
+    tags: ["Plot Components", "components", "plot essentials", "current arc", "author note", "ai instructions"],
     body: (
       <>
         <p>
-          World Blocks are context components. Narration Rules are the primary per-adventure behavior contract.
+          Plot Components are always-on or explicitly configured context entries. Narration Rules are the primary per-adventure behavior contract.
           AI Instructions are optional: use them only when you deliberately want scenario-specific rules separated
           from Narration Rules. Both load every turn, so duplicating the same rules wastes context and can create
           competing wording. AI Instructions, Plot Essentials, and Author's Note are protected by default.
@@ -388,22 +364,23 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "side-menu-settings",
     title: "Settings",
     category: "Side Menu",
-    summary: "Configure provider, model, UI, semantic evaluation, and token budget behavior.",
-    tags: ["settings", "provider", "model", "dark mode", "budget"],
+    summary: "Manage account access, interface preferences, and optional personal model source settings.",
+    tags: ["settings", "account", "model", "dark mode", "preferences"],
     body: (
       <>
         <p>
-          Settings stores tiny app preferences in localStorage, including provider API key, selected model,
-          and dark mode. Adventure-specific settings control token budgets, semantic evaluation, memory
-          detection, and background update behavior.
+          Normal users use Settings for account actions, interface preferences, and optional personal
+          model source settings. The platform model remains the default, and the backend owns platform
+          provider credentials.
         </p>
         <p>
-          The Provider section includes an API throttle. Enable it to enforce a minimum delay between
-          provider calls and an optional maximum number of calls per minute across turns, summaries,
-          Remember This, semantic evaluation, and generated memory updates.
+          Admin-only controls such as platform model routing, background cost controls, LLM evaluation
+          settings, developer test adventures, and provider secrets belong in Admin Console or backend
+          environment configuration, not normal user Settings.
         </p>
         <p>
-          Provider keys must never be written into adventure JSON or IndexedDB records.
+          Personal model settings, when enabled, apply only to that signed-in user's generation path.
+          They do not change platform-wide defaults for other users.
         </p>
       </>
     ),
@@ -430,7 +407,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "turn-pipeline",
     title: "Turn Pipeline",
-    category: "Runtime",
+    category: "Generation",
     summary: "The reducer-driven path from submitted input to provider payload, model response, memory, and save.",
     tags: ["turn", "pipeline", "provider", "reducer"],
     body: (
@@ -555,11 +532,11 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Current external pressure goes to Active Pressure; active arc history goes to Current Arc.</li>
           <li>Ephemeral scenery, one-off room layouts, movement, and throwaway details are ignored.</li>
         </ul>
-        <pre>{`"Margo calls Seth hedge prince" -> storyCard
+        <pre>{`"Margo calls Avery hedge prince" -> storyCard
 "Margo feels jealous but hides it" -> brainUpdate only if Margo Brain exists
 "The couch is against the west wall" -> ignore
 "Magic cannot cross the warded threshold" -> storyCard
-"The Beast is actively hunting Seth tonight" -> plotEssentialsUpdate`}</pre>
+"The Beast is actively hunting Avery tonight" -> plotEssentialsUpdate`}</pre>
       </>
     ),
   },
@@ -698,9 +675,9 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <p><strong>Trigger keys:</strong> Use specific names, places, nicknames, objects, factions, and consequences. Character aliases belong on character identity cards; avoid putting broad character names on event, relationship, or subplot cards.</p>
         <p><strong>Good card:</strong></p>
         <pre>{`• Margo uses teasing to deflect when she's afraid.
-• She has a long-running private joke calling Seth "hedge prince."
+• She has a long-running private joke calling Avery "hedge prince."
 • She knows more about the ward than she has admitted.
-• She will not act against Seth directly, but she will redirect him.`}</pre>
+• She will not act against Avery directly, but she will redirect him.`}</pre>
       </>
     ),
   },
@@ -709,7 +686,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     title: "Plot Essentials — Best Practices",
     category: "Best Practices",
     summary: "How to use Plot Essentials effectively without cluttering it with scene state.",
-    tags: ["plot essentials", "world blocks", "canon", "best practices"],
+    tags: ["plot essentials", "Plot Components", "canon", "best practices"],
     body: (
       <>
         <p>
@@ -729,8 +706,8 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Lore that only matters when a specific character or place comes up — use a Story Card instead.</li>
         </ul>
         <p><strong>Format:</strong> 4-7 tight bullets or short labeled lines. PE updates replace the full block. When outgoing PE facts disappear from a replacement, AIST creates pending historical Story Card proposals so you can keep true history without bloating PE.</p>
-        <p><strong>Good PE entry:</strong> <code>• The warded threshold is open, House Vale is exploiting it tonight, and Seth must contain the breach before dawn.</code></p>
-        <p><strong>Bad PE entry:</strong> <code>• Seth and Margo are currently standing near the threshold discussing the ward.</code> (scene state, not a permanent truth)</p>
+        <p><strong>Good PE entry:</strong> <code>• The warded threshold is open, House Vale is exploiting it tonight, and Avery must contain the breach before dawn.</code></p>
+        <p><strong>Bad PE entry:</strong> <code>• Avery and Margo are currently standing near the threshold discussing the ward.</code> (scene state, not a permanent truth)</p>
       </>
     ),
   },
@@ -784,7 +761,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <p><strong>Bad Active Pressure:</strong></p>
         <ul>
           <li>"Setu feels the weight of her choices pressing in." (character emotion, not external pressure)</li>
-          <li>"There is tension between Margo and Seth." (relationship state, not a story-level threat)</li>
+          <li>"There is tension between Margo and Avery." (relationship state, not a story-level threat)</li>
           <li>"Setu is uncertain about what to do next." (internal state, not external force)</li>
         </ul>
         <p>Active Pressure is auto-updated by the semantic engine. You can also edit it directly if the model's version misses the real threat.</p>
@@ -903,27 +880,6 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     ),
   },
   {
-    id: "provider",
-    title: "Provider Configuration",
-    category: "Runtime",
-    summary: "OpenAI-compatible provider settings and local test keys.",
-    tags: ["provider", "groq", "deepseek", "api key"],
-    body: (
-      <>
-        <p>
-          Runtime providers use OpenAI-compatible chat completions. API keys are stored in localStorage
-          by the app and are not written into adventure JSON.
-        </p>
-        <pre>{`Base URL: https://api.groq.com/openai/v1
-Model:    llama-3.3-70b-versatile`}</pre>
-        <p>
-          Live tests read <code>.env.test.local</code>. That file is ignored and should contain only
-          throwaway test keys.
-        </p>
-      </>
-    ),
-  },
-  {
     id: "import-export",
     title: "Import and Export",
     category: "Data",
@@ -1009,13 +965,13 @@ Model:    llama-3.3-70b-versatile`}</pre>
     body: (
       <>
         <p>
-          Every item in context — Story Cards, World Blocks, Brains, Current Arc, Author's Note, Next Turn Note, and Recent Messages — has an estimated token cost.
+          Every item in context — Story Cards, Plot Components, Brains, Current Arc, Author's Note, Next Turn Note, and Recent Messages — has an estimated token cost.
           The total is shown in Context Preview and in the header of the Play page.
         </p>
         <dl>
           <dt>Item token budget</dt>
           <dd>
-            An optional cap per Story Card or World Block. If an item's content exceeds its budget, it is truncated or
+            An optional cap per Story Card or Plot Component. If an item's content exceeds its budget, it is truncated or
             excluded when the overall context is tight. Set to 0 (the default) for no per-item cap.
           </dd>
           <dt>Protected items</dt>
@@ -1031,17 +987,17 @@ Model:    llama-3.3-70b-versatile`}</pre>
         </dl>
         <p>
           Watch the token count in the play header. If you see it climbing above ~6,000–8,000 tokens with a smaller model,
-          consider reducing always-on World Blocks, trimming long Story Cards, or lowering the Recent Messages window.
+          consider reducing always-on Plot Components, trimming long Story Cards, or lowering the Recent Messages window.
         </p>
       </>
     ),
   },
   {
-    id: "story-cards-vs-world-blocks",
-    title: "Story Cards vs World Blocks",
+    id: "story-cards-vs-plot-components",
+    title: "Story Cards vs Plot Components",
     category: "Memory",
-    summary: "When to use a Story Card vs a World Block (Component).",
-    tags: ["story cards", "world blocks", "components", "memory routing"],
+    summary: "When to use a Story Card vs a Plot Component (Component).",
+    tags: ["story cards", "Plot Components", "components", "memory routing"],
     body: (
       <>
         <dl>
@@ -1051,7 +1007,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
             They stay dormant until their trigger keys appear in the input or output, so they don't waste token budget
             when off-topic.
           </dd>
-          <dt>World Blocks (Components)</dt>
+          <dt>Plot Components</dt>
           <dd>
             Use for context that is relevant every turn — your AI Instructions, Plot Essentials, Author's Note, and
             broad world lore that shapes every scene. These load unconditionally and cost tokens every turn.
@@ -1059,7 +1015,7 @@ Model:    llama-3.3-70b-versatile`}</pre>
         </dl>
         <p>
           A good rule of thumb: if you'd only need to know it when the character or place comes up, it's a Story Card.
-          If it should always shape how the AI writes, it's a World Block.
+          If it should always shape how the AI writes, it's a Plot Component.
         </p>
       </>
     ),
