@@ -33,6 +33,7 @@ import { CloudSavesPage } from "./pages/CloudSavesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ExplorePage } from "./pages/ExplorePage";
 import { AdminConsolePage } from "./pages/AdminConsolePage";
+import { WelcomePage } from "./pages/WelcomePage";
 import { premadeAdventures, type PremadeAdventureId } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
@@ -197,7 +198,8 @@ export default function App() {
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
   const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
-  const backendReady = backendMode && Boolean(backendSession?.sessionToken);
+  const accountReady = Boolean(backendSession?.sessionToken);
+  const backendReady = backendMode && accountReady;
   const isBackendAdmin = backendMode && backendSession?.user.role === "admin";
   const hideBackendUserDeveloperControls = backendMode && !isBackendAdmin;
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
@@ -211,8 +213,12 @@ export default function App() {
       : undefined,
     [backendReady, backendSession, normalizedRuntimeConfig],
   );
-  const adventureStore = backendMode ? (backendAdventureStore ?? unavailableBackendStore) : localAdventureStore;
-  const storageLabel = backendMode ? "the local backend" : "IndexedDB";
+  const adventureStore = !accountReady
+    ? unavailableBackendStore
+    : backendMode
+      ? (backendAdventureStore ?? unavailableBackendStore)
+      : localAdventureStore;
+  const storageLabel = !accountReady ? "your signed-in account" : backendMode ? "the local backend" : "IndexedDB";
   const backendTurnRunner = useMemo(
     () => backendReady && backendSession
       ? createBackendTurnRunner(normalizedRuntimeConfig, backendSession.sessionToken)
@@ -262,6 +268,11 @@ export default function App() {
       // Ignore malformed OAuth callback fragments.
     }
   }, [setBackendSession]);
+
+  useEffect(() => {
+    if (backendSession || normalizedRuntimeConfig.mode !== "local") return;
+    setRuntimeConfig({ ...normalizedRuntimeConfig, mode: "backendLocal" });
+  }, [backendSession, normalizedRuntimeConfig, setRuntimeConfig]);
 
   useEffect(() => {
     if (providerPresets.length === 0) return;
@@ -1072,6 +1083,32 @@ export default function App() {
 
   const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
   const navHidden = activeTab === "play" && !navForceVisible;
+
+  if (!backendSession?.sessionToken) {
+    return (
+      <WelcomePage
+        runtimeConfig={normalizedRuntimeConfig}
+        onRuntimeConfigChange={setRuntimeConfig}
+        onSignupPassword={(input) => signupBackendPassword(
+          { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
+          input,
+        )}
+        onVerifyEmail={async (token) => {
+          const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
+          setBackendSession(session);
+          navigateTo("profile");
+          return session;
+        }}
+        onLoginPassword={async (input) => {
+          const session = await loginBackendPassword(normalizedRuntimeConfig, input);
+          setBackendSession(session);
+          navigateTo("profile");
+          return session;
+        }}
+        onStartGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
+      />
+    );
+  }
 
   return (
     <div className={`app-shell${navHidden ? " nav-hidden" : ""}`}>

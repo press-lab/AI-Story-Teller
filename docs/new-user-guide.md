@@ -6,7 +6,9 @@ This guide is the high-level path for a tester or new player. It explains what t
 
 AI Story Teller has two supported modes during the backend rollout.
 
-**Browser Local** is the original setup. It needs no account, stores adventures in browser IndexedDB, stores small runtime settings in localStorage, and can still use the existing browser provider settings, import/export, and GitHub save tools.
+The deployed app is account-gated. Without a backend session, users see only the welcome/sign-in page.
+
+**Browser Local** is the original storage/runtime setup, but it is now an internal signed-in mode rather than a public no-account entry path. It stores adventures in browser IndexedDB, stores small runtime settings in localStorage, and can still use the existing browser provider settings, import/export, and GitHub save tools after sign-in.
 
 **Local Backend** is the account-backed test setup. The static frontend can still be served locally or from GitHub Pages, but a local API must be running. Backend mode adds invite-gated signup, Google or email/password login, backend adventure saves, Profile, Explore, scenario publishing, admin controls, policy gates, and backend-owned model configuration.
 
@@ -21,7 +23,7 @@ New users can sign up with:
 - email and password, followed by email verification in the local test flow
 - Google OAuth, when the local backend has Google OAuth configured
 
-After login, the backend session is stored locally in the browser. The backend owns model credentials and platform settings; normal users do not see model routing, background cost controls, LLM evaluation controls, developer test adventures, or backend provider secrets.
+After login, the backend session is stored locally in the browser. The backend owns model credentials and platform settings; normal users do not see model routing, background cost controls, LLM evaluation controls, developer test adventures, or backend provider secrets. If no session exists, Library, Explore, Profile, Play, and Browser Local tools are not rendered.
 
 ## 3. Use Profile As Your Account Library
 

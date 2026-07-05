@@ -19,8 +19,8 @@ const topics: DocTopic[] = [
     body: (
       <>
         <p>
-          Start in Settings to choose Browser Local or Local Backend. Browser Local uses the current no-account setup.
-          Local Backend adds invite-gated accounts, backend adventures, Explore, Profile, and backend-owned model calls.
+          Start by signing in with an invited account. This build does not expose the app shell until a backend session
+          exists. After sign-in, Settings can still switch runtime modes for owner testing.
         </p>
         <p>
           Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
@@ -48,9 +48,9 @@ const topics: DocTopic[] = [
     body: (
       <>
         <p>
-          AI Story Teller is local-first interactive fiction. Browser Local stores adventure data in IndexedDB
-          and tiny runtime preferences, including the provider API key, in localStorage. Local Backend is optional
-          and adds account-backed persistence, sharing, policy gates, and server-owned provider configuration.
+          AI Story Teller is account-gated interactive fiction. The public app opens on a welcome screen and requires
+          backend login before Library, Explore, Profile, or Play are available. Browser Local remains an internal
+          signed-in runtime mode for owner testing; Local Backend is the default account-backed path.
         </p>
         <pre>{`npm.cmd test
 npm.cmd run build

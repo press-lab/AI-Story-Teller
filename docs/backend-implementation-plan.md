@@ -189,7 +189,7 @@ Full-throttle implementation means proceeding continuously through steps 1-13 on
 This branch implements a local owner-testable backend slice for steps 1-13:
 
 - Runtime mode contracts and backend adapter shells: `src/runtime/runtimeConfig.ts`, `src/runtime/adventureStore.ts`.
-- Runtime settings UI and backend account controls: `src/pages/SettingsPage.tsx`; default remains Browser Local.
+- Runtime settings UI and backend account controls: `src/pages/SettingsPage.tsx`; default runtime is Local Backend and unauthenticated users see only the welcome/sign-in page.
 - Backend mode frontend wiring: `src/App.tsx`, `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, `src/hooks/useAdventureAutosave.ts`.
 - Local API service: `apps/api/server.ts`, `apps/api/index.ts`.
 - Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
@@ -211,7 +211,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 
 | Step | Status | Implemented Evidence |
 | --- | --- | --- |
-| 1. Baseline branch setup | Done | Work is on `backend-local-implementation`; `main` untouched; baseline hash recorded in chat and prior commit notes; Browser Local remains default. |
+| 1. Baseline branch setup | Done | Work is on `backend-local-implementation`; `main` untouched; baseline hash recorded in chat and prior commit notes; Browser Local remains available after sign-in for owner testing, but unauthenticated app usage is blocked. |
 | 2. Runtime mode adapters | Done | `RuntimeMode`, local/backend store adapters, backend turn/context adapters, Settings Runtime selector, and local-only GitHub save gating are implemented. |
 | 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, and `npm.cmd run api:test` exist. |
 | 4. Local database and migrations | Done | Local JSON DB with schema version and migration metadata is implemented at `.local-backend/aist-api-db.json`; docs keep Postgres as hosted target. |

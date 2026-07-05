@@ -6,13 +6,15 @@ export interface RuntimeConfig {
 }
 
 export const defaultRuntimeConfig: RuntimeConfig = {
-  mode: "local",
+  mode: "backendLocal",
   apiBaseUrl: "http://127.0.0.1:8787",
 };
 
 export function normalizeRuntimeConfig(value: Partial<RuntimeConfig> | undefined): RuntimeConfig {
   return {
-    mode: value?.mode === "backendLocal" || value?.mode === "hostedBackend" ? value.mode : "local",
+    mode: value?.mode === "local" || value?.mode === "backendLocal" || value?.mode === "hostedBackend"
+      ? value.mode
+      : defaultRuntimeConfig.mode,
     apiBaseUrl: value?.apiBaseUrl?.trim() || defaultRuntimeConfig.apiBaseUrl,
   };
 }

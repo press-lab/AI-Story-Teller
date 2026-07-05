@@ -206,9 +206,15 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  min-width: 0;
+  max-width: 100%;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   padding: 10px clamp(14px, 2vw, 28px);
+}
+
+.app-title {
+  min-width: 0;
 }
 
 .app-title-button {
@@ -255,6 +261,7 @@ pre {
   flex: 1;
   justify-content: center;
   min-width: 0;
+  max-width: 100%;
 }
 
 .app-nav button,
@@ -299,6 +306,8 @@ pre {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .status-pill {
@@ -430,6 +439,74 @@ pre {
 
 .main-content.edit-content {
   overflow: hidden;
+}
+
+.welcome-page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: clamp(18px, 4vw, 48px);
+  background:
+    linear-gradient(135deg, rgb(240 168 47 / 0.12), transparent 36%),
+    linear-gradient(180deg, var(--page-bg), color-mix(in srgb, var(--surface) 58%, var(--page-bg)));
+}
+
+.welcome-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 520px);
+  gap: clamp(20px, 4vw, 52px);
+  align-items: center;
+  width: min(1080px, 100%);
+}
+
+.welcome-copy {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.welcome-copy h1 {
+  margin: 0;
+  font-size: clamp(36px, 7vw, 72px);
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.welcome-copy p {
+  max-width: 60ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(16px, 2vw, 20px);
+  line-height: 1.55;
+}
+
+.welcome-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 620px;
+}
+
+.welcome-checks span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.welcome-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 
@@ -4716,6 +4793,15 @@ summary {
     padding-top: 4px;
   }
 
+  .app-nav button {
+    flex: 0 0 auto;
+  }
+
+  .header-meta {
+    overflow-x: auto;
+    justify-content: flex-end;
+  }
+
   .main-content {
     overflow-y: visible;
   }
@@ -4848,8 +4934,10 @@ summary {
   }
 
   .dashboard-hero,
-  .docs-header {
+  .docs-header,
+  .library-header {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .current-scene {
@@ -4922,7 +5010,16 @@ summary {
   }
 
   .app-nav {
+    width: 100%;
+    flex: 0 0 100%;
     overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+  }
+
+  .app-nav::-webkit-scrollbar,
+  .header-meta::-webkit-scrollbar {
+    display: none;
   }
 
   .app-title {
@@ -4939,6 +5036,9 @@ summary {
 
   .header-meta {
     gap: 6px;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    overflow-x: auto;
   }
 
   .status-pill {
@@ -4992,6 +5092,7 @@ summary {
   .main-content {
     grid-row: 2;
     padding: 10px;
+    min-width: 0;
     overflow-y: visible;
     overflow-x: hidden;
     overscroll-behavior: auto;
@@ -5018,6 +5119,46 @@ summary {
 
   .page {
     gap: 10px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .welcome-page {
+    align-items: start;
+    padding: calc(18px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .welcome-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 18px;
+  }
+
+  .welcome-copy {
+    gap: 12px;
+  }
+
+  .welcome-copy h1 {
+    font-size: clamp(34px, 12vw, 48px);
+  }
+
+  .welcome-panel {
+    width: 100%;
+  }
+
+  .welcome-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .library-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .library-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .card,

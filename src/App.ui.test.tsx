@@ -36,8 +36,10 @@ vi.mock("./providers/openAICompatible", () => ({
   sendOpenAICompatibleChatCompletion: vi.fn(async () => ({ content: "Mock response", raw: {} })),
 }));
 
-function installLocalStorage() {
-  const storage = new Map<string, string>();
+function installLocalStorage(initial: Record<string, unknown> = {}) {
+  const storage = new Map<string, string>(
+    Object.entries(initial).map(([key, value]) => [key, JSON.stringify(value)]),
+  );
   const localStorageMock = {
     getItem: vi.fn((key: string) => storage.get(key) ?? null),
     setItem: vi.fn((key: string, value: string) => {
@@ -77,6 +79,28 @@ describe("App adventure tool workspace", () => {
 
   it("opens management tools in the editor workspace without losing the adventure", async () => {
     const user = userEvent.setup();
+    installLocalStorage({
+      "ai-story-teller-runtime-config": { mode: "local", apiBaseUrl: "http://127.0.0.1:8787" },
+      "ai-story-teller-backend-session": {
+        sessionToken: "session-test",
+        user: {
+          id: "user-test",
+          email: "player@example.com",
+          displayName: "Player",
+          status: "active",
+          emailVerified: true,
+          createdAt: "2026-07-05T00:00:00.000Z",
+          updatedAt: "2026-07-05T00:00:00.000Z",
+        },
+        profile: {
+          userId: "user-test",
+          displayName: "Player",
+          bio: "",
+          createdAt: "2026-07-05T00:00:00.000Z",
+          updatedAt: "2026-07-05T00:00:00.000Z",
+        },
+      },
+    });
     render(<App />);
 
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
@@ -99,5 +123,14 @@ describe("App adventure tool workspace", () => {
     // Adventure tab returns to dashboard — heading again
     await user.click(screen.getByRole("button", { name: "Adventure" }));
     expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
+  });
+
+  it("shows only the welcome account gate without a session", () => {
+    render(<App />);
+
+    expect(screen.getByRole("heading", { name: "Sign in to continue." })).toBeInTheDocument();
+    expect(screen.getByLabelText("Backend API URL")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New Adventure" })).not.toBeInTheDocument();
   });
 });

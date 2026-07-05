@@ -21,7 +21,7 @@ Default local database:
 .local-backend/aist-api-db.json
 ```
 
-The frontend remains browser-local by default. In Settings -> Runtime, `Browser Local` keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from the backend.
+The frontend now opens on an account-required welcome page. In Settings -> Runtime, signed-in users can still choose `Browser Local` for owner testing; it keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
 
 To use backend mode from the frontend:
 

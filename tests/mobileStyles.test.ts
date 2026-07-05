@@ -24,7 +24,20 @@ describe("mobile layout contract", () => {
     expect(mobileBlock).toMatch(/\.editor-command-bar\s*{[^}]*position:\s*static/s);
     expect(mobileBlock).toMatch(/\.app-shell:has\(\.main-content\.play-content\)\s*{[^}]*height:\s*100dvh[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)/s);
     expect(mobileBlock).toMatch(/\.app-nav\s*{[^}]*overflow-x:\s*auto/s);
+    expect(mobileBlock).toMatch(/\.app-nav\s*{[^}]*width:\s*100%/s);
+    expect(mobileBlock).toMatch(/\.header-meta\s*{[^}]*overflow-x:\s*auto/s);
+    expect(mobileBlock).toMatch(/\.library-header\s*{[^}]*display:\s*grid/s);
+    expect(mobileBlock).toMatch(/\.library-grid\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
     expect(mobileBlock).toMatch(/button\s*{[^}]*min-height:\s*44px/s);
+  });
+
+  it("keeps the unauthenticated welcome page inside a phone viewport", () => {
+    const css = readProjectFile("src/styles.css");
+    const mobileBlock = css.match(/@media \(max-width: 640px\) \{[\s\S]*$/)?.[0] ?? "";
+
+    expect(css).toMatch(/\.welcome-shell\s*{[^}]*grid-template-columns:\s*minmax\(0, 0\.9fr\) minmax\(320px, 520px\)/s);
+    expect(mobileBlock).toMatch(/\.welcome-shell\s*{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/s);
+    expect(mobileBlock).toMatch(/\.welcome-actions\s*{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr/s);
   });
 
   it("keeps the mobile play composer touch-sized and available while reading the story", () => {
