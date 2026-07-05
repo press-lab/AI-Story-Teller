@@ -10,6 +10,7 @@ interface AdminConsolePageProps {
   backendSession?: BackendSessionState | null;
   data?: BackendAdminConsoleData;
   status?: string;
+  onRefresh?: () => Promise<void> | void;
   onSetUserStatus: (userId: string, status: "pending_verification" | "active" | "disabled") => Promise<void>;
   onCreateRestriction: (
     userId: string,
@@ -41,6 +42,7 @@ export function AdminConsolePage({
   backendSession,
   data,
   status,
+  onRefresh,
   onSetUserStatus,
   onCreateRestriction,
   onUpdateSafetyEvent,
@@ -253,6 +255,7 @@ export function AdminConsolePage({
   }
 
   const isLoading = !data && (!status || status.toLowerCase().includes("loading"));
+  const hasLoadError = !data && Boolean(status) && !isLoading;
 
   return (
     <section className="page library-page admin-console-page">
@@ -668,13 +671,29 @@ export function AdminConsolePage({
         </>
       ) : isLoading ? (
         <AdminConsoleLoading status={status || "Loading admin console..."} />
+      ) : hasLoadError ? (
+        <AdminConsoleLoadError message={status || "Admin console load failed."} onRefresh={onRefresh} />
       ) : (
-        <>
-          {status && <p className="notice">{status}</p>}
-          <AdminConsoleLoading status="Waiting for admin data..." />
-        </>
+        <AdminConsoleLoading status="Waiting for admin data..." />
       )}
     </section>
+  );
+}
+
+function AdminConsoleLoadError({ message, onRefresh }: { message: string; onRefresh?: () => Promise<void> | void }) {
+  return (
+    <article className="panel admin-load-error" role="alert">
+      <div>
+        <p className="eyebrow">Load failed</p>
+        <h3>Admin data could not load.</h3>
+        <p className="muted">{message}</p>
+      </div>
+      {onRefresh && (
+        <button type="button" onClick={() => void onRefresh()}>
+          Retry
+        </button>
+      )}
+    </article>
   );
 }
 

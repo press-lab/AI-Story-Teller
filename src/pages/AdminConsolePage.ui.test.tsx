@@ -232,6 +232,33 @@ describe("AdminConsolePage", () => {
     expect(screen.queryByRole("button", { name: "Create Invite" })).not.toBeInTheDocument();
   });
 
+  it("shows a retryable failed-load state without the loading skeleton", async () => {
+    const user = userEvent.setup();
+    const onRefresh = vi.fn(async () => undefined);
+    render(
+      <AdminConsolePage
+        backendMode
+        backendSession={session("admin")}
+        status="Load failed"
+        onRefresh={onRefresh}
+        onSetUserStatus={vi.fn()}
+        onCreateRestriction={vi.fn()}
+        onUpdateSafetyEvent={vi.fn()}
+        onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Admin data could not load.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Load failed");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Fetching users, adventures, scenarios/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("lets backend admin sessions review users and safety events", async () => {
     const user = userEvent.setup();
     const onSetUserStatus = vi.fn(async () => undefined);

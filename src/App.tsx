@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { adventureReducer } from "./state/adventureReducer";
 import { saveAdventure } from "./db/adventureDb";
 import { defaultCloudSyncSettings } from "./sync/githubSync";
@@ -208,6 +208,7 @@ export default function App() {
   const [backendExploreStatus, setBackendExploreStatus] = useState("");
   const [backendAdminConsole, setBackendAdminConsole] = useState<BackendAdminConsoleData | undefined>();
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
+  const backendAdminRefreshIdRef = useRef(0);
   const normalizedRuntimeConfig = useMemo(() => applyConfiguredBackendDefault(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const accountReady = Boolean(backendSession?.sessionToken);
@@ -589,16 +590,21 @@ export default function App() {
 
   const refreshBackendAdminConsole = useCallback(async () => {
     if (!backendReady || !backendSession || backendSession.user.role !== "admin") {
+      backendAdminRefreshIdRef.current += 1;
       setBackendAdminConsole(undefined);
       setBackendAdminStatus("");
       return;
     }
+    const refreshId = backendAdminRefreshIdRef.current + 1;
+    backendAdminRefreshIdRef.current = refreshId;
     setBackendAdminStatus("Loading admin console...");
     try {
       const result = await loadBackendAdminConsole(normalizedRuntimeConfig, backendSession);
+      if (backendAdminRefreshIdRef.current !== refreshId) return;
       setBackendAdminConsole(result);
       setBackendAdminStatus("");
     } catch (error) {
+      if (backendAdminRefreshIdRef.current !== refreshId) return;
       setBackendAdminStatus(error instanceof Error ? error.message : "Admin console refresh failed.");
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
@@ -703,8 +709,10 @@ export default function App() {
       setBackendPublicProfileUserId(null);
       setBackendExploreScenarios([]);
       setBackendAdminConsole(undefined);
+      setBackendAdminStatus("");
       return;
     }
+    if (activeTab !== "admin") setBackendAdminStatus("");
     if (activeTab === "profile") {
       if (backendPublicProfileUserId && backendPublicProfileUserId !== backendSession.user.id) {
         void refreshBackendPublicProfile(backendPublicProfileUserId);
@@ -1090,6 +1098,7 @@ export default function App() {
           backendSession={backendSession}
           data={backendAdminConsole}
           status={backendAdminStatus}
+          onRefresh={refreshBackendAdminConsole}
           onSetUserStatus={setBackendAdminUserStatus}
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}

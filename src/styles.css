@@ -1674,6 +1674,18 @@ details.story-card-item:not([open]) > :not(summary) {
   gap: 16px;
 }
 
+.admin-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-color: color-mix(in srgb, var(--danger, #c0392b) 50%, var(--border));
+}
+
+.admin-load-error h3 {
+  margin: 4px 0;
+}
+
 .admin-loading-banner {
   display: flex;
   align-items: center;
