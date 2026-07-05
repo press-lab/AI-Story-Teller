@@ -160,6 +160,30 @@ npm.cmd run build
 npm.cmd run smoke:prod
 ```
 
+## UAT Checklist
+
+GitHub Pages deploys from `main`; it is not the branch preview environment for backend implementation work. Branch work is validated through local/CI checks and branch pushes until the owner explicitly asks to merge. For owner review while away from the machine, use pushed branch commits, CI results, screenshots/logs from local smoke runs, and written UAT evidence. When a hosted backend or preview frontend is added later, this section should be updated with live review URLs.
+
+Step 9, manual policy review, can happen at any time. It must be complete before real-user backend generation, imports, sharing, account restrictions, or active policy enforcement are enabled.
+
+| Step | Implementation Link | UAT Evidence Required |
+| --- | --- | --- |
+| 1 | [Baseline branch setup](#next-step-execution-checklist) | Branch is `backend-local-implementation`; `main` remains untouched; current local app still runs without backend dependency; baseline hash is reported. |
+| 2 | [Runtime mode adapters](#phase-1-runtime-adapters) | Local mode remains default; current IndexedDB adventures load; browser provider generation still works; JSON backup/restore and GitHub saves remain reachable. |
+| 3 | [Local API skeleton](#phase-2-backend-skeleton) | API starts locally; `GET /health` and `GET /version` pass; CORS accepts local Vite and GitHub Pages origin for owner testing; frontend still builds without API running. |
+| 4 | [Local database and migrations](#phase-2-backend-skeleton) | Migration command runs from clean local DB; schema version is visible; failed DB connection produces a clear backend error without affecting local frontend mode. |
+| 5 | [Invite-gated auth](#phase-3-auth-and-invite-gate) | No account activates without invite; Google invited signup works; email/password invited signup works; email verification/reset paths work in local test mode; bad/reused/expired invites fail. |
+| 6 | [Backend adventure persistence](#phase-4-backend-adventure-persistence) | AIST JSON imports as a copy; AI Dungeon JSON imports as a copy; GitHub save JSON imports as a copy; provider secrets are stripped; local IndexedDB source is not mutated. |
+| 7 | [Server context preview](#phase-5-server-context-preview) | Backend context preview matches local context on fixtures; section order, `generatedBy`, pending proposals, and Arc Director break gating are preserved. |
+| 8 | [Policy engine scaffold](#phase-6-deterministic-policy-engine) | Rule-pack loader works with sanitized fixtures; policy decisions are structured and logged; real-user enforcement remains disabled pending manual review. |
+| 9 | [Manual policy review](#manual-review-gate) | Owner-approved review notes cover category definitions, severity, safety events, restriction transitions, refusal text, retention, admin visibility, and appeal/export behavior. |
+| 10 | [Blocking implementation](#phase-6-deterministic-policy-engine) | Blocked input/context produces no provider call; blocked output is not shown or persisted as visible assistant text; blocked import/share/memory writes stay quarantined or rejected. |
+| 11 | [Backend turn execution](#phase-8-server-side-turn-execution) | Backend turn succeeds with server-owned provider config; no browser provider key is required; reducer-driven adventure state updates; local browser-provider generation still works. |
+| 12 | [Account safety restrictions](#phase-6-deterministic-policy-engine) | Severe reviewed policy events create account safety events; restricted accounts lose sharing/publishing before generation; admin review/audit path is visible. |
+| 13 | [Scenario and adventure sharing](#phase-9-scenario-publishing-and-adventure-sharing) | Scenario revision publish/fork/share works only after share and prompt-injection gates pass; private transcript/runtime memory is excluded unless explicitly selected. |
+
+Full-throttle implementation means proceeding continuously through steps 1-13 on `backend-local-implementation` while preserving the UAT evidence above. It does not mean merging to `main`, enabling real-user policy/account restrictions before manual review, or skipping validation.
+
 ## Parallel Setup Preservation
 
 The current setup must survive during backend implementation.
