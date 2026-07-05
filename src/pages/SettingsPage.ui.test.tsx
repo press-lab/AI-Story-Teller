@@ -232,6 +232,7 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runtime" })).toBeInTheDocument();
   });
 

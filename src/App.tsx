@@ -57,7 +57,6 @@ import {
   loadBackendExploreScenarios,
   loadBackendPlatformSettings,
   loadBackendProfile,
-  loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   saveBackendPlatformSettings,
@@ -771,18 +770,6 @@ export default function App() {
               return session;
             }}
             onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
-            onRefreshBackendSession={async () => {
-              if (!backendSession) throw new Error("No backend session is active.");
-              const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
-              const session = {
-                sessionToken: refreshed.sessionToken,
-                user: refreshed.user,
-                profile: refreshed.profile,
-                expiresAt: refreshed.expiresAt,
-              };
-              setBackendSession(session);
-              return session;
-            }}
             onLogoutBackend={() => setBackendSession(null)}
             onLoadBackendPlatformSettings={() => {
               if (!backendSession) throw new Error("No backend session is active.");
@@ -858,7 +845,6 @@ export default function App() {
           scenarios={backendExploreScenarios}
           premadeAdventures={premadeAdventures}
           status={backendExploreStatus}
-          onRefresh={refreshBackendExploreScenarios}
           onStartScenario={backendReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
         />
@@ -872,7 +858,6 @@ export default function App() {
           backendSession={backendSession}
           profile={backendProfile}
           status={backendProfileStatus}
-          onRefresh={refreshBackendProfile}
           onOpenAdventure={async (id) => {
             await library.openAdventure(id);
             navigateTo("dashboard");
@@ -899,7 +884,6 @@ export default function App() {
           backendSession={backendSession}
           data={backendAdminConsole}
           status={backendAdminStatus}
-          onRefresh={refreshBackendAdminConsole}
           onSetUserStatus={setBackendAdminUserStatus}
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
@@ -945,18 +929,6 @@ export default function App() {
             return session;
           }}
           onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
-          onRefreshBackendSession={async () => {
-            if (!backendSession) throw new Error("No backend session is active.");
-            const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
-            const session = {
-              sessionToken: refreshed.sessionToken,
-              user: refreshed.user,
-              profile: refreshed.profile,
-              expiresAt: refreshed.expiresAt,
-            };
-            setBackendSession(session);
-            return session;
-          }}
           onLogoutBackend={() => setBackendSession(null)}
           onLoadBackendPlatformSettings={() => {
             if (!backendSession) throw new Error("No backend session is active.");

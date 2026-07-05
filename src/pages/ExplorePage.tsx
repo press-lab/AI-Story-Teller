@@ -7,7 +7,6 @@ interface ExplorePageProps {
   scenarios: BackendExploreScenarioSummary[];
   premadeAdventures?: PremadeAdventureDefinition[];
   status?: string;
-  onRefresh: () => Promise<void>;
   onStartScenario?: (revisionId: string) => Promise<void>;
   onStartPremade?: (premadeId: PremadeAdventureId) => Promise<void>;
 }
@@ -24,7 +23,6 @@ export function ExplorePage({
   scenarios,
   premadeAdventures = [],
   status,
-  onRefresh,
   onStartScenario,
   onStartPremade,
 }: ExplorePageProps) {
@@ -44,11 +42,6 @@ export function ExplorePage({
           <h2>Explore</h2>
           <p className="muted">{totalAvailable} available</p>
         </div>
-        {backendMode && (
-          <button type="button" onClick={() => void onRefresh()} disabled={!backendSession}>
-            Refresh
-          </button>
-        )}
       </header>
 
       <p className="notice explore-variable-warning">{scenarioStartWarning}</p>

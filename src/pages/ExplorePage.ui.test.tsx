@@ -77,12 +77,12 @@ describe("ExplorePage", () => {
         backendMode={false}
         scenarios={[]}
         premadeAdventures={[premade()]}
-        onRefresh={vi.fn()}
         onStartPremade={onStartPremade}
       />,
     );
 
     expect(screen.getByText(/does not substitute user variables yet/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Premade Scenarios" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Start Adventure" }));
 
@@ -101,7 +101,6 @@ describe("ExplorePage", () => {
         backendSession={session()}
         scenarios={[backendScenario()]}
         premadeAdventures={[]}
-        onRefresh={vi.fn()}
         onStartScenario={onStartScenario}
       />,
     );

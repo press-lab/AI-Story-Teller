@@ -5,7 +5,6 @@ interface ProfilePageProps {
   backendSession?: BackendSessionState | null;
   profile?: BackendProfileSummary;
   status?: string;
-  onRefresh: () => Promise<void>;
   onOpenAdventure?: (id: string) => Promise<void>;
   onEditAdventure?: (id: string) => Promise<void>;
   onPublishAdventure?: (id: string) => Promise<void>;
@@ -23,7 +22,6 @@ export function ProfilePage({
   backendSession,
   profile,
   status,
-  onRefresh,
   onOpenAdventure,
   onEditAdventure,
   onPublishAdventure,
@@ -69,14 +67,9 @@ export function ProfilePage({
           <h2>{displayName}</h2>
           <p className="muted">{email}</p>
         </div>
-        <div className="toolbar">
-          <button type="button" onClick={() => void onRefresh()}>
-            Refresh
-          </button>
-          <button type="button" onClick={onLogout} disabled={!onLogout}>
-            Logout
-          </button>
-        </div>
+        <button type="button" onClick={onLogout} disabled={!onLogout}>
+          Logout
+        </button>
       </header>
 
       {status && <p className="notice">{status}</p>}

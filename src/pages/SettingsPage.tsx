@@ -77,7 +77,6 @@ interface SettingsPageProps {
   onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
   onSignupBackendGoogle?: (input: { inviteToken: string; email: string; googleSubject: string; displayName?: string }) => Promise<BackendSessionState>;
   onStartBackendGoogleOAuth?: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
-  onRefreshBackendSession?: () => Promise<BackendSessionState>;
   onLogoutBackend?: () => void;
   onLoadBackendPlatformSettings?: () => Promise<BackendPlatformSettings>;
   onSaveBackendPlatformSettings?: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
@@ -117,7 +116,6 @@ export function SettingsPage({
   onLoginBackendPassword,
   onSignupBackendGoogle,
   onStartBackendGoogleOAuth,
-  onRefreshBackendSession,
   onLogoutBackend,
   onLoadBackendPlatformSettings,
   onSaveBackendPlatformSettings,
@@ -234,13 +232,6 @@ export function SettingsPage({
       });
     });
     if (result?.authUrl) window.location.assign(result.authUrl);
-  }
-
-  async function refreshBackendAccount() {
-    await runBackendAction("Refresh session", async () => {
-      if (!onRefreshBackendSession) throw new Error("Backend session refresh is unavailable.");
-      return onRefreshBackendSession();
-    });
   }
 
   async function importBackendJson() {
@@ -516,9 +507,6 @@ export function SettingsPage({
             </>
           )}
           <div className="toolbar">
-            <button type="button" onClick={() => void refreshBackendAccount()} disabled={!backendSession}>
-              Refresh
-            </button>
             <button type="button" onClick={onLogoutBackend} disabled={!backendSession}>
               Log out
             </button>

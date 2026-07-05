@@ -85,7 +85,6 @@ describe("ProfilePage", () => {
         backendMode
         backendSession={session()}
         profile={profile()}
-        onRefresh={vi.fn()}
         onOpenAdventure={onOpenAdventure}
         onEditAdventure={onEditAdventure}
         onPublishAdventure={onPublishAdventure}
@@ -94,6 +93,7 @@ describe("ProfilePage", () => {
       />,
     );
 
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     const scenariosHeading = screen.getByRole("heading", { name: "Scenarios" });
     const adventuresHeading = screen.getByRole("heading", { name: "Adventures" });
     expect(scenariosHeading.compareDocumentPosition(adventuresHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

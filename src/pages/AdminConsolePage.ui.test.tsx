@@ -197,7 +197,6 @@ describe("AdminConsolePage", () => {
       <AdminConsolePage
         backendMode
         backendSession={session("user")}
-        onRefresh={vi.fn()}
         onSetUserStatus={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
@@ -219,7 +218,6 @@ describe("AdminConsolePage", () => {
         backendMode
         backendSession={session("admin")}
         data={adminData()}
-        onRefresh={vi.fn()}
         onSetUserStatus={onSetUserStatus}
         onCreateRestriction={onCreateRestriction}
         onUpdateSafetyEvent={onUpdateSafetyEvent}
@@ -227,6 +225,7 @@ describe("AdminConsolePage", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Admin Console" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Safety Events" })).toBeInTheDocument();
     expect(screen.getByText(/Admin role is read-only here/)).toBeInTheDocument();

@@ -9,7 +9,6 @@ interface AdminConsolePageProps {
   backendSession?: BackendSessionState | null;
   data?: BackendAdminConsoleData;
   status?: string;
-  onRefresh: () => Promise<void>;
   onSetUserStatus: (userId: string, status: "pending_verification" | "active" | "disabled") => Promise<void>;
   onCreateRestriction: (
     userId: string,
@@ -38,7 +37,6 @@ export function AdminConsolePage({
   backendSession,
   data,
   status,
-  onRefresh,
   onSetUserStatus,
   onCreateRestriction,
   onUpdateSafetyEvent,
@@ -95,9 +93,6 @@ export function AdminConsolePage({
           <h2>Admin Console</h2>
           <p className="muted">Signed in as {backendSession.user.email}</p>
         </div>
-        <button type="button" onClick={() => void onRefresh()}>
-          Refresh
-        </button>
       </header>
 
       {status && <p className="notice">{status}</p>}
@@ -336,7 +331,7 @@ export function AdminConsolePage({
           </Section>
         </>
       ) : (
-        <p className="muted">Refresh to load admin data.</p>
+        <p className="muted">Admin data loads automatically when this tab opens.</p>
       )}
     </section>
   );
