@@ -15,7 +15,10 @@ export interface AdventureStore {
   get(id: string): Promise<Adventure | undefined>;
   save(adventure: Adventure): Promise<void>;
   delete(id: string): Promise<void>;
+  resolveSyncConflict?(id: string, resolution: AdventureSyncConflictResolution): Promise<Adventure>;
 }
+
+export type AdventureSyncConflictResolution = "uploadLocal" | "downloadServer";
 
 export interface TurnResult {
   adventure: Adventure;
@@ -251,6 +254,20 @@ export function createCachedBackendAdventureStore(
     async delete(id) {
       await backend.delete(id);
       await deleteAccountAdventureBackup(ownerUserId, id);
+    },
+    async resolveSyncConflict(id, resolution) {
+      const backup = await getAccountAdventureBackup(ownerUserId, id);
+      if (resolution === "uploadLocal") {
+        if (!backup) throw new Error("Local backup not found.");
+        await backend.save(backup.adventure);
+        await cacheCleanAdventure(backup.adventure);
+        return backup.adventure;
+      }
+
+      const serverAdventure = await backend.get(id);
+      if (!serverAdventure) throw new Error("Server save not found.");
+      await cacheCleanAdventure(serverAdventure);
+      return serverAdventure;
     },
   };
 }

@@ -29,6 +29,7 @@ import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components
 import { useActionFeedback } from "../components/ActionFeedback";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { BackendAdventureSnapshotSummary } from "../runtime/backendApi";
+import type { AdventureSyncConflictResolution } from "../runtime/adventureStore";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -41,6 +42,7 @@ interface AdventuresPageProps {
   onPublish?: (id: string) => Promise<void>;
   onListBackups?: (id: string) => Promise<BackendAdventureSnapshotSummary[]>;
   onRestoreBackup?: (id: string, snapshotId: string) => Promise<void>;
+  onResolveSyncConflict?: (id: string, resolution: AdventureSyncConflictResolution) => Promise<void>;
   onImportAdventure?: (text: string) => Promise<void>;
   onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
@@ -233,6 +235,7 @@ export function AdventuresPage({
   onPublish,
   onListBackups,
   onRestoreBackup,
+  onResolveSyncConflict,
   onImportAdventure,
   onCreateAdventureFromImport,
   saveSlots,
@@ -1188,6 +1191,9 @@ export function AdventuresPage({
                   {adventure.syncStatus === "conflict" ? "Local backup conflict" : `Local backup ${adventure.syncStatus}`}
                 </p>
               )}
+              {adventure.syncStatus === "conflict" && onResolveSyncConflict && (
+                <p className="muted sync-conflict-help">Choose which save should win: this device or the server.</p>
+              )}
               {adventure.syncError && <p className="error-inline">{adventure.syncError}</p>}
             </div>
             <div className="library-card-actions">
@@ -1209,6 +1215,16 @@ export function AdventuresPage({
                 <button type="button" onClick={() => void openBackups(adventure)}>
                   Backups
                 </button>
+              )}
+              {adventure.syncStatus === "conflict" && onResolveSyncConflict && (
+                <>
+                  <button type="button" className="primary-action" onClick={() => void onResolveSyncConflict(adventure.id, "uploadLocal")}>
+                    Upload Local Save
+                  </button>
+                  <button type="button" onClick={() => void onResolveSyncConflict(adventure.id, "downloadServer")}>
+                    Download Server Save
+                  </button>
+                </>
               )}
               {onPublish && (
                 <button type="button" className="primary-action" onClick={() => void onPublish(adventure.id)}>

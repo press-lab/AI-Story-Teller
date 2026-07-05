@@ -367,6 +367,36 @@ describe("AdventuresPage new adventure setup", () => {
     expect(await screen.findByText("Backup restored.")).toBeInTheDocument();
   });
 
+  it("offers upload-local and download-server actions for conflicted backend saves", async () => {
+    const user = userEvent.setup();
+    const onResolveSyncConflict = vi.fn(async () => undefined);
+
+    renderAdventuresPage(undefined, {
+      onResolveSyncConflict,
+      adventures: [
+        {
+          id: "adv-conflict",
+          title: "Conflicted Adventure",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          turnCount: 8,
+          storyEntryCount: 16,
+          syncStatus: "conflict",
+          syncError: "Server copy changed.",
+        },
+      ],
+    });
+
+    expect(screen.getByText("Local backup conflict")).toBeInTheDocument();
+    expect(screen.getByText("Choose which save should win: this device or the server.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
+    await user.click(screen.getByRole("button", { name: "Download Server Save" }));
+
+    expect(onResolveSyncConflict).toHaveBeenNthCalledWith(1, "adv-conflict", "uploadLocal");
+    expect(onResolveSyncConflict).toHaveBeenNthCalledWith(2, "adv-conflict", "downloadServer");
+  });
+
   it("shows singular turn and story-entry text in the Library", () => {
     renderAdventuresPage(undefined, {
       adventures: [

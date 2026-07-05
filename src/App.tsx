@@ -994,6 +994,7 @@ export default function App() {
         onPublish={backendReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
         onListBackups={backendReady ? listBackendBackups : undefined}
         onRestoreBackup={backendReady ? restoreBackendBackup : undefined}
+        onResolveSyncConflict={backendReady ? library.resolveSyncConflict : undefined}
         saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
         savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
         loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}

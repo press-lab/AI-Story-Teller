@@ -1777,6 +1777,10 @@ details.story-card-item:not([open]) > :not(summary) {
   min-height: 34px;
 }
 
+.sync-conflict-help {
+  margin-top: 8px;
+}
+
 .profile-link-button {
   min-height: 0;
   border: 0;

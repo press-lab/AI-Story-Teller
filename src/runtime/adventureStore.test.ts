@@ -4,7 +4,7 @@
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
-import { saveAccountAdventureBackup } from "../db/accountAdventureBackupDb";
+import { getAccountAdventureBackup, saveAccountAdventureBackup } from "../db/accountAdventureBackupDb";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import { createBackendTurnRunner, createCachedBackendAdventureStore } from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
@@ -97,5 +97,85 @@ describe("cached backend adventure store", () => {
         keepalive: true,
       }),
     );
+  });
+
+  it("uploads the conflicted local backup to the backend and marks it clean", async () => {
+    const local = createDefaultAdventure("Local Wins");
+    local.id = "adv-conflict";
+    local.updatedAt = "2026-07-05T01:00:00.000Z";
+    local.messages = [
+      { id: "local-user", role: "user", content: "Keep the phone save.", createdAt: "2026-07-05T00:59:00.000Z" },
+    ];
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure: local,
+      syncStatus: "conflict",
+      lastServerUpdatedAt: "2026-07-05T00:30:00.000Z",
+      lastSyncError: "Server copy changed.",
+    });
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      id: local.id,
+      title: local.title,
+      createdAt: local.createdAt,
+      updatedAt: local.updatedAt,
+      turnCount: 0,
+      storyEntryCount: 1,
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    const resolved = await store.resolveSyncConflict!("adv-conflict", "uploadLocal");
+
+    expect(resolved.title).toBe("Local Wins");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://backend.test/adventures/adv-conflict",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining("Keep the phone save."),
+      }),
+    );
+    const backup = await getAccountAdventureBackup("user-1", "adv-conflict");
+    expect(backup).toMatchObject({
+      syncStatus: "clean",
+      lastServerUpdatedAt: local.updatedAt,
+    });
+  });
+
+  it("downloads the server adventure over a conflicted local backup and marks it clean", async () => {
+    const local = createDefaultAdventure("Local Loses");
+    local.id = "adv-conflict";
+    local.updatedAt = "2026-07-05T01:00:00.000Z";
+    const server = createDefaultAdventure("Server Wins");
+    server.id = "adv-conflict";
+    server.updatedAt = "2026-07-05T01:05:00.000Z";
+    server.messages = [
+      { id: "server-user", role: "user", content: "Keep the server save.", createdAt: "2026-07-05T01:04:00.000Z" },
+    ];
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure: local,
+      syncStatus: "conflict",
+      lastServerUpdatedAt: "2026-07-05T00:30:00.000Z",
+      lastSyncError: "Server copy changed.",
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(server), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })));
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    const resolved = await store.resolveSyncConflict!("adv-conflict", "downloadServer");
+
+    expect(resolved.title).toBe("Server Wins");
+    const backup = await getAccountAdventureBackup("user-1", "adv-conflict");
+    expect(backup).toMatchObject({
+      syncStatus: "clean",
+      lastServerUpdatedAt: server.updatedAt,
+      adventure: expect.objectContaining({
+        title: "Server Wins",
+      }),
+    });
   });
 });

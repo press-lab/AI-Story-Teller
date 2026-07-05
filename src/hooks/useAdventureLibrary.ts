@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { AdventureSummary } from "../db/adventureDb";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { createDevelopmentAdventure } from "../dev/developmentAdventure";
@@ -9,13 +9,13 @@ import { latestAssistantOutput } from "../state/turnPipeline";
 import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/adventure";
 import { exportAdventureJson, importAdventureJson } from "../utils/json";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
-import type { AdventureStore } from "../runtime/adventureStore";
+import type { AdventureStore, AdventureSyncConflictResolution } from "../runtime/adventureStore";
 import { useActionFeedback } from "../components/ActionFeedback";
 
 export function useAdventureLibrary(
   store: AdventureStore,
   storageLabel: string,
-  setAdventure: (a: Adventure | undefined) => void,
+  setAdventure: Dispatch<SetStateAction<Adventure | undefined>>,
   setContextResult: (r: ContextBuildResult | undefined) => void,
   onNavigate: (tab: string) => void,
   onModalClose: () => void,
@@ -85,6 +85,40 @@ export function useAdventureLibrary(
     onModalClose();
     onNavigate("dashboard");
     await refreshAdventures();
+  }
+
+  async function resolveSyncConflict(id: string, resolution: AdventureSyncConflictResolution) {
+    if (!store.resolveSyncConflict) {
+      const message = "This storage backend does not support save conflict resolution.";
+      onError(message);
+      notify(message, { type: "error" });
+      return;
+    }
+    const uploadLocal = resolution === "uploadLocal";
+    const confirmed = await confirmAction({
+      title: uploadLocal ? "Upload local save?" : "Download server save?",
+      message: uploadLocal
+        ? "Replace the server copy with this device's local save? Existing server backup history remains available."
+        : "Replace this device's local backup with the current server save? Unsynced local changes on this device will be lost.",
+      confirmLabel: uploadLocal ? "Upload Local" : "Download Server",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    notify(uploadLocal ? "Uploading local save..." : "Downloading server save...", { type: "info" });
+    try {
+      const resolved = await store.resolveSyncConflict(id, resolution);
+      setAdventure(resolved);
+      setContextResult(undefined);
+      onModalClose();
+      onNavigate("dashboard");
+      await refreshAdventures();
+      notify(uploadLocal ? "Local save uploaded to server." : "Server save downloaded.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Save conflict resolution failed.";
+      onError(message);
+      notify(message, { type: "error" });
+    }
   }
 
   async function removeAdventure(id: string, currentAdventureId?: string) {
@@ -170,6 +204,7 @@ export function useAdventureLibrary(
     openAdventure,
     createAdventure,
     duplicateAdventure,
+    resolveSyncConflict,
     removeAdventure,
     importAdventure,
     createAdventureFromImport,
