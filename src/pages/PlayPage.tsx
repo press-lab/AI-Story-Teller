@@ -299,10 +299,10 @@ export function PlayPage({
     const text = input.trim();
     if (!text || loading || turnSubmissionPending) return;
     setTurnSubmissionPending(true);
+    setComposerOpen(false);
     try {
       await onSubmitTurn(transformInput(text, inputMode), inputMode);
       updateInput("");
-      setComposerOpen(false);
       setInputMode("do");
     } catch {
       // Runtime owns the visible error. Keep the draft where the user left it for retry.

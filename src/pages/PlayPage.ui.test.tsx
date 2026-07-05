@@ -137,6 +137,33 @@ describe("PlayPage AID-style controls", () => {
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
   });
 
+  it("collapses the composer after desktop Enter while keeping submitted text until the turn resolves", async () => {
+    const user = userEvent.setup();
+    let resolveSubmit: (() => void) | undefined;
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(() => new Promise<void>((resolve) => {
+      resolveSubmit = resolve;
+    }));
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.keyboard("{Enter}");
+
+    expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+    expect(input).toHaveValue("draw your sword");
+    expect(input.closest(".composer")).toHaveClass("composer-input-closed");
+    expect(screen.getByRole("button", { name: "Take a Turn" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
+    expect(input).toHaveValue("draw your sword");
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+
+    resolveSubmit?.();
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
   it("does not submit with Enter in the mobile composer", async () => {
     setMobileComposerViewport();
     const user = userEvent.setup();
@@ -171,7 +198,8 @@ describe("PlayPage AID-style controls", () => {
 
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
     expect(input).toHaveValue("draw your sword");
-    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    expect(input.closest(".composer")).toHaveClass("composer-input-closed");
+    expect(screen.getByRole("button", { name: "Take a Turn" })).toBeInTheDocument();
 
     resolveSubmit?.();
     await waitFor(() => expect(input).toHaveValue(""));
@@ -190,8 +218,9 @@ describe("PlayPage AID-style controls", () => {
     await user.type(input, "draw your sword");
     await user.click(screen.getByRole("button", { name: "Send" }));
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Send" })).not.toBeDisabled());
+    await waitFor(() => expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do"));
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+    expect(input.closest(".composer")).toHaveClass("composer-input-closed");
     expect(input).toHaveValue("draw your sword");
   });
 
