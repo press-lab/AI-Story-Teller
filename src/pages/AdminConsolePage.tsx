@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import type { BackendAdminConsoleData, BackendSessionState } from "../runtime/backendApi";
+import type { BackendAdminConsoleData, BackendPlatformSettings, BackendSessionState } from "../runtime/backendApi";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
 type RestrictionLevel = "none" | "watched" | "restricted" | "generation_hold" | "banned";
@@ -21,6 +21,8 @@ interface AdminConsolePageProps {
     },
   ) => Promise<void>;
   onUpdateSafetyEvent: (eventId: string, status: "open" | "reviewed" | "dismissed") => Promise<void>;
+  onCreateInvite: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
+  onSavePlatformSettings: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
 }
 
 function formatDate(iso?: string): string {
@@ -40,6 +42,8 @@ export function AdminConsolePage({
   onSetUserStatus,
   onCreateRestriction,
   onUpdateSafetyEvent,
+  onCreateInvite,
+  onSavePlatformSettings,
 }: AdminConsolePageProps) {
   const [targetUserId, setTargetUserId] = useState("");
   const [restrictionLevel, setRestrictionLevel] = useState<RestrictionLevel>("watched");
@@ -47,15 +51,67 @@ export function AdminConsolePage({
   const [sharingDisabled, setSharingDisabled] = useState(true);
   const [generationDisabled, setGenerationDisabled] = useState(false);
   const [contextTokenCap, setContextTokenCap] = useState(0);
+  const [inviteNote, setInviteNote] = useState("");
+  const [inviteMaxUses, setInviteMaxUses] = useState(1);
+  const [inviteExpiresInDays, setInviteExpiresInDays] = useState(14);
+  const [createdInviteToken, setCreatedInviteToken] = useState("");
+  const [adminActionStatus, setAdminActionStatus] = useState("");
+  const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
 
   useEffect(() => {
     if (!targetUserId && data?.users[0]) setTargetUserId(data.users[0].id);
   }, [data?.users, targetUserId]);
 
+  useEffect(() => {
+    if (data?.platformSettings) setPlatformDraft(data.platformSettings);
+  }, [data?.platformSettings]);
+
   const targetUser = useMemo(
     () => data?.users.find((user) => user.id === targetUserId),
     [data?.users, targetUserId],
   );
+
+  function updatePlatformProvider(patch: Partial<BackendPlatformSettings["provider"]>) {
+    if (!platformDraft) return;
+    setPlatformDraft({ ...platformDraft, provider: { ...platformDraft.provider, ...patch } });
+  }
+
+  function updatePlatformBackground(patch: Partial<BackendPlatformSettings["background"]>) {
+    if (!platformDraft) return;
+    setPlatformDraft({ ...platformDraft, background: { ...platformDraft.background, ...patch } });
+  }
+
+  function updatePlatformFeatures(patch: Partial<BackendPlatformSettings["features"]>) {
+    if (!platformDraft) return;
+    setPlatformDraft({ ...platformDraft, features: { ...platformDraft.features, ...patch } });
+  }
+
+  async function createInvite() {
+    setAdminActionStatus("Creating invite...");
+    try {
+      const result = await onCreateInvite({
+        note: inviteNote,
+        maxUses: inviteMaxUses,
+        expiresInDays: inviteExpiresInDays,
+      });
+      setCreatedInviteToken(result.token);
+      setAdminActionStatus("Invite created.");
+    } catch (error) {
+      setAdminActionStatus(error instanceof Error ? error.message : "Invite creation failed.");
+    }
+  }
+
+  async function savePlatformSettings() {
+    if (!platformDraft) return;
+    setAdminActionStatus("Saving platform settings...");
+    try {
+      const result = await onSavePlatformSettings(platformDraft);
+      setPlatformDraft(result);
+      setAdminActionStatus("Platform settings saved.");
+    } catch (error) {
+      setAdminActionStatus(error instanceof Error ? error.message : "Platform settings save failed.");
+    }
+  }
 
   if (!backendMode) {
     return (
@@ -107,6 +163,113 @@ export function AdminConsolePage({
             <Metric label="Policy" value={data.totals.policyDecisions} detail="decisions" />
             <Metric label="Usage" value={data.totals.usageLogs} detail="model calls" />
           </div>
+
+          {adminActionStatus && <p className="notice">{adminActionStatus}</p>}
+
+          <article className="panel settings-card settings-section-full">
+            <div className="panel-heading">
+              <div>
+                <h3>Invite Links</h3>
+                <p className="muted">Create account invites here. Admin role is still assigned only by backend configuration or backend data.</p>
+              </div>
+              <button type="button" onClick={() => void createInvite()}>
+                Create Invite
+              </button>
+            </div>
+            <div className="grid three">
+              <Field label="Invite note">
+                <input value={inviteNote} onChange={(event) => setInviteNote(event.target.value)} />
+              </Field>
+              <Field label="Max uses">
+                <NumberInput min={1} value={inviteMaxUses} onChange={setInviteMaxUses} />
+              </Field>
+              <Field label="Expires in days">
+                <NumberInput min={1} value={inviteExpiresInDays} onChange={setInviteExpiresInDays} />
+              </Field>
+            </div>
+            {createdInviteToken && (
+              <Field label="Created invite token">
+                <input readOnly value={createdInviteToken} />
+              </Field>
+            )}
+          </article>
+
+          <article className="panel settings-card settings-section-full">
+            <div className="panel-heading">
+              <div>
+                <h3>Platform Settings</h3>
+                <p className="muted">Backend-wide non-secret defaults. Provider API keys and OAuth secrets stay in environment files.</p>
+              </div>
+              <button type="button" onClick={() => void savePlatformSettings()} disabled={!platformDraft}>
+                Save Platform Settings
+              </button>
+            </div>
+            {platformDraft ? (
+              <>
+                <div className="grid three">
+                  <Field label="Provider name">
+                    <input value={platformDraft.provider.name} onChange={(event) => updatePlatformProvider({ name: event.target.value })} />
+                  </Field>
+                  <Field label="Provider base URL">
+                    <input value={platformDraft.provider.baseUrl} onChange={(event) => updatePlatformProvider({ baseUrl: event.target.value })} />
+                  </Field>
+                  <Field label="Provider model">
+                    <input value={platformDraft.provider.model} onChange={(event) => updatePlatformProvider({ model: event.target.value })} />
+                  </Field>
+                  <Field label="Temperature">
+                    <NumberInput min={0} max={2} value={platformDraft.provider.temperature} onChange={(temperature) => updatePlatformProvider({ temperature })} />
+                  </Field>
+                  <Field label="Max output tokens">
+                    <NumberInput min={1} value={platformDraft.provider.maxOutputTokens} onChange={(maxOutputTokens) => updatePlatformProvider({ maxOutputTokens })} />
+                  </Field>
+                  <Field label="Top P">
+                    <NumberInput min={0} max={1} value={platformDraft.provider.topP ?? 1} onChange={(topP) => updatePlatformProvider({ topP })} />
+                  </Field>
+                  <Field label="Presence penalty">
+                    <NumberInput min={0} max={2} value={platformDraft.provider.presencePenalty ?? 0} onChange={(presencePenalty) => updatePlatformProvider({ presencePenalty })} />
+                  </Field>
+                  <Field label="Frequency penalty">
+                    <NumberInput min={0} max={2} value={platformDraft.provider.frequencyPenalty ?? 0} onChange={(frequencyPenalty) => updatePlatformProvider({ frequencyPenalty })} />
+                  </Field>
+                  <CheckboxField
+                    label="Prompt caching"
+                    checked={platformDraft.provider.promptCaching ?? false}
+                    onChange={(promptCaching) => updatePlatformProvider({ promptCaching })}
+                  />
+                </div>
+                <div className="grid three" style={{ marginTop: "0.75rem" }}>
+                  <CheckboxField
+                    label="Enable semantic evaluation"
+                    checked={platformDraft.background.semanticEvaluationEnabled}
+                    onChange={(semanticEvaluationEnabled) => updatePlatformBackground({ semanticEvaluationEnabled })}
+                  />
+                  <Field label="Semantic eval every N turns">
+                    <NumberInput min={0} value={platformDraft.background.semanticEvalEveryNTurns} onChange={(semanticEvalEveryNTurns) => updatePlatformBackground({ semanticEvalEveryNTurns })} />
+                  </Field>
+                  <CheckboxField
+                    label="Enable memory detection"
+                    checked={platformDraft.background.memoryDetectionEnabled}
+                    onChange={(memoryDetectionEnabled) => updatePlatformBackground({ memoryDetectionEnabled })}
+                  />
+                  <Field label="Memory detection every N turns">
+                    <NumberInput min={1} value={platformDraft.background.memoryDetectionEveryNTurns} onChange={(memoryDetectionEveryNTurns) => updatePlatformBackground({ memoryDetectionEveryNTurns })} />
+                  </Field>
+                  <CheckboxField
+                    label="Scenario publishing"
+                    checked={platformDraft.features.scenarioPublishingEnabled}
+                    onChange={(scenarioPublishingEnabled) => updatePlatformFeatures({ scenarioPublishingEnabled })}
+                  />
+                  <CheckboxField
+                    label="Developer tools visible to admins"
+                    checked={platformDraft.features.developerToolsVisibleToAdmins}
+                    onChange={(developerToolsVisibleToAdmins) => updatePlatformFeatures({ developerToolsVisibleToAdmins })}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="muted">Platform settings load with the admin console.</p>
+            )}
+          </article>
 
           <article className="panel settings-card settings-section-full">
             <h3>Admin Actions</h3>

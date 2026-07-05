@@ -246,9 +246,10 @@ function authHeaders(session?: BackendSessionState): Record<string, string> {
   return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
 }
 
-export function createBackendInvite(config: RuntimeConfig, input: { note?: string; maxUses?: number; expiresInDays?: number }) {
+export function createBackendInvite(config: RuntimeConfig, session: BackendSessionState, input: { note?: string; maxUses?: number; expiresInDays?: number }) {
   return apiJson<{ token: string; invite: unknown }>(config, "/admin/invites", {
     method: "POST",
+    headers: authHeaders(session),
     body: JSON.stringify(input),
   });
 }

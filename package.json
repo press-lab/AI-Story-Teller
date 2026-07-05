@@ -11,6 +11,7 @@
     "api:test": "vitest run apps/api",
     "owner:postgres:init": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 init",
     "owner:postgres:start": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 start",
+    "owner:postgres:migrate-utf8": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 migrate-utf8",
     "owner:postgres:status": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 status",
     "owner:postgres:stop": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 stop",
     "owner:watch": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-tunnel-watchdog.ps1",

@@ -100,11 +100,13 @@ export function useAdventureLibrary(
       const next = importWithBackend ? await importWithBackend(text) : importAdventureJson(text);
       if (!importWithBackend) await store.save(next);
       setAdventure(next);
+      setContextResult(undefined);
       onModalClose();
       onNavigate("dashboard");
       await refreshAdventures();
     } catch (importError) {
       onError(importError instanceof Error ? importError.message : "Import failed.");
+      throw importError;
     }
   }
 

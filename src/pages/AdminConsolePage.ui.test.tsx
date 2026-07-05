@@ -200,6 +200,8 @@ describe("AdminConsolePage", () => {
         onSetUserStatus={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
+        onCreateInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
       />,
     );
 
@@ -212,6 +214,14 @@ describe("AdminConsolePage", () => {
     const onSetUserStatus = vi.fn(async () => undefined);
     const onCreateRestriction = vi.fn(async () => undefined);
     const onUpdateSafetyEvent = vi.fn(async () => undefined);
+    const onCreateInvite = vi.fn(async () => ({ token: "invite-token-test" }));
+    const onSavePlatformSettings = vi.fn(async (settings: Partial<BackendAdminConsoleData["platformSettings"]>) => ({
+      ...adminData().platformSettings,
+      ...settings,
+      provider: { ...adminData().platformSettings.provider, ...(settings.provider ?? {}) },
+      background: { ...adminData().platformSettings.background, ...(settings.background ?? {}) },
+      features: { ...adminData().platformSettings.features, ...(settings.features ?? {}) },
+    }));
 
     render(
       <AdminConsolePage
@@ -221,14 +231,33 @@ describe("AdminConsolePage", () => {
         onSetUserStatus={onSetUserStatus}
         onCreateRestriction={onCreateRestriction}
         onUpdateSafetyEvent={onUpdateSafetyEvent}
+        onCreateInvite={onCreateInvite}
+        onSavePlatformSettings={onSavePlatformSettings}
       />,
     );
 
     expect(screen.getByRole("heading", { name: "Admin Console" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Invite Links" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Platform Settings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Safety Events" })).toBeInTheDocument();
     expect(screen.getByText(/Admin role is read-only here/)).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Invite note"));
+    await user.type(screen.getByLabelText("Invite note"), "UAT tester");
+    await user.click(screen.getByRole("button", { name: "Create Invite" }));
+    expect(onCreateInvite).toHaveBeenCalledWith(expect.objectContaining({ note: "UAT tester", maxUses: 1, expiresInDays: 14 }));
+    expect(await screen.findByDisplayValue("invite-token-test")).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Provider model"));
+    await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");
+    await user.click(screen.getByRole("button", { name: "Save Platform Settings" }));
+    expect(onSavePlatformSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: expect.objectContaining({ model: "deepseek/deepseek-chat" }),
+      }),
+    );
 
     await user.selectOptions(screen.getByLabelText("Account status"), "disabled");
     expect(onSetUserStatus).toHaveBeenCalledWith("user-target", "disabled");

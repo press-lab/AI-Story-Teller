@@ -146,6 +146,27 @@ describe("AdventuresPage new adventure setup", () => {
     expect(onImportAdventure).toHaveBeenCalledWith(text);
   });
 
+  it("keeps the AIST import screen open when import fails", async () => {
+    const user = userEvent.setup();
+    const onImportAdventure = vi.fn(async (_text: string) => {
+      throw new Error("database rejected unicode");
+    });
+    const backup = createDefaultAdventure("Unicode Heavy Story");
+    const text = exportAdventureJson(backup);
+    const file = new File([text], "unicode-heavy-story.json", { type: "application/json" });
+
+    renderAdventuresPage(undefined, { onImportAdventure });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Import from AIST" }));
+    await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
+    await user.click(screen.getByRole("button", { name: "Import and Continue" }));
+
+    expect(await screen.findByText("database rejected unicode")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Import from AIST" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Choose an adventure" })).not.toBeInTheDocument();
+  });
+
   it("prevents creation when an unpinned Story Card has no triggers", async () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();

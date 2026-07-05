@@ -17,10 +17,6 @@ import type { RuntimeConfig, RuntimeMode } from "../runtime/runtimeConfig";
 import { runtimeModeLabel } from "../runtime/runtimeConfig";
 import type {
   BackendImportRequest,
-  BackendPlatformSettings,
-  BackendPolicyDecision,
-  BackendRestriction,
-  BackendSafetyEvent,
   BackendSessionState,
 } from "../runtime/backendApi";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
@@ -82,21 +78,12 @@ interface SettingsPageProps {
   backendModelMode?: BackendModelMode;
   onBackendModelModeChange?: (mode: BackendModelMode) => void;
   hideDeveloperControls?: boolean;
-  onCreateBackendInvite?: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
   onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
   onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
   onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
-  onSignupBackendGoogle?: (input: { inviteToken: string; email: string; googleSubject: string; displayName?: string }) => Promise<BackendSessionState>;
   onStartBackendGoogleOAuth?: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
   onLogoutBackend?: () => void;
-  onLoadBackendPlatformSettings?: () => Promise<BackendPlatformSettings>;
-  onSaveBackendPlatformSettings?: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
   onBackendImport?: (input: BackendImportRequest) => Promise<Adventure>;
-  onLoadBackendSafetyAudit?: () => Promise<{
-    events: BackendSafetyEvent[];
-    restrictions: BackendRestriction[];
-    policyDecisions: BackendPolicyDecision[];
-  }>;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -123,17 +110,12 @@ export function SettingsPage({
   backendModelMode = "platform",
   onBackendModelModeChange,
   hideDeveloperControls = false,
-  onCreateBackendInvite,
   onSignupBackendPassword,
   onVerifyBackendEmail,
   onLoginBackendPassword,
-  onSignupBackendGoogle,
   onStartBackendGoogleOAuth,
   onLogoutBackend,
-  onLoadBackendPlatformSettings,
-  onSaveBackendPlatformSettings,
   onBackendImport,
-  onLoadBackendSafetyAudit,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -146,20 +128,15 @@ export function SettingsPage({
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState("");
   const [backendInviteToken, setBackendInviteToken] = useState("");
-  const [backendInviteNote, setBackendInviteNote] = useState("");
   const [backendEmail, setBackendEmail] = useState("");
   const [backendPassword, setBackendPassword] = useState("");
   const [backendDisplayName, setBackendDisplayName] = useState("");
   const [backendVerificationToken, setBackendVerificationToken] = useState("");
-  const [backendGoogleSubject, setBackendGoogleSubject] = useState("local-google-user");
   const [backendImportSource, setBackendImportSource] = useState<BackendImportRequest["sourceType"]>("aist");
   const [backendImportText, setBackendImportText] = useState("");
   const [backendImportTitle, setBackendImportTitle] = useState("");
-  const [backendAuditSummary, setBackendAuditSummary] = useState("");
-  const [platformSettings, setPlatformSettings] = useState<BackendPlatformSettings | undefined>();
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
-  const isBackendAdmin = backendSession?.user.role === "admin";
   const isBackendMode = runtimeConfig?.mode !== "local";
   const showRuntimeTechnicalControls = !hideDeveloperControls;
   const showBackendModelSource = isBackendMode && Boolean(backendSession);
@@ -191,14 +168,6 @@ export function SettingsPage({
     }
   }
 
-  async function createBackendInviteLink() {
-    const result = await runBackendAction("Create invite", async () => {
-      if (!onCreateBackendInvite) throw new Error("Backend invite creation is unavailable.");
-      return onCreateBackendInvite({ note: backendInviteNote, maxUses: 1, expiresInDays: 14 });
-    });
-    if (result?.token) setBackendInviteToken(result.token);
-  }
-
   async function signupWithBackendPassword() {
     const result = await runBackendAction("Password signup", async () => {
       if (!onSignupBackendPassword) throw new Error("Backend signup is unavailable.");
@@ -226,18 +195,6 @@ export function SettingsPage({
     });
   }
 
-  async function signupWithBackendGoogle() {
-    await runBackendAction("Local Google signup", async () => {
-      if (!onSignupBackendGoogle) throw new Error("Backend Google signup is unavailable.");
-      return onSignupBackendGoogle({
-        inviteToken: backendInviteToken,
-        email: backendEmail,
-        googleSubject: backendGoogleSubject,
-        displayName: backendDisplayName,
-      });
-    });
-  }
-
   async function startGoogleOAuth() {
     const result = await runBackendAction("Google OAuth", async () => {
       if (!onStartBackendGoogleOAuth) throw new Error("Backend Google OAuth is unavailable.");
@@ -259,35 +216,6 @@ export function SettingsPage({
       });
     });
     if (result) setBackendImportText("");
-  }
-
-  async function loadBackendAudit() {
-    const result = await runBackendAction("Load safety audit", async () => {
-      if (!onLoadBackendSafetyAudit) throw new Error("Backend safety audit is unavailable.");
-      return onLoadBackendSafetyAudit();
-    });
-    if (result) {
-      setBackendAuditSummary(
-        `${result.events.length} event(s), ${result.restrictions.length} restriction(s), ${result.policyDecisions.length} decision(s).`,
-      );
-    }
-  }
-
-  async function loadPlatformSettings() {
-    const result = await runBackendAction("Load platform settings", async () => {
-      if (!onLoadBackendPlatformSettings) throw new Error("Platform settings are unavailable.");
-      return onLoadBackendPlatformSettings();
-    });
-    if (result) setPlatformSettings(result);
-  }
-
-  async function savePlatformSettings() {
-    if (!platformSettings) return;
-    const result = await runBackendAction("Save platform settings", async () => {
-      if (!onSaveBackendPlatformSettings) throw new Error("Platform settings are unavailable.");
-      return onSaveBackendPlatformSettings(platformSettings);
-    });
-    if (result) setPlatformSettings(result);
   }
 
   function updatePreset(id: string, patch: Partial<ProviderPreset>) {
@@ -480,23 +408,9 @@ export function SettingsPage({
 
           {showBackendAuthControls && (
             <>
-              <div className="grid two">
-                {!hideDeveloperControls && (
-                  <Field label="Invite note">
-                    <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
-                  </Field>
-                )}
-                <Field label="Invite token">
-                  <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
-                </Field>
-              </div>
-              {!hideDeveloperControls && (
-                <div className="toolbar">
-                  <button type="button" onClick={() => void createBackendInviteLink()}>
-                    Create invite
-                  </button>
-                </div>
-              )}
+              <Field label="Invite token">
+                <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
+              </Field>
 
               <div className="grid two">
                 <Field label="Email">
@@ -608,19 +522,6 @@ export function SettingsPage({
             </details>
           )}
 
-          {advanced && !hideDeveloperControls && (
-            <>
-              <Field label="Local Google subject">
-                <input value={backendGoogleSubject} onChange={(event) => setBackendGoogleSubject(event.target.value)} />
-              </Field>
-              <div className="toolbar">
-                <button type="button" onClick={() => void signupWithBackendGoogle()}>
-                  Local Google Stub
-                </button>
-              </div>
-            </>
-          )}
-
           <div className="grid two">
             <Field label="Import source">
               <select
@@ -648,158 +549,11 @@ export function SettingsPage({
             <button type="button" onClick={() => void importBackendJson()} disabled={!backendSession || !backendImportText.trim()}>
               Import to backend
             </button>
-            {!hideDeveloperControls && (
-              <button type="button" onClick={() => void loadBackendAudit()}>
-                Safety audit
-              </button>
-            )}
           </div>
-          {!hideDeveloperControls && backendAuditSummary && <p className="muted">{backendAuditSummary}</p>}
           <p className="muted">
             Browser Local keeps IndexedDB, browser provider settings, JSON backup/restore, and GitHub saves independent from the backend.
           </p>
         </article>
-
-        {isBackendAdmin && (
-          <article className="panel settings-card settings-section-full" style={{ gridColumn: "1 / -1" }}>
-            <div className="panel-heading">
-              <div>
-                <p className="eyebrow">Admin</p>
-                <h3>Platform Settings</h3>
-                <p className="muted">
-                  These are backend-wide non-secret defaults. Provider API keys and OAuth secrets stay in environment files.
-                </p>
-              </div>
-            </div>
-            <div className="toolbar">
-              <button type="button" onClick={() => void loadPlatformSettings()}>
-                Load Platform Settings
-              </button>
-              <button type="button" onClick={() => void savePlatformSettings()} disabled={!platformSettings}>
-                Save Platform Settings
-              </button>
-            </div>
-            {platformSettings && (
-              <>
-                <div className="grid three">
-                  <Field label="Provider name">
-                    <input
-                      value={platformSettings.provider.name}
-                      onChange={(event) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, name: event.target.value },
-                      })}
-                    />
-                  </Field>
-                  <Field label="Provider base URL">
-                    <input
-                      value={platformSettings.provider.baseUrl}
-                      onChange={(event) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, baseUrl: event.target.value },
-                      })}
-                    />
-                  </Field>
-                  <Field label="Provider model">
-                    <input
-                      value={platformSettings.provider.model}
-                      onChange={(event) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, model: event.target.value },
-                      })}
-                    />
-                  </Field>
-                  <Field label="Temperature">
-                    <NumberInput
-                      min={0}
-                      max={2}
-                      value={platformSettings.provider.temperature}
-                      onChange={(temperature) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, temperature },
-                      })}
-                    />
-                  </Field>
-                  <Field label="Max output tokens">
-                    <NumberInput
-                      min={1}
-                      value={platformSettings.provider.maxOutputTokens}
-                      onChange={(maxOutputTokens) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, maxOutputTokens },
-                      })}
-                    />
-                  </Field>
-                  <Field label="Top P">
-                    <NumberInput
-                      min={0}
-                      max={1}
-                      value={platformSettings.provider.topP ?? 1}
-                      onChange={(topP) => setPlatformSettings({
-                        ...platformSettings,
-                        provider: { ...platformSettings.provider, topP },
-                      })}
-                    />
-                  </Field>
-                </div>
-                <div className="grid three" style={{ marginTop: "0.75rem" }}>
-                  <CheckboxField
-                    label="Enable semantic evaluation"
-                    checked={platformSettings.background.semanticEvaluationEnabled}
-                    onChange={(semanticEvaluationEnabled) => setPlatformSettings({
-                      ...platformSettings,
-                      background: { ...platformSettings.background, semanticEvaluationEnabled },
-                    })}
-                  />
-                  <Field label="Semantic eval every N turns">
-                    <NumberInput
-                      min={0}
-                      value={platformSettings.background.semanticEvalEveryNTurns}
-                      onChange={(semanticEvalEveryNTurns) => setPlatformSettings({
-                        ...platformSettings,
-                        background: { ...platformSettings.background, semanticEvalEveryNTurns },
-                      })}
-                    />
-                  </Field>
-                  <CheckboxField
-                    label="Enable memory detection"
-                    checked={platformSettings.background.memoryDetectionEnabled}
-                    onChange={(memoryDetectionEnabled) => setPlatformSettings({
-                      ...platformSettings,
-                      background: { ...platformSettings.background, memoryDetectionEnabled },
-                    })}
-                  />
-                  <Field label="Memory detection every N turns">
-                    <NumberInput
-                      min={1}
-                      value={platformSettings.background.memoryDetectionEveryNTurns}
-                      onChange={(memoryDetectionEveryNTurns) => setPlatformSettings({
-                        ...platformSettings,
-                        background: { ...platformSettings.background, memoryDetectionEveryNTurns },
-                      })}
-                    />
-                  </Field>
-                  <CheckboxField
-                    label="Scenario publishing"
-                    checked={platformSettings.features.scenarioPublishingEnabled}
-                    onChange={(scenarioPublishingEnabled) => setPlatformSettings({
-                      ...platformSettings,
-                      features: { ...platformSettings.features, scenarioPublishingEnabled },
-                    })}
-                  />
-                  <CheckboxField
-                    label="Developer tools visible to admins"
-                    checked={platformSettings.features.developerToolsVisibleToAdmins}
-                    onChange={(developerToolsVisibleToAdmins) => setPlatformSettings({
-                      ...platformSettings,
-                      features: { ...platformSettings.features, developerToolsVisibleToAdmins },
-                    })}
-                  />
-                </div>
-              </>
-            )}
-          </article>
-        )}
 
         {!hideDeveloperControls && (
         <article className="panel settings-card settings-models-panel">

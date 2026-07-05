@@ -53,15 +53,12 @@ import {
   forkBackendScenarioRevision,
   importAndOpenBackendAdventure,
   loadBackendAdminConsole,
-  loadBackendSafetyAudit,
   loadBackendExploreScenarios,
-  loadBackendPlatformSettings,
   loadBackendProfile,
   loadBackendPublicProfile,
   loginBackendPassword,
   publishBackendScenarioRevision,
   saveBackendPlatformSettings,
-  signupBackendLocalGoogle,
   signupBackendPassword,
   startBackendGoogleOAuth,
   updateBackendAdminSafetyEventStatus,
@@ -629,6 +626,35 @@ export default function App() {
     }
   }, [backendSession, normalizedRuntimeConfig]);
 
+  const createBackendAdminInviteLink = useCallback(async (input: { note?: string; maxUses?: number; expiresInDays?: number }) => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Creating invite...");
+    try {
+      const result = await createBackendInvite(normalizedRuntimeConfig, backendSession, input);
+      const consoleData = await loadBackendAdminConsole(normalizedRuntimeConfig, backendSession);
+      setBackendAdminConsole(consoleData);
+      setBackendAdminStatus("Invite created.");
+      return { token: result.token };
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Invite creation failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
+  const saveBackendAdminPlatformSettings = useCallback(async (settings: Parameters<typeof saveBackendPlatformSettings>[2]) => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Saving platform settings...");
+    try {
+      const result = await saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
+      setBackendAdminConsole((current) => current ? { ...current, platformSettings: result } : current);
+      setBackendAdminStatus("Platform settings saved.");
+      return result;
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Platform settings save failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
   useEffect(() => {
     if (!backendReady || !backendSession) {
       setBackendProfile(undefined);
@@ -822,7 +848,6 @@ export default function App() {
             backendSession={backendSession}
             backendModelMode={backendModelMode}
             onBackendModelModeChange={setBackendModelMode}
-            onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
             onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
             onVerifyBackendEmail={async (token) => {
               const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
@@ -834,23 +859,9 @@ export default function App() {
               setBackendSession(session);
               return session;
             }}
-            onSignupBackendGoogle={async (input) => {
-              const session = await signupBackendLocalGoogle(normalizedRuntimeConfig, input);
-              setBackendSession(session);
-              return session;
-            }}
             onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
             onLogoutBackend={() => setBackendSession(null)}
-            onLoadBackendPlatformSettings={() => {
-              if (!backendSession) throw new Error("No backend session is active.");
-              return loadBackendPlatformSettings(normalizedRuntimeConfig, backendSession);
-            }}
-            onSaveBackendPlatformSettings={(settings) => {
-              if (!backendSession) throw new Error("No backend session is active.");
-              return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
-            }}
             onBackendImport={importToBackend}
-            onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -976,6 +987,8 @@ export default function App() {
           onSetUserStatus={setBackendAdminUserStatus}
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
+          onCreateInvite={createBackendAdminInviteLink}
+          onSavePlatformSettings={saveBackendAdminPlatformSettings}
         />
       );
     }
@@ -1002,7 +1015,6 @@ export default function App() {
           backendSession={backendSession}
           backendModelMode={backendModelMode}
           onBackendModelModeChange={setBackendModelMode}
-          onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
           onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
           onVerifyBackendEmail={async (token) => {
             const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
@@ -1014,23 +1026,9 @@ export default function App() {
             setBackendSession(session);
             return session;
           }}
-          onSignupBackendGoogle={async (input) => {
-            const session = await signupBackendLocalGoogle(normalizedRuntimeConfig, input);
-            setBackendSession(session);
-            return session;
-          }}
           onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
           onLogoutBackend={() => setBackendSession(null)}
-          onLoadBackendPlatformSettings={() => {
-            if (!backendSession) throw new Error("No backend session is active.");
-            return loadBackendPlatformSettings(normalizedRuntimeConfig, backendSession);
-          }}
-          onSaveBackendPlatformSettings={(settings) => {
-            if (!backendSession) throw new Error("No backend session is active.");
-            return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
-          }}
           onBackendImport={importToBackend}
-          onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}

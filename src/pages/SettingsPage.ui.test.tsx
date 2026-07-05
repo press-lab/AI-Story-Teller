@@ -310,7 +310,7 @@ describe("SettingsPage API throttle controls", () => {
     );
   });
 
-  it("shows platform settings for backend admin accounts", () => {
+  it("keeps platform settings out of Settings for backend admin accounts", () => {
     render(
       <SettingsPage
         adventure={createDefaultAdventure("Admin Settings")}
@@ -343,13 +343,12 @@ describe("SettingsPage API throttle controls", () => {
             updatedAt: "2026-07-04T00:00:00.000Z",
           },
         }}
-        onLoadBackendPlatformSettings={vi.fn()}
-        onSaveBackendPlatformSettings={vi.fn()}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Platform Settings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Models" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Load Platform Settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Platform Settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
   });
 });
