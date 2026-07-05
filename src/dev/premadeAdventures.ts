@@ -4,10 +4,6 @@ import { normalizeAdventure } from "../state/defaults";
 import { sanitizeStoryCardTriggers } from "../memory/resolveMemoryTarget";
 import { latestAssistantOutput } from "../state/turnPipeline";
 import {
-  createDevelopmentAdventure,
-  developmentAdventureTitle,
-} from "./developmentAdventure";
-import {
   createDispatchAdventure,
   dispatchAdventureTitle,
 } from "./dispatchAdventure";
@@ -20,7 +16,7 @@ import {
   createArcaneAfterRocketAdventure,
 } from "./arcaneAfterRocketAdventure";
 
-export type PremadeAdventureId = "dragon-throne" | "dispatch-sdn" | "rookery" | "arcane-after-rocket";
+export type PremadeAdventureId = "dispatch-sdn" | "rookery" | "arcane-after-rocket";
 
 export interface PremadeAdventureDefinition {
   id: PremadeAdventureId;
@@ -34,37 +30,6 @@ export interface PremadeAdventureDefinition {
 }
 
 const premadeComponentContent: Record<string, string> = {
-  "dev-component-ai-instructions": `SETTING
-- Use Avatar: The Last Airbender world logic from the adventure context: bending, nations, culture, spirits, martial arts, and postwar politics.
-- Treat all main characters as adults.
-- Do not import outside-canon facts unless this adventure's context establishes them.
-
-PLAYER POWER
-- Setu is intentionally overpowered; let his gold-white dragon fire and lightning matter.
-- Stakes land through politics, loyalty, public consequences, romance, family, and collateral, not through secretly nerfing Setu.
-- NPCs may respect, fear, court, test, or exploit his power, but they should not worship him or become simply stronger to win a scene.
-
-STORY BEHAVIOR
-- Keep the story in palace life, the crown's missions, Nyxa pressure, court knives, spirit weirdness, and the New Ozai Society thread.
-- Let downtime, banter, rivalry, flirtation, meals, training, and travel breathe when no urgent crisis is active.
-- Keep the antagonist pressure personal and convergent; promote seeded threads instead of inventing stranger villains.
-
-CHARACTERS
-- Honor each NPC's Story Card and VOICE CONTRACT.
-- Let NPCs pressure, tempt, provoke, flirt, command, lie, test, and react; never resolve Setu's decisions for him.
-
-PROSE
-- Write in second person, present tense.
-- Favor action, dialogue, sensory detail, and distinct voices over summary or exposition.
-- End on a concrete beat Setu can answer, not a menu or "what do you do?" prompt.`,
-
-  "dev-component-plot-essentials": `- Setu is the twenty-four-year-old crown prince of the Fire Nation and the crown's off-books troubleshooter, trained by Ran and Shaw in gold-white dragon fire and lightning.
-- The current opening is palace training in the Caldera: Nyxa pushes Setu in the ring until a messenger summons him to answer a New Ozai Society strike on the harbor armory.
-- The world is roughly twenty-two years after the Hundred Year War; Zuko's peace is real but fragile, the old colonies are becoming the United Republic, and spirits are stirring again.
-- The New Ozai Society is growing bolder through sabotage, stolen weapons, propaganda, and noble money.
-- Nyxa is Setu's rival, sparring partner, betrothal candidate, and primary romantic pressure; House Renzan's ambitions make that bond politically dangerous.
-- The active arc is a restorationist conspiracy whose hand runs close to House Renzan, forcing Setu to choose between crown duty, Nyxa, and the peace his father built.`,
-
   "disp-component-ai-instructions": `SETTING
 - Use the modern SDN superhero-dispatch world established in this adventure: corporate hero management, field teams, villains, PR, legal pressure, and mission fallout.
 - The recurring home base is SDN life: briefings, missions, debriefs, training, labs, downtime, and workplace chaos. Keep the default tone light, witty, and sarcastic until stakes earn seriousness.
@@ -156,18 +121,6 @@ function premadeStoryCardsJson(createAdventure: () => Adventure): string {
   return JSON.stringify(cards, null, 2);
 }
 
-function createDragonThronePremadeAdventure(): Adventure {
-  return applyPremadeBestPractices(createDevelopmentAdventure());
-}
-
-function createDragonThronePremadeAdventureJson(): string {
-  return premadeAdventureJson(createDragonThronePremadeAdventure);
-}
-
-function createDragonThronePremadeStoryCardsJson(): string {
-  return premadeStoryCardsJson(createDragonThronePremadeAdventure);
-}
-
 function createDispatchSdnPremadeAdventure(): Adventure {
   return applyPremadeBestPractices(createDispatchAdventure());
 }
@@ -205,16 +158,6 @@ function createArcaneAfterRocketPremadeStoryCardsJson(): string {
 }
 
 export const premadeAdventures: PremadeAdventureDefinition[] = [
-  {
-    id: "dragon-throne",
-    title: developmentAdventureTitle,
-    eyebrow: "Avatar AU",
-    summary: "Adult Fire Nation palace missions, Setu/Nyxa chemistry, New Ozai conspiracy, and a configured Arc Director.",
-    tags: ["ATLA", "court", "romance", "slow-burn arc"],
-    createAdventure: createDragonThronePremadeAdventure,
-    createAdventureJson: createDragonThronePremadeAdventureJson,
-    createStoryCardsJson: createDragonThronePremadeStoryCardsJson,
-  },
   {
     id: "dispatch-sdn",
     title: dispatchAdventureTitle,

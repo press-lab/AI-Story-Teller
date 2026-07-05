@@ -6,7 +6,6 @@ import { premadeAdventures } from "./premadeAdventures";
 describe("premade adventure library", () => {
   it("includes the bundled playtest seeds", () => {
     expect(premadeAdventures.map((premade) => premade.id)).toEqual([
-      "dragon-throne",
       "dispatch-sdn",
       "rookery",
       "arcane-after-rocket",
