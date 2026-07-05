@@ -56,6 +56,7 @@ import {
   loadBackendExploreScenarios,
   loadBackendProfile,
   loadBackendPublicProfile,
+  loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   saveBackendPlatformSettings,
@@ -289,6 +290,22 @@ export default function App() {
     if (backendSession || normalizedRuntimeConfig.mode !== "local") return;
     setRuntimeConfig({ ...normalizedRuntimeConfig, mode: "backendLocal" });
   }, [backendSession, normalizedRuntimeConfig, setRuntimeConfig]);
+
+  useEffect(() => {
+    if (normalizedRuntimeConfig.mode === "local" || !backendSession?.sessionToken) return;
+    let cancelled = false;
+    void loadBackendSession(normalizedRuntimeConfig, backendSession)
+      .then((session) => {
+        if (!cancelled) setBackendSession(session);
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : "";
+        if (!cancelled && /unauthorized|account is not active/i.test(message)) setBackendSession(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [backendSession?.sessionToken, normalizedRuntimeConfig, setBackendSession]);
 
   useEffect(() => {
     const migrated = applyConfiguredBackendDefault(runtimeConfig);
@@ -955,6 +972,10 @@ export default function App() {
             await library.openAdventure(id);
             openEditor();
           }}
+          onDeleteAdventure={async (id) => {
+            await library.removeAdventure(id, adventure?.id);
+            await refreshBackendProfile();
+          }}
           onPublishAdventure={async (id) => {
             await publishAdventureScenario(id);
           }}
@@ -967,6 +988,7 @@ export default function App() {
             setBackendPublicProfile(undefined);
             openTab("profile");
           }}
+          onOpenAdmin={isBackendAdmin ? () => openTab("admin") : undefined}
           onLogout={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);

@@ -371,11 +371,26 @@ describe("local API policy gates and sharing", () => {
     expect(blocked.status).toBe(422);
 
     const audit = await requestJson<{
-      events: Array<{ category: string }>;
+      events: Array<{ id: string; category: string }>;
       restrictions: Array<{ level: string; sharingDisabled: boolean }>;
     }>("/admin/account-safety-events");
-    expect(audit.body.events.some((event) => event.category === "illegal_sexual_exploitation")).toBe(true);
+    const event = audit.body.events.find((entry) => entry.category === "illegal_sexual_exploitation");
+    expect(event).toBeTruthy();
     expect(audit.body.restrictions.some((restriction) => restriction.level === "watched" && restriction.sharingDisabled)).toBe(true);
+
+    const reviewed = await requestJson<{
+      users: Array<{ email: string; currentRestriction: { level: string; sharingDisabled: boolean } }>;
+      safetyEvents: Array<{ id: string; status: string }>;
+    }>(`/admin/account-safety-events/${event!.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status: "reviewed" }),
+    });
+    expect(reviewed.status).toBe(200);
+    expect(reviewed.body.safetyEvents.find((entry) => entry.id === event!.id)?.status).toBe("reviewed");
+    expect(reviewed.body.users.find((user) => user.email === "safety@example.com")?.currentRestriction).toMatchObject({
+      level: "none",
+      sharingDisabled: false,
+    });
   });
 
   it("exposes an admin console only to backend-marked admin accounts", async () => {

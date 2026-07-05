@@ -98,3 +98,34 @@ export function updateRestrictionFromEvents(data: LocalDbData, userId: string, r
   data.accountStatusHistory.push(history);
   return next;
 }
+
+export function reconcileRestrictionFromOpenEvents(data: LocalDbData, userId: string, reason: string): AccountRestriction {
+  const severeOpenEvents = data.accountSafetyEvents.filter((event) => event.userId === userId && event.status === "open" && event.severity >= 4);
+  const desired: RestrictionLevel =
+    severeOpenEvents.length >= 3 ? "generation_hold" :
+    severeOpenEvents.length >= 2 ? "restricted" :
+    severeOpenEvents.length >= 1 ? "watched" :
+    "none";
+  const current = currentRestriction(data, userId);
+  if (desired === current.level) return current;
+  const next: AccountRestriction = {
+    id: createId("restriction"),
+    userId,
+    level: desired,
+    reason,
+    sharingDisabled: desired !== "none",
+    generationDisabled: desired === "generation_hold",
+    contextTokenCap: desired === "restricted" ? 6000 : undefined,
+    createdAt: nowIso(),
+  };
+  data.accountRestrictions.push(next);
+  data.accountStatusHistory.push({
+    id: createId("status"),
+    userId,
+    fromLevel: current.level,
+    toLevel: next.level,
+    reason,
+    createdAt: nowIso(),
+  });
+  return next;
+}

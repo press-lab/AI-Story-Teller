@@ -65,9 +65,14 @@
       "categoryId": "sexual_content_involving_minors",
       "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
       "match": {
-        "all": [
-          { "kind": "regex", "value": "\\b(minor|underage|child|kid|preteen|schoolgirl|schoolboy|1[0-7][ -]?year[ -]?old|age\\s*(?:[0-9]|1[0-7])\\b)\\b" },
-          { "kind": "regex", "value": "\\b(erotic|sexual|smut|seduc|explicit|nsfw|nude|porn|sex)\\b" }
+        "near": [
+          {
+            "windowChars": 500,
+            "patterns": [
+              { "kind": "regex", "value": "\\b(minor|underage|child|kid|preteen|schoolgirl|schoolboy|1[0-7][ -]?year[ -]?old|age\\s*(?:[0-9]|1[0-7])\\b)\\b" },
+              { "kind": "regex", "value": "\\b(erotic|sexual|smut|seduc|explicit|nsfw|nude|porn|sex)\\b" }
+            ]
+          }
         ]
       }
     },
@@ -76,9 +81,14 @@
       "categoryId": "sexual_coercion_or_exploitation",
       "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
       "match": {
-        "all": [
-          { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|sex|porn)\\b" },
-          { "kind": "regex", "value": "\\b(nonconsensual|non-consensual|coerc|blackmail|incapacitated|drugged|forced|traffick|abuse of authority)\\b" }
+        "near": [
+          {
+            "windowChars": 500,
+            "patterns": [
+              { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|sex|porn)\\b" },
+              { "kind": "regex", "value": "\\b(nonconsensual|non-consensual|coerc|blackmail|incapacitated|drugged|forced|traffick|abuse of authority)\\b" }
+            ]
+          }
         ]
       }
     },
@@ -87,9 +97,14 @@
       "categoryId": "eroticized_torture_or_cruelty",
       "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
       "match": {
-        "all": [
-          { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|kink|arous|pleasure|porn)\\b" },
-          { "kind": "regex", "value": "\\b(torture|mutilat|dismember|sadistic|cruelty|suffering|humiliat)\\b" }
+        "near": [
+          {
+            "windowChars": 500,
+            "patterns": [
+              { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|kink|arous|pleasure|porn)\\b" },
+              { "kind": "regex", "value": "\\b(torture|mutilat|dismember|sadistic|cruelty|suffering|humiliat)\\b" }
+            ]
+          }
         ]
       }
     },

@@ -6,7 +6,7 @@ import type {
   RestrictionLevel,
 } from "./apiTypes";
 import type { ApiConfig } from "./config";
-import { currentRestriction } from "./accountSafety";
+import { currentRestriction, reconcileRestrictionFromOpenEvents } from "./accountSafety";
 import { summarizeAdventure } from "./adventureStore";
 import { getPlatformSettings } from "./platformSettings";
 import { createId, nowIso } from "./ids";
@@ -279,6 +279,7 @@ export function updateSafetyEventStatus(
   const event = data.accountSafetyEvents.find((entry) => entry.id === eventId);
   if (!event) throw new Error("Safety event not found.");
   event.status = status;
+  reconcileRestrictionFromOpenEvents(data, event.userId, `Safety event ${eventId} set to ${status}.`);
   data.adminActions.push({
     id: createId("admin_action"),
     adminUserId,

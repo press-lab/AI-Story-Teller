@@ -14,10 +14,12 @@ interface ProfilePageProps {
   status?: string;
   onOpenAdventure?: (id: string) => Promise<void>;
   onEditAdventure?: (id: string) => Promise<void>;
+  onDeleteAdventure?: (id: string) => Promise<void>;
   onPublishAdventure?: (id: string) => Promise<void>;
   onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onStartScenario?: (revisionId: string) => Promise<void>;
   onViewOwnProfile?: () => void;
+  onOpenAdmin?: () => void;
   onLogout?: () => void;
 }
 
@@ -37,10 +39,12 @@ export function ProfilePage({
   status,
   onOpenAdventure,
   onEditAdventure,
+  onDeleteAdventure,
   onPublishAdventure,
   onPublishScenarioRevision,
   onStartScenario,
   onViewOwnProfile,
+  onOpenAdmin,
   onLogout,
 }: ProfilePageProps) {
   if (!backendMode) {
@@ -114,9 +118,16 @@ export function ProfilePage({
             Your Profile
           </button>
         ) : (
-          <button type="button" onClick={onLogout} disabled={!onLogout}>
-            Logout
-          </button>
+          <div className="toolbar">
+            {onOpenAdmin && (
+              <button type="button" onClick={onOpenAdmin}>
+                Admin Console
+              </button>
+            )}
+            <button type="button" onClick={onLogout} disabled={!onLogout}>
+              Logout
+            </button>
+          </div>
         )}
       </header>
 
@@ -243,6 +254,14 @@ export function ProfilePage({
                       </button>
                       <button type="button" onClick={() => void onEditAdventure?.(adventure.id)} disabled={!onEditAdventure}>
                         Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => void onDeleteAdventure?.(adventure.id)}
+                        disabled={!onDeleteAdventure}
+                      >
+                        Delete
                       </button>
                       <button
                         type="button"

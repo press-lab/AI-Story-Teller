@@ -107,6 +107,7 @@ describe("ProfilePage", () => {
     const user = userEvent.setup();
     const onOpenAdventure = vi.fn(async () => undefined);
     const onEditAdventure = vi.fn(async () => undefined);
+    const onDeleteAdventure = vi.fn(async () => undefined);
     const onPublishAdventure = vi.fn(async () => undefined);
     const onPublishScenarioRevision = vi.fn(async () => undefined);
     const onLogout = vi.fn();
@@ -118,6 +119,7 @@ describe("ProfilePage", () => {
         profile={profile()}
         onOpenAdventure={onOpenAdventure}
         onEditAdventure={onEditAdventure}
+        onDeleteAdventure={onDeleteAdventure}
         onPublishAdventure={onPublishAdventure}
         onPublishScenarioRevision={onPublishScenarioRevision}
         onLogout={onLogout}
@@ -137,6 +139,9 @@ describe("ProfilePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Edit" }));
     expect(onEditAdventure).toHaveBeenCalledWith("adventure-1");
+
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    expect(onDeleteAdventure).toHaveBeenCalledWith("adventure-1");
 
     await user.click(screen.getByRole("button", { name: "Publish Scenario" }));
     expect(onPublishAdventure).toHaveBeenCalledWith("adventure-1");

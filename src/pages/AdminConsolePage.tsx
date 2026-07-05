@@ -56,6 +56,7 @@ export function AdminConsolePage({
   const [inviteExpiresInDays, setInviteExpiresInDays] = useState(14);
   const [createdInviteToken, setCreatedInviteToken] = useState("");
   const [adminActionStatus, setAdminActionStatus] = useState("");
+  const [safetyEventActionId, setSafetyEventActionId] = useState("");
   const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
 
   useEffect(() => {
@@ -110,6 +111,19 @@ export function AdminConsolePage({
       setAdminActionStatus("Platform settings saved.");
     } catch (error) {
       setAdminActionStatus(error instanceof Error ? error.message : "Platform settings save failed.");
+    }
+  }
+
+  async function updateSafetyEvent(eventId: string, nextStatus: "open" | "reviewed" | "dismissed") {
+    setSafetyEventActionId(eventId);
+    setAdminActionStatus(`Updating safety event ${shortId(eventId)}...`);
+    try {
+      await onUpdateSafetyEvent(eventId, nextStatus);
+      setAdminActionStatus(`Safety event ${shortId(eventId)} marked ${nextStatus}.`);
+    } catch (error) {
+      setAdminActionStatus(error instanceof Error ? error.message : "Safety event update failed.");
+    } finally {
+      setSafetyEventActionId("");
     }
   }
 
@@ -384,9 +398,27 @@ export function AdminConsolePage({
                       <td>{event.status}</td>
                       <td>
                         <div className="toolbar">
-                          <button type="button" onClick={() => void onUpdateSafetyEvent(event.id, "reviewed")}>Review</button>
-                          <button type="button" onClick={() => void onUpdateSafetyEvent(event.id, "dismissed")}>Dismiss</button>
-                          <button type="button" onClick={() => void onUpdateSafetyEvent(event.id, "open")}>Reopen</button>
+                          <button
+                            type="button"
+                            disabled={safetyEventActionId === event.id || event.status === "reviewed"}
+                            onClick={() => void updateSafetyEvent(event.id, "reviewed")}
+                          >
+                            {safetyEventActionId === event.id ? "Saving..." : "Review"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={safetyEventActionId === event.id || event.status === "dismissed"}
+                            onClick={() => void updateSafetyEvent(event.id, "dismissed")}
+                          >
+                            Dismiss
+                          </button>
+                          <button
+                            type="button"
+                            disabled={safetyEventActionId === event.id || event.status === "open"}
+                            onClick={() => void updateSafetyEvent(event.id, "open")}
+                          >
+                            Reopen
+                          </button>
                         </div>
                       </td>
                     </tr>

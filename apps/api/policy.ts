@@ -11,6 +11,11 @@ interface RulePattern {
   value: string;
 }
 
+interface RuleProximityMatch {
+  windowChars: number;
+  patterns: RulePattern[];
+}
+
 interface PolicyCategory {
   id: string;
   severity: number;
@@ -27,6 +32,7 @@ interface PolicyRule {
   match: {
     all?: RulePattern[];
     any?: RulePattern[];
+    near?: RuleProximityMatch[];
   };
 }
 
@@ -142,9 +148,11 @@ export class PolicyBlockedError extends Error {
 function ruleMatches(rule: PolicyRule, text: string): boolean {
   const all = rule.match.all ?? [];
   const any = rule.match.any ?? [];
+  const near = rule.match.near ?? [];
   const allMatched = all.length === 0 || all.every((pattern) => patternMatches(pattern, text));
   const anyMatched = any.length === 0 || any.some((pattern) => patternMatches(pattern, text));
-  return allMatched && anyMatched;
+  const nearMatched = near.length === 0 || near.every((match) => proximityMatches(match, text));
+  return allMatched && anyMatched && nearMatched;
 }
 
 function patternMatches(pattern: RulePattern, text: string): boolean {
@@ -154,6 +162,57 @@ function patternMatches(pattern: RulePattern, text: string): boolean {
   } catch {
     return false;
   }
+}
+
+interface MatchRange {
+  start: number;
+  end: number;
+}
+
+function proximityMatches(match: RuleProximityMatch, text: string): boolean {
+  if (match.patterns.length === 0) return false;
+  if (match.patterns.length === 1) return patternMatches(match.patterns[0], text);
+  const rangesByPattern = match.patterns.map((pattern) => patternRanges(pattern, text));
+  if (rangesByPattern.some((ranges) => ranges.length === 0)) return false;
+  const anchors = rangesByPattern[0];
+  const others = rangesByPattern.slice(1);
+  return anchors.some((anchor) =>
+    others.every((ranges) =>
+      ranges.some((range) => rangeDistance(anchor, range) <= match.windowChars),
+    ),
+  );
+}
+
+function patternRanges(pattern: RulePattern, text: string): MatchRange[] {
+  if (pattern.kind === "literal") {
+    const literal = pattern.value.toLowerCase();
+    if (!literal) return [];
+    const ranges: MatchRange[] = [];
+    let index = text.indexOf(literal);
+    while (index !== -1) {
+      ranges.push({ start: index, end: index + literal.length });
+      index = text.indexOf(literal, index + Math.max(1, literal.length));
+    }
+    return ranges;
+  }
+  try {
+    const regex = new RegExp(pattern.value, "gi");
+    const ranges: MatchRange[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(text)) !== null) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+      if (match[0].length === 0) regex.lastIndex += 1;
+    }
+    return ranges;
+  } catch {
+    return [];
+  }
+}
+
+function rangeDistance(a: MatchRange, b: MatchRange): number {
+  if (a.end < b.start) return b.start - a.end;
+  if (b.end < a.start) return a.start - b.end;
+  return 0;
 }
 
 function strongestPolicyAction(actions: PolicyAction[]): PolicyAction {
