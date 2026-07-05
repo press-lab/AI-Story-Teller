@@ -1,6 +1,7 @@
 import type { Adventure, ContextBuildResult, ProviderUsage } from "../../src/types/adventure";
 
 export type AccountStatus = "pending_verification" | "active" | "disabled";
+export type AccountRole = "user" | "admin";
 export type AuthProvider = "password" | "google";
 export type RestrictionLevel = "none" | "watched" | "restricted" | "generation_hold" | "banned";
 export type PolicyGate = "input" | "context" | "output" | "memoryWrite" | "import" | "share" | "profile";
@@ -10,6 +11,7 @@ export interface BackendUser {
   id: string;
   email: string;
   displayName: string;
+  role?: AccountRole;
   status: AccountStatus;
   emailVerified: boolean;
   createdAt: string;
@@ -77,6 +79,17 @@ export interface VerificationToken {
   userId: string;
   tokenHash: string;
   purpose: "emailVerification" | "passwordReset";
+  createdAt: string;
+  expiresAt: string;
+  usedAt?: string;
+}
+
+export interface OAuthStateRecord {
+  id: string;
+  provider: "google";
+  tokenHash: string;
+  inviteId?: string;
+  returnTo?: string;
   createdAt: string;
   expiresAt: string;
   usedAt?: string;
@@ -209,6 +222,14 @@ export interface AdminAction {
   createdAt: string;
 }
 
+export interface PlatformSettingsRecord {
+  id: string;
+  key: "platform";
+  value: unknown;
+  updatedAt: string;
+  updatedByUserId?: string;
+}
+
 export interface MigrationRecord {
   version: number;
   name: string;
@@ -226,6 +247,7 @@ export interface LocalDbData {
   signupIntents: SignupIntent[];
   sessions: SessionRecord[];
   verificationTokens: VerificationToken[];
+  oauthStates: OAuthStateRecord[];
   adventures: BackendAdventureRecord[];
   adventureSnapshots: AdventureSnapshotRecord[];
   contextBuildEvents: ContextBuildEvent[];
@@ -238,4 +260,5 @@ export interface LocalDbData {
   shareLinks: ShareLink[];
   usageLogs: UsageLog[];
   adminActions: AdminAction[];
+  platformSettings: PlatformSettingsRecord[];
 }

@@ -228,6 +228,50 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Show advanced settings")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Local Google Stub" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Runtime" })).toBeInTheDocument();
+  });
+
+  it("shows platform settings for backend admin accounts", () => {
+    render(
+      <SettingsPage
+        adventure={createDefaultAdventure("Admin Settings")}
+        dispatch={vi.fn()}
+        providerPresets={[makePreset()]}
+        activePresetId="preset-test"
+        onProviderPresetsChange={vi.fn()}
+        onSelectPreset={vi.fn()}
+        uiPreferences={{ ...defaultUiPreferences, showAdvancedSettings: true }}
+        onUiPreferencesChange={vi.fn()}
+        globalAdventureSettings={defaultGlobalAdventureSettings}
+        onGlobalAdventureSettingsChange={vi.fn()}
+        backendSession={{
+          sessionToken: "session-admin",
+          user: {
+            id: "user-admin",
+            email: "admin@example.com",
+            displayName: "Admin",
+            role: "admin",
+            status: "active",
+            emailVerified: true,
+            createdAt: "2026-07-04T00:00:00.000Z",
+            updatedAt: "2026-07-04T00:00:00.000Z",
+          },
+          profile: {
+            userId: "user-admin",
+            displayName: "Admin",
+            bio: "",
+            createdAt: "2026-07-04T00:00:00.000Z",
+            updatedAt: "2026-07-04T00:00:00.000Z",
+          },
+        }}
+        onLoadBackendPlatformSettings={vi.fn()}
+        onSaveBackendPlatformSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Platform Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Models" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Load Platform Settings" })).toBeInTheDocument();
   });
 });

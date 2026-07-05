@@ -60,6 +60,31 @@ beforeEach(async () => {
     port: 0,
     dataFile: join(tempDir, "db.json"),
     policyMode: "enforce",
+    googleOAuth: {
+      clientId: "test-google-client",
+      clientSecret: "test-google-secret",
+      redirectUri: "http://127.0.0.1:8787/auth/google/callback",
+      successRedirectUrl: "http://localhost:5173/",
+      authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
+      tokenUrl: "https://oauth2.googleapis.test/token",
+      tokenInfoUrl: "https://oauth2.googleapis.test/tokeninfo",
+    },
+    fetchImpl: async (input) => {
+      const url = String(input);
+      if (url.includes("/tokeninfo")) {
+        return new Response(JSON.stringify({
+          aud: "test-google-client",
+          sub: "google-real-subject-1",
+          email: "real-google@example.com",
+          email_verified: "true",
+          name: "Real Google",
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/token")) {
+        return new Response(JSON.stringify({ id_token: "test-id-token" }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "unexpected url" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    },
     providerConfig: {
       name: "test",
       baseUrl: "http://127.0.0.1/unconfigured",
@@ -144,6 +169,41 @@ describe("local API auth and invite gate", () => {
     expect(signup.status).toBe(200);
     expect(signup.body.sessionToken).toBeTruthy();
     expect(signup.body.user.emailVerified).toBe(true);
+  });
+
+  it("supports real Google OAuth start and callback behind the invite gate", async () => {
+    const inviteToken = await createInvite();
+    const start = await requestJson<{ authUrl: string; expiresAt: string }>("/auth/google/start", {
+      method: "POST",
+      body: JSON.stringify({ inviteToken, returnTo: "http://localhost:5173/settings" }),
+    });
+    expect(start.status).toBe(200);
+    const authUrl = new URL(start.body.authUrl);
+    expect(authUrl.origin).toBe("https://accounts.google.com");
+    expect(authUrl.searchParams.get("client_id")).toBe("test-google-client");
+    const state = authUrl.searchParams.get("state");
+    expect(state).toBeTruthy();
+
+    const callback = await requestJson<{ sessionToken: string; user: { email: string; emailVerified: boolean } }>(
+      `/auth/google/callback?code=google-code&state=${encodeURIComponent(state!)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    expect(callback.status).toBe(200);
+    expect(callback.body.sessionToken).toBeTruthy();
+    expect(callback.body.user.email).toBe("real-google@example.com");
+    expect(callback.body.user.emailVerified).toBe(true);
+
+    const loginStart = await requestJson<{ authUrl: string }>("/auth/google/start", {
+      method: "POST",
+      body: JSON.stringify({ returnTo: "http://localhost:5173/settings" }),
+    });
+    const loginState = new URL(loginStart.body.authUrl).searchParams.get("state");
+    const loginCallback = await requestJson<{ sessionToken: string }>(
+      `/auth/google/callback?code=google-code&state=${encodeURIComponent(loginState!)}`,
+      { headers: { Accept: "application/json" } },
+    );
+    expect(loginCallback.status).toBe(200);
+    expect(loginCallback.body.sessionToken).toBeTruthy();
   });
 });
 describe("local API adventure persistence", () => {
@@ -371,5 +431,32 @@ describe("local API policy gates and sharing", () => {
         version: 1,
       }),
     ]);
+  });
+
+  it("stores non-secret platform settings in the backend and gates scenario publishing", async () => {
+    const current = await requestJson<{ provider: { model: string }; features: { scenarioPublishingEnabled: boolean } }>("/admin/platform-settings");
+    expect(current.status).toBe(200);
+    expect(current.body.provider.model).toBe("test-model");
+
+    const saved = await requestJson<{ provider: { model: string; maxOutputTokens: number }; features: { scenarioPublishingEnabled: boolean } }>("/admin/platform-settings", {
+      method: "PUT",
+      body: JSON.stringify({
+        provider: { model: "platform-model", maxOutputTokens: 2500 },
+        features: { scenarioPublishingEnabled: false },
+      }),
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.provider.model).toBe("platform-model");
+    expect(saved.body.provider.maxOutputTokens).toBe(2500);
+    expect(saved.body.features.scenarioPublishingEnabled).toBe(false);
+
+    const sessionToken = await passwordSession("platform-settings@example.com");
+    const blockedDraft = await requestJson<{ error: string }>("/scenarios", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ title: "Blocked Scenario" }),
+    });
+    expect(blockedDraft.status).toBe(400);
+    expect(blockedDraft.body.error).toMatch(/disabled by platform settings/i);
   });
 });

@@ -7,6 +7,7 @@ export interface BackendUser {
   id: string;
   email: string;
   displayName: string;
+  role?: "user" | "admin";
   status: "pending_verification" | "active" | "disabled";
   emailVerified: boolean;
   createdAt: string;
@@ -103,6 +104,32 @@ export interface BackendExploreScenarioSummary {
   publishedAt: string;
 }
 
+export interface BackendPlatformSettings {
+  provider: {
+    name: string;
+    baseUrl: string;
+    model: string;
+    temperature: number;
+    maxOutputTokens: number;
+    topP?: number;
+    presencePenalty?: number;
+    frequencyPenalty?: number;
+    promptCaching?: boolean;
+  };
+  background: {
+    semanticEvaluationEnabled: boolean;
+    semanticEvalEveryNTurns: number;
+    memoryDetectionEnabled: boolean;
+    memoryDetectionEveryNTurns: number;
+  };
+  features: {
+    scenarioPublishingEnabled: boolean;
+    developerToolsVisibleToAdmins: boolean;
+  };
+  updatedAt?: string;
+  updatedByUserId?: string;
+}
+
 function authHeaders(session?: BackendSessionState): Record<string, string> {
   return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
 }
@@ -148,6 +175,16 @@ export function signupBackendLocalGoogle(
   });
 }
 
+export function startBackendGoogleOAuth(
+  config: RuntimeConfig,
+  input: { inviteToken?: string; returnTo?: string },
+) {
+  return apiJson<{ authUrl: string; expiresAt: string }>(config, "/auth/google/start", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export function loadBackendSession(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<BackendSessionState & { restriction?: BackendRestriction }>(config, "/auth/session", {
     headers: authHeaders(session),
@@ -163,6 +200,24 @@ export function loadBackendProfile(config: RuntimeConfig, session: BackendSessio
 export function loadBackendExploreScenarios(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<{ scenarios: BackendExploreScenarioSummary[] }>(config, "/explore/scenarios", {
     headers: authHeaders(session),
+  });
+}
+
+export function loadBackendPlatformSettings(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<BackendPlatformSettings>(config, "/admin/platform-settings", {
+    headers: authHeaders(session),
+  });
+}
+
+export function saveBackendPlatformSettings(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  settings: Partial<BackendPlatformSettings>,
+) {
+  return apiJson<BackendPlatformSettings>(config, "/admin/platform-settings", {
+    method: "PUT",
+    headers: authHeaders(session),
+    body: JSON.stringify(settings),
   });
 }
 

@@ -12,6 +12,7 @@ import type { ApiConfig } from "./config";
 import type { BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
 import { assertCanGenerate } from "./accountSafety";
 import { assertPolicyAllowed, recordPolicyDecision } from "./policy";
+import { effectiveProviderConfig } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 
 export interface ImportAdventureInput {
@@ -164,7 +165,8 @@ export async function runBackendTurn(
   });
   assertPolicyAllowed(inputDecision);
 
-  if (!config.providerConfig.apiKey?.trim()) {
+  const providerConfig = effectiveProviderConfig(data, config);
+  if (!providerConfig.apiKey?.trim()) {
     throw new Error("Backend provider API key is not configured. Set AIST_PROVIDER_API_KEY in .env for backend turns.");
   }
 
@@ -181,7 +183,7 @@ export async function runBackendTurn(
     currentInputForContext: options.regenerateLastAssistant ? lastUser ?? input : undefined,
     incrementTurn: !options.regenerateLastAssistant,
     advanceArcPacing: !options.regenerateLastAssistant,
-    providerConfig: config.providerConfig,
+    providerConfig,
     sendChatCompletion: async (messages, snapshot, context) => {
       const contextDecision = recordPolicyDecision(data, {
         gate: "context",
@@ -200,7 +202,7 @@ export async function runBackendTurn(
         context,
         createdAt: nowIso(),
       });
-      const providerResponse = await sendOpenAICompatibleChatCompletion({ messages, config: config.providerConfig });
+      const providerResponse = await sendOpenAICompatibleChatCompletion({ messages, config: providerConfig });
       const outputDecision = recordPolicyDecision(data, {
         gate: "output",
         text: providerResponse.content,
@@ -223,8 +225,8 @@ export async function runBackendTurn(
         id: createId("usage"),
         userId: ownerUserId,
         adventureId,
-        providerName: config.providerConfig.name,
-        model: config.providerConfig.model,
+        providerName: providerConfig.name,
+        model: providerConfig.model,
         usage: providerResponse.usage,
         createdAt: nowIso(),
       } satisfies UsageLog);

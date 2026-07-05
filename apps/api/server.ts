@@ -5,7 +5,9 @@ import { createEmptyDb, LocalDb } from "./localDb";
 import { loadApiConfig, type ApiConfig } from "./config";
 import {
   confirmPasswordReset,
+  completeGoogleOAuth,
   createInvite,
+  createGoogleOAuthStart,
   loginWithPassword,
   previewInvite,
   requestPasswordReset,
@@ -26,6 +28,7 @@ import {
 import { currentRestriction } from "./accountSafety";
 import { createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
 import { buildProfileSummary, listExploreScenarios } from "./profileReadModels";
+import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 
@@ -81,9 +84,9 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     }
 
     if (request.method === "POST" && route.pathname === "/admin/invites") {
-      await assertAdmin(request, config);
+      const adminUserId = await assertAdmin(request, config, db);
       const { body } = await readJsonBody<{ expiresInDays?: number; maxUses?: number; note?: string }>(request);
-      const created = await db.update((data) => createInvite(data, body));
+      const created = await db.update((data) => createInvite(data, { ...body, createdByUserId: adminUserId }));
       sendJson(response, 201, created, corsHeaders);
       return;
     }
@@ -97,22 +100,34 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
 
     if (request.method === "POST" && route.pathname === "/auth/signup/password") {
       const { body, remoteKey } = await readJsonBody<{ inviteToken: string; email: string; password: string; displayName?: string }>(request);
-      const result = await db.update((data) => signupWithPassword(data, { ...body, remoteKey }));
+      const result = await db.update(async (data) => {
+        const signup = await signupWithPassword(data, { ...body, remoteKey });
+        applyConfiguredAdminRole(data, signup.user, config);
+        return signup;
+      });
       sendJson(response, 201, result, corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/email/verify") {
       const { body } = await readJsonBody<{ token: string }>(request);
-      const result = await db.update((data) => verifyEmailToken(data, body.token));
-      sendJson(response, 200, publicSession(result), corsHeaders);
+      const result = await db.update((data) => {
+        const session = verifyEmailToken(data, body.token);
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      sendJson(response, 200, publicSession(result, config), corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/login/password") {
       const { body, remoteKey } = await readJsonBody<{ email: string; password: string }>(request);
-      const result = await db.update((data) => loginWithPassword(data, { ...body, remoteKey }));
-      sendJson(response, 200, publicSession(result), corsHeaders);
+      const result = await db.update(async (data) => {
+        const session = await loginWithPassword(data, { ...body, remoteKey });
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      sendJson(response, 200, publicSession(result, config), corsHeaders);
       return;
     }
 
@@ -133,15 +148,44 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     if (request.method === "POST" && route.pathname === "/auth/google/local") {
       if (!config.allowLocalGoogleStub) throw new Error("Local Google stub is disabled.");
       const { body, remoteKey } = await readJsonBody<{ inviteToken: string; email: string; googleSubject: string; displayName?: string }>(request);
-      const result = await db.update((data) => signupWithLocalGoogle(data, { ...body, remoteKey }));
-      sendJson(response, 200, publicSession(result), corsHeaders);
+      const result = await db.update((data) => {
+        const session = signupWithLocalGoogle(data, { ...body, remoteKey });
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      sendJson(response, 200, publicSession(result, config), corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/auth/google/start") {
+      const { body } = await readJsonBody<{ inviteToken?: string; returnTo?: string }>(request);
+      const result = await db.update((data) => createGoogleOAuthStart(data, body, config));
+      sendJson(response, 200, result, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/auth/google/callback") {
+      const code = route.url.searchParams.get("code") ?? "";
+      const state = route.url.searchParams.get("state") ?? "";
+      const result = await db.update(async (data) => {
+        const session = await completeGoogleOAuth(data, { code, state, remoteKey: request.socket.remoteAddress }, config);
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      const session = publicSession(result, config);
+      if (request.headers.accept?.includes("application/json")) {
+        sendJson(response, 200, session, corsHeaders);
+      } else {
+        sendOAuthRedirect(response, result.returnTo ?? config.googleOAuth.successRedirectUrl, session, corsHeaders);
+      }
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/auth/session") {
       const session = await requireSession(request, db);
       const data = await db.read();
-      sendJson(response, 200, { ...publicSession(session), restriction: currentRestriction(data, session.user.id) }, corsHeaders);
+      applyConfiguredAdminRole(data, session.user, config);
+      sendJson(response, 200, { ...publicSession(session, config), restriction: currentRestriction(data, session.user.id) }, corsHeaders);
       return;
     }
 
@@ -178,13 +222,28 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     }
 
     if (request.method === "GET" && route.pathname === "/admin/account-safety-events") {
-      await assertAdmin(request, config);
+      await assertAdmin(request, config, db);
       const data = await db.read();
       sendJson(response, 200, {
         events: data.accountSafetyEvents,
         restrictions: data.accountRestrictions,
         policyDecisions: data.policyDecisions,
       }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/admin/platform-settings") {
+      await assertAdmin(request, config, db);
+      const data = await db.read();
+      sendJson(response, 200, getPlatformSettings(data, config), corsHeaders);
+      return;
+    }
+
+    if (request.method === "PUT" && route.pathname === "/admin/platform-settings") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const { body } = await readJsonBody<PlatformSettingsInput>(request);
+      const settings = await db.update((data) => updatePlatformSettings(data, config, body, adminUserId));
+      sendJson(response, 200, settings, corsHeaders);
       return;
     }
 
@@ -280,13 +339,19 @@ async function handleScenarioRoute(
 ): Promise<void> {
   if (request.method === "POST" && segments.length === 1) {
     const { body } = await readJsonBody<{ title: string; description?: string; sourceAdventureId?: string }>(request);
-    const scenario = await db.updatePersistingOnError((data) => createScenarioDraft(data, session.user.id, body, config));
+    const scenario = await db.updatePersistingOnError((data) => {
+      assertScenarioPublishingEnabled(data, config);
+      return createScenarioDraft(data, session.user.id, body, config);
+    });
     sendJson(response, 201, scenario, corsHeaders);
     return;
   }
   if (request.method === "POST" && segments[2] === "revisions") {
     const { body } = await readJsonBody<{ title?: string; description?: string; content: unknown }>(request, 10_000_000);
-    const revision = await db.updatePersistingOnError((data) => createScenarioRevision(data, session.user.id, segments[1], body, config));
+    const revision = await db.updatePersistingOnError((data) => {
+      assertScenarioPublishingEnabled(data, config);
+      return createScenarioRevision(data, session.user.id, segments[1], body, config);
+    });
     sendJson(response, 201, revision, corsHeaders);
     return;
   }
@@ -303,7 +368,10 @@ async function handleScenarioRevisionRoute(
   corsHeaders: Record<string, string>,
 ): Promise<void> {
   if (request.method === "POST" && segments[2] === "publish") {
-    const result = await db.updatePersistingOnError((data) => publishScenarioRevision(data, session.user.id, segments[1], config));
+    const result = await db.updatePersistingOnError((data) => {
+      assertScenarioPublishingEnabled(data, config);
+      return publishScenarioRevision(data, session.user.id, segments[1], config);
+    });
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -319,20 +387,67 @@ async function requireSession(request: IncomingMessage, db: LocalDb): Promise<Au
   return session;
 }
 
-async function assertAdmin(request: IncomingMessage, config: ApiConfig): Promise<void> {
-  if (!config.adminKey) return;
-  if (request.headers["x-admin-key"] !== config.adminKey) {
-    throw new Error("Admin key required.");
+async function assertAdmin(request: IncomingMessage, config: ApiConfig, db: LocalDb): Promise<string | undefined> {
+  if (config.adminKey && request.headers["x-admin-key"] === config.adminKey) return undefined;
+  const data = await db.read();
+  const session = resolveSession(data, bearerToken(request));
+  if (session) {
+    applyConfiguredAdminRole(data, session.user, config);
+    if (isAdminUser(session.user, config)) {
+      await db.write(data);
+      return session.user.id;
+    }
   }
+  if (!config.adminKey && config.adminEmails.length === 0) return undefined;
+  throw new Error("Admin access required.");
 }
 
-function publicSession(result: AuthSessionResult) {
+function publicSession(result: AuthSessionResult, config: ApiConfig) {
   return {
-    user: result.user,
+    user: publicUser(result.user, config),
     profile: result.profile,
     sessionToken: result.sessionToken,
     expiresAt: result.session.expiresAt,
   };
+}
+
+function publicUser(user: AuthSessionResult["user"], config: ApiConfig) {
+  return {
+    ...user,
+    role: isAdminUser(user, config) ? "admin" : user.role ?? "user",
+  };
+}
+
+function applyConfiguredAdminRole(data: { users: AuthSessionResult["user"][] }, user: AuthSessionResult["user"], config: ApiConfig): void {
+  if (!config.adminEmails.includes(user.email.toLowerCase())) return;
+  user.role = "admin";
+  const stored = data.users.find((entry) => entry.id === user.id);
+  if (stored) stored.role = "admin";
+}
+
+function isAdminUser(user: AuthSessionResult["user"], config: ApiConfig): boolean {
+  return user.role === "admin" || config.adminEmails.includes(user.email.toLowerCase());
+}
+
+function assertScenarioPublishingEnabled(data: Parameters<typeof getPlatformSettings>[0], config: ApiConfig): void {
+  if (!getPlatformSettings(data, config).features.scenarioPublishingEnabled) {
+    throw new Error("Scenario publishing is disabled by platform settings.");
+  }
+}
+
+function sendOAuthRedirect(
+  response: ServerResponse,
+  returnTo: string,
+  session: ReturnType<typeof publicSession>,
+  extraHeaders: Record<string, string>,
+): void {
+  const target = new URL(returnTo);
+  target.hash = `backendSession=${encodeURIComponent(JSON.stringify(session))}`;
+  response.writeHead(200, {
+    "Content-Type": "text/html; charset=utf-8",
+    ...extraHeaders,
+  });
+  response.end(`<!doctype html><meta charset="utf-8"><script>location.replace(${JSON.stringify(target.toString())});</script>`);
 }
 
 function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, string> {

@@ -3,15 +3,28 @@ import { existsSync, readFileSync } from "node:fs";
 
 export type PolicyMode = "reviewOnly" | "enforce";
 
+export interface GoogleOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  successRedirectUrl: string;
+  authUrl: string;
+  tokenUrl: string;
+  tokenInfoUrl: string;
+}
+
 export interface ApiConfig {
   host: string;
   port: number;
   dataFile: string;
   allowedOrigins: string[];
   adminKey?: string;
+  adminEmails: string[];
   allowLocalGoogleStub: boolean;
+  googleOAuth: GoogleOAuthConfig;
   policyMode: PolicyMode;
   providerConfig: ProviderConfig;
+  fetchImpl?: typeof fetch;
 }
 
 function stringEnv(name: string, fallback: string): string {
@@ -55,14 +68,25 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
       "http://localhost:5173,http://127.0.0.1:5173,https://press-lab.github.io",
     ).split(",").map((origin) => origin.trim()).filter(Boolean),
     adminKey: process.env.AIST_API_ADMIN_KEY?.trim() || undefined,
+    adminEmails: stringEnv("AIST_ADMIN_EMAILS", "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean),
     allowLocalGoogleStub: boolEnv("AIST_API_ALLOW_LOCAL_GOOGLE_STUB", true),
+    googleOAuth: {
+      clientId: process.env.AIST_GOOGLE_CLIENT_ID?.trim() || "",
+      clientSecret: process.env.AIST_GOOGLE_CLIENT_SECRET?.trim() || "",
+      redirectUri: stringEnv("AIST_GOOGLE_REDIRECT_URI", "http://127.0.0.1:8787/auth/google/callback"),
+      successRedirectUrl: stringEnv("AIST_WEB_APP_URL", "http://localhost:5173/"),
+      authUrl: stringEnv("AIST_GOOGLE_AUTH_URL", "https://accounts.google.com/o/oauth2/v2/auth"),
+      tokenUrl: stringEnv("AIST_GOOGLE_TOKEN_URL", "https://oauth2.googleapis.com/token"),
+      tokenInfoUrl: stringEnv("AIST_GOOGLE_TOKEN_INFO_URL", "https://oauth2.googleapis.com/tokeninfo"),
+    },
     policyMode,
     providerConfig,
   };
   return {
     ...config,
     ...overrides,
-    providerConfig: { ...config.providerConfig, ...overrides.providerConfig },
+    providerConfig: { ...config.providerConfig, ...(overrides.providerConfig ?? {}) },
+    googleOAuth: { ...config.googleOAuth, ...(overrides.googleOAuth ?? {}) },
   };
 }
 

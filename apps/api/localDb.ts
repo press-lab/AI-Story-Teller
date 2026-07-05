@@ -17,6 +17,7 @@ export function createEmptyDb(): LocalDbData {
     signupIntents: [],
     sessions: [],
     verificationTokens: [],
+    oauthStates: [],
     adventures: [],
     adventureSnapshots: [],
     contextBuildEvents: [],
@@ -29,6 +30,7 @@ export function createEmptyDb(): LocalDbData {
     shareLinks: [],
     usageLogs: [],
     adminActions: [],
+    platformSettings: [],
   };
 }
 
@@ -105,6 +107,7 @@ function migrate(raw: Partial<LocalDbData>): LocalDbData {
     signupIntents: raw.signupIntents ?? [],
     sessions: raw.sessions ?? [],
     verificationTokens: raw.verificationTokens ?? [],
+    oauthStates: raw.oauthStates ?? [],
     adventures: raw.adventures ?? [],
     adventureSnapshots: raw.adventureSnapshots ?? [],
     contextBuildEvents: raw.contextBuildEvents ?? [],
@@ -117,6 +120,7 @@ function migrate(raw: Partial<LocalDbData>): LocalDbData {
     shareLinks: raw.shareLinks ?? [],
     usageLogs: raw.usageLogs ?? [],
     adminActions: raw.adminActions ?? [],
+    platformSettings: raw.platformSettings ?? [],
   };
   if (merged.schemaVersion < CURRENT_SCHEMA_VERSION) {
     merged.schemaVersion = CURRENT_SCHEMA_VERSION;

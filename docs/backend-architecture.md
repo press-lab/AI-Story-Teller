@@ -52,6 +52,7 @@ The first backend implementation is local-only.
 - The database runs locally.
 - Redis/worker infrastructure runs locally when introduced.
 - Provider credentials live only in local backend environment/configuration.
+- Admin-editable platform settings may override non-secret provider routing, background cadence, and feature defaults, but never provider API keys or OAuth secrets.
 - Hosted backend deployment is a later target after local mode proves the architecture.
 
 Because the backend is local, external users will not be able to use the owner's local API from GitHub Pages unless they run their own backend, use a temporary tunnel, or a hosted backend is added later.
@@ -83,6 +84,8 @@ Implemented locally:
 - `GET /profile/me` returns the signed-in user's profile, backend adventures, and authored scenario summaries.
 - `GET /explore/scenarios` lists published scenario revisions for the Explore page.
 - Signed-in backend accounts do not see browser model routing, background cost, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
+- Real Google OAuth/OIDC is implemented through `/auth/google/start` and `/auth/google/callback`; the local Google stub remains only for owner/dev testing.
+- Platform-wide non-secret settings live behind admin-only backend settings; secrets and bootstrap defaults stay in environment/config files.
 
 Implementation notes:
 

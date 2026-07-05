@@ -35,10 +35,11 @@ export function bearerToken(request: IncomingMessage): string | undefined {
   return match?.[1];
 }
 
-export function routePath(request: IncomingMessage): { pathname: string; segments: string[] } {
+export function routePath(request: IncomingMessage): { url: URL; pathname: string; segments: string[] } {
   const url = new URL(request.url ?? "/", "http://local");
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
   return {
+    url,
     pathname,
     segments: pathname.split("/").filter(Boolean).map(decodeURIComponent),
   };

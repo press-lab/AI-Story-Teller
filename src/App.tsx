@@ -50,12 +50,15 @@ import {
   importAndOpenBackendAdventure,
   loadBackendSafetyAudit,
   loadBackendExploreScenarios,
+  loadBackendPlatformSettings,
   loadBackendProfile,
   loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
+  saveBackendPlatformSettings,
   signupBackendLocalGoogle,
   signupBackendPassword,
+  startBackendGoogleOAuth,
   verifyBackendEmail,
   type BackendExploreScenarioSummary,
   type BackendImportRequest,
@@ -185,7 +188,7 @@ export default function App() {
   const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const backendReady = backendMode && Boolean(backendSession?.sessionToken);
-  const hideBackendUserDeveloperControls = backendMode && Boolean(backendSession);
+  const hideBackendUserDeveloperControls = backendMode && Boolean(backendSession) && backendSession?.user.role !== "admin";
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
@@ -235,6 +238,19 @@ export default function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!window.location.hash.includes("backendSession=")) return;
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const rawSession = params.get("backendSession");
+    if (!rawSession) return;
+    try {
+      setBackendSession(JSON.parse(rawSession) as BackendSessionState);
+      history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
+    } catch {
+      // Ignore malformed OAuth callback fragments.
+    }
+  }, [setBackendSession]);
 
   useEffect(() => {
     if (providerPresets.length === 0) return;
@@ -597,6 +613,7 @@ export default function App() {
               setBackendSession(session);
               return session;
             }}
+            onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
             onRefreshBackendSession={async () => {
               if (!backendSession) throw new Error("No backend session is active.");
               const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
@@ -610,6 +627,14 @@ export default function App() {
               return session;
             }}
             onLogoutBackend={() => setBackendSession(null)}
+            onLoadBackendPlatformSettings={() => {
+              if (!backendSession) throw new Error("No backend session is active.");
+              return loadBackendPlatformSettings(normalizedRuntimeConfig, backendSession);
+            }}
+            onSaveBackendPlatformSettings={(settings) => {
+              if (!backendSession) throw new Error("No backend session is active.");
+              return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
+            }}
             onBackendImport={importToBackend}
             onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
             onPublishBackendScenario={publishCurrentAdventureScenario}
@@ -734,6 +759,7 @@ export default function App() {
             setBackendSession(session);
             return session;
           }}
+          onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
           onRefreshBackendSession={async () => {
             if (!backendSession) throw new Error("No backend session is active.");
             const refreshed = await loadBackendSession(normalizedRuntimeConfig, backendSession);
@@ -747,6 +773,14 @@ export default function App() {
             return session;
           }}
           onLogoutBackend={() => setBackendSession(null)}
+          onLoadBackendPlatformSettings={() => {
+            if (!backendSession) throw new Error("No backend session is active.");
+            return loadBackendPlatformSettings(normalizedRuntimeConfig, backendSession);
+          }}
+          onSaveBackendPlatformSettings={(settings) => {
+            if (!backendSession) throw new Error("No backend session is active.");
+            return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
+          }}
           onBackendImport={importToBackend}
           onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
           onPublishBackendScenario={publishCurrentAdventureScenario}

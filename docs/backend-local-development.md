@@ -45,6 +45,25 @@ AIST_PROVIDER_MODEL=...
 
 Backend turns will fail clearly until `AIST_PROVIDER_API_KEY` is set. Browser-local generation still uses the existing localStorage provider presets.
 
+Provider secrets live only in `.env` or environment variables. Admin-editable platform settings live in the local backend database and can override non-secret platform-wide defaults such as provider name, base URL, model, sampling values, background cadence, and scenario publishing. The provider API key is never stored in the platform settings record.
+
+Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role.
+
+## Google OAuth
+
+The local backend supports real Google OAuth/OIDC without NextAuth. This app is a static Vite frontend plus a custom Node API, so introducing NextAuth would require migrating the app to Next.js.
+
+Create a Google OAuth client and set:
+
+```text
+AIST_GOOGLE_CLIENT_ID=...
+AIST_GOOGLE_CLIENT_SECRET=...
+AIST_GOOGLE_REDIRECT_URI=http://127.0.0.1:8787/auth/google/callback
+AIST_WEB_APP_URL=http://localhost:5173/
+```
+
+The Google redirect URI configured in Google Cloud must exactly match `AIST_GOOGLE_REDIRECT_URI`. For GitHub Pages UAT, set `AIST_WEB_APP_URL` to the Pages URL and add that origin to `AIST_API_ALLOWED_ORIGINS`.
+
 ## Policy Mode
 
 ```text
@@ -76,7 +95,11 @@ POST /admin/invites
 POST /auth/signup/password
 POST /auth/email/verify
 POST /auth/login/password
+POST /auth/google/start
+GET /auth/google/callback
 POST /auth/google/local
+GET /profile/me
+GET /explore/scenarios
 POST /adventures/import
 GET /adventures/:id/context-preview
 POST /adventures/:id/turn
@@ -84,6 +107,8 @@ POST /scenarios
 POST /scenarios/:id/revisions
 POST /scenario-revisions/:id/publish
 GET /admin/account-safety-events
+GET /admin/platform-settings
+PUT /admin/platform-settings
 ```
 
 Admin invite creation is open in local dev if `AIST_API_ADMIN_KEY` is unset. Set `AIST_API_ADMIN_KEY` to require `X-Admin-Key`.

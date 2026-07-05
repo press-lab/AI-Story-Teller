@@ -200,6 +200,8 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Scenario/share endpoints and Profile/Explore read models: `apps/api/scenarioSharing.ts`, `apps/api/profileReadModels.ts`.
 - Profile and Explore frontend workflow: `src/pages/ProfilePage.tsx`, `src/pages/ExplorePage.tsx`, `src/App.tsx`.
 - Normal backend-account UI masking: `src/pages/SettingsPage.tsx`, `src/pages/AdventuresPage.tsx` props from `src/App.tsx`, and the Play model selector gate.
+- Real Google OAuth/OIDC: `/auth/google/start`, `/auth/google/callback`, short-lived OAuth state records, and frontend OAuth session pickup.
+- Backend-owned platform settings: `apps/api/platformSettings.ts`, `/admin/platform-settings`, and the admin-only Platform Settings panel.
 - API coverage: `apps/api/server.test.ts`.
 
 The policy pack includes everything that currently makes sense as a draft, but it is explicitly for owner review. Do not treat the draft category thresholds, refusal behavior, raw-text retention, restriction transitions, or real-user enforcement posture as final until the manual policy review is complete.
@@ -212,7 +214,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 2. Runtime mode adapters | Done | `RuntimeMode`, local/backend store adapters, backend turn/context adapters, Settings Runtime selector, and local-only GitHub save gating are implemented. |
 | 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, and `npm.cmd run api:test` exist. |
 | 4. Local database and migrations | Done | Local JSON DB with schema version and migration metadata is implemented at `.local-backend/aist-api-db.json`; docs keep Postgres as hosted target. |
-| 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, local Google stub, hashed passwords, rate limits, sessions, profiles, and no-invite activation tests exist. |
+| 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, real Google OAuth/OIDC, local Google dev stub, hashed passwords, rate limits, sessions, profiles, admin roles, and no-invite activation tests exist. |
 | 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, AI Dungeon import-as-copy, GitHub save JSON import-as-copy, provider-secret stripping, and no personal GitHub token use are implemented. |
 | 7. Server context preview | Done | Backend context preview uses shared `buildContext`; tests compare backend payload/section order against local output. |
 | 8. Policy engine scaffold | Done | Versioned rule-pack loader, policy decision records, gate interfaces, sanitized fixtures, and review/enforce modes are implemented. |
@@ -227,15 +229,16 @@ The policy pack includes everything that currently makes sense as a draft, but i
 Implemented in local backend mode:
 
 - Invite-gated account creation through email/password and the local Google stub.
+- Real Google OAuth/OIDC account creation and login through the local backend.
 - Backend profiles with owned adventure and scenario summaries.
 - Backend adventure autosave through the selected backend adventure store.
 - Import-as-copy for AIST JSON, AI Dungeon JSON, and GitHub save JSON.
 - Scenario drafts, immutable revisions, publish/share-token flow, and Explore listings for published revisions.
 - Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
+- Admin accounts can manage platform-wide non-secret settings from Settings; provider API keys and OAuth secrets stay in `.env` or environment variables.
 
 Still intentionally limited in this branch:
 
-- Google is a local stub, not a real OAuth redirect flow.
 - Explore lists published scenarios but does not yet fork/open them as new adventures.
 - Policy pack step 9 remains owner-review-gated before real-user enforcement.
 
