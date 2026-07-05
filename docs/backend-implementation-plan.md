@@ -13,6 +13,22 @@ The companion architecture document is `docs/backend-architecture.md`.
 - Treat policy, account safety, prompt-injection defense, usage, and billing as backend concerns.
 - Make public sharing opt-in, versioned, and policy-gated.
 - Keep all backend hosting local for the first implementation pass.
+- Treat the first deployable policy pack and account-restriction thresholds as a manual product/security review item, not an automatic implementation detail.
+
+## Manual Review Gate
+
+Before backend generation, imports, public sharing, or account restrictions are enabled for real users, manually review and approve:
+
+- blocked category ids and their plain-language definitions
+- severity levels and which categories create account safety events
+- restriction transitions from `watched` to `restricted` to `generation_hold` to `banned`
+- whether each gate blocks, redacts, quarantines, or escalates
+- sanitized fixture coverage for allowed consensual adult content and barred harmful content
+- user-facing refusal language
+- admin/support visibility and raw-text retention rules
+- appeal/export behavior for restricted or banned users
+
+No implementation task may silently decide these thresholds on its own. The backend can implement the engine and test harness first, but the first active ruleset must be explicitly reviewed before it is enabled outside local owner testing.
 
 ## Parallel Setup Preservation
 

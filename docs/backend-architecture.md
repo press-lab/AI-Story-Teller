@@ -481,6 +481,23 @@ interface EffectiveAccountAccess {
 
 This is the restriction mechanism: a user can keep an account record for audit/support, but sensitive capabilities are removed when the account is no longer trusted.
 
+### Manual Review Required
+
+The first active policy pack and account-restriction thresholds require manual product/security review before they are enabled for real users.
+
+Review must cover:
+
+- blocked category ids and definitions
+- severity thresholds
+- when a block creates an account safety event
+- when safety events restrict sharing, publishing, invites, advanced models, background jobs, generation, or account access
+- sanitized fixture coverage for allowed and barred content
+- user-facing refusal language
+- admin/support visibility
+- raw-text retention and appeal/export behavior
+
+The engine can be implemented before this review, but the active ruleset cannot be treated as trusted until this review is complete.
+
 ## Prompt-Injection Defense
 
 Prompt injection is a product and architecture issue, not just a prompt wording issue.
