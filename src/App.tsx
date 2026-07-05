@@ -30,6 +30,8 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ExplorePage } from "./pages/ExplorePage";
 import { premadeAdventures } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
@@ -47,18 +49,24 @@ import {
   createBackendScenarioRevision,
   importAndOpenBackendAdventure,
   loadBackendSafetyAudit,
+  loadBackendExploreScenarios,
+  loadBackendProfile,
   loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   signupBackendLocalGoogle,
   signupBackendPassword,
   verifyBackendEmail,
+  type BackendExploreScenarioSummary,
   type BackendImportRequest,
+  type BackendProfileSummary,
   type BackendSessionState,
 } from "./runtime/backendApi";
 
 type TabId =
   | "adventures"
+  | "explore"
+  | "profile"
   | "dashboard"
   | "play"
   | "edit"
@@ -170,9 +178,14 @@ export default function App() {
     "ai-story-teller-backend-session",
     null,
   );
+  const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
+  const [backendProfileStatus, setBackendProfileStatus] = useState("");
+  const [backendExploreScenarios, setBackendExploreScenarios] = useState<BackendExploreScenarioSummary[]>([]);
+  const [backendExploreStatus, setBackendExploreStatus] = useState("");
   const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const backendReady = backendMode && Boolean(backendSession?.sessionToken);
+  const hideBackendUserDeveloperControls = backendMode && Boolean(backendSession);
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
@@ -302,7 +315,7 @@ export default function App() {
       openEditor(tabId as EditorTabId);
       return;
     }
-    if (["adventures", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
+    if (["adventures", "explore", "profile", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
       setModalTab(undefined);
       navigateTo(tabId);
       return;
@@ -420,6 +433,48 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, modalTab]);
 
+  const refreshBackendProfile = useCallback(async () => {
+    if (!backendReady || !backendSession) {
+      setBackendProfile(undefined);
+      setBackendProfileStatus("");
+      return;
+    }
+    setBackendProfileStatus("Loading profile...");
+    try {
+      const profile = await loadBackendProfile(normalizedRuntimeConfig, backendSession);
+      setBackendProfile(profile);
+      setBackendProfileStatus("");
+    } catch (error) {
+      setBackendProfileStatus(error instanceof Error ? error.message : "Profile refresh failed.");
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig]);
+
+  const refreshBackendExploreScenarios = useCallback(async () => {
+    if (!backendReady || !backendSession) {
+      setBackendExploreScenarios([]);
+      setBackendExploreStatus("");
+      return;
+    }
+    setBackendExploreStatus("Loading scenarios...");
+    try {
+      const result = await loadBackendExploreScenarios(normalizedRuntimeConfig, backendSession);
+      setBackendExploreScenarios(result.scenarios);
+      setBackendExploreStatus("");
+    } catch (error) {
+      setBackendExploreStatus(error instanceof Error ? error.message : "Explore refresh failed.");
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig]);
+
+  useEffect(() => {
+    if (!backendReady || !backendSession) {
+      setBackendProfile(undefined);
+      setBackendExploreScenarios([]);
+      return;
+    }
+    if (activeTab === "profile") void refreshBackendProfile();
+    if (activeTab === "explore") void refreshBackendExploreScenarios();
+  }, [activeTab, backendReady, backendSession, refreshBackendExploreScenarios, refreshBackendProfile]);
+
   async function importToBackend(input: BackendImportRequest) {
     if (!backendSession) throw new Error("Sign in to the local backend before importing.");
     const next = await importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, input);
@@ -428,6 +483,7 @@ export default function App() {
     setModalTab(undefined);
     navigateTo("dashboard");
     await library.refreshAdventures();
+    await refreshBackendProfile();
     return next;
   }
 
@@ -450,7 +506,10 @@ export default function App() {
         thumbnailImage: getAdventureThumbnail(adventure),
       },
     });
-    return publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
+    const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
+    await refreshBackendProfile();
+    await refreshBackendExploreScenarios();
+    return published;
   }
 
   function renderAdventureTool(tabId: TabId) {
@@ -460,7 +519,7 @@ export default function App() {
       case "chronicle":
         return <ChroniclePage {...common} />;
       case "context":
-        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={runtime.activeProviderConfig} />;
+        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig} />;
       case "components":
         return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onBuildPlotMemory={runtime.buildPlotMemory} onAuditComponents={runtime.auditComponents} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} onGenerateComponent={runtime.generateComponent} onGenerateArc={runtime.generateArc} onProposeArcFromHistory={runtime.proposeArcFromHistory} />;
       case "storyCards":
@@ -559,7 +618,9 @@ export default function App() {
             onCloudSyncSettingsChange={setCloudSyncSettings}
             onPushCloudSync={backendMode ? undefined : pushCloudSync}
             onPullCloudSync={backendMode ? undefined : pullCloudSync}
-            onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
+            hideDeveloperControls={hideBackendUserDeveloperControls}
+            onLoadDevelopmentAdventure={hideBackendUserDeveloperControls ? undefined : library.loadDevelopmentAdventure}
+            onLoadDispatchAdventure={hideBackendUserDeveloperControls ? undefined : library.loadDispatchAdventure}
           />
         );
       case "importExport":
@@ -601,9 +662,37 @@ export default function App() {
           onListSaves={backendMode ? undefined : () => void gitHubSaves.listSaves()}
           onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
           onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
-          providerConfig={runtime.activeProviderConfig}
-          premadeAdventures={premadeAdventures}
-          onLoadPremadeAdventure={library.loadPremadeAdventure}
+          providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
+          premadeAdventures={hideBackendUserDeveloperControls ? [] : premadeAdventures}
+          onLoadPremadeAdventure={hideBackendUserDeveloperControls ? undefined : library.loadPremadeAdventure}
+        />
+      );
+    }
+
+    if (activeTab === "explore") {
+      return (
+        <ExplorePage
+          backendMode={backendMode}
+          backendSession={backendSession}
+          scenarios={backendExploreScenarios}
+          status={backendExploreStatus}
+          onRefresh={refreshBackendExploreScenarios}
+        />
+      );
+    }
+
+    if (activeTab === "profile") {
+      return (
+        <ProfilePage
+          backendMode={backendMode}
+          backendSession={backendSession}
+          profile={backendProfile}
+          status={backendProfileStatus}
+          onRefresh={refreshBackendProfile}
+          onOpenAdventure={async (id) => {
+            await library.openAdventure(id);
+            navigateTo("dashboard");
+          }}
         />
       );
     }
@@ -666,7 +755,9 @@ export default function App() {
           onCloudSyncSettingsChange={setCloudSyncSettings}
           onPushCloudSync={backendMode ? undefined : pushCloudSync}
           onPullCloudSync={backendMode ? undefined : pullCloudSync}
-          onLoadDevelopmentAdventure={library.loadDevelopmentAdventure} onLoadDispatchAdventure={library.loadDispatchAdventure}
+          hideDeveloperControls={hideBackendUserDeveloperControls}
+          onLoadDevelopmentAdventure={hideBackendUserDeveloperControls ? undefined : library.loadDevelopmentAdventure}
+          onLoadDispatchAdventure={hideBackendUserDeveloperControls ? undefined : library.loadDispatchAdventure}
         />
       );
     }
@@ -702,9 +793,9 @@ export default function App() {
             playPanelContent={playPanelTab ? renderAdventureTool(playPanelTab) : undefined}
             playPanelTitle={playPanelTab ? (modalTitles[playPanelTab as TabId] ?? "Tool") : undefined}
             onClosePlayPanel={() => setPlayPanelTab(undefined)}
-            providerPresets={providerPresets}
-            activePresetId={activePresetId}
-            onSelectPreset={setActivePresetId}
+            providerPresets={hideBackendUserDeveloperControls ? undefined : providerPresets}
+            activePresetId={hideBackendUserDeveloperControls ? undefined : activePresetId}
+            onSelectPreset={hideBackendUserDeveloperControls ? undefined : setActivePresetId}
             uiPreferences={uiPreferences}
             onUiPreferencesChange={setUiPreferences}
           />
@@ -808,6 +899,20 @@ export default function App() {
             onClick={() => openTab("adventures")}
           >
             Library
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "explore" ? "active" : ""}
+            onClick={() => openTab("explore")}
+          >
+            Explore
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "profile" ? "active" : ""}
+            onClick={() => openTab("profile")}
+          >
+            Profile
           </button>
           <button
             type="button"

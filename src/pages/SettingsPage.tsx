@@ -69,6 +69,7 @@ interface SettingsPageProps {
   runtimeConfig?: RuntimeConfig;
   onRuntimeConfigChange?: (config: RuntimeConfig) => void;
   backendSession?: BackendSessionState | null;
+  hideDeveloperControls?: boolean;
   onCreateBackendInvite?: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
   onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
   onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
@@ -106,6 +107,7 @@ export function SettingsPage({
   runtimeConfig,
   onRuntimeConfigChange,
   backendSession,
+  hideDeveloperControls = false,
   onCreateBackendInvite,
   onSignupBackendPassword,
   onVerifyBackendEmail,
@@ -124,7 +126,7 @@ export function SettingsPage({
   onLoadDevelopmentAdventure,
   onLoadDispatchAdventure,
 }: SettingsPageProps) {
-  const advanced = uiPreferences.showAdvancedSettings;
+  const advanced = uiPreferences.showAdvancedSettings && !hideDeveloperControls;
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState("");
   const [backendInviteToken, setBackendInviteToken] = useState("");
@@ -322,14 +324,16 @@ export function SettingsPage({
     <section className="page editor-surface settings-page">
       <div className="editor-page-summary">
         <p className="muted">
-          App-wide controls for reading comfort, model routing, background cost, memory detection, and sync.
+          {hideDeveloperControls
+            ? "App-wide controls for reading comfort, backend account access, and imports."
+            : "App-wide controls for reading comfort, model routing, background cost, memory detection, and sync."}
           The common controls stay first; advanced controls stay grouped below.
         </p>
         <div className="editor-stat-row" aria-label="Settings summary">
           <span>{uiPreferences.density}</span>
           <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
-          <span>{activeModelLabel}</span>
-          <span>background {backgroundStatus}</span>
+          {!hideDeveloperControls && <span>{activeModelLabel}</span>}
+          {!hideDeveloperControls && <span>background {backgroundStatus}</span>}
           {advanced && <span>advanced</span>}
         </div>
       </div>
@@ -389,11 +393,13 @@ export function SettingsPage({
             checked={uiPreferences.showTokenEstimates}
             onChange={(showTokenEstimates) => updateUi({ showTokenEstimates })}
           />
-          <CheckboxField
-            label="Show advanced settings"
-            checked={uiPreferences.showAdvancedSettings}
-            onChange={(showAdvancedSettings) => updateUi({ showAdvancedSettings })}
-          />
+          {!hideDeveloperControls && (
+            <CheckboxField
+              label="Show advanced settings"
+              checked={uiPreferences.showAdvancedSettings}
+              onChange={(showAdvancedSettings) => updateUi({ showAdvancedSettings })}
+            />
+          )}
         </article>
 
         {/* ── Models ────────────────────────────────── */}
@@ -423,18 +429,22 @@ export function SettingsPage({
           {backendStatus && <p className="notice">{backendStatus}</p>}
 
           <div className="grid two">
-            <Field label="Invite note">
-              <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
-            </Field>
+            {!hideDeveloperControls && (
+              <Field label="Invite note">
+                <input value={backendInviteNote} onChange={(event) => setBackendInviteNote(event.target.value)} />
+              </Field>
+            )}
             <Field label="Invite token">
               <input value={backendInviteToken} onChange={(event) => setBackendInviteToken(event.target.value)} />
             </Field>
           </div>
-          <div className="toolbar">
-            <button type="button" onClick={() => void createBackendInviteLink()}>
-              Create invite
-            </button>
-          </div>
+          {!hideDeveloperControls && (
+            <div className="toolbar">
+              <button type="button" onClick={() => void createBackendInviteLink()}>
+                Create invite
+              </button>
+            </div>
+          )}
 
           <div className="grid two">
             <Field label="Email">
@@ -506,16 +516,19 @@ export function SettingsPage({
             <button type="button" onClick={() => void publishBackendScenario()} disabled={!backendSession || !adventure}>
               Publish scenario
             </button>
-            <button type="button" onClick={() => void loadBackendAudit()}>
-              Safety audit
-            </button>
+            {!hideDeveloperControls && (
+              <button type="button" onClick={() => void loadBackendAudit()}>
+                Safety audit
+              </button>
+            )}
           </div>
-          {backendAuditSummary && <p className="muted">{backendAuditSummary}</p>}
+          {!hideDeveloperControls && backendAuditSummary && <p className="muted">{backendAuditSummary}</p>}
           <p className="muted">
             Browser Local keeps IndexedDB, browser provider settings, JSON backup/restore, and GitHub saves independent from the backend.
           </p>
         </article>
 
+        {!hideDeveloperControls && (
         <article className="panel settings-card settings-models-panel">
           <div className="preset-list-header">
             <h3 style={{ margin: 0 }}>Models</h3>
@@ -653,9 +666,10 @@ export function SettingsPage({
           })}
           <p className="muted" style={{ marginTop: "0.5rem" }}>API keys are not written to adventure JSON or IndexedDB saves.</p>
         </article>
+        )}
 
         {/* ── Background Cost Mode ──────────────────── */}
-        {(() => {
+        {!hideDeveloperControls && (() => {
           const sem = activeSettings.semanticEvaluationSettings;
           const bud = activeSettings.tokenBudgetSettings;
           const mem = globalAdventureSettings.memoryDetectionSettings;

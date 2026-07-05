@@ -314,4 +314,62 @@ describe("local API policy gates and sharing", () => {
     expect(published.body.revision.status).toBe("published");
     expect(published.body.token).toBeTruthy();
   });
+
+  it("returns profile adventure/scenario summaries and explore scenario listings", async () => {
+    const sessionToken = await passwordSession("profile@example.com");
+    const adventure = createDefaultAdventure("Profile Adventure");
+    await requestJson("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+
+    const draft = await requestJson<{ id: string }>("/scenarios", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ title: "Explore Scenario", description: "A public local test scenario." }),
+    });
+    const revision = await requestJson<{ id: string }>(`/scenarios/${draft.body.id}/revisions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ content: { openingScene: "A bell rings." } }),
+    });
+    await requestJson(`/scenario-revisions/${revision.body.id}/publish`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+
+    const profile = await requestJson<{
+      user: { email: string };
+      profile: { displayName: string };
+      adventures: Array<{ title: string }>;
+      scenarios: Array<{ title: string; revisionCount: number; publishedRevisionCount: number }>;
+    }>("/profile/me", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(profile.status).toBe(200);
+    expect(profile.body.user.email).toBe("profile@example.com");
+    expect(profile.body.adventures.some((entry) => entry.title.startsWith("Profile Adventure"))).toBe(true);
+    expect(profile.body.scenarios).toEqual([
+      expect.objectContaining({
+        title: "Explore Scenario",
+        revisionCount: 1,
+        publishedRevisionCount: 1,
+      }),
+    ]);
+
+    const explore = await requestJson<{
+      scenarios: Array<{ title: string; ownerDisplayName: string; version: number }>;
+    }>("/explore/scenarios", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(explore.status).toBe(200);
+    expect(explore.body.scenarios).toEqual([
+      expect.objectContaining({
+        title: "Explore Scenario",
+        ownerDisplayName: "Player",
+        version: 1,
+      }),
+    ]);
+  });
 });

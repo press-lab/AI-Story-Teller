@@ -184,4 +184,50 @@ describe("SettingsPage API throttle controls", () => {
       ]),
     );
   });
+
+  it("hides model and background controls for normal backend accounts", () => {
+    render(
+      <SettingsPage
+        adventure={createDefaultAdventure("Backend User Settings")}
+        dispatch={vi.fn()}
+        providerPresets={[makePreset()]}
+        activePresetId="preset-test"
+        onProviderPresetsChange={vi.fn()}
+        onSelectPreset={vi.fn()}
+        uiPreferences={{ ...defaultUiPreferences, showAdvancedSettings: true }}
+        onUiPreferencesChange={vi.fn()}
+        globalAdventureSettings={defaultGlobalAdventureSettings}
+        onGlobalAdventureSettingsChange={vi.fn()}
+        hideDeveloperControls
+        backendSession={{
+          sessionToken: "session-test",
+          user: {
+            id: "user-test",
+            email: "player@example.com",
+            displayName: "Player",
+            status: "active",
+            emailVerified: true,
+            createdAt: "2026-07-04T00:00:00.000Z",
+            updatedAt: "2026-07-04T00:00:00.000Z",
+          },
+          profile: {
+            userId: "user-test",
+            displayName: "Player",
+            bio: "",
+            createdAt: "2026-07-04T00:00:00.000Z",
+            updatedAt: "2026-07-04T00:00:00.000Z",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Models" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Background Cost" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "LLM Evaluation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Memory Detection" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Show advanced settings")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Runtime" })).toBeInTheDocument();
+  });
 });

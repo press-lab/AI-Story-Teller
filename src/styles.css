@@ -1583,6 +1583,12 @@ details.story-card-item:not([open]) > :not(summary) {
   min-height: 34px;
 }
 
+.profile-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 22px;
+}
+
 .adventure-thumbnail-frame {
   position: relative;
   overflow: hidden;

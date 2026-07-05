@@ -197,7 +197,9 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Backend adventure persistence/import/context/turn: `apps/api/adventureStore.ts`.
 - Deterministic policy engine and rule pack: `apps/api/policy.ts`, `apps/api/policy/rule-packs/manual-review-draft.json`.
 - Account safety restrictions: `apps/api/accountSafety.ts`.
-- Scenario/share endpoints: `apps/api/scenarioSharing.ts`.
+- Scenario/share endpoints and Profile/Explore read models: `apps/api/scenarioSharing.ts`, `apps/api/profileReadModels.ts`.
+- Profile and Explore frontend workflow: `src/pages/ProfilePage.tsx`, `src/pages/ExplorePage.tsx`, `src/App.tsx`.
+- Normal backend-account UI masking: `src/pages/SettingsPage.tsx`, `src/pages/AdventuresPage.tsx` props from `src/App.tsx`, and the Play model selector gate.
 - API coverage: `apps/api/server.test.ts`.
 
 The policy pack includes everything that currently makes sense as a draft, but it is explicitly for owner review. Do not treat the draft category thresholds, refusal behavior, raw-text retention, restriction transitions, or real-user enforcement posture as final until the manual policy review is complete.
@@ -218,7 +220,24 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 10. Blocking implementation | Done | Input/context/output/memory-write/import/share gates are wired; blocked input/context returns before provider calls; policy decisions persist on blocked requests. |
 | 11. Backend turn execution | Done | `POST /adventures/:id/turn` loads account/adventure/restrictions, builds server context, uses backend provider config only, persists reducer-driven results/usage, and frontend backend mode calls it. |
 | 12. Account safety restrictions | Done | Safety events, restrictions, status history, effective access checks, sharing disablement, generation hold, and admin audit endpoint are implemented. |
-| 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, and share gate are implemented; publish content excludes transcript/private runtime memory by default. |
+| 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, Profile scenario summaries, Explore published-scenario listings, and share gate are implemented; publish content excludes transcript/private runtime memory by default. |
+
+## User Workflow Status
+
+Implemented in local backend mode:
+
+- Invite-gated account creation through email/password and the local Google stub.
+- Backend profiles with owned adventure and scenario summaries.
+- Backend adventure autosave through the selected backend adventure store.
+- Import-as-copy for AIST JSON, AI Dungeon JSON, and GitHub save JSON.
+- Scenario drafts, immutable revisions, publish/share-token flow, and Explore listings for published revisions.
+- Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
+
+Still intentionally limited in this branch:
+
+- Google is a local stub, not a real OAuth redirect flow.
+- Explore lists published scenarios but does not yet fork/open them as new adventures.
+- Policy pack step 9 remains owner-review-gated before real-user enforcement.
 
 Local backend commands:
 

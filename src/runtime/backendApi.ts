@@ -66,6 +66,43 @@ export interface BackendRestriction {
   createdAt: string;
 }
 
+export interface BackendProfileScenarioSummary {
+  id: string;
+  title: string;
+  description: string;
+  sourceAdventureId?: string;
+  createdAt: string;
+  updatedAt: string;
+  revisionCount: number;
+  publishedRevisionCount: number;
+  latestRevision?: {
+    id: string;
+    version: number;
+    status: "draft" | "published" | "quarantined";
+    createdAt: string;
+    publishedAt?: string;
+  };
+}
+
+export interface BackendProfileSummary {
+  user: BackendUser;
+  profile: BackendProfile;
+  adventures: AdventureSummary[];
+  scenarios: BackendProfileScenarioSummary[];
+}
+
+export interface BackendExploreScenarioSummary {
+  scenarioId: string;
+  revisionId: string;
+  ownerUserId: string;
+  ownerDisplayName: string;
+  title: string;
+  description: string;
+  version: number;
+  createdAt: string;
+  publishedAt: string;
+}
+
 function authHeaders(session?: BackendSessionState): Record<string, string> {
   return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
 }
@@ -113,6 +150,18 @@ export function signupBackendLocalGoogle(
 
 export function loadBackendSession(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<BackendSessionState & { restriction?: BackendRestriction }>(config, "/auth/session", {
+    headers: authHeaders(session),
+  });
+}
+
+export function loadBackendProfile(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<BackendProfileSummary>(config, "/profile/me", {
+    headers: authHeaders(session),
+  });
+}
+
+export function loadBackendExploreScenarios(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<{ scenarios: BackendExploreScenarioSummary[] }>(config, "/explore/scenarios", {
     headers: authHeaders(session),
   });
 }

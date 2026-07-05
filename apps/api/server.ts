@@ -25,6 +25,7 @@ import {
 } from "./adventureStore";
 import { currentRestriction } from "./accountSafety";
 import { createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
+import { buildProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 
@@ -141,6 +142,20 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       const session = await requireSession(request, db);
       const data = await db.read();
       sendJson(response, 200, { ...publicSession(session), restriction: currentRestriction(data, session.user.id) }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/profile/me") {
+      const session = await requireSession(request, db);
+      const data = await db.read();
+      sendJson(response, 200, buildProfileSummary(data, session.user.id), corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/explore/scenarios") {
+      await requireSession(request, db);
+      const data = await db.read();
+      sendJson(response, 200, { scenarios: listExploreScenarios(data) }, corsHeaders);
       return;
     }
 

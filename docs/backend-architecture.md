@@ -80,6 +80,9 @@ Implemented locally:
 - Policy gates run at input, context, output, memory-write, import, share, and profile boundaries.
 - Severe enforced policy decisions create account safety events and account restrictions.
 - Scenario drafts, revisions, publish, and share-link endpoints exist.
+- `GET /profile/me` returns the signed-in user's profile, backend adventures, and authored scenario summaries.
+- `GET /explore/scenarios` lists published scenario revisions for the Explore page.
+- Signed-in backend accounts do not see browser model routing, background cost, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
 
 Implementation notes:
 
