@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "api:dev": "tsx apps/api/index.ts",
+    "api:test": "vitest run apps/api",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "smoke:prod": "node scripts/production-smoke.mjs",
@@ -28,6 +30,7 @@
     "@types/react-dom": "^19.0.0",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
+    "tsx": "^4.23.0",
     "vitest": "^4.1.7"
   }
 }

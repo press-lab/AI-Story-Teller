@@ -13,6 +13,8 @@ import type {
 } from "../types/adventure";
 import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pageTypes";
 import { defaultUiPreferences } from "./pageTypes";
+import type { RuntimeConfig, RuntimeMode } from "../runtime/runtimeConfig";
+import { runtimeModeLabel } from "../runtime/runtimeConfig";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
 import {
   lightTokenBudgetPreset,
@@ -57,6 +59,8 @@ interface SettingsPageProps {
   onUiPreferencesChange: (prefs: UiPreferences) => void;
   globalAdventureSettings: GlobalAdventureSettings;
   onGlobalAdventureSettingsChange: (settings: GlobalAdventureSettings) => void;
+  runtimeConfig?: RuntimeConfig;
+  onRuntimeConfigChange?: (config: RuntimeConfig) => void;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -77,6 +81,8 @@ export function SettingsPage({
   onUiPreferencesChange,
   globalAdventureSettings,
   onGlobalAdventureSettingsChange,
+  runtimeConfig,
+  onRuntimeConfigChange,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -97,6 +103,11 @@ export function SettingsPage({
   function updateCloudSync(patch: Partial<CloudSyncSettings>) {
     if (!cloudSyncSettings || !onCloudSyncSettingsChange) return;
     onCloudSyncSettingsChange({ ...cloudSyncSettings, ...patch });
+  }
+
+  function updateRuntime(patch: Partial<RuntimeConfig>) {
+    if (!runtimeConfig || !onRuntimeConfigChange) return;
+    onRuntimeConfigChange({ ...runtimeConfig, ...patch });
   }
 
   function updatePreset(id: string, patch: Partial<ProviderPreset>) {
@@ -243,6 +254,31 @@ export function SettingsPage({
         </article>
 
         {/* ── Models ────────────────────────────────── */}
+        <article className="panel settings-card settings-runtime-panel">
+          <h3>Runtime</h3>
+          <Field label="Execution mode">
+            <select
+              value={runtimeConfig?.mode ?? "local"}
+              onChange={(event) => updateRuntime({ mode: event.target.value as RuntimeMode })}
+            >
+              <option value="local">{runtimeModeLabel("local")}</option>
+              <option value="backendLocal">{runtimeModeLabel("backendLocal")}</option>
+              <option value="hostedBackend">{runtimeModeLabel("hostedBackend")}</option>
+            </select>
+          </Field>
+          <Field label="Backend API URL">
+            <input
+              value={runtimeConfig?.apiBaseUrl ?? "http://127.0.0.1:8787"}
+              onChange={(event) => updateRuntime({ apiBaseUrl: event.target.value })}
+              placeholder="http://127.0.0.1:8787"
+            />
+          </Field>
+          <p className="muted">
+            Browser Local remains the default and keeps IndexedDB, browser provider settings, JSON backup/restore,
+            and GitHub saves independent from the local backend.
+          </p>
+        </article>
+
         <article className="panel settings-card settings-models-panel">
           <div className="preset-list-header">
             <h3 style={{ margin: 0 }}>Models</h3>

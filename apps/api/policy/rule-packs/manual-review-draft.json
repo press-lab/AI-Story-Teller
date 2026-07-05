@@ -1,0 +1,166 @@
+{
+  "id": "manual-review-draft-v1",
+  "version": 1,
+  "manualReviewRequired": true,
+  "defaultMode": "reviewOnly",
+  "notes": [
+    "This is a local owner-review draft. It is intentionally data, not scattered application code.",
+    "The first real-user policy pack must be reviewed before enforcement outside local owner testing.",
+    "Matchers use plain-language harmful-content categories and sanitized tests; expand or tune only through policy review."
+  ],
+  "categories": [
+    {
+      "id": "sexual_content_involving_minors",
+      "severity": 5,
+      "definition": "Sexual content, solicitation, roleplay, or eroticization involving minors, underage-coded people, or school-child framing.",
+      "defaultAction": "block",
+      "createsSafetyEvent": true
+    },
+    {
+      "id": "sexual_coercion_or_exploitation",
+      "severity": 5,
+      "definition": "Sexual content involving coercion, non-consent, incapacitation, blackmail, trafficking, or abuse of authority.",
+      "defaultAction": "block",
+      "createsSafetyEvent": true
+    },
+    {
+      "id": "eroticized_torture_or_cruelty",
+      "severity": 5,
+      "definition": "Sexualized torture, sadistic cruelty, mutilation, or suffering-as-erotic-content framing.",
+      "defaultAction": "block",
+      "createsSafetyEvent": true
+    },
+    {
+      "id": "graphic_torture_or_sadistic_cruelty",
+      "severity": 4,
+      "definition": "Graphic sadistic violence or torture requested for gratification rather than ordinary fictional stakes.",
+      "defaultAction": "block",
+      "createsSafetyEvent": true
+    },
+    {
+      "id": "illegal_sexual_exploitation",
+      "severity": 5,
+      "definition": "Requests for illegal sexual exploitation, abuse material, grooming, trafficking, or evasion of safeguards around those topics.",
+      "defaultAction": "block",
+      "createsSafetyEvent": true
+    },
+    {
+      "id": "prompt_injection_or_policy_evasion",
+      "severity": 3,
+      "definition": "Attempts to override system/developer instructions, reveal hidden prompts or secrets, bypass policy gates, or instruct the model to ignore app rules.",
+      "defaultAction": "block",
+      "createsSafetyEvent": false
+    },
+    {
+      "id": "allowed_consensual_adult_erotic_content",
+      "severity": 0,
+      "definition": "Consensual adult erotic content without coercion, minors, illegal sexual exploitation, or cruelty/torture framing.",
+      "defaultAction": "allow",
+      "createsSafetyEvent": false
+    }
+  ],
+  "rules": [
+    {
+      "id": "minor-sexual-content-composite",
+      "categoryId": "sexual_content_involving_minors",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "match": {
+        "all": [
+          { "kind": "regex", "value": "\\b(minor|underage|child|kid|preteen|schoolgirl|schoolboy|1[0-7][ -]?year[ -]?old|age\\s*(?:[0-9]|1[0-7])\\b)\\b" },
+          { "kind": "regex", "value": "\\b(erotic|sexual|smut|seduc|explicit|nsfw|nude|porn|sex)\\b" }
+        ]
+      }
+    },
+    {
+      "id": "sexual-coercion-composite",
+      "categoryId": "sexual_coercion_or_exploitation",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "match": {
+        "all": [
+          { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|sex|porn)\\b" },
+          { "kind": "regex", "value": "\\b(nonconsensual|non-consensual|coerc|blackmail|incapacitated|drugged|forced|traffick|abuse of authority)\\b" }
+        ]
+      }
+    },
+    {
+      "id": "eroticized-torture-composite",
+      "categoryId": "eroticized_torture_or_cruelty",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "match": {
+        "all": [
+          { "kind": "regex", "value": "\\b(erotic|sexual|smut|explicit|nsfw|kink|arous|pleasure|porn)\\b" },
+          { "kind": "regex", "value": "\\b(torture|mutilat|dismember|sadistic|cruelty|suffering|humiliat)\\b" }
+        ]
+      }
+    },
+    {
+      "id": "graphic-sadistic-cruelty",
+      "categoryId": "graphic_torture_or_sadistic_cruelty",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "match": {
+        "all": [
+          { "kind": "regex", "value": "\\b(torture|mutilat|dismember|sadistic cruelty|drawn out suffering)\\b" },
+          { "kind": "regex", "value": "\\b(describe in detail|graphic|step by step|for fun|for pleasure|gratification)\\b" }
+        ]
+      }
+    },
+    {
+      "id": "illegal-sexual-exploitation-direct",
+      "categoryId": "illegal_sexual_exploitation",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "match": {
+        "any": [
+          { "kind": "regex", "value": "\\b(grooming|sexual abuse material|csam|trafficking for sex|exploitative sexual material)\\b" },
+          { "kind": "literal", "value": "[fixture:illegal-sexual-exploitation]" }
+        ]
+      }
+    },
+    {
+      "id": "prompt-injection-direct",
+      "categoryId": "prompt_injection_or_policy_evasion",
+      "gates": ["input", "context", "import", "share", "profile"],
+      "match": {
+        "any": [
+          { "kind": "regex", "value": "\\b(ignore|disregard|override)\\s+(all\\s+)?(previous|prior|system|developer|safety|policy)\\s+(instructions|rules|messages)\\b" },
+          { "kind": "regex", "value": "\\b(ignore|disregard|override)\\b.{0,80}\\b(system|developer|safety|policy)\\s+(instructions|rules|messages)\\b" },
+          { "kind": "regex", "value": "\\b(reveal|print|show|dump)\\s+(the\\s+)?(system prompt|hidden system prompt|developer message|hidden instructions|api key|secrets?)\\b" },
+          { "kind": "regex", "value": "\\b(jailbreak|bypass safety|bypass policy|disable moderation|pretend policy does not apply)\\b" },
+          { "kind": "regex", "value": "<\\/?(system|developer|tool|assistant)\\b" }
+        ]
+      }
+    },
+    {
+      "id": "allowed-consensual-adult-marker",
+      "categoryId": "allowed_consensual_adult_erotic_content",
+      "gates": ["input", "context", "output", "memoryWrite", "import", "share", "profile"],
+      "allowRule": true,
+      "match": {
+        "any": [
+          { "kind": "literal", "value": "[fixture:allowed-consensual-adult]" }
+        ]
+      }
+    }
+  ],
+  "suggestedRestrictionTransitions": [
+    {
+      "level": "watched",
+      "trigger": "One severe blocked reviewed policy event.",
+      "effect": "Disable publishing and sharing until admin review."
+    },
+    {
+      "level": "restricted",
+      "trigger": "Two severe blocked reviewed policy events.",
+      "effect": "Keep sharing disabled and reduce backend context entitlement pending review."
+    },
+    {
+      "level": "generation_hold",
+      "trigger": "Three severe blocked reviewed policy events.",
+      "effect": "Disable backend generation pending admin review."
+    },
+    {
+      "level": "banned",
+      "trigger": "Manual admin decision only.",
+      "effect": "Disable account access except export/appeal paths."
+    }
+  ]
+}

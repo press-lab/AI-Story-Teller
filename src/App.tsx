@@ -33,6 +33,7 @@ import { CloudSavesPage } from "./pages/CloudSavesPage";
 import { premadeAdventures } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
+import { defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
 
 type TabId =
   | "adventures"
@@ -139,6 +140,11 @@ export default function App() {
     "ai-story-teller-adventure-settings",
     defaultGlobalAdventureSettings,
   );
+  const [runtimeConfig, setRuntimeConfig] = useLocalStorage<RuntimeConfig>(
+    "ai-story-teller-runtime-config",
+    defaultRuntimeConfig,
+  );
+  const normalizedRuntimeConfig = normalizeRuntimeConfig(runtimeConfig);
 
   // Migrate old default font size (15) to new default (20) for existing users
   useEffect(() => {
@@ -398,6 +404,8 @@ export default function App() {
             onUiPreferencesChange={setUiPreferences}
             globalAdventureSettings={globalAdventureSettings}
             onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
+            runtimeConfig={normalizedRuntimeConfig}
+            onRuntimeConfigChange={setRuntimeConfig}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -469,6 +477,8 @@ export default function App() {
           onUiPreferencesChange={setUiPreferences}
           globalAdventureSettings={globalAdventureSettings}
           onGlobalAdventureSettingsChange={setGlobalAdventureSettings}
+          runtimeConfig={normalizedRuntimeConfig}
+          onRuntimeConfigChange={setRuntimeConfig}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}

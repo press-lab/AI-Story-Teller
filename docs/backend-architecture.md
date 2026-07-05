@@ -56,6 +56,36 @@ The first backend implementation is local-only.
 
 Because the backend is local, external users will not be able to use the owner's local API from GitHub Pages unless they run their own backend, use a temporary tunnel, or a hosted backend is added later.
 
+## Current Branch Implementation
+
+The `backend-local-implementation` branch now contains a local backend scaffold that implements steps 1-13 as an owner-testable slice while preserving the browser-only app path.
+
+Implemented locally:
+
+- `src/runtime/runtimeConfig.ts` and `src/runtime/adventureStore.ts` define local/backend runtime adapters.
+- Settings has a Runtime card; `local` remains the default mode.
+- `apps/api` contains a TypeScript local API service started with `npm.cmd run api:dev`.
+- `.env.example` documents backend-owned provider settings.
+- `.local-backend/` is ignored and stores the local JSON database by default.
+- `GET /health` and `GET /version` expose API/schema status.
+- Invite-only auth supports email/password and a local Google-signup stub.
+- Email/password signup requires invite redemption and email verification before login.
+- Password reset tokens exist for local testing.
+- Backend adventure imports accept AIST JSON, AI Dungeon JSON, and GitHub save JSON as copies.
+- Server context preview uses the existing `buildContext` implementation.
+- Backend turn execution uses the existing `runTurnPipeline` implementation and backend-owned provider config.
+- Policy gates run at input, context, output, memory-write, import, share, and profile boundaries.
+- Severe enforced policy decisions create account safety events and account restrictions.
+- Scenario drafts, revisions, publish, and share-link endpoints exist.
+
+Implementation notes:
+
+- The first local database is JSON-backed for low-friction local hosting. The schema mirrors future server tables so Postgres migration remains straightforward.
+- The first local password hash uses Node `scrypt` with per-password salt. Production can still switch to Argon2id/bcrypt during the hosted hardening pass.
+- The Google endpoint is a local stub (`POST /auth/google/local`) for owner testing. Real Google OAuth callback plumbing is still a later hosted/local-HTTPS task.
+- The draft policy pack lives at `apps/api/policy/rule-packs/manual-review-draft.json` and is marked `manualReviewRequired`.
+- `AIST_POLICY_MODE=reviewOnly` logs reviewed harmful-category matches without enforcing them; `AIST_POLICY_MODE=enforce` is for local owner-test enforcement. Prompt-injection/policy-evasion blocks immediately because it protects the system boundary.
+
 ## Hard Boundary: Local Mode vs Backend Mode
 
 Introduce an explicit runtime mode, not a hidden half-migration.
@@ -97,6 +127,8 @@ Hosted backend mode, later:
 - Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats, not production persistence.
 
 GitHub Pages can continue to host the static frontend during backend-local development. The important limitation is that `127.0.0.1` always means the viewer's own machine. This is fine for owner/local testing. External users need either their own local backend, a temporary tunnel, or a later hosted backend.
+
+The owner can also switch GitHub Pages to build from `backend-local-implementation` for branch review, but that changes what the public Pages URL serves. Treat that as an explicit owner-controlled UAT action, not an automatic implementation step.
 
 The frontend should route persistence and generation through interfaces:
 

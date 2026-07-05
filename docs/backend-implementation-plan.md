@@ -162,7 +162,7 @@ npm.cmd run smoke:prod
 
 ## UAT Checklist
 
-GitHub Pages deploys from `main`; it is not the branch preview environment for backend implementation work. Branch work is validated through local/CI checks and branch pushes until the owner explicitly asks to merge. For owner review while away from the machine, use pushed branch commits, CI results, screenshots/logs from local smoke runs, and written UAT evidence. When a hosted backend or preview frontend is added later, this section should be updated with live review URLs.
+GitHub Pages currently deploys from `main`; it is not automatically the branch preview environment for backend implementation work. The owner can temporarily switch GitHub Pages to build from `backend-local-implementation`, but that changes what the public Pages URL serves and should be an explicit UAT action. Branch work is validated through local/CI checks and branch pushes until the owner explicitly asks to merge. For owner review while away from the machine, use pushed branch commits, CI results, screenshots/logs from local smoke runs, and written UAT evidence. When a hosted backend or preview frontend is added later, this section should be updated with live review URLs.
 
 Step 9, manual policy review, can happen at any time. It must be complete before real-user backend generation, imports, sharing, account restrictions, or active policy enforcement are enabled.
 
@@ -183,6 +183,32 @@ Step 9, manual policy review, can happen at any time. It must be complete before
 | 13 | [Scenario and adventure sharing](#phase-9-scenario-publishing-and-adventure-sharing) | Scenario revision publish/fork/share works only after share and prompt-injection gates pass; private transcript/runtime memory is excluded unless explicitly selected. |
 
 Full-throttle implementation means proceeding continuously through steps 1-13 on `backend-local-implementation` while preserving the UAT evidence above. It does not mean merging to `main`, enabling real-user policy/account restrictions before manual review, or skipping validation.
+
+## Current Branch Implementation Notes
+
+This branch implements a local owner-testable backend slice for steps 1-13:
+
+- Runtime mode contracts and backend adapter shells: `src/runtime/runtimeConfig.ts`, `src/runtime/adventureStore.ts`.
+- Runtime settings UI: `src/pages/SettingsPage.tsx`; default remains Browser Local.
+- Local API service: `apps/api/server.ts`, `apps/api/index.ts`.
+- Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
+- Auth/invite gate: `apps/api/auth.ts`.
+- Backend adventure persistence/import/context/turn: `apps/api/adventureStore.ts`.
+- Deterministic policy engine and rule pack: `apps/api/policy.ts`, `apps/api/policy/rule-packs/manual-review-draft.json`.
+- Account safety restrictions: `apps/api/accountSafety.ts`.
+- Scenario/share endpoints: `apps/api/scenarioSharing.ts`.
+- API coverage: `apps/api/server.test.ts`.
+
+The policy pack includes everything that currently makes sense as a draft, but it is explicitly for owner review. Do not treat the draft category thresholds, refusal behavior, raw-text retention, restriction transitions, or real-user enforcement posture as final until the manual policy review is complete.
+
+Local backend commands:
+
+```sh
+npm.cmd run api:dev
+npm.cmd run api:test
+```
+
+Backend provider settings are read from `.env`/environment variables documented in `.env.example`. Users do not configure backend provider credentials through the frontend.
 
 ## Parallel Setup Preservation
 
