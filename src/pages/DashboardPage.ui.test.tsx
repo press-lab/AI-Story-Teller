@@ -80,11 +80,23 @@ describe("DashboardPage adventure detail", () => {
         onOpenContext={() => undefined}
         onRememberThis={async () => undefined}
         hasSyncConflict
+        syncConflictSummary={{
+          id: "dashboard-conflict",
+          title: "Dashboard Adventure",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-07-05T10:00:00.000Z",
+          localBackupUpdatedAt: "2026-07-05T10:00:00.000Z",
+          lastServerUpdatedAt: "2026-07-05T10:05:00.000Z",
+          turnCount: 2,
+          storyEntryCount: 2,
+          syncStatus: "conflict",
+        }}
         onResolveSyncConflict={onResolveSyncConflict}
       />,
     );
 
-    expect(screen.getByText("Choose which save should win: this device or the server.")).toBeInTheDocument();
+    expect(screen.getByText(/Server save is ahead/)).toBeInTheDocument();
+    expect(screen.getByText(/Choose which save should win: this device or the server/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
     await user.click(screen.getByRole("button", { name: "Download Server Save" }));

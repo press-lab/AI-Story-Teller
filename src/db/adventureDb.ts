@@ -19,6 +19,7 @@ export interface AdventureSummary {
   syncError?: string;
   lastSyncedAt?: string;
   localBackupUpdatedAt?: string;
+  lastServerUpdatedAt?: string;
   hasLocalBackup?: boolean;
 }
 

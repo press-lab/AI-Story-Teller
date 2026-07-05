@@ -28,6 +28,7 @@ import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 import { useActionFeedback } from "../components/ActionFeedback";
 import { getAdventureThumbnail } from "../utils/adventureImages";
+import { describeSyncConflictVersions } from "../utils/syncConflict";
 import type { BackendAdventureSnapshotSummary } from "../runtime/backendApi";
 import type { AdventureSyncConflictResolution } from "../runtime/adventureStore";
 
@@ -1169,6 +1170,7 @@ export function AdventuresPage({
         {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}
         {adventures.map((adventure) => {
           const liveThumbnail = currentAdventure?.id === adventure.id ? getAdventureThumbnail(currentAdventure) : undefined;
+          const syncConflictVersionText = describeSyncConflictVersions(adventure);
           return (
           <article key={adventure.id} className="library-card">
             <AdventureThumbnailFrame
@@ -1192,7 +1194,9 @@ export function AdventuresPage({
                 </p>
               )}
               {adventure.syncStatus === "conflict" && onResolveSyncConflict && (
-                <p className="muted sync-conflict-help">Choose which save should win: this device or the server.</p>
+                <p className="muted sync-conflict-help">
+                  {syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Choose which save should win: this device or the server.
+                </p>
               )}
               {adventure.syncError && <p className="error-inline">{adventure.syncError}</p>}
             </div>

@@ -138,7 +138,8 @@ export function summarizeAccountAdventureBackup(record: AccountAdventureBackupRe
     syncStatus: record.syncStatus,
     syncError: record.lastSyncError,
     lastSyncedAt: record.lastSyncedAt,
-    localBackupUpdatedAt: record.updatedAt,
+    localBackupUpdatedAt: record.lastLocalUpdatedAt,
+    lastServerUpdatedAt: record.lastServerUpdatedAt,
     hasLocalBackup: true,
   };
 }

@@ -196,7 +196,8 @@ export function createCachedBackendAdventureStore(
             thumbnailImage: serverSummary.thumbnailImage ?? backupSummary.thumbnailImage,
             hasLocalBackup: true,
             lastSyncedAt: backup.lastSyncedAt,
-            localBackupUpdatedAt: backup.updatedAt,
+            localBackupUpdatedAt: backup.lastLocalUpdatedAt,
+            lastServerUpdatedAt: serverSummary.updatedAt,
           });
         }
         continue;
@@ -204,6 +205,7 @@ export function createCachedBackendAdventureStore(
       byId.set(backup.adventureId, {
         ...backupSummary,
         title: serverSummary?.title ?? backupSummary.title,
+        lastServerUpdatedAt: serverSummary?.updatedAt ?? backupSummary.lastServerUpdatedAt,
       });
     }
     return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

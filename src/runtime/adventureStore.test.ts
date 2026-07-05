@@ -99,6 +99,41 @@ describe("cached backend adventure store", () => {
     );
   });
 
+  it("surfaces local and server save timestamps for conflicted backend summaries", async () => {
+    const local = createDefaultAdventure("Local Conflict");
+    local.id = "adv-conflict";
+    local.updatedAt = "2026-07-05T10:10:00.000Z";
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure: local,
+      syncStatus: "conflict",
+      lastServerUpdatedAt: "2026-07-05T10:05:00.000Z",
+      lastSyncError: "Server copy changed.",
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify([
+      {
+        id: local.id,
+        title: "Server Conflict",
+        createdAt: local.createdAt,
+        updatedAt: "2026-07-05T10:06:00.000Z",
+        turnCount: 7,
+        storyEntryCount: 14,
+      },
+    ]), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    const summaries = await store.list();
+
+    expect(summaries[0]).toMatchObject({
+      id: "adv-conflict",
+      title: "Server Conflict",
+      syncStatus: "conflict",
+      localBackupUpdatedAt: "2026-07-05T10:10:00.000Z",
+      lastServerUpdatedAt: "2026-07-05T10:06:00.000Z",
+    });
+  });
+
   it("uploads the conflicted local backup to the backend and marks it clean", async () => {
     const local = createDefaultAdventure("Local Wins");
     local.id = "adv-conflict";

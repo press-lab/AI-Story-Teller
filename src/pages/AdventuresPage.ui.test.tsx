@@ -378,7 +378,9 @@ describe("AdventuresPage new adventure setup", () => {
           id: "adv-conflict",
           title: "Conflicted Adventure",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-02T00:00:00.000Z",
+          updatedAt: "2026-07-05T10:10:00.000Z",
+          localBackupUpdatedAt: "2026-07-05T10:10:00.000Z",
+          lastServerUpdatedAt: "2026-07-05T10:05:00.000Z",
           turnCount: 8,
           storyEntryCount: 16,
           syncStatus: "conflict",
@@ -388,7 +390,8 @@ describe("AdventuresPage new adventure setup", () => {
     });
 
     expect(screen.getByText("Local backup conflict")).toBeInTheDocument();
-    expect(screen.getByText("Choose which save should win: this device or the server.")).toBeInTheDocument();
+    expect(screen.getByText(/Local save is ahead/)).toBeInTheDocument();
+    expect(screen.getByText(/Choose which save should win: this device or the server/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
     await user.click(screen.getByRole("button", { name: "Download Server Save" }));

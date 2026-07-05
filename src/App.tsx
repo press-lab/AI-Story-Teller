@@ -1203,6 +1203,7 @@ export default function App() {
             onPullLatest={!backendMode && cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             hasSyncConflict={currentAdventureHasSyncConflict}
+            syncConflictSummary={currentAdventureSummary}
             onResolveSyncConflict={backendReady ? (resolution) => library.resolveSyncConflict(adventure.id, resolution) : undefined}
           />
         );

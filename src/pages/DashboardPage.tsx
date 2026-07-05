@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
+import type { AdventureSummary } from "../db/adventureDb";
 import type { AdventureSyncConflictResolution } from "../runtime/adventureStore";
 import { getAdventureThumbnail } from "../utils/adventureImages";
+import { describeSyncConflictVersions } from "../utils/syncConflict";
 import type { PlayRuntimeProps } from "./pageTypes";
 
 function scenePreview(adventure: PlayRuntimeProps["adventure"]): string {
@@ -18,6 +20,7 @@ function previewText(text: string, maxLength = 900): string {
 
 interface DashboardPageProps extends PlayRuntimeProps {
   hasSyncConflict?: boolean;
+  syncConflictSummary?: AdventureSummary;
   onResolveSyncConflict?: (resolution: AdventureSyncConflictResolution) => Promise<void>;
 }
 
@@ -31,6 +34,7 @@ export function DashboardPage({
   onOpenTab,
   onPullLatest,
   hasSyncConflict,
+  syncConflictSummary,
   onResolveSyncConflict,
 }: DashboardPageProps) {
   const [pulling, setPulling] = useState(false);
@@ -54,6 +58,7 @@ export function DashboardPage({
   const activeCharacters = adventure.brains.filter((brain) => brain.active);
   const thumbnail = getAdventureThumbnail(adventure);
   const showSyncConflictActions = Boolean(hasSyncConflict && onResolveSyncConflict);
+  const syncConflictVersionText = describeSyncConflictVersions(syncConflictSummary);
 
   return (
     <section className="page adventure-detail-page">
@@ -67,7 +72,9 @@ export function DashboardPage({
               Turn {adventure.activeState.turn} · {saveStatus}
             </p>
             {showSyncConflictActions && (
-              <p className="muted sync-conflict-help">Choose which save should win: this device or the server.</p>
+              <p className="muted sync-conflict-help">
+                {syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Choose which save should win: this device or the server.
+              </p>
             )}
           </div>
           <div className="adventure-hero-actions">
