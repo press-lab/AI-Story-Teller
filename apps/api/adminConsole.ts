@@ -12,6 +12,7 @@ import { getPlatformSettings } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 
 export interface AdminConsoleData {
+  detailsLoaded?: boolean;
   totals: {
     users: number;
     activeUsers: number;
@@ -91,7 +92,22 @@ export interface AdminConsoleData {
   platformSettings: ReturnType<typeof getPlatformSettings>;
 }
 
-export function buildAdminConsole(data: LocalDbData, config: ApiConfig): AdminConsoleData {
+export type AdminConsoleDetailsData = Pick<
+  AdminConsoleData,
+  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "contextBuilds" | "adminActions"
+> & { detailsLoaded: true };
+
+interface AdminConsoleBuildOptions {
+  includeDetails?: boolean;
+}
+
+export function buildAdminConsole(
+  data: LocalDbData,
+  config: ApiConfig,
+  options: AdminConsoleBuildOptions = {},
+): AdminConsoleData {
+  const includeDetails = options.includeDetails ?? true;
+  const details = includeDetails ? buildAdminConsoleDetails(data) : emptyAdminConsoleDetails();
   return {
     totals: {
       users: data.users.length,
@@ -172,6 +188,15 @@ export function buildAdminConsole(data: LocalDbData, config: ApiConfig): AdminCo
         publishedAt: revision.publishedAt,
       }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    ...details,
+    detailsLoaded: includeDetails,
+    platformSettings: getPlatformSettings(data, config),
+  };
+}
+
+export function buildAdminConsoleDetails(data: LocalDbData): AdminConsoleDetailsData {
+  return {
+    detailsLoaded: true,
     safetyEvents: [...data.accountSafetyEvents].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     restrictions: [...data.accountRestrictions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     policyDecisions: [...data.policyDecisions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -191,7 +216,18 @@ export function buildAdminConsole(data: LocalDbData, config: ApiConfig): AdminCo
       }))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     adminActions: [...data.adminActions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    platformSettings: getPlatformSettings(data, config),
+  };
+}
+
+function emptyAdminConsoleDetails(): AdminConsoleDetailsData {
+  return {
+    detailsLoaded: true,
+    safetyEvents: [],
+    restrictions: [],
+    policyDecisions: [],
+    usageLogs: [],
+    contextBuilds: [],
+    adminActions: [],
   };
 }
 

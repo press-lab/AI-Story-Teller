@@ -33,7 +33,7 @@ import { currentRestriction } from "./accountSafety";
 import { createAdventureFromScenarioRevision, createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
 import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
-import { buildAdminConsole, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
+import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 
@@ -216,22 +216,28 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
 
     if (request.method === "GET" && route.pathname === "/profile/me") {
       const session = await requireSession(request, db);
-      const data = await db.read();
-      sendJson(response, 200, buildProfileSummary(data, session.user.id), corsHeaders);
+      const profile = db.readProfileSummary
+        ? await db.readProfileSummary(session.user.id)
+        : buildProfileSummary(await db.read(), session.user.id);
+      sendJson(response, 200, profile, corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.segments[0] === "profiles" && route.segments.length === 2) {
       await requireSession(request, db);
-      const data = await db.read();
-      sendJson(response, 200, buildPublicProfileSummary(data, route.segments[1]), corsHeaders);
+      const profile = db.readPublicProfileSummary
+        ? await db.readPublicProfileSummary(route.segments[1])
+        : buildPublicProfileSummary(await db.read(), route.segments[1]);
+      sendJson(response, 200, profile, corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/explore/scenarios") {
       await requireSession(request, db);
-      const data = await db.read();
-      sendJson(response, 200, { scenarios: listExploreScenarios(data) }, corsHeaders);
+      const scenarios = db.readExploreScenarios
+        ? await db.readExploreScenarios()
+        : listExploreScenarios(await db.read());
+      sendJson(response, 200, { scenarios }, corsHeaders);
       return;
     }
 
@@ -266,8 +272,19 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
 
     if (request.method === "GET" && route.pathname === "/admin/console") {
       await assertAdmin(request, config, db);
-      const data = await db.read();
-      sendJson(response, 200, buildAdminConsole(data, config), corsHeaders);
+      const consoleData = db.readAdminConsoleSummary
+        ? await db.readAdminConsoleSummary(config)
+        : buildAdminConsole(await db.read(), config);
+      sendJson(response, 200, consoleData, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/admin/console/details") {
+      await assertAdmin(request, config, db);
+      const details = db.readAdminConsoleDetails
+        ? await db.readAdminConsoleDetails(config)
+        : buildAdminConsoleDetails(await db.read());
+      sendJson(response, 200, details, corsHeaders);
       return;
     }
 
@@ -365,8 +382,10 @@ async function handleAdventureRoute(
     return;
   }
   if (request.method === "GET" && segments[2] === "snapshots" && segments.length === 3) {
-    const data = await db.read();
-    sendJson(response, 200, { snapshots: listAdventureSnapshots(data, userId, adventureId) }, corsHeaders);
+    const snapshots = db.readAdventureSnapshotSummaries
+      ? await db.readAdventureSnapshotSummaries(userId, adventureId)
+      : listAdventureSnapshots(await db.read({ includeAdventureSnapshots: true }), userId, adventureId);
+    sendJson(response, 200, { snapshots }, corsHeaders);
     return;
   }
   if (request.method === "POST" && segments[2] === "snapshots" && segments[4] === "restore") {

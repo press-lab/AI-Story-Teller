@@ -18,7 +18,7 @@ const target = new PostgresDb(config.databaseUrl);
 try {
   const sourceExists = await fileExists(config.dataFile);
   const sourceData = sourceExists ? await source.read() : createEmptyDb();
-  const existingTarget = await target.read();
+  const existingTarget = await target.read({ includeAdventureSnapshots: true });
   const existingCount = countDbRecords(existingTarget);
   if (existingCount > 0 && !force) {
     console.error(`Postgres already contains ${postgresSummary(existingTarget)}.`);
@@ -26,7 +26,7 @@ try {
     process.exit(1);
   }
   await target.write(sourceData);
-  const migrated = await target.read();
+  const migrated = await target.read({ includeAdventureSnapshots: true });
   console.log(`Migrated ${postgresSummary(migrated)} to Postgres.`);
   console.log(`Source JSON: ${config.dataFile}${sourceExists ? "" : " (missing; migrated empty database)"}`);
 } finally {

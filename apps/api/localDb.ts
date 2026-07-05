@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import type { LocalDbData } from "./apiTypes";
-import type { BackendDb } from "./backendDb";
+import type { BackendDb, BackendReadOptions } from "./backendDb";
 import { createEmptyDb, normalizeDbData } from "./dbShape";
 
 export { createEmptyDb };
@@ -14,7 +14,7 @@ export class LocalDb implements BackendDb {
     this.filePath = resolve(filePath);
   }
 
-  async read(): Promise<LocalDbData> {
+  async read(_options: BackendReadOptions = {}): Promise<LocalDbData> {
     try {
       const text = await readFile(this.filePath, "utf8");
       return normalizeDbData(JSON.parse(text) as Partial<LocalDbData>);

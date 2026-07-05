@@ -161,6 +161,7 @@ export interface BackendPlatformSettings {
 }
 
 export interface BackendAdminConsoleData {
+  detailsLoaded?: boolean;
   totals: {
     users: number;
     activeUsers: number;
@@ -255,6 +256,11 @@ export interface BackendAdminConsoleData {
   }>;
   platformSettings: BackendPlatformSettings;
 }
+
+export type BackendAdminConsoleDetailsData = Pick<
+  BackendAdminConsoleData,
+  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "contextBuilds" | "adminActions"
+> & { detailsLoaded: true };
 
 function authHeaders(session?: BackendSessionState): Record<string, string> {
   return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
@@ -363,6 +369,12 @@ export function saveBackendPlatformSettings(
 
 export function loadBackendAdminConsole(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<BackendAdminConsoleData>(config, "/admin/console", {
+    headers: authHeaders(session),
+  });
+}
+
+export function loadBackendAdminConsoleDetails(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<BackendAdminConsoleDetailsData>(config, "/admin/console/details", {
     headers: authHeaders(session),
   });
 }

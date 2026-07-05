@@ -56,6 +56,7 @@ import {
   importAndOpenBackendAdventure,
   listBackendAdventureSnapshots,
   loadBackendAdminConsole,
+  loadBackendAdminConsoleDetails,
   loadBackendExploreScenarios,
   loadBackendProfile,
   loadBackendPublicProfile,
@@ -597,12 +598,26 @@ export default function App() {
     }
     const refreshId = backendAdminRefreshIdRef.current + 1;
     backendAdminRefreshIdRef.current = refreshId;
-    setBackendAdminStatus("Loading admin console...");
+    setBackendAdminStatus("Loading admin summary...");
     try {
       const result = await loadBackendAdminConsole(normalizedRuntimeConfig, backendSession);
       if (backendAdminRefreshIdRef.current !== refreshId) return;
       setBackendAdminConsole(result);
-      setBackendAdminStatus("");
+      if (result.detailsLoaded) {
+        setBackendAdminStatus("");
+        return;
+      }
+      setBackendAdminStatus("Loading recent admin activity...");
+      try {
+        const details = await loadBackendAdminConsoleDetails(normalizedRuntimeConfig, backendSession);
+        if (backendAdminRefreshIdRef.current !== refreshId) return;
+        setBackendAdminConsole((current) => current ? { ...current, ...details } : current);
+        setBackendAdminStatus("");
+      } catch (detailsError) {
+        if (backendAdminRefreshIdRef.current !== refreshId) return;
+        const message = detailsError instanceof Error ? detailsError.message : "Admin activity load failed.";
+        setBackendAdminStatus(`Admin summary loaded. Recent activity did not load: ${message}`);
+      }
     } catch (error) {
       if (backendAdminRefreshIdRef.current !== refreshId) return;
       setBackendAdminStatus(error instanceof Error ? error.message : "Admin console refresh failed.");
@@ -666,7 +681,12 @@ export default function App() {
     try {
       const result = await createBackendInvite(normalizedRuntimeConfig, backendSession, input);
       const consoleData = await loadBackendAdminConsole(normalizedRuntimeConfig, backendSession);
-      setBackendAdminConsole(consoleData);
+      if (consoleData.detailsLoaded) {
+        setBackendAdminConsole(consoleData);
+      } else {
+        const details = await loadBackendAdminConsoleDetails(normalizedRuntimeConfig, backendSession);
+        setBackendAdminConsole({ ...consoleData, ...details });
+      }
       setBackendAdminStatus("Invite created.");
       return { token: result.token };
     } catch (error) {
