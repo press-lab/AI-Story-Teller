@@ -10,6 +10,7 @@ interface ProfilePageProps {
   onEditAdventure?: (id: string) => Promise<void>;
   onPublishAdventure?: (id: string) => Promise<void>;
   onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
+  onLogout?: () => void;
 }
 
 function formatDate(iso?: string): string {
@@ -27,6 +28,7 @@ export function ProfilePage({
   onEditAdventure,
   onPublishAdventure,
   onPublishScenarioRevision,
+  onLogout,
 }: ProfilePageProps) {
   if (!backendMode) {
     return (
@@ -67,9 +69,14 @@ export function ProfilePage({
           <h2>{displayName}</h2>
           <p className="muted">{email}</p>
         </div>
-        <button type="button" onClick={() => void onRefresh()}>
-          Refresh
-        </button>
+        <div className="toolbar">
+          <button type="button" onClick={() => void onRefresh()}>
+            Refresh
+          </button>
+          <button type="button" onClick={onLogout} disabled={!onLogout}>
+            Logout
+          </button>
+        </div>
       </header>
 
       {status && <p className="notice">{status}</p>}

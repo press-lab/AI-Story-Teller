@@ -887,6 +887,7 @@ export default function App() {
           onPublishScenarioRevision={async (revisionId) => {
             await publishScenarioRevisionFromProfile(revisionId);
           }}
+          onLogout={() => setBackendSession(null)}
         />
       );
     }
