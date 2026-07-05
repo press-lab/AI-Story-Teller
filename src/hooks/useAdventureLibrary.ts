@@ -8,7 +8,7 @@ import { createDefaultAdventure } from "../state/defaults";
 import { latestAssistantOutput } from "../state/turnPipeline";
 import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/adventure";
 import { exportAdventureJson, importAdventureJson } from "../utils/json";
-import { thumbnailMetadataPatch } from "../utils/adventureImages";
+import { getAdventureThumbnail, thumbnailMetadataPatch } from "../utils/adventureImages";
 import type { AdventureStore } from "../runtime/adventureStore";
 import { useActionFeedback } from "../components/ActionFeedback";
 
@@ -27,7 +27,7 @@ export function useAdventureLibrary(
 
   const refreshAdventures = useCallback(async () => {
     try {
-      setAdventures(await store.list());
+      setAdventures(await hydrateMissingThumbnails(store, await store.list()));
     } catch (error) {
       setAdventures([]);
       onError(error instanceof Error ? error.message : "Could not refresh adventures.");
@@ -177,4 +177,20 @@ export function useAdventureLibrary(
     loadDevelopmentAdventure,
     loadDispatchAdventure,
   };
+}
+
+async function hydrateMissingThumbnails(
+  store: AdventureStore,
+  summaries: AdventureSummary[],
+): Promise<AdventureSummary[]> {
+  return Promise.all(summaries.map(async (summary) => {
+    if (summary.thumbnailImage) return summary;
+    try {
+      const adventure = await store.get(summary.id);
+      const thumbnailImage = adventure ? getAdventureThumbnail(adventure) : undefined;
+      return thumbnailImage ? { ...summary, thumbnailImage } : summary;
+    } catch {
+      return summary;
+    }
+  }));
 }
