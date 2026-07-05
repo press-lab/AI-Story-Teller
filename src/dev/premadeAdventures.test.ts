@@ -8,7 +8,6 @@ describe("premade adventure library", () => {
     expect(premadeAdventures.map((premade) => premade.id)).toEqual([
       "dragon-throne",
       "dispatch-sdn",
-      "crucible-protocol",
       "rookery",
       "arcane-after-rocket",
     ]);
@@ -20,22 +19,6 @@ describe("premade adventure library", () => {
       const firstMessage = adventure.messages[0];
       expect(firstMessage?.role === "assistant" && firstMessage.content.trim() === adventure.openingScene.trim()).toBe(false);
     }
-  });
-
-  it("loads Crucible Protocol with a current-state Plot Essentials block", () => {
-    const crucible = premadeAdventures.find((premade) => premade.id === "crucible-protocol")!;
-    const adventure = crucible.createAdventure();
-    const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
-
-    expect(adventure.title).toBe("Crucible Protocol");
-    expect(adventure.openingScene).toContain("HELLO, CRUCIBLE");
-    expect(adventure.storyCards).toHaveLength(18);
-    expect(pe).toContain("has just entered the Superhero Dispatch Network");
-    expect(pe).toContain("Nix is Seth's primary romance");
-    expect(pe).not.toContain("Original to this story");
-    expect(adventure.storyCards.find((card) => card.title === "Blonde Blazer (Mandy)")?.content).toContain(
-      "real, complicating romantic pressure",
-    );
   });
 
   it("exports each premade as re-importable adventure JSON", () => {
@@ -55,14 +38,14 @@ describe("premade adventure library", () => {
 
     expect(adventure.title).toBe("The Rookery");
     expect(adventure.openingScene).toContain("One provisional job");
-    expect(adventure.storyCards.find((card) => card.title === "Seth's Absorption")?.memoryMode).toBe("static");
+    expect(adventure.storyCards.find((card) => card.title === "Avery's Absorption")?.memoryMode).toBe("static");
     expect(livingCards.map((card) => card.title)).toEqual([
-      "Seth's Rookery Standing",
+      "Avery's Rookery Standing",
       "Rookery Romance Pressure",
       "Tamsin's Investigation",
     ]);
     expect(livingCards.every((card) => card.autoUpdate)).toBe(true);
-    expect(pe).toContain("The current opening is Hollis offering Seth one provisional courier-extraction contract");
+    expect(pe).toContain("The current opening is Hollis offering Avery one provisional courier-extraction contract");
     expect(pe.split("\n")).toHaveLength(6);
     expect(pe).not.toContain("electricity, light, radiation");
     expect(adventure.storyCards.find((card) => card.title === "Hollis Pike")?.keys).not.toContain("bartender");
@@ -75,7 +58,7 @@ describe("premade adventure library", () => {
     const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
     const currentArc = adventure.components.find((component) => component.type === "currentArc")?.content ?? "";
     const mel = adventure.storyCards.find((card) => card.title === "Mel Medarda");
-    const sethMagic = adventure.storyCards.find((card) => card.title === "Seth's Magic");
+    const AveryMagic = adventure.storyCards.find((card) => card.title === "Avery's Magic");
     const brainNames = adventure.brains.map((brain) => brain.characterName);
     const thumbnail = getAdventureThumbnail(adventure);
 
@@ -99,8 +82,8 @@ describe("premade adventure library", () => {
     expect(currentArc).toContain("Mel opposes Hextech weaponry");
     expect(currentArc).not.toContain("surviving city leadership wants blood");
     expect(pe).not.toContain("VOICE CONTRACT");
-    expect(sethMagic?.content).toContain("basic physical wards are always up");
-    expect(mel?.content).toContain("No romance with Seth");
+    expect(AveryMagic?.content).toContain("basic physical wards are always up");
+    expect(mel?.content).toContain("No romance with Avery");
     expect(mel?.content).toContain("Jayce's patron and romantic partner");
     expect(mel?.content).toContain("opposes using Hextech weaponry");
     expect(mel?.content).toContain("VOICE CONTRACT");

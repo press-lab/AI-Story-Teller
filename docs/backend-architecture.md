@@ -83,7 +83,8 @@ Implemented locally:
 - Scenario drafts, revisions, publish, and share-link endpoints exist.
 - `GET /profile/me` returns the signed-in user's profile, backend adventures, and authored scenario summaries.
 - `GET /explore/scenarios` lists published scenario revisions for the Explore page.
-- Signed-in backend accounts do not see browser model routing, background cost, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
+- `POST /scenario-revisions/:id/fork` starts a published scenario as a fresh adventure owned by the current user, without copying the creator's private transcript.
+- Signed-in backend accounts do not see browser model routing, background cost, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, Library/dev seed loaders, or the Play model selector. Built-in premade scenarios are available through Explore.
 - Real Google OAuth/OIDC is implemented through `/auth/google/start` and `/auth/google/callback`; the local Google stub remains only for owner/dev testing.
 - Platform-wide non-secret settings live behind admin-only backend settings; secrets and bootstrap defaults stay in environment/config files.
 - Admin Console is available to backend admin sessions only and exposes platform totals, user lookup, account status changes, manual restrictions, safety event review, diagnostics, and admin action audit logs.

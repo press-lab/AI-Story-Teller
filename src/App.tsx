@@ -33,7 +33,7 @@ import { CloudSavesPage } from "./pages/CloudSavesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ExplorePage } from "./pages/ExplorePage";
 import { AdminConsolePage } from "./pages/AdminConsolePage";
-import { premadeAdventures } from "./dev/premadeAdventures";
+import { premadeAdventures, type PremadeAdventureId } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import { defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
@@ -49,6 +49,7 @@ import {
   createBackendScenario,
   createBackendScenarioRevision,
   createBackendAdminRestriction,
+  forkBackendScenarioRevision,
   importAndOpenBackendAdventure,
   loadBackendAdminConsole,
   loadBackendSafetyAudit,
@@ -607,6 +608,36 @@ export default function App() {
     return published;
   }
 
+  async function startBackendExploreScenario(revisionId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before starting a shared scenario.");
+    setBackendExploreStatus("Starting scenario...");
+    try {
+      const next = await forkBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
+      setAdventure(next);
+      setContextResult(undefined);
+      setModalTab(undefined);
+      navigateTo("dashboard");
+      await library.refreshAdventures();
+      await refreshBackendProfile();
+      setBackendExploreStatus("");
+    } catch (error) {
+      setBackendExploreStatus(error instanceof Error ? error.message : "Could not start scenario.");
+      throw error;
+    }
+  }
+
+  async function startPremadeExploreScenario(id: PremadeAdventureId) {
+    setBackendExploreStatus("Starting built-in scenario...");
+    try {
+      await library.loadPremadeAdventure(id);
+      if (backendReady) await refreshBackendProfile();
+      setBackendExploreStatus("");
+    } catch (error) {
+      setBackendExploreStatus(error instanceof Error ? error.message : "Could not start built-in scenario.");
+      throw error;
+    }
+  }
+
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
     const common = { adventure, dispatch };
@@ -779,8 +810,11 @@ export default function App() {
           backendMode={backendMode}
           backendSession={backendSession}
           scenarios={backendExploreScenarios}
+          premadeAdventures={premadeAdventures}
           status={backendExploreStatus}
           onRefresh={refreshBackendExploreScenarios}
+          onStartScenario={backendReady ? startBackendExploreScenario : undefined}
+          onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
         />
       );
     }

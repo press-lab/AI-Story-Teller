@@ -26,7 +26,7 @@ import {
   summarizeAdventure,
 } from "./adventureStore";
 import { currentRestriction } from "./accountSafety";
-import { createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
+import { createAdventureFromScenarioRevision, createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
 import { buildProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { buildAdminConsole, createManualRestriction, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
@@ -322,7 +322,7 @@ async function handleAdventureRoute(
   }
   if (request.method === "POST" && segments[1] === "import") {
     const { body } = await readJsonBody(request, 10_000_000);
-      const imported = await db.updatePersistingOnError((data) => importAdventureAsCopy(data, userId, body as never, config));
+    const imported = await db.updatePersistingOnError((data) => importAdventureAsCopy(data, userId, body as never, config));
     sendJson(response, 201, { adventures: imported.map(summarizeAdventure) }, corsHeaders);
     return;
   }
@@ -423,6 +423,14 @@ async function handleScenarioRevisionRoute(
       return publishScenarioRevision(data, session.user.id, segments[1], config);
     });
     sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "fork") {
+    const saved = await db.updatePersistingOnError((data) => {
+      const adventure = createAdventureFromScenarioRevision(data, session.user.id, segments[1]);
+      return saveBackendAdventure(data, session.user.id, adventure, "import");
+    });
+    sendJson(response, 201, saved.adventure, corsHeaders);
     return;
   }
   throw new Error("Scenario revision route not found.");

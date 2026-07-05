@@ -438,7 +438,7 @@ describe("local API policy gates and sharing", () => {
     );
   });
 
-  it("publishes scenario revisions through the share gate", async () => {
+  it("publishes scenario revisions through the share gate and lets another user start them", async () => {
     const sessionToken = await passwordSession("share@example.com");
     const draft = await requestJson<{ id: string }>("/scenarios", {
       method: "POST",
@@ -462,6 +462,35 @@ describe("local API policy gates and sharing", () => {
     expect(published.status).toBe(200);
     expect(published.body.revision.status).toBe("published");
     expect(published.body.token).toBeTruthy();
+
+    const testerSession = await passwordSession("scenario-tester@example.com");
+    const forked = await requestJson<{
+      id: string;
+      title: string;
+      openingScene: string;
+      metadata: {
+        sourceScenarioRevisionId?: string;
+        userVariablesSupported?: boolean;
+        playerEditsRecommended?: boolean;
+      };
+    }>(`/scenario-revisions/${revision.body.id}/fork`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${testerSession}` },
+    });
+    expect(forked.status).toBe(201);
+    expect(forked.body.id).toBeTruthy();
+    expect(forked.body.title).toBe("Library Scenario");
+    expect(forked.body.openingScene).toBe("The lights come up.");
+    expect(forked.body.metadata.sourceScenarioRevisionId).toBe(revision.body.id);
+    expect(forked.body.metadata.userVariablesSupported).toBe(false);
+    expect(forked.body.metadata.playerEditsRecommended).toBe(true);
+
+    const testerAdventures = await requestJson<Array<{ id: string; title: string }>>("/adventures", {
+      headers: { Authorization: `Bearer ${testerSession}` },
+    });
+    expect(testerAdventures.body).toEqual([
+      expect.objectContaining({ id: forked.body.id, title: "Library Scenario" }),
+    ]);
   });
 
   it("returns profile adventure/scenario summaries and explore scenario listings", async () => {

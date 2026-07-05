@@ -108,6 +108,7 @@ POST /adventures/:id/turn
 POST /scenarios
 POST /scenarios/:id/revisions
 POST /scenario-revisions/:id/publish
+POST /scenario-revisions/:id/fork
 GET /admin/account-safety-events
 GET /admin/console
 PATCH /admin/users/:id/status
@@ -133,3 +134,24 @@ It provides:
 - invite, adventure, scenario, policy decision, usage, context-build, and admin-audit summaries
 
 It intentionally does not expose raw invite tokens, provider API keys, OAuth secrets, full context payloads, or a role-promotion button.
+
+## Invite Prep Checklist
+
+Before generating tester invite codes:
+
+- Set `AIST_ADMIN_EMAILS` to the backend admin account email.
+- Set provider environment values, especially `AIST_PROVIDER_API_KEY`, `AIST_PROVIDER_BASE_URL`, and `AIST_PROVIDER_MODEL`.
+- Set Google OAuth values and make sure the Google Cloud redirect URI matches `AIST_GOOGLE_REDIRECT_URI`.
+- Add the GitHub Pages origin to `AIST_API_ALLOWED_ORIGINS`.
+- Choose `AIST_POLICY_MODE=reviewOnly` for friendly UAT or `AIST_POLICY_MODE=enforce` for local hard-block testing.
+- Confirm GitHub Pages is pointed at `backend-local-implementation`.
+- Confirm testers can reach the backend URL. `127.0.0.1` means each tester's own machine; remote testers need their own local backend, a tunnel, or a hosted backend.
+- Smoke test signup, login, import, scenario publishing, Explore -> Start Adventure, autosave, and Admin Console review before sending invites.
+
+## Explore Scenario Starts
+
+Explore contains built-in premade scenarios and backend-published community scenarios.
+
+Starting a backend-published scenario calls `POST /scenario-revisions/:id/fork` and creates a fresh adventure owned by the current user. The fork includes the published setup content, opening scene, story cards, components, and setup metadata. It does not copy the creator's private transcript.
+
+The current implementation has no user-variable substitution. Explore warns the tester before starting that they should edit the new adventure if they do not want to use the premade player character.

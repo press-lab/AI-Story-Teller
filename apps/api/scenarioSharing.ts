@@ -1,3 +1,5 @@
+import type { Adventure } from "../../src/types/adventure";
+import { createDefaultAdventure, normalizeAdventure } from "../../src/state/defaults";
 import type { LocalDbData, ScenarioDraft, ScenarioRevision, ShareLink } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import { assertCanShare } from "./accountSafety";
@@ -102,4 +104,50 @@ export function publishScenarioRevision(
   };
   data.shareLinks.push(shareLink);
   return { revision, shareLink, token };
+}
+
+export function createAdventureFromScenarioRevision(
+  data: LocalDbData,
+  userId: string,
+  revisionId: string,
+): Adventure {
+  const revision = data.scenarioRevisions.find((entry) => entry.id === revisionId && entry.status === "published");
+  if (!revision) throw new Error("Published scenario revision not found.");
+
+  const content = asScenarioContent(revision.content);
+  const base = createDefaultAdventure(revision.title);
+  const openingScene = typeof content.openingScene === "string" ? content.openingScene : base.openingScene;
+  const metadata = isRecord(content.metadata) ? { ...content.metadata } : {};
+  const thumbnailImage = isRecord(content.thumbnailImage) ? content.thumbnailImage : undefined;
+  if (thumbnailImage) metadata.thumbnailImage = thumbnailImage;
+  Object.assign(metadata, {
+    sourceScenarioId: revision.scenarioId,
+    sourceScenarioRevisionId: revision.id,
+    sourceScenarioOwnerUserId: revision.ownerUserId,
+    sourceScenarioVersion: revision.version,
+    sourceScenarioTitle: revision.title,
+    startedFromExplore: true,
+    userVariablesSupported: false,
+    playerEditsRecommended: true,
+    startedByUserId: userId,
+  });
+
+  return normalizeAdventure({
+    ...base,
+    title: revision.title,
+    openingScene,
+    metadata,
+    components: Array.isArray(content.components) ? content.components as Adventure["components"] : base.components,
+    storyCards: Array.isArray(content.storyCards) ? content.storyCards as Adventure["storyCards"] : base.storyCards,
+    brains: Array.isArray(content.brains) ? content.brains as Adventure["brains"] : base.brains,
+    triggerRules: Array.isArray(content.triggerRules) ? content.triggerRules as Adventure["triggerRules"] : base.triggerRules,
+  });
+}
+
+function asScenarioContent(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

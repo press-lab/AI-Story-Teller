@@ -37,7 +37,7 @@ describe("dispatch adventure seed", () => {
     expect(arc?.arcBreakInstruction).toBeTruthy();
     expect(arc?.arcState?.phase).toBe("simmer");
 
-    const result = buildContext(adventure, { currentInput: "Seth reports to SDN." });
+    const result = buildContext(adventure, { currentInput: "Avery reports to SDN." });
     const arcText = result.sections.find((section) => section.id === "currentArc")?.items.map((item) => item.content).join("\n") ?? "";
     expect(arcText).not.toContain(arc?.arcBreakInstruction ?? "NO BREAK");
     expect(arcText).toContain(arc?.arcSimmerInstruction ?? "NO SIMMER");
@@ -45,7 +45,7 @@ describe("dispatch adventure seed", () => {
 
   it("gives every non-player character card a VOICE CONTRACT", () => {
     const adventure = createDispatchAdventure();
-    const characterCards = adventure.storyCards.filter((card) => card.type === "character" && card.id !== "disp-card-seth");
+    const characterCards = adventure.storyCards.filter((card) => card.type === "character" && card.id !== "disp-card-Avery");
     expect(characterCards.length).toBeGreaterThan(0);
     for (const card of characterCards) {
       expect(card.content, `${card.title} should have a VOICE CONTRACT`).toContain("VOICE CONTRACT");
@@ -62,7 +62,7 @@ describe("dispatch adventure seed", () => {
     const parsedCards = parseAidStoryCards(createDispatchStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
     expect(parsedCards.cards).toHaveLength(21);
-    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Seth Prest");
+    expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Avery Prest");
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Flambae");
   });
 });

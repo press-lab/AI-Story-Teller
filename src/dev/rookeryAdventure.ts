@@ -46,7 +46,7 @@ export function createRookeryAdventure(): Adventure {
     metadata: {
       premadeAdventure: true,
       scenario: "The Rookery",
-      note: "Powered-mercenary bar, rotating contract crews, Seth's provisional first job, and living trust/romance pressure.",
+      note: "Powered-mercenary bar, rotating contract crews, Avery's provisional first job, and living trust/romance pressure.",
     },
     components: [
       makeComponent({
@@ -54,9 +54,9 @@ export function createRookeryAdventure(): Adventure {
         title: "Narration Rules",
         type: "narrationRules",
         content: `- Write in second person, present tense.
-- Continue directly from Seth's last action without recap.
-- Never invent Seth's dialogue, thoughts, feelings, decisions, or consequential actions.
-- Keep each response focused on one playable scene with a clear opening for Seth to act.
+- Continue directly from Avery's last action without recap.
+- Never invent Avery's dialogue, thoughts, feelings, decisions, or consequential actions.
+- Keep each response focused on one playable scene with a clear opening for Avery to act.
 - Use grounded sensory detail, readable action, and distinct dialogue; avoid purple prose and cinematic summary.
 - NPCs know only what they have witnessed, learned, or reasonably inferred.
 - Let conversations, meals, repairs, flirting, arguments, and quiet downtime breathe without forcing the next job.`,
@@ -75,10 +75,10 @@ export function createRookeryAdventure(): Adventure {
 - Narrate an original, grounded powered-mercenary drama centered on a grimy bar that functions as hiring hall, neutral ground, clinic, workshop, and social home.
 
 POWER AND STAKES
-- Seth's absorption is intentionally enormous. Never nerf it, exhaust it by convenience, introduce an immunity merely to block it, or solve conflict by producing someone simply stronger.
-- NPCs notice extraordinary displays and adjust their behavior, but they do not worship Seth, call him a god, or instantly understand his full ceiling.
-- Treat Seth as a dangerous, valuable newcomer whose judgment and reliability remain unproven.
-- Stakes come from crew safety, collateral damage, public trust, reputation, divided loyalties, secrets, and how much Seth chooses to release, not whether he wins a straight fight.
+- Avery's absorption is intentionally enormous. Never nerf it, exhaust it by convenience, introduce an immunity merely to block it, or solve conflict by producing someone simply stronger.
+- NPCs notice extraordinary displays and adjust their behavior, but they do not worship Avery, call him a god, or instantly understand his full ceiling.
+- Treat Avery as a dangerous, valuable newcomer whose judgment and reliability remain unproven.
+- Stakes come from crew safety, collateral damage, public trust, reputation, divided loyalties, secrets, and how much Avery chooses to release, not whether he wins a straight fight.
 
 SOCIAL HABITAT
 - Keep The Rookery and its recurring cast as the stable center of play.
@@ -89,7 +89,7 @@ SOCIAL HABITAT
 
 CHARACTER BEHAVIOR
 - NPCs have independent goals, limited trust, strong preferences, and the ability to initiate plans, flirtation, conflict, and conversation.
-- Trust and romance develop through repeated contact and choices; no instant devotion, preset soulmate certainty, or passive waiting for Seth.
+- Trust and romance develop through repeated contact and choices; no instant devotion, preset soulmate certainty, or passive waiting for Avery.
 - Keep Nix exuberant and dangerous without hidden misery: her chaos comes from curiosity, confidence, and joy.
 - Preserve distinct voices. Do not turn every character into a sarcastic quip machine.
 
@@ -108,10 +108,10 @@ GENRE BOUNDARIES
         id: ids.components.plot,
         title: "Plot Essentials",
         type: "plotEssentials",
-        content: `- Seth is a newly established powered mercenary trying to earn work, trust, money, and a place at The Rookery.
-- The current opening is Hollis offering Seth one provisional courier-extraction contract with a crew that does not trust him yet.
-- Seth's absorption is far beyond what the local mercenary scene expects, but only witnessed displays shape his reputation; most people do not know his full range.
-- Seth's real risks are collateral damage, exposed secrets, damaged relationships, public fear, divided loyalties, and harm to people he cannot protect simultaneously.
+        content: `- Avery is a newly established powered mercenary trying to earn work, trust, money, and a place at The Rookery.
+- The current opening is Hollis offering Avery one provisional courier-extraction contract with a crew that does not trust him yet.
+- Avery's absorption is far beyond what the local mercenary scene expects, but only witnessed displays shape his reputation; most people do not know his full range.
+- Avery's real risks are collateral damage, exposed secrets, damaged relationships, public fear, divided loyalties, and harm to people he cannot protect simultaneously.
 - The Rookery is the neutral bar, contract hub, clinic, workshop, and social home; Hollis controls access and job flow without formally commanding the mercenaries.
 - Nix Calder, Sable Ward, and Rhea Locke are possible romances, but trust and attraction must develop through repeated contact and choices.`,
         alwaysOn: true,
@@ -127,7 +127,7 @@ GENRE BOUNDARIES
         id: ids.components.pressure,
         title: "Active Pressure",
         type: "activePressure",
-        content: "Hollis has given Seth one provisional contract with a crew that does not trust him, and failure will close The Rookery's doors before his reputation begins.",
+        content: "Hollis has given Avery one provisional contract with a crew that does not trust him, and failure will close The Rookery's doors before his reputation begins.",
         alwaysOn: true,
         active: true,
         pinned: false,
@@ -151,7 +151,7 @@ GENRE BOUNDARIES
         id: ids.components.author,
         title: "Author's Note",
         type: "authorNote",
-        content: "Grimy powered-mercenary dramedy; intimate, dangerous, irreverent, and human. Keep the bar socially dense, the violence physical, the humor character-driven, and Seth impressive without turning every scene into worship or exposition.",
+        content: "Grimy powered-mercenary dramedy; intimate, dangerous, irreverent, and human. Keep the bar socially dense, the violence physical, the humor character-driven, and Avery impressive without turning every scene into worship or exposition.",
         alwaysOn: true,
         active: true,
         pinned: false,
@@ -213,7 +213,7 @@ Example lines: "Okay, terrible idea. Important distinction: not my worst." / "Hi
         content: `- Sable Ward is a veteran extraction specialist who plans routes, controls battle space, and gets unreliable crews home alive.
 - Sable is tall and athletic, with ash-blonde hair cut short at one side, dark tactical clothing, a scar through one eyebrow, and a habit of standing where she can see every exit.
 - Sable creates temporary zones of absolute stillness that freeze bullets, explosions, moving bodies, and collapsing structures in place.
-- Sable's fields cannot remain forever; when she releases them, stored motion resumes unless Seth absorbs or redirects it.
+- Sable's fields cannot remain forever; when she releases them, stored motion resumes unless Avery absorbs or redirects it.
 - Sable values discipline, civilian safety, clean exits, and people who remain useful after the first spectacular display.
 - Sable respects power only when it comes with judgment, restraint, and a clean extraction plan.
 
@@ -255,7 +255,7 @@ Example lines: "That was almost honest. Careful." / "I wore your face once. The 
         content: `- Oren Cade serves as The Rookery's field medic and patches up mercenaries without asking whether the job was legal.
 - Oren is massive and broad-shouldered, with deep brown skin, a shaved head, a close beard, steady hands, and a battered medical coat stretched across his frame.
 - Oren transfers injuries from another body into his own, then heals them rapidly; severe trauma still causes temporary pain, shock, fatigue, and visible damage.
-- Seth can absorb much of the transferred pain, heat, and biological shock after Oren takes an injury, making them an exceptional rescue pairing.
+- Avery can absorb much of the transferred pain, heat, and biological shock after Oren takes an injury, making them an exceptional rescue pairing.
 - Oren is patient, practical, and difficult to provoke. He becomes frighteningly direct when someone endangers the wounded for pride.
 - Oren treats every reckless contractor as a patient first and a lecture second.
 
@@ -332,66 +332,66 @@ Example lines: "I sent three of me. One came back offended." / "Your alibi survi
 - A crew is assembled per contract rather than permanently assigned. Reputation determines rates and access, but personal grudges and favors often matter more than resumes.
 - Powered mercenaries do not automatically trust one another. They judge control, reliability, collateral habits, payment history, and whether someone abandons a crew when the plan fails.
 - Injury, disappearance, betrayal, arrest, retirement, and death regularly change who occupies the bar; new faces arrive without replacing The Rookery as the stable center.
-- Seth is new to this network. His power is becoming noticeable through witnessed jobs, not universal fame or worship.`,
+- Avery is new to this network. His power is becoming noticeable through witnessed jobs, not universal fame or worship.`,
       }),
       makeStoryCard({
-        id: "card-seth-absorption",
-        title: "Seth's Absorption",
+        id: "card-Avery-absorption",
+        title: "Avery's Absorption",
         type: "lore",
         memoryMode: "static",
-        keys: ["Seth's absorption", "absorption", "stored force", "absorbed energy", "controlled release"],
+        keys: ["Avery's absorption", "absorption", "stored force", "absorbed energy", "controlled release"],
         priority: 65,
-        content: `- Seth absorbs harmful force or energy at range, adapts to it, stores it, and releases it in controlled or combined forms.
-- Seth can output absorbed kinetic force, heat, fire, plasma, electricity, light, radiation, pressure, gravity-like force, and anomalous or magical effects.
-- Simple escalation of force does not beat Seth; repeated exposure makes his adaptation more dangerous.
-- Seth's absorption is not fully understood by The Rookery. People judge it by witnessed displays, not by knowing his full ceiling.
-- The meaningful cost of Seth's power is collateral damage, exposed secrets, public fear, divided loyalties, and the people he cannot protect simultaneously.`,
+        content: `- Avery absorbs harmful force or energy at range, adapts to it, stores it, and releases it in controlled or combined forms.
+- Avery can output absorbed kinetic force, heat, fire, plasma, electricity, light, radiation, pressure, gravity-like force, and anomalous or magical effects.
+- Simple escalation of force does not beat Avery; repeated exposure makes his adaptation more dangerous.
+- Avery's absorption is not fully understood by The Rookery. People judge it by witnessed displays, not by knowing his full ceiling.
+- The meaningful cost of Avery's power is collateral damage, exposed secrets, public fear, divided loyalties, and the people he cannot protect simultaneously.`,
       }),
       makeStoryCard({
-        id: "card-seth-rookery-standing",
-        title: "Seth's Rookery Standing",
+        id: "card-Avery-rookery-standing",
+        title: "Avery's Rookery Standing",
         type: "plot",
         memoryMode: "living",
         keys: ["Rookery standing", "provisional contract", "provisional footing", "first contract", "Hollis's test"],
         priority: 70,
         autoUpdate: true,
         autoUpdateCooldownTurns: 1,
-        content: `- Seth is currently on provisional footing at The Rookery.
-- Hollis has offered Seth one courier-extraction contract as a practical test of restraint, reliability, and crew judgment.
-- The assigned crew does not trust Seth yet; they are watching whether he shares risk or merely dominates the room.
-- Success can earn Seth money, reputation, and real access to The Rookery's work. Failure can close the bar's doors before his name belongs there.`,
+        content: `- Avery is currently on provisional footing at The Rookery.
+- Hollis has offered Avery one courier-extraction contract as a practical test of restraint, reliability, and crew judgment.
+- The assigned crew does not trust Avery yet; they are watching whether he shares risk or merely dominates the room.
+- Success can earn Avery money, reputation, and real access to The Rookery's work. Failure can close the bar's doors before his name belongs there.`,
       }),
       makeStoryCard({
         id: "card-rookery-romance-pressure",
         title: "Rookery Romance Pressure",
         type: "plot",
         memoryMode: "living",
-        keys: ["Rookery romance", "romance pressure", "Nix and Seth", "Sable and Seth", "Rhea and Seth"],
+        keys: ["Rookery romance", "romance pressure", "Nix and Avery", "Sable and Avery", "Rhea and Avery"],
         priority: 58,
         autoUpdate: true,
         autoUpdateCooldownTurns: 1,
-        content: `- Seth has no settled romance at The Rookery.
-- Nix is intrigued by Seth's nerve, usefulness, and ability to survive experiments, but interest does not make her obedient or safe.
+        content: `- Avery has no settled romance at The Rookery.
+- Nix is intrigued by Avery's nerve, usefulness, and ability to survive experiments, but interest does not make her obedient or safe.
 - Sable may warm through discipline, civilian safety, and competence under pressure rather than raw power.
-- Rhea may flirt, test, protect, manipulate, or withdraw depending on what Seth reveals and what he threatens.
-- Attraction changes through repeated scenes and choices; no one begins attached to Seth or waits passively for him.`,
+- Rhea may flirt, test, protect, manipulate, or withdraw depending on what Avery reveals and what he threatens.
+- Attraction changes through repeated scenes and choices; no one begins attached to Avery or waits passively for him.`,
       }),
       makeStoryCard({
         id: "card-tamsins-investigation",
         title: "Tamsin's Investigation",
         type: "plot",
         memoryMode: "living",
-        keys: ["Tamsin's investigation", "Seth's history", "too clean", "private paper files"],
+        keys: ["Tamsin's investigation", "Avery's history", "too clean", "private paper files"],
         priority: 50,
         autoUpdate: true,
         autoUpdateCooldownTurns: 1,
-        content: `- Tamsin is quietly investigating where Seth came from, what his absorption can truly handle, and who will move against The Rookery once they learn.
-- Tamsin does not know Seth's full history or power ceiling; she is building a file from contradictions, public records, duplicates, and bar gossip.
-- Tamsin's investigation is not automatically hostile. It can become protection, leverage, warning, or betrayal depending on what she learns and how Seth behaves.`,
+        content: `- Tamsin is quietly investigating where Avery came from, what his absorption can truly handle, and who will move against The Rookery once they learn.
+- Tamsin does not know Avery's full history or power ceiling; she is building a file from contradictions, public records, duplicates, and bar gossip.
+- Tamsin's investigation is not automatically hostile. It can become protection, leverage, warning, or betrayal depending on what she learns and how Avery behaves.`,
       }),
     ],
     rollingSummary: {
-      content: "Seth is beginning as a provisional powered mercenary at The Rookery. Hollis has offered one courier-extraction contract to test his restraint, reliability, and ability to work with a crew that does not trust him yet.",
+      content: "Avery is beginning as a provisional powered mercenary at The Rookery. Hollis has offered one courier-extraction contract to test his restraint, reliability, and ability to work with a crew that does not trust him yet.",
       updatedAt: timestamp,
     },
     messages: [

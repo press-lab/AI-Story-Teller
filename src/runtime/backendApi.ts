@@ -427,6 +427,13 @@ export function publishBackendScenarioRevision(config: RuntimeConfig, session: B
   });
 }
 
+export function forkBackendScenarioRevision(config: RuntimeConfig, session: BackendSessionState, revisionId: string) {
+  return apiJson<Adventure>(config, `/scenario-revisions/${encodeURIComponent(revisionId)}/fork`, {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
 export function loadBackendSafetyAudit(config: RuntimeConfig, session?: BackendSessionState) {
   return apiJson<{
     events: BackendSafetyEvent[];

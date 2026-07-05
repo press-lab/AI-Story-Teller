@@ -1596,6 +1596,16 @@ details.story-card-item:not([open]) > :not(summary) {
   text-align: right;
 }
 
+.explore-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.explore-variable-warning {
+  margin-top: 16px;
+}
+
 .library-card {
   overflow: hidden;
   border: 1px solid var(--border);

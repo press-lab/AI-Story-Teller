@@ -223,7 +223,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 10. Blocking implementation | Done | Input/context/output/memory-write/import/share gates are wired; blocked input/context returns before provider calls; policy decisions persist on blocked requests. |
 | 11. Backend turn execution | Done | `POST /adventures/:id/turn` loads account/adventure/restrictions, builds server context, uses backend provider config only, persists reducer-driven results/usage, and frontend backend mode calls it. |
 | 12. Account safety restrictions | Done | Safety events, restrictions, status history, effective access checks, sharing disablement, generation hold, admin console review controls, and admin audit logs are implemented. |
-| 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, Profile scenario summaries, Explore published-scenario listings, and share gate are implemented; publish content excludes transcript/private runtime memory by default. |
+| 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, Profile scenario summaries, Explore published-scenario listings, Explore start/fork, and share gate are implemented; publish/start content excludes transcript/private runtime memory by default. |
 
 ## User Workflow Status
 
@@ -234,15 +234,14 @@ Implemented in local backend mode:
 - Backend profiles with owned adventure and scenario summaries.
 - Backend adventure autosave through the selected backend adventure store.
 - Import-as-copy for AIST JSON, AI Dungeon JSON, and GitHub save JSON.
-- Scenario drafts, immutable revisions, publish/share-token flow, and Explore listings for published revisions.
-- Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
+- Scenario drafts, immutable revisions, publish/share-token flow, Explore listings for published revisions, and Explore -> Start Adventure forks.
+- Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, Library/dev seed loaders, or the Play model selector. Built-in premade scenarios are available through Explore.
 - Admin accounts can manage platform-wide non-secret settings from Settings; provider API keys and OAuth secrets stay in `.env` or environment variables.
 - Admin accounts can open Admin Console for platform totals, user lookup, account status changes, manual restrictions, safety event review, diagnostics, and admin audit logs.
 - Admin account assignment is backend-only. Use `AIST_ADMIN_EMAILS` or backend data; there is no frontend role-promotion control.
 
 Still intentionally limited in this branch:
 
-- Explore lists published scenarios but does not yet fork/open them as new adventures.
 - Policy pack step 9 remains owner-review-gated before real-user enforcement.
 - Workers are still deferred. They are not required for local UAT of auth, backend adventures, admin review, policy gates, or scenario sharing; they become useful when background jobs need to run without blocking user requests.
 

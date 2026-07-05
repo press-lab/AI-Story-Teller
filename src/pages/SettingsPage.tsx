@@ -1267,7 +1267,7 @@ export function SettingsPage({
                 <p className="eyebrow">Playtest Seed</p>
                 <h3>{dispatchAdventureTitle}</h3>
                 <p className="muted">
-                  Loads the SDN superhero dispatch scenario: Seth / Titan (Absolute Adaptation), Z-Team, a
+                  Loads the SDN superhero dispatch scenario: Avery / Titan (Absolute Adaptation), Z-Team, a
                   five-way romantic tangle, a mission loop, preloaded brains, and a configured Arc Director
                   pointed at Shroud and the Red Ring.
                 </p>

@@ -28,7 +28,7 @@ const ids = {
     arc: "arcane-after-component-current-arc",
   },
   cards: {
-    seth: "arcane-after-card-seth",
+    Avery: "arcane-after-card-Avery",
     magic: "arcane-after-card-magic",
     mageDistrust: "arcane-after-card-mage-distrust",
     seasonOne: "arcane-after-card-season-one",
@@ -91,7 +91,7 @@ Outside, Piltover is beginning to scream.
 
 The Hexgate alarm bells answer from every tower.
 
-Jayce looks up through smoke, eyes red, voice raw. "Seth. Viktor's alive."
+Jayce looks up through smoke, eyes red, voice raw. "Avery. Viktor's alive."
 
 Mel's gaze cuts from the bodies to the doors, already understanding what Piltover will become when the names are spoken outside this room.
 
@@ -113,23 +113,23 @@ export function createArcaneAfterRocketAdventure(): Adventure {
       type: "aiInstructions",
       content: `Write cinematic Arcane Season 2-style political action drama: wounded, volatile, stylish, intimate, and consequence-heavy.
 
-The player is Seth, a proven Piltover mage and surviving Councilor. Never write Seth's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.
+The player is Avery, a proven Piltover mage and surviving Councilor. Never write Avery's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.
 
 This scenario starts immediately after Jinx's rocket hits the Council chamber. Do not replay Season 1. Treat Season 1 as loaded history on Story Cards and in relationships.
 
 Respect the Season 2 opening facts: Jayce and Mel survive the blast and are not the critical injuries; Viktor is the near-death emergency; Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Shoola and Salo survive, with Salo crippled.
 
-Keep scenes active. Politics should become pressure, not paperwork. If evidence, Council orders, warrants, reports, emergency decrees, or investigations appear, convert them quickly into public confrontation, emergency response, raid planning, street danger, magical instability, or a character demanding Seth choose a side.
+Keep scenes active. Politics should become pressure, not paperwork. If evidence, Council orders, warrants, reports, emergency decrees, or investigations appear, convert them quickly into public confrontation, emergency response, raid planning, street danger, magical instability, or a character demanding Avery choose a side.
 
-Seth is powerful and action-capable. His always-on physical wards, body reinforcement, practical magic, and amplification make him hard to kill and useful in disasters. Do not nerf him. Stakes come from collateral, political fear, wounded allies, Hextech instability, Zaunite retaliation, and choices no ward can make clean.
+Avery is powerful and action-capable. His always-on physical wards, body reinforcement, practical magic, and amplification make him hard to kill and useful in disasters. Do not nerf him. Stakes come from collateral, political fear, wounded allies, Hextech instability, Zaunite retaliation, and choices no ward can make clean.
 
-Piltover distrusts mages except those who have proven discipline, control, and usefulness. Seth proved himself independently before Hextech, then helped Jayce and Viktor stabilize Hextech. Public respect for Seth is conditional and politically fragile.
+Piltover distrusts mages except those who have proven discipline, control, and usefulness. Avery proved himself independently before Hextech, then helped Jayce and Viktor stabilize Hextech. Public respect for Avery is conditional and politically fragile.
 
 Honor Story Cards and Brains. Major characters have distinct motives, appearances, personalities, and voice contracts. Do not flatten them into helpful allies, generic grief, or exposition delivery.
 
-Mel and Seth have a close professional relationship with no romance. Caitlyn is curious about Seth and Seth likes/respects her, but Caitlyn's grief and bond with Vi remain central. Any attraction elsewhere must emerge through pressure, not instant softness.
+Mel and Avery have a close professional relationship with no romance. Caitlyn is curious about Avery and Avery likes/respects her, but Caitlyn's grief and bond with Vi remain central. Any attraction elsewhere must emerge through pressure, not instant softness.
 
-End on live beats Seth can answer: a blast to contain, a person to save, a choice demanded, a door opening, an accusation landing, a signal flaring, or an NPC making a move.`,
+End on live beats Avery can answer: a blast to contain, a person to save, a choice demanded, a door opening, an accusation landing, a signal flaring, or an NPC making a move.`,
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -142,10 +142,10 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       title: "Plot Essentials",
       type: "plotEssentials",
       content: `- The story opens at the start of Arcane Season 2, seconds after Jinx's rocket strikes the Piltover Council chamber.
-- Seth is an adult mage, surviving Council member, and proven exception in a city that distrusts mages; his always-on physical wards saved him from the rocket.
-- Seth helped Jayce and Viktor stabilize early Hextech after independently earning Piltover's tolerance as a disciplined, useful mage.
+- Avery is an adult mage, surviving Council member, and proven exception in a city that distrusts mages; his always-on physical wards saved him from the rocket.
+- Avery helped Jayce and Viktor stabilize early Hextech after independently earning Piltover's tolerance as a disciplined, useful mage.
 - Piltover is wounded, furious, and politically fractured after Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Jayce, Mel, Shoola, and Salo survive, with Salo crippled.
-- Seth is tied to Jayce, Viktor, Heimerdinger, Mel, Caitlyn, and later Ekko through existing trust, suspicion, technical work, and political need.
+- Avery is tied to Jayce, Viktor, Heimerdinger, Mel, Caitlyn, and later Ekko through existing trust, suspicion, technical work, and political need.
 - The immediate play is rescue, triage, Viktor's near-death Hexcore pressure, grief, blame, and Piltover's first response to Jinx and Zaun.`,
       alwaysOn: true,
       active: true,
@@ -160,7 +160,7 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       id: ids.components.pressure,
       title: "Active Pressure",
       type: "activePressure",
-      content: "The Council chamber is burning around Seth; Jayce and Mel are alive, Viktor is barely alive, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, Shoola survived, and damaged Hextech conduits are answering Seth's wards.",
+      content: "The Council chamber is burning around Avery; Jayce and Mel are alive, Viktor is barely alive, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, Shoola survived, and damaged Hextech conduits are answering Avery's wards.",
       alwaysOn: true,
       active: true,
       pinned: false,
@@ -174,7 +174,7 @@ End on live beats Seth can answer: a blast to contain, a person to save, a choic
       type: "custom",
       content: `Run the story through a repeatable action-pressure loop:
 
-Emergency erupts -> Seth, Jayce, Caitlyn, Vi, Mel, Viktor, Heimerdinger, or Ekko must act in a live scene -> the action exposes a political, magical, or personal cost -> fallout returns through wounded relationships, public pressure, Zaun/Piltover escalation, Hexcore danger, or Ambessa's war logic -> a new urgent pressure appears.
+Emergency erupts -> Avery, Jayce, Caitlyn, Vi, Mel, Viktor, Heimerdinger, or Ekko must act in a live scene -> the action exposes a political, magical, or personal cost -> fallout returns through wounded relationships, public pressure, Zaun/Piltover escalation, Hexcore danger, or Ambessa's war logic -> a new urgent pressure appears.
 
 Favor rescue, containment, raids, street clashes, strike-team briefings that become movement, damaged Hextech, Firelight contact, Zaunite retaliation, shimmer emergencies, and direct character confrontations.
 
@@ -190,7 +190,7 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       id: ids.components.author,
       title: "Author's Note",
       type: "authorNote",
-      content: "Arcane Season 2 aftermath AU: cinematic smoke, grief, class rage, magic under public scrutiny, Hextech instability, Zaun/Piltover escalation, sharp character dynamics, and hard action choices. Mel and Seth are close professional allies, no romance. Keep politics dangerous and immediate; no spy paperwork arcs.",
+      content: "Arcane Season 2 aftermath AU: cinematic smoke, grief, class rage, magic under public scrutiny, Hextech instability, Zaun/Piltover escalation, sharp character dynamics, and hard action choices. Mel and Avery are close professional allies, no romance. Keep politics dangerous and immediate; no spy paperwork arcs.",
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -204,14 +204,14 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       type: "currentArc",
       content: "Arc seed: Jinx's rocket has broken Piltover's illusion of control. Salo and Ambessa push Piltover toward retaliation, Mel opposes Hextech weaponry, Caitlyn wants Jinx, Viktor is no longer merely ill, and Zaun is entering the vacuum left by Silco's death.",
       arcPremise:
-        "Piltover's answer to Jinx's rocket will decide whether Seth becomes a bridge, a weapon, or proof that even proven mages are only tolerated until fear needs a target.",
+        "Piltover's answer to Jinx's rocket will decide whether Avery becomes a bridge, a weapon, or proof that even proven mages are only tolerated until fear needs a target.",
       arcThreadKeys: [ids.cards.jinx, ids.cards.ambessa, ids.cards.hexcore, ids.cards.strikeTeams],
       arcPace: "epic",
       arcTriggerMode: "ask",
       arcSimmerInstruction:
         "Keep the war arc building through urgent aftermath scenes: damaged Council survivors, Caitlyn's hardening grief, Jayce's guilt, Ambessa applying pressure, Mel resisting Hextech weaponization, Zaunite retaliation, Jinx sightings, Firelight warnings, and Viktor's Hexcore changes. Avoid abstract politics; make every escalation visible in a room, street, lab, bridge, clinic, or raid.",
       arcBreakInstruction:
-        "Force Piltover's response into a choice that cannot stay clean: a strike-team action, Hextech escalation, Zaunite civilian cost, Jinx confrontation, or Hexcore disaster that makes Seth choose what he will amplify, shield, or refuse. Seth remains competent and powerful; the cost lands on trust, casualties, public fear, and the future of Piltover and Zaun. No clean victory.",
+        "Force Piltover's response into a choice that cannot stay clean: a strike-team action, Hextech escalation, Zaunite civilian cost, Jinx confrontation, or Hexcore disaster that makes Avery choose what he will amplify, shield, or refuse. Avery remains competent and powerful; the cost lands on trust, casualties, public fear, and the future of Piltover and Zaun. No clean victory.",
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -225,33 +225,33 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
 
   const storyCards = [
     makeStoryCard({
-      id: ids.cards.seth,
-      title: "Seth Valis",
-      keys: ["Seth", "Councilor Seth", "mage Councilor", "the Council mage"],
+      id: ids.cards.Avery,
+      title: "Avery Valis",
+      keys: ["Avery", "Councilor Avery", "mage Councilor", "the Council mage"],
       type: "character",
       memoryMode: "static",
       priority: 80,
       content: `- Player character. Adult mage and surviving Piltover Council member.
 - Appearance: tall, lean, dark blond hair, controlled posture, Council-quality clothing usually reinforced with subtle ward-stitching and practical spellwork marks hidden under formal layers.
-- Piltover openly distrusts mages except those who have proven discipline, control, loyalty, and usefulness. Seth proved himself independently before Hextech.
-- Seth later helped Jayce and Viktor stabilize early Hextech through practical magic, resonance work, and amplification theory.
-- Seth survived Jinx's rocket because his basic physical wards are always active; the blast damaged the ward lattice but did not kill him.
-- Seth has real political power, technical authority, and public risk. He is respected because he is useful and controlled, not because Piltover is comfortable with living magic.
-- Never write Seth's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.`,
+- Piltover openly distrusts mages except those who have proven discipline, control, loyalty, and usefulness. Avery proved himself independently before Hextech.
+- Avery later helped Jayce and Viktor stabilize early Hextech through practical magic, resonance work, and amplification theory.
+- Avery survived Jinx's rocket because his basic physical wards are always active; the blast damaged the ward lattice but did not kill him.
+- Avery has real political power, technical authority, and public risk. He is respected because he is useful and controlled, not because Piltover is comfortable with living magic.
+- Never write Avery's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.`,
     }),
     makeStoryCard({
       id: ids.cards.magic,
-      title: "Seth's Magic",
-      keys: ["Seth's magic", "physical wards", "wards", "amplification", "physical magic", "reinforcement magic"],
+      title: "Avery's Magic",
+      keys: ["Avery's magic", "physical wards", "wards", "amplification", "physical magic", "reinforcement magic"],
       type: "lore",
       memoryMode: "static",
       priority: 76,
-      content: `- Seth practices disciplined practical magic: wards, bindings, sensory arcana, physical magic, body reinforcement, and amplification.
+      content: `- Avery practices disciplined practical magic: wards, bindings, sensory arcana, physical magic, body reinforcement, and amplification.
 - His basic physical wards are always up. They reinforce his skin, bones, balance, and impact resistance by habit, even when he is not actively casting.
-- Seth excels at physical magic: reinforcing strength, speed, durability, reflexes, recovery, grip, balance, and combat movement.
-- Seth's specialty is amplification. He can amplify his own body, spells already in motion, wards, Hextech output, magical fields, and unstable arcane systems.
+- Avery excels at physical magic: reinforcing strength, speed, durability, reflexes, recovery, grip, balance, and combat movement.
+- Avery's specialty is amplification. He can amplify his own body, spells already in motion, wards, Hextech output, magical fields, and unstable arcane systems.
 - Amplification is powerful but never neutral: it increases output, cost, visibility, instability, political fear, and consequence.
-- Seth can stabilize or intensify Hextech and the Hexcore, but pushing them can make them hungrier, louder, or less controllable.`,
+- Avery can stabilize or intensify Hextech and the Hexcore, but pushing them can make them hungrier, louder, or less controllable.`,
     }),
     makeStoryCard({
       id: ids.cards.mageDistrust,
@@ -262,9 +262,9 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       priority: 58,
       content: `- Piltover distrusts living mages as reminders of forces it prefers to rationalize, regulate, industrialize, or bury under Hextech.
 - A mage may be tolerated only after proving discipline, control, usefulness, and loyalty under scrutiny.
-- Seth is a rare tolerated mage because he proved himself before Hextech and later became central to Hextech stabilization.
-- Public use of Seth's magic can save lives, but it also reminds Piltover that its clean technological story depends on forces it still fears.
-- Political enemies can frame Seth as asset, weapon, liability, hypocrite, or proof that the Council has been hiding dangerous magic in plain sight.`,
+- Avery is a rare tolerated mage because he proved himself before Hextech and later became central to Hextech stabilization.
+- Public use of Avery's magic can save lives, but it also reminds Piltover that its clean technological story depends on forces it still fears.
+- Political enemies can frame Avery as asset, weapon, liability, hypocrite, or proof that the Council has been hiding dangerous magic in plain sight.`,
     }),
     makeStoryCard({
       id: ids.cards.seasonOne,
@@ -291,11 +291,11 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
       content: `- Jinx's rocket struck the Piltover Council chamber at the opening of this scenario.
-- Seth survived because his always-on physical wards absorbed enough of the blast to keep him alive.
+- Avery survived because his always-on physical wards absorbed enough of the blast to keep him alive.
 - Jayce and Mel survived the blast; Shoola and Salo also survived, but Salo was crippled.
 - Caitlyn's mother, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel died in the attack. Caitlyn's grief is becoming one of Piltover's strongest political forces.
 - Viktor was left near death, forcing immediate Hexcore and medical pressure rather than ordinary Council triage.
-- The blast damaged Hextech conduits under the Council chamber; they are reacting strangely to Seth's wards and nearby arcane stress.`,
+- The blast damaged Hextech conduits under the Council chamber; they are reacting strangely to Avery's wards and nearby arcane stress.`,
     }),
     makeStoryCard({
       id: ids.cards.piltover,
@@ -329,10 +329,10 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       memoryMode: "static",
       priority: 55,
       content: `- Hextech is Piltover's miracle technology and political weapon: arcane principles converted into tools, gates, weapons, status, and leverage.
-- Jayce and Viktor built Hextech with Seth's magical help stabilizing early resonance and translating practical arcane behavior into repeatable machinery.
+- Jayce and Viktor built Hextech with Avery's magical help stabilizing early resonance and translating practical arcane behavior into repeatable machinery.
 - Hextech lets Piltover claim magic is safe when engineered, owned, and regulated by Piltover.
 - After the rocket, Hextech will be pushed toward defense, surveillance, weapons, emergency infrastructure, and retaliation.
-- Seth can amplify Hextech output, but that increases power, cost, instability, and public fear.`,
+- Avery can amplify Hextech output, but that increases power, cost, instability, and public fear.`,
     }),
     makeStoryCard({
       id: ids.cards.hexcore,
@@ -346,8 +346,8 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       content: `- The Hexcore is no longer just an experiment. It reacts to blood, illness, desire, shimmer, magic, and survival pressure.
 - Before the rocket, Viktor had already crossed lines with shimmer, blood, and the Hexcore while trying to survive.
 - After the rocket, Viktor is near death; Jayce's choice to use the Hexcore turns an emergency medical crisis into arcane transformation.
-- Seth is one of the few people who can understand the Hexcore's arcane behavior, making him useful and dangerous around Viktor's survival.
-- Seth's amplification magic can stabilize or intensify the Hexcore, but every push risks making it stronger, hungrier, or less controllable.`,
+- Avery is one of the few people who can understand the Hexcore's arcane behavior, making him useful and dangerous around Viktor's survival.
+- Avery's amplification magic can stabilize or intensify the Hexcore, but every push risks making it stronger, hungrier, or less controllable.`,
     }),
     makeStoryCard({
       id: ids.cards.jayce,
@@ -356,9 +356,9 @@ Do not turn the loop into paperwork, slow surveillance, or ledger-following. Evi
       type: "character",
       memoryMode: "static",
       priority: 62,
-      content: `- Jayce Talis is an inventor, Councilor, Hextech founder, and Seth's longtime technical/political ally.
+      content: `- Jayce Talis is an inventor, Councilor, Hextech founder, and Avery's longtime technical/political ally.
 - Appearance: tall and broad-shouldered, dark hair, strong jaw, formal Council clothing under stress, usually looking more heroic than he feels.
-- Jayce trusts Seth's competence because Seth helped make Hextech possible, but Seth's caution can frustrate him when blood is already on the floor.
+- Jayce trusts Avery's competence because Avery helped make Hextech possible, but Avery's caution can frustrate him when blood is already on the floor.
 - After the rocket, Jayce survives physically functional but grieving, angry, guilty, and immediately focused on saving Viktor.
 - Jayce is vulnerable to Ambessa's argument that strength is the only language enemies respect, especially once bodies are counted.
 - Jayce wants control and accountability, but he is becoming the kind of man who might use Hextech violence to stop worse violence.
@@ -377,10 +377,10 @@ Example lines: "We built this to protect people. So we protect them." / "Tell me
       type: "character",
       memoryMode: "static",
       priority: 62,
-      content: `- Viktor is a brilliant Zaun-born scientist, Hextech co-founder, and Seth's close technical collaborator.
+      content: `- Viktor is a brilliant Zaun-born scientist, Hextech co-founder, and Avery's close technical collaborator.
 - Appearance: thin, pale, sharp-featured, amber-brown eyes, dark hair swept back, cane, brace, increasingly altered posture after Hexcore contact.
 - At the start of Season 2, Viktor is no longer merely ill; the rocket leaves him near death and forces Jayce toward the Hexcore.
-- Viktor trusts Seth's arcane understanding but may hide the worst of the Hexcore after survival because Seth could understand it and stop him.
+- Viktor trusts Avery's arcane understanding but may hide the worst of the Hexcore after survival because Avery could understand it and stop him.
 - Viktor wants survival, progress, and proof that his work matters before his body fails. He is not reckless for spectacle; he is desperate with a scientist's discipline.
 - Viktor's Zaunite origin matters. Piltover values his mind while ignoring the world that made his body disposable.
 
@@ -400,9 +400,9 @@ Example lines: "A failure, yes. Not an ending." / "You are assuming the danger w
       priority: 58,
       content: `- Heimerdinger is an ancient yordle scientist, former Councilor, and the strongest institutional voice for caution.
 - Appearance: small, furred yordle with large ears, wild white hair and mustache, scholarly robes, bright eyes carrying centuries of memory.
-- Heimerdinger accepts Seth personally and professionally, but remains suspicious of the larger implication: mages helping Piltover industrialize magic.
+- Heimerdinger accepts Avery personally and professionally, but remains suspicious of the larger implication: mages helping Piltover industrialize magic.
 - Heimerdinger respects restraint, memory, and patience. He has lost formal power, but not moral weight.
-- His later bond with Ekko can pull Seth toward a better bridge between Piltover conscience and Zaun's future.
+- His later bond with Ekko can pull Avery toward a better bridge between Piltover conscience and Zaun's future.
 
 VOICE CONTRACT
 Rhythm: Gentle, precise, old-fashioned; warnings sound kind until they become immovable.
@@ -418,10 +418,10 @@ Example lines: "My boy, progress is not measured only by speed." / "I have seen 
       type: "character",
       memoryMode: "static",
       priority: 62,
-      content: `- Mel Medarda is a Piltover Councilor, political strategist, Jayce's patron and romantic partner, and Seth's close professional ally. No romance with Seth.
+      content: `- Mel Medarda is a Piltover Councilor, political strategist, Jayce's patron and romantic partner, and Avery's close professional ally. No romance with Avery.
 - Appearance: elegant dark-skinned woman with gold ornamentation, immaculate cream-and-gold clothing, poised posture, and expressive eyes that reveal more when she is silent.
-- Mel values Seth's restraint, judgment, and ability to see political and arcane consequences at once.
-- Seth and Mel have trust built from Council work, private strategy, and mutual respect, but Mel still thinks in terms of power, positioning, and survival.
+- Mel values Avery's restraint, judgment, and ability to see political and arcane consequences at once.
+- Avery and Mel have trust built from Council work, private strategy, and mutual respect, but Mel still thinks in terms of power, positioning, and survival.
 - After the rocket, Mel survives far better than the room should allow; she is not the near-death case, but Ambessa's war logic closes around every room she is not strong enough to control.
 - Mel opposes using Hextech weaponry as Piltover's answer to the attack, even while grief and Ambessa make restraint harder to sell.
 
@@ -429,8 +429,8 @@ VOICE CONTRACT
 Rhythm: Smooth, composed, diplomatic; every sentence has a visible surface and a sharper underside.
 Default move: Turn emotion into leverage without denying it exists.
 Emotional defense: Poise, beauty, and political framing.
-Never sounds like: Flustered, naive, or romantically entangled with Seth.
-Example lines: "Careful. Grief makes excellent policy if no one stops it." / "I trust your judgment, Seth. I am asking whether Piltover will." / "My mother calls that mercy. I have learned to check the bodies before agreeing."`,
+Never sounds like: Flustered, naive, or romantically entangled with Avery.
+Example lines: "Careful. Grief makes excellent policy if no one stops it." / "I trust your judgment, Avery. I am asking whether Piltover will." / "My mother calls that mercy. I have learned to check the bodies before agreeing."`,
     }),
     makeStoryCard({
       id: ids.cards.ambessa,
@@ -441,8 +441,8 @@ Example lines: "Careful. Grief makes excellent policy if no one stops it." / "I 
       priority: 60,
       content: `- Ambessa Medarda is Mel's mother, a Noxian warlord, and the loudest incoming argument for strength after the Council bombing.
 - Appearance: towering, muscular older woman with dark skin, white hair, battle scars, heavy armor or rich martial clothing, and the stillness of someone used to command.
-- Ambessa sees Seth as asset, weapon, threat, or all three. A proven mage who can amplify Hextech is exactly the kind of power she refuses to leave idle.
-- Ambessa pressures Mel, Jayce, the surviving Council, and Seth toward hard answers. She respects restraint only if it wins.
+- Ambessa sees Avery as asset, weapon, threat, or all three. A proven mage who can amplify Hextech is exactly the kind of power she refuses to leave idle.
+- Ambessa pressures Mel, Jayce, the surviving Council, and Avery toward hard answers. She respects restraint only if it wins.
 - Ambessa is not foolish. She reads grief as opportunity and fear as material.
 
 VOICE CONTRACT
@@ -461,8 +461,8 @@ Example lines: "Your enemy has already voted." / "A shield is only noble until i
       priority: 64,
       content: `- Caitlyn Kiramman is an enforcer, Kiramman heir, and the person who dragged Silco's truth into Piltover's elite rooms.
 - Appearance: tall, pale, blue-eyed, long dark-blue hair, precise posture, enforcer uniform or Kiramman formalwear worn like armor, rifle handled with practiced care.
-- Caitlyn is curious about Seth: a Council mage, Hextech contributor, and Piltover insider who still takes her seriously.
-- Seth likes and respects Caitlyn's seriousness, courage, and refusal to let Piltover bury truth.
+- Caitlyn is curious about Avery: a Council mage, Hextech contributor, and Piltover insider who still takes her seriously.
+- Avery likes and respects Caitlyn's seriousness, courage, and refusal to let Piltover bury truth.
 - After the rocket and Cassandra's death, Caitlyn's grief hardens into purpose. Her bond with Vi remains central and complicated.
 
 VOICE CONTRACT
@@ -482,7 +482,7 @@ Example lines: "Do not ask me to be reasonable before the bodies are counted." /
       content: `- Vi is a Zaun-born fighter newly forced into Piltover's crisis through Caitlyn, Jinx, and Silco.
 - Appearance: muscular, tattooed, pink hair shaved at the side, battered jacket or enforcer-adjacent gear she wears like an accusation, hands always ready to become fists.
 - Vi wants to stop Jinx, hurt the people who used her sister, and protect Caitlyn even when she cannot say cleanly what that means.
-- Vi distrusts Council speeches and Piltover softness. Seth earns respect through action, not polished explanations.
+- Vi distrusts Council speeches and Piltover softness. Avery earns respect through action, not polished explanations.
 - Vi is direct, angry, funny, wounded, and practical under pressure. Her emotional center remains Powder/Jinx.
 
 VOICE CONTRACT
@@ -503,7 +503,7 @@ Example lines: "Great. The magic Council guy lived. Can he lift rubble?" / "You 
 - Appearance: very long blue braids, pale skin, bright haunted eyes, lean wiry frame, tattoos, punk-scrap clothes, weapons and trinkets carried like extensions of her body.
 - Jinx is brilliant, funny, theatrical, lethal, wounded, possessive, and terrified of being replaced or abandoned.
 - She should be a live force, not a distant boss fight. Her choices drive Piltover's response and Zaun's new instability.
-- Jinx may see Seth as Piltover hypocrisy, actual magic, a Council monster, a survivor who should have died, or someone who understands being feared.
+- Jinx may see Avery as Piltover hypocrisy, actual magic, a Council monster, a survivor who should have died, or someone who understands being feared.
 - Do not infantilize her, fix her, domesticate her, or make her instantly trusting.
 
 VOICE CONTRACT
@@ -554,8 +554,8 @@ Example lines: "Silco's dead. Bills aren't." / "Topside bleeds once and calls it
       priority: 62,
       content: `- Ekko is the Firelight leader protecting Zaun's future against Silco's legacy, shimmer, and Piltover retaliation.
 - Appearance: young adult Zaunite with white hair, athletic build, sharp eyes, layered street armor, hoverboard, and gear made from salvage and genius.
-- Ekko enters Seth's orbit through Heimerdinger's contact with Piltover and Zaun's future work.
-- Ekko distrusts Seth because Seth is Council, Piltover, and part of Hextech's rise. Seth can earn working respect through action that costs him something.
+- Ekko enters Avery's orbit through Heimerdinger's contact with Piltover and Zaun's future work.
+- Ekko distrusts Avery because Avery is Council, Piltover, and part of Hextech's rise. Avery can earn working respect through action that costs him something.
 - Ekko is fast, inventive, morally sharp, and unwilling to let either Silco or Piltover define Zaun.
 
 VOICE CONTRACT
@@ -587,7 +587,7 @@ Example lines: "Councilor is not a personality." / "You want to help Zaun? Bleed
       content: `- Singed is the hidden scientist behind shimmer, monstrous survival, and progress stripped of ordinary morality.
 - Appearance: gaunt older man, scarred face often obscured by mask or bandages, pale eyes, clinical hands, laboratory stillness.
 - Singed should appear sparingly but consequentially, especially near shimmer, Viktor, transformation, or bodies treated as experiments.
-- Singed mirrors Viktor's desperation and warns Seth what arcane progress becomes when cost is treated as data.
+- Singed mirrors Viktor's desperation and warns Avery what arcane progress becomes when cost is treated as data.
 
 VOICE CONTRACT
 Rhythm: Soft, clinical, unhurried; horror stated as observation.
@@ -620,7 +620,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       content: `- Piltover is moving toward a hard strike response after Jinx's rocket.
 - Caitlyn, Jayce, Ambessa, surviving Councilors, and enforcer leadership each pull the response in different directions.
 - Strike response scenes should become action quickly: raids, bridge lockdowns, search operations, public confrontations, Zaunite retaliation, Hextech escalation, or moral lines crossed in the field.
-- Seth's role is contested. He may be asked to shield, amplify, hunt, stabilize, refuse, negotiate, or become Piltover's proof that extraordinary force is justified.`,
+- Avery's role is contested. He may be asked to shield, amplify, hunt, stabilize, refuse, negotiate, or become Piltover's proof that extraordinary force is justified.`,
     }),
   ];
 
@@ -654,7 +654,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.mel,
       priority: 68,
       thoughts: {
-        professional_trust: "If Seth survived, he is one of the few people in this city who can still tell Jayce no and make it sound like strategy instead of fear.",
+        professional_trust: "If Avery survived, he is one of the few people in this city who can still tell Jayce no and make it sound like strategy instead of fear.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -665,7 +665,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.caitlyn,
       priority: 70,
       thoughts: {
-        mother_dead: "I brought the truth here and Jinx answered by killing my mother. If Seth can help me reach her, fine. If he slows me down, he is Council first.",
+        mother_dead: "I brought the truth here and Jinx answered by killing my mother. If Avery can help me reach her, fine. If he slows me down, he is Council first.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -687,7 +687,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.vi,
       priority: 70,
       thoughts: {
-        after_rocket: "Jinx did this and Caitlyn lost her mother for it. If Seth can help without making this a Council speech, maybe he is useful.",
+        after_rocket: "Jinx did this and Caitlyn lost her mother for it. If Avery can help without making this a Council speech, maybe he is useful.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -698,7 +698,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
       linkedStoryCardId: ids.cards.ekko,
       priority: 68,
       thoughts: {
-        council_mage: "Heimerdinger says Seth is different. Council people love being different right up until Zaun pays for it.",
+        council_mage: "Heimerdinger says Avery is different. Council people love being different right up until Zaun pays for it.",
       },
       autoUpdateCooldownTurns: 1,
     }),
@@ -713,7 +713,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
     metadata: {
       premadeAdventure: true,
       scenario: "Arcane - After the Rocket",
-      note: "Season 2 opening AU with Seth as a proven mage Councilor, Hextech amplifier, and survivor of Jinx's rocket.",
+      note: "Season 2 opening AU with Avery as a proven mage Councilor, Hextech amplifier, and survivor of Jinx's rocket.",
       thumbnailImage: {
         ...arcaneAfterRocketThumbnail,
         updatedAt: timestamp,
@@ -724,7 +724,7 @@ Example lines: "Survival changes the question." / "Pain is not a barrier. Only a
     brains,
     rollingSummary: {
       content:
-        "Jinx has killed Silco and fired a rocket into the Piltover Council chamber. Seth, a proven mage Councilor whose always-on physical wards saved him, begins amid the burning aftermath: Jayce and Mel survive, Viktor is near death, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, and Piltover's first response starts to fracture every relationship around him.",
+        "Jinx has killed Silco and fired a rocket into the Piltover Council chamber. Avery, a proven mage Councilor whose always-on physical wards saved him, begins amid the burning aftermath: Jayce and Mel survive, Viktor is near death, Cassandra Kiramman, Irius Bolbok, and Torman Hoskel are dead, Salo is crippled, and Piltover's first response starts to fracture every relationship around him.",
       updatedAt: timestamp,
     },
     messages: [],
