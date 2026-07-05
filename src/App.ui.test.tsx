@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Adventure } from "./types/adventure";
@@ -103,6 +103,16 @@ describe("App adventure tool workspace", () => {
     });
     render(<App />);
 
+    const nav = screen.getByRole("navigation", { name: "Primary" });
+    expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Profile",
+      "Library",
+      "Explore",
+    ]);
+    expect(within(nav).queryByRole("button", { name: "Adventure" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
     const titleInput = screen.getByDisplayValue("New Adventure");
     await user.clear(titleInput);
@@ -111,6 +121,15 @@ describe("App adventure tool workspace", () => {
 
     // After creation the app lands on the dashboard — title appears as a heading
     await screen.findByRole("heading", { name: "Workspace Test" });
+    expect(within(nav).getByText("Open: Workspace Test")).toBeInTheDocument();
+    expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Profile",
+      "Library",
+      "Adventure",
+      "Play",
+      "Edit",
+      "Explore",
+    ]);
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
     await user.click(screen.getByRole("button", { name: "Story Cards" }));

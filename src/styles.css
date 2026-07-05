@@ -302,6 +302,34 @@ pre {
   opacity: 0.88;
 }
 
+.open-adventure-nav-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: min(560px, 100%);
+  min-width: 0;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface-soft) 82%, transparent);
+}
+
+.open-adventure-label {
+  flex: 0 1 auto;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.open-adventure-nav-group button {
+  flex: 0 0 auto;
+}
+
 .header-meta {
   display: flex;
   align-items: center;
@@ -4813,6 +4841,15 @@ summary {
 
   .app-nav button {
     flex: 0 0 auto;
+  }
+
+  .open-adventure-nav-group {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+
+  .open-adventure-label {
+    max-width: 150px;
   }
 
   .header-meta {

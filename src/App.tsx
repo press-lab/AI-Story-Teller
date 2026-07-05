@@ -1224,20 +1224,6 @@ export default function App() {
         <nav className="app-nav" aria-label="Primary">
           <button
             type="button"
-            className={activeTopTab === "adventures" ? "active" : ""}
-            onClick={() => openTab("adventures")}
-          >
-            Library
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "explore" ? "active" : ""}
-            onClick={() => openTab("explore")}
-          >
-            Explore
-          </button>
-          <button
-            type="button"
             className={activeTopTab === "profile" ? "active" : ""}
             onClick={() => {
               setBackendPublicProfileUserId(null);
@@ -1246,6 +1232,60 @@ export default function App() {
             }}
           >
             Profile
+          </button>
+          <button
+            type="button"
+            className={activeTopTab === "adventures" ? "active" : ""}
+            onClick={() => openTab("adventures")}
+          >
+            Library
+          </button>
+          {adventure && (
+            <span
+              className="open-adventure-nav-group"
+              role="group"
+              aria-label={`Open adventure navigation for ${adventure.title}`}
+            >
+              <span className="open-adventure-label" title={adventure.title}>
+                Open: {adventure.title}
+              </span>
+              <button
+                type="button"
+                className={activeTopTab === "dashboard" ? "active" : ""}
+                onClick={() => openTab("dashboard")}
+              >
+                Adventure
+              </button>
+              <button
+                type="button"
+                className={activeTopTab === "play" ? "active primary" : ""}
+                onClick={() => openTab("play")}
+              >
+                Play
+              </button>
+              <button
+                type="button"
+                className={activeTopTab === "edit" ? "active" : ""}
+                onClick={() => {
+                  if (activeTab === "edit") {
+                    document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    openEditor(editorTab);
+                  }
+                }}
+              >
+                Edit
+                {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
+              </button>
+            </span>
+          )}
+          <button
+            type="button"
+            className={activeTopTab === "explore" ? "active" : ""}
+            onClick={() => openTab("explore")}
+          >
+            Explore
           </button>
           {isBackendAdmin && (
             <button
@@ -1256,38 +1296,6 @@ export default function App() {
               Admin
             </button>
           )}
-          <button
-            type="button"
-            className={activeTopTab === "dashboard" ? "active" : ""}
-            disabled={!adventure}
-            onClick={() => openTab("dashboard")}
-          >
-            Adventure
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "play" ? "active primary" : ""}
-            disabled={!adventure}
-            onClick={() => openTab("play")}
-          >
-            Play
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "edit" ? "active" : ""}
-            disabled={!adventure}
-            onClick={() => {
-              if (activeTab === "edit") {
-                document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              } else {
-                openEditor(editorTab);
-              }
-            }}
-          >
-            Edit
-            {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
-          </button>
         </nav>
         <div className="header-meta">
           {adventure && <span className="status-pill">{saveStatus}</span>}
