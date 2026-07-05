@@ -430,6 +430,7 @@ export default function App() {
     backendReady && backendSession
       ? (text) => importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, { sourceType: "aist", text })
       : undefined,
+    () => setSaveStatus("saved"),
   );
 
   const activeStoreHasAdventure = !adventure || library.adventures.some((entry) => entry.id === adventure.id);
@@ -975,6 +976,9 @@ export default function App() {
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
   const visibleEditorTabs = editorTabs;
+  const currentAdventureSummary = adventure ? library.adventures.find((entry) => entry.id === adventure.id) : undefined;
+  const currentAdventureHasSyncConflict =
+    currentAdventureSummary?.syncStatus === "conflict" || /local backup conflict/i.test(saveStatus);
 
   function renderAdventureLibrary(embedded = false) {
     return (
@@ -1198,6 +1202,8 @@ export default function App() {
             onRememberThis={runtime.rememberThis}
             onPullLatest={!backendMode && cloudSyncSettings.token.trim() ? handlePullLatest : undefined}
             onOpenTab={(tabId) => openTab(tabId as TabId)}
+            hasSyncConflict={currentAdventureHasSyncConflict}
+            onResolveSyncConflict={backendReady ? (resolution) => library.resolveSyncConflict(adventure.id, resolution) : undefined}
           />
         );
       case "edit":

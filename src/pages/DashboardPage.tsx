@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import { buildContext } from "../contextBuilder/contextBuilder";
+import type { AdventureSyncConflictResolution } from "../runtime/adventureStore";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 import type { PlayRuntimeProps } from "./pageTypes";
 
@@ -15,6 +16,11 @@ function previewText(text: string, maxLength = 900): string {
   return `${normalized.slice(0, maxLength).trim()}...`;
 }
 
+interface DashboardPageProps extends PlayRuntimeProps {
+  hasSyncConflict?: boolean;
+  onResolveSyncConflict?: (resolution: AdventureSyncConflictResolution) => Promise<void>;
+}
+
 export function DashboardPage({
   adventure,
   dispatch,
@@ -24,19 +30,30 @@ export function DashboardPage({
   onOpenContext,
   onOpenTab,
   onPullLatest,
-}: PlayRuntimeProps) {
+  hasSyncConflict,
+  onResolveSyncConflict,
+}: DashboardPageProps) {
   const [pulling, setPulling] = useState(false);
+  const [resolvingConflict, setResolvingConflict] = useState<AdventureSyncConflictResolution | undefined>();
 
   async function handlePull() {
     if (!onPullLatest) return;
     setPulling(true);
     try { await onPullLatest(); } finally { setPulling(false); }
   }
+
+  async function handleResolveSyncConflict(resolution: AdventureSyncConflictResolution) {
+    if (!onResolveSyncConflict) return;
+    setResolvingConflict(resolution);
+    try { await onResolveSyncConflict(resolution); } finally { setResolvingConflict(undefined); }
+  }
+
   const computedContext = useMemo(() => contextResult ?? buildContext(adventure), [adventure, contextResult]);
   const pendingProposals = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending");
   const activeCards = adventure.storyCards.filter((card) => card.active);
   const activeCharacters = adventure.brains.filter((brain) => brain.active);
   const thumbnail = getAdventureThumbnail(adventure);
+  const showSyncConflictActions = Boolean(hasSyncConflict && onResolveSyncConflict);
 
   return (
     <section className="page adventure-detail-page">
@@ -49,6 +66,9 @@ export function DashboardPage({
             <p className="muted">
               Turn {adventure.activeState.turn} · {saveStatus}
             </p>
+            {showSyncConflictActions && (
+              <p className="muted sync-conflict-help">Choose which save should win: this device or the server.</p>
+            )}
           </div>
           <div className="adventure-hero-actions">
             <button type="button" className="primary-action" onClick={() => onOpenTab?.("play")}>
@@ -62,6 +82,25 @@ export function DashboardPage({
             <button type="button" onClick={() => onOpenTab?.("edit")}>
               Edit
             </button>
+            {showSyncConflictActions && (
+              <>
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={Boolean(resolvingConflict)}
+                  onClick={() => void handleResolveSyncConflict("uploadLocal")}
+                >
+                  {resolvingConflict === "uploadLocal" ? "Uploading..." : "Upload Local Save"}
+                </button>
+                <button
+                  type="button"
+                  disabled={Boolean(resolvingConflict)}
+                  onClick={() => void handleResolveSyncConflict("downloadServer")}
+                >
+                  {resolvingConflict === "downloadServer" ? "Downloading..." : "Download Server Save"}
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={() => {

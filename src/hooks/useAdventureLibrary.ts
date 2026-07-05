@@ -21,6 +21,7 @@ export function useAdventureLibrary(
   onModalClose: () => void,
   onError: (e: string) => void,
   importWithBackend?: (text: string) => Promise<Adventure>,
+  onSyncConflictResolved?: (adventure: Adventure) => void,
 ) {
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
   const { confirmAction, notify } = useActionFeedback();
@@ -110,6 +111,7 @@ export function useAdventureLibrary(
       const resolved = await store.resolveSyncConflict(id, resolution);
       setAdventure(resolved);
       setContextResult(undefined);
+      onSyncConflictResolved?.(resolved);
       onModalClose();
       onNavigate("dashboard");
       await refreshAdventures();

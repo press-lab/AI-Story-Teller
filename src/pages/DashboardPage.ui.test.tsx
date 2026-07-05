@@ -62,4 +62,34 @@ describe("DashboardPage adventure detail", () => {
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenContext).toHaveBeenCalledTimes(1);
   });
+
+  it("offers upload-local and download-server actions for a conflicted current adventure", async () => {
+    const user = userEvent.setup();
+    const onResolveSyncConflict = vi.fn(async () => undefined);
+
+    render(
+      <DashboardPage
+        adventure={dashboardAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        saveStatus="Local backup conflict. Duplicate this local copy or restore a server backup before syncing."
+        onSubmitTurn={async () => undefined}
+        onContinue={async () => undefined}
+        onRegenerate={async () => undefined}
+        onBuildContext={() => undefined}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+        hasSyncConflict
+        onResolveSyncConflict={onResolveSyncConflict}
+      />,
+    );
+
+    expect(screen.getByText("Choose which save should win: this device or the server.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
+    await user.click(screen.getByRole("button", { name: "Download Server Save" }));
+
+    expect(onResolveSyncConflict).toHaveBeenNthCalledWith(1, "uploadLocal");
+    expect(onResolveSyncConflict).toHaveBeenNthCalledWith(2, "downloadServer");
+  });
 });
