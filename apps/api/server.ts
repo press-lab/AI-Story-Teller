@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
 import type { Adventure } from "../../src/types/adventure";
-import { createEmptyDb, LocalDb } from "./localDb";
+import type { BackendDb } from "./backendDb";
 import { loadApiConfig, type ApiConfig } from "./config";
+import { createBackendDb } from "./db";
+import { createEmptyDb } from "./dbShape";
 import {
   confirmPasswordReset,
   completeGoogleOAuth,
@@ -36,14 +38,14 @@ import { PolicyBlockedError } from "./policy";
 export interface ApiServer {
   server: Server;
   config: ApiConfig;
-  db: LocalDb;
+  db: BackendDb;
   listen(): Promise<{ port: number; url: string }>;
   close(): Promise<void>;
 }
 
 export function createApiServer(overrides: Partial<ApiConfig> = {}): ApiServer {
   const config = loadApiConfig(overrides);
-  const db = new LocalDb(config.dataFile);
+  const db = createBackendDb(config);
   const server = createServer((request, response) => {
     void handleRequest(request, response, config, db);
   });
@@ -58,13 +60,13 @@ export function createApiServer(overrides: Partial<ApiConfig> = {}): ApiServer {
         resolve({ port, url: `http://${config.host}:${port}` });
       });
     }),
-    close: () => new Promise((resolve, reject) => {
+    close: () => new Promise<void>((resolve, reject) => {
       server.close((error) => error ? reject(error) : resolve());
-    }),
+    }).then(() => db.close()),
   };
 }
 
-async function handleRequest(request: IncomingMessage, response: ServerResponse, config: ApiConfig, db: LocalDb): Promise<void> {
+async function handleRequest(request: IncomingMessage, response: ServerResponse, config: ApiConfig, db: BackendDb): Promise<void> {
   const corsHeaders = corsFor(request, config);
   if (request.method === "OPTIONS") {
     response.writeHead(204, corsHeaders);
@@ -76,11 +78,21 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     const route = routePath(request);
     if (request.method === "GET" && route.pathname === "/health") {
       const data = await db.read();
-      sendJson(response, 200, { ok: true, schemaVersion: data.schemaVersion, migrations: data.migrations }, corsHeaders);
+      sendJson(response, 200, {
+        ok: true,
+        database: config.databaseUrl ? "postgres" : "local-json",
+        schemaVersion: data.schemaVersion,
+        migrations: data.migrations,
+      }, corsHeaders);
       return;
     }
     if (request.method === "GET" && route.pathname === "/version") {
-      sendJson(response, 200, { app: "ai-story-teller-api", mode: "local", policyMode: config.policyMode }, corsHeaders);
+      sendJson(response, 200, {
+        app: "ai-story-teller-api",
+        mode: "local",
+        database: config.databaseUrl ? "postgres" : "local-json",
+        policyMode: config.policyMode,
+      }, corsHeaders);
       return;
     }
 
@@ -310,7 +322,7 @@ async function handleAdventureRoute(
   segments: string[],
   session: AuthSessionResult,
   config: ApiConfig,
-  db: LocalDb,
+  db: BackendDb,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
   const userId = session.user.id;
@@ -384,7 +396,7 @@ async function handleScenarioRoute(
   segments: string[],
   session: AuthSessionResult,
   config: ApiConfig,
-  db: LocalDb,
+  db: BackendDb,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
   if (request.method === "POST" && segments.length === 1) {
@@ -414,7 +426,7 @@ async function handleScenarioRevisionRoute(
   segments: string[],
   session: AuthSessionResult,
   config: ApiConfig,
-  db: LocalDb,
+  db: BackendDb,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
   if (request.method === "POST" && segments[2] === "publish") {
@@ -436,7 +448,7 @@ async function handleScenarioRevisionRoute(
   throw new Error("Scenario revision route not found.");
 }
 
-async function requireSession(request: IncomingMessage, db: LocalDb): Promise<AuthSessionResult> {
+async function requireSession(request: IncomingMessage, db: BackendDb): Promise<AuthSessionResult> {
   const token = bearerToken(request);
   const data = await db.read();
   const session = resolveSession(data, token);
@@ -445,7 +457,7 @@ async function requireSession(request: IncomingMessage, db: LocalDb): Promise<Au
   return session;
 }
 
-async function assertAdmin(request: IncomingMessage, config: ApiConfig, db: LocalDb): Promise<string | undefined> {
+async function assertAdmin(request: IncomingMessage, config: ApiConfig, db: BackendDb): Promise<string | undefined> {
   if (config.adminKey && request.headers["x-admin-key"] === config.adminKey) return undefined;
   const data = await db.read();
   const session = resolveSession(data, bearerToken(request));
@@ -524,6 +536,7 @@ function errorMessage(error: unknown): string {
 }
 
 export async function resetLocalDbForTests(config: ApiConfig): Promise<void> {
-  const db = new LocalDb(config.dataFile);
+  const db = createBackendDb(config);
   await db.write(createEmptyDb());
+  await db.close();
 }

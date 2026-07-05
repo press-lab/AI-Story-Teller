@@ -21,6 +21,8 @@ Default local database:
 .local-backend/aist-api-db.json
 ```
 
+For shared tester access, use Postgres instead. See [Local Postgres Backend](./postgres-local-development.md). Set `AIST_DATABASE_URL` and run `npm.cmd run api:postgres:migrate` before starting `api:serve`.
+
 The frontend now opens on an account-required welcome page. In Settings -> Runtime, signed-in users can still choose `Browser Local` for owner testing; it keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
 
 For shared tester access, use:

@@ -85,6 +85,7 @@ Admins can use Admin Console and admin-only Settings panels to manage platform-w
 ## 9. Where To Read More
 
 - [Owner-Hosted Local Server Deployment](./owner-local-server-deployment.md): how the owner runs the shared local server for non-technical testers.
+- [Local Postgres Backend](./postgres-local-development.md): how the owner migrates account-backed UAT data from JSON to Postgres.
 - [Local Backend Development](./backend-local-development.md): how to run the API, configure OAuth, prep invites, and test backend mode.
 - [Backend Architecture](./backend-architecture.md): why the backend is structured this way and how local/backend modes coexist.
 - [Backend Implementation Plan](./backend-implementation-plan.md): implementation status and phase-by-phase backend plan.

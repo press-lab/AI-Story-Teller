@@ -43,6 +43,7 @@ For owner-hosted UAT, these values matter most:
 AIST_API_HOST=127.0.0.1
 AIST_API_PORT=8787
 AIST_API_DATA_FILE=.local-backend/aist-api-db.json
+AIST_DATABASE_URL=postgres://aist_user:a_strong_password@127.0.0.1:5432/aist_local
 AIST_API_ALLOWED_ORIGINS=https://press-lab.github.io,http://localhost:5173,http://127.0.0.1:5173
 AIST_WEB_APP_URL=https://press-lab.github.io/AI-Story-Teller/
 AIST_PUBLIC_API_BASE_URL=https://your-public-api-domain.example
@@ -72,7 +73,7 @@ The API still stores data locally by default:
 .local-backend/aist-api-db.json
 ```
 
-Back this file up before major schema or database changes.
+For tester UAT, set `AIST_DATABASE_URL` so the API uses local Postgres instead. Back up both the original JSON file and the Postgres database before major schema changes.
 
 ## Expose It Publicly
 

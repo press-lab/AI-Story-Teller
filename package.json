@@ -7,6 +7,7 @@
     "dev": "vite",
     "api:dev": "tsx apps/api/index.ts",
     "api:serve": "tsx apps/api/ownerServer.ts",
+    "api:postgres:migrate": "tsx apps/api/migratePostgres.ts",
     "api:test": "vitest run apps/api",
     "pages:set-api": "node scripts/set-pages-api-url.mjs",
     "build": "tsc -b && vite build",
@@ -18,6 +19,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
+    "pg": "^8.22.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.9.0",
@@ -28,6 +30,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "fake-indexeddb": "^6.2.5",

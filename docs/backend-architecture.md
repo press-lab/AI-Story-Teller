@@ -95,7 +95,8 @@ Implemented locally:
 
 Implementation notes:
 
-- The first local database is JSON-backed for low-friction local hosting. The schema mirrors future server tables so Postgres migration remains straightforward.
+- The backend supports local JSON for quick dev and local Postgres for shared owner-hosted UAT. Postgres is selected with `AIST_DATABASE_URL`.
+- The first Postgres store keeps one row per backend domain record keyed by collection and stable domain id, preserving the current API behavior while moving shared tester data out of the single JSON file.
 - The first local password hash uses Node `scrypt` with per-password salt. Production can still switch to Argon2id/bcrypt during the hosted hardening pass.
 - The local Google stub (`POST /auth/google/local`) remains for owner testing only; real Google OAuth/OIDC is implemented through the local callback route.
 - The draft policy pack lives at `apps/api/policy/rule-packs/manual-review-draft.json` and is marked `manualReviewRequired`.

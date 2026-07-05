@@ -17,6 +17,7 @@ export interface ApiConfig {
   host: string;
   port: number;
   dataFile: string;
+  databaseUrl?: string;
   allowedOrigins: string[];
   adminKey?: string;
   adminEmails: string[];
@@ -63,6 +64,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     host: stringEnv("AIST_API_HOST", "127.0.0.1"),
     port: numberEnv("AIST_API_PORT", 8787),
     dataFile: stringEnv("AIST_API_DATA_FILE", ".local-backend/aist-api-db.json"),
+    databaseUrl: process.env.AIST_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim() || undefined,
     allowedOrigins: stringEnv(
       "AIST_API_ALLOWED_ORIGINS",
       "http://localhost:5173,http://127.0.0.1:5173,https://press-lab.github.io",

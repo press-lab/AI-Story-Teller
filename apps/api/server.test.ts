@@ -104,6 +104,13 @@ afterEach(async () => {
 });
 
 describe("local API auth and invite gate", () => {
+  it("reports local JSON database mode in health", async () => {
+    const health = await requestJson<{ ok: boolean; database: string }>("/health");
+    expect(health.status).toBe(200);
+    expect(health.body.ok).toBe(true);
+    expect(health.body.database).toBe("local-json");
+  });
+
   it("does not activate password accounts without an invite and requires email verification", async () => {
     const noInvite = await requestJson<{ error: string }>("/auth/signup/password", {
       method: "POST",

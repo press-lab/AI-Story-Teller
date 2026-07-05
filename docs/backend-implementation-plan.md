@@ -195,6 +195,7 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Backend mode frontend wiring: `src/App.tsx`, `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, `src/hooks/useAdventureAutosave.ts`.
 - Local API service: `apps/api/server.ts`, `apps/api/index.ts`, `apps/api/ownerServer.ts`.
 - Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
+- Local Postgres database support and JSON-to-Postgres migration: `apps/api/postgresDb.ts`, `apps/api/migratePostgres.ts`, `npm.cmd run api:postgres:migrate`, and `docs/postgres-local-development.md`.
 - Owner-hosted UAT deployment: `npm.cmd run api:serve`, `npm.cmd run pages:set-api`, `.github/workflows/deploy.yml`, and `docs/owner-local-server-deployment.md`.
 - Auth/invite gate: `apps/api/auth.ts`.
 - Backend adventure persistence/import/context/turn: `apps/api/adventureStore.ts`.
@@ -217,7 +218,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 1. Baseline branch setup | Done | Work is on `backend-local-implementation`; `main` untouched; baseline hash recorded in chat and prior commit notes; Browser Local remains available after sign-in for owner testing, but unauthenticated app usage is blocked. |
 | 2. Runtime mode adapters | Done | `RuntimeMode`, local/backend store adapters, backend turn/context adapters, Settings Runtime selector, and local-only GitHub save gating are implemented. |
 | 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `npm.cmd run api:serve`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, owner-hosted Pages API URL support, and `npm.cmd run api:test` exist. |
-| 4. Local database and migrations | Done | Local JSON DB with schema version and migration metadata is implemented at `.local-backend/aist-api-db.json`; docs keep Postgres as hosted target. |
+| 4. Local database and migrations | Done | Local JSON DB remains available for dev; local Postgres is supported through `AIST_DATABASE_URL`; JSON-to-Postgres migration preserves IDs and refuses non-empty overwrite without `--force`. |
 | 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, real Google OAuth/OIDC, local Google dev stub, hashed passwords, rate limits, sessions, profiles, admin roles, and no-invite activation tests exist. |
 | 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, AI Dungeon import-as-copy, GitHub save JSON import-as-copy, provider-secret stripping, and no personal GitHub token use are implemented. |
 | 7. Server context preview | Done | Backend context preview uses shared `buildContext`; tests compare backend payload/section order against local output. |

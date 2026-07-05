@@ -10,7 +10,8 @@ assertOwnerServerConfig();
 const { port } = await api.listen();
 
 console.log("AI Story Teller owner-hosted API is running.");
-console.log(`Data file: ${api.config.dataFile}`);
+console.log(`Database: ${api.config.databaseUrl ? "postgres" : "local-json"}`);
+if (!api.config.databaseUrl) console.log(`Data file: ${api.config.dataFile}`);
 console.log(`Bind URL: http://${host}:${port}`);
 if (isPublicBindHost(host)) {
   for (const address of localIpv4Addresses()) {
