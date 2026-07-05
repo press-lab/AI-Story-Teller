@@ -23,7 +23,7 @@ Default local database:
 
 For shared tester access, use Postgres instead. See [Local Postgres Backend](./postgres-local-development.md). Set `AIST_DATABASE_URL` and run `npm.cmd run api:postgres:migrate` before starting `api:serve`.
 
-The frontend now opens on an account-required welcome page. In Settings -> Runtime, signed-in users can still choose `Browser Local` for owner testing; it keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
+The frontend now opens on an account-required welcome page. Profile is the combined home and adventure library. Browser Local remains an owner/testing runtime and keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
 
 For shared tester access, use:
 
@@ -40,11 +40,9 @@ npm.cmd run pages:set-api -- https://your-public-api-domain.example
 To use backend mode from the frontend:
 
 1. Start the API with `npm.cmd run api:dev`.
-2. Open Settings -> Runtime.
-3. Set Execution mode to `Local Backend`.
-4. Create an invite, sign up, and verify or log in.
-5. Import backend JSON or create/open backend adventures from the Library.
-6. Use Profile to review your Scenarios and Adventures.
+2. Create an invite from Admin Console, then sign up and verify or log in.
+3. Use Profile -> Adventure Library to create/open backend adventures or import existing JSON.
+4. Use Profile to review your scenarios and private adventures.
 
 For the high-level tester path, start with [New User Guide](./new-user-guide.md).
 

@@ -35,6 +35,7 @@ interface AdventuresPageProps {
   onOpenEdit?: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onPublish?: (id: string) => Promise<void>;
   onImportAdventure?: (text: string) => Promise<void>;
   onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
@@ -46,6 +47,10 @@ interface AdventuresPageProps {
   onLoadSave?: (slot: GitHubSaveSlot) => void;
   onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
+  embedded?: boolean;
+  headingEyebrow?: string;
+  headingTitle?: string;
+  headingDescription?: string;
 }
 
 interface ComponentDraft {
@@ -220,6 +225,7 @@ export function AdventuresPage({
   onOpenEdit,
   onDuplicate,
   onDelete,
+  onPublish,
   onImportAdventure,
   onCreateAdventureFromImport,
   saveSlots,
@@ -231,6 +237,10 @@ export function AdventuresPage({
   onLoadSave,
   onDeleteSave,
   providerConfig,
+  embedded = false,
+  headingEyebrow = "Library",
+  headingTitle = "Choose an adventure",
+  headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
 }: AdventuresPageProps) {
   const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
@@ -997,12 +1007,12 @@ export function AdventuresPage({
   }
 
   return (
-    <section className="page library-page">
+    <section className={embedded ? "profile-section adventure-library-section" : "page library-page"}>
       <header className="library-header">
         <div>
-          <p className="eyebrow">Library</p>
-          <h2>Choose an adventure</h2>
-          <p className="muted">Continue a saved story, duplicate a setup, or start a new world.</p>
+          <p className="eyebrow">{headingEyebrow}</p>
+          <h2>{headingTitle}</h2>
+          <p className="muted">{headingDescription}</p>
         </div>
         <div className="toolbar">
           {onListSaves && (
@@ -1050,6 +1060,11 @@ export function AdventuresPage({
               <button type="button" className="danger" onClick={() => onDelete(adventure.id)}>
                 Delete
               </button>
+              {onPublish && (
+                <button type="button" className="primary-action" onClick={() => void onPublish(adventure.id)}>
+                  Publish Scenario
+                </button>
+              )}
             </div>
             </div>
           </article>

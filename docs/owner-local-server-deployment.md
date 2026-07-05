@@ -204,7 +204,7 @@ The tester flow is:
 1. Open `https://press-lab.github.io/AI-Story-Teller/`.
 2. Enter invite code.
 3. Create account with email/password or Google.
-4. Use Profile, Explore, Library, and Play.
+4. Use Profile, Explore, and Play. Profile contains the adventure library.
 
 The tester does not install Node, run Postgres, run the API, or configure provider keys.
 

@@ -239,8 +239,8 @@ Implemented in local backend mode:
 - Backend adventure autosave through the selected backend adventure store.
 - Import-as-copy for AIST JSON, AI Dungeon JSON, and GitHub save JSON.
 - Scenario drafts, immutable revisions, Profile -> Publish Scenario, publish/share-token flow, Explore listings for published revisions, and Explore -> Start Adventure forks.
-- Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, Library/dev seed loaders, or the Play model selector. Built-in premade scenarios are available through Explore.
-- Admin accounts can manage platform-wide non-secret settings from Settings; provider API keys and OAuth secrets stay in `.env` or environment variables.
+- Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, dev seed loaders, or the Play model selector. Built-in premade scenarios are available through Explore.
+- Admin accounts can manage platform-wide non-secret settings from Admin Console; provider API keys and OAuth secrets stay in `.env` or environment variables.
 - Admin accounts can open Admin Console for platform totals, user lookup, account status changes, manual restrictions, safety event review, diagnostics, and admin audit logs.
 - Admin account assignment is backend-only. Use `AIST_ADMIN_EMAILS` or backend data; there is no frontend role-promotion control.
 

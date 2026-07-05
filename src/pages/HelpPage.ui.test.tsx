@@ -31,7 +31,7 @@ describe("HelpPage documentation UI", () => {
 
     [
       "New User Guide",
-      "Library",
+      "Profile / Library",
       "Dashboard",
       "Play",
       "Chronicle",

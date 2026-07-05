@@ -23,15 +23,15 @@ New users can sign up with:
 - email and password, followed by email verification in the local test flow
 - Google OAuth, when the local backend has Google OAuth configured
 
-After login, the backend session is stored locally in the browser. The backend owns model credentials and platform settings; normal users do not see model routing, background cost controls, LLM evaluation controls, developer test adventures, or backend provider secrets. If no session exists, Library, Explore, Profile, Play, and Browser Local tools are not rendered.
+After login, the backend session is stored locally in the browser. The backend owns model credentials and platform settings; normal users do not see model routing, background cost controls, LLM evaluation controls, developer test adventures, or backend provider secrets. If no session exists, Profile, Explore, Play, and Browser Local tools are not rendered.
 
 ## 3. Use Profile As Your Account Library
 
-Profile is the account-backed library view. It separates reusable scenarios from private adventures.
+Profile is the account-backed home and library view. It contains the new user tutorial, the adventure library, reusable scenarios, and private adventures.
 
 **Scenarios** are shareable setup packages. They are built from an adventure's reusable setup surfaces: opening scene, World Blocks, Story Cards, Characters, automations, and thumbnail. Published scenarios appear in Explore.
 
-**Adventures** are private playthroughs. They include your transcript, autosaved progress, and live story state. Adventure cards have actions to open, edit, or publish the reusable setup as a scenario.
+**Adventures** are private playthroughs. They include your transcript, autosaved progress, and live story state. Adventure cards have actions to open, edit, duplicate, delete, or publish the reusable setup as a scenario.
 
 Publishing a scenario does not publish the private transcript.
 
@@ -59,7 +59,7 @@ Backend mode supports import-as-copy for:
 - AI Dungeon JSON
 - GitHub save JSON
 
-Use Settings -> Runtime -> Backend import to paste imported JSON. The imported material becomes a backend adventure copy under the signed-in account.
+Use Profile -> Adventure Library -> New Adventure -> Import from AIST for full AIST backups. AI Dungeon and GitHub JSON imports remain part of the new-adventure/import flow. The imported material becomes an adventure copy under the signed-in account.
 
 Browser Local import/export remains available through Import / Export for local adventures.
 
@@ -80,7 +80,7 @@ Publishing runs the backend share gate. If the policy engine blocks the scenario
 
 Admin accounts are marked only by backend configuration or backend data. There is no frontend role-promotion button.
 
-Admins can use Admin Console and admin-only Settings panels to manage platform-wide non-secret defaults, invites, account status, restrictions, safety events, and review queues. Provider API keys and OAuth secrets stay in `.env` or environment variables.
+Admins use Admin Console to manage platform-wide non-secret defaults, invites, account status, restrictions, safety events, and review queues. Provider API keys and OAuth secrets stay in `.env` or environment variables.
 
 ## 9. Where To Read More
 

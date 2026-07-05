@@ -1789,6 +1789,37 @@ details.story-card-item:not([open]) > :not(summary) {
   margin-top: 22px;
 }
 
+.profile-guide {
+  margin-top: 22px;
+}
+
+.profile-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.profile-guide-grid article {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.profile-guide-grid h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.adventure-library-section {
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+}
+
 .adventure-thumbnail-frame {
   position: relative;
   overflow: hidden;

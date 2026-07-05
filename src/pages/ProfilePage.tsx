@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   BackendExploreScenarioSummary,
   BackendProfileSummary,
@@ -21,6 +22,8 @@ interface ProfilePageProps {
   onViewOwnProfile?: () => void;
   onOpenAdmin?: () => void;
   onLogout?: () => void;
+  adventureLibrary?: ReactNode;
+  onOpenHelp?: () => void;
 }
 
 const publicScenarioStartWarning = "This scenario will start exactly as published. AI Story Teller does not substitute user variables yet. If you do not want to play the premade player character, edit the new adventure after it opens before continuing play.";
@@ -46,17 +49,21 @@ export function ProfilePage({
   onViewOwnProfile,
   onOpenAdmin,
   onLogout,
+  adventureLibrary,
+  onOpenHelp,
 }: ProfilePageProps) {
   if (!backendMode) {
     return (
       <section className="page library-page">
         <header className="library-header">
           <div>
-            <p className="eyebrow">Account</p>
-            <h2>Profile</h2>
+            <p className="eyebrow">Home</p>
+            <h2>Profile & Library</h2>
           </div>
         </header>
-        <p className="notice">Profiles are available in backend mode.</p>
+        <p className="notice">Account profiles are available in backend mode. Browser Local adventures remain below.</p>
+        <NewUserGuide onOpenHelp={onOpenHelp} />
+        {adventureLibrary}
       </section>
     );
   }
@@ -148,6 +155,12 @@ export function ProfilePage({
         )}
       </div>
 
+      {!isPublicProfile && (
+        <NewUserGuide onOpenHelp={onOpenHelp} />
+      )}
+
+      {!isPublicProfile && adventureLibrary}
+
       <section className="profile-section">
         <div className="panel-heading">
           <div>
@@ -224,7 +237,7 @@ export function ProfilePage({
         )}
       </section>
 
-      {!isPublicProfile && (
+      {!isPublicProfile && !adventureLibrary && (
         <section className="profile-section">
           <div className="panel-heading">
             <div>
@@ -282,6 +295,53 @@ export function ProfilePage({
         </section>
       )}
     </section>
+  );
+}
+
+function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
+  return (
+    <details className="setup-panel profile-guide" open>
+      <summary>New User Guide</summary>
+      <div className="profile-guide-grid">
+        <article>
+          <p className="eyebrow">1. Start</p>
+          <h3>Create or explore</h3>
+          <p className="muted">
+            Use New Adventure for your own setup, Import from AIST / AI Dungeon / GitHub JSON to continue an existing save,
+            or Explore to copy a built-in or community scenario into your account.
+          </p>
+        </article>
+        <article>
+          <p className="eyebrow">2. Open adventure</p>
+          <h3>Adventure, Play, Edit</h3>
+          <p className="muted">
+            Once an adventure is open, the top-left Adventure group appears. Adventure is the dashboard, Play is the turn
+            screen, and Edit is where setup, Story Cards, Characters, Plot, automations, and imports live.
+          </p>
+        </article>
+        <article>
+          <p className="eyebrow">3. Build context</p>
+          <h3>Memory is inspectable</h3>
+          <p className="muted">
+            Plot Essentials, Active Pressure, Story Cards, Characters, Author's Note, and recent messages are assembled
+            into Context Preview. Nothing important should be hidden from review.
+          </p>
+        </article>
+        <article>
+          <p className="eyebrow">4. Share</p>
+          <h3>Publish scenarios</h3>
+          <p className="muted">
+            Adventures are private playthroughs. Publishing creates a reusable scenario setup for Explore without sharing
+            your private transcript. Shared scenarios do not substitute user variables yet.
+          </p>
+        </article>
+      </div>
+      <div className="toolbar">
+        <button type="button" onClick={onOpenHelp} disabled={!onOpenHelp}>
+          Open Docs
+        </button>
+      </div>
+    </details>
   );
 }
 

@@ -151,7 +151,7 @@ const providerInitial: RuntimeProviderSettings = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabId>("adventures");
+  const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
@@ -359,11 +359,11 @@ export default function App() {
 
   // Browser back/forward support
   useEffect(() => {
-    history.replaceState({ tab: "adventures" }, "");
+    history.replaceState({ tab: "profile" }, "");
     function onPopState(event: PopStateEvent) {
       const tab = event.state?.tab as TabId | undefined;
       if (tab) {
-        setActiveTab(tab);
+        setActiveTab(tab === "adventures" ? "profile" : tab);
         setModalTab(undefined);
         setPlayPanelTab(undefined);
       }
@@ -375,8 +375,9 @@ export default function App() {
 
 
   function navigateTo(tabId: TabId) {
-    setActiveTab(tabId);
-    try { history.pushState({ tab: tabId }, ""); } catch { /* iOS Safari SecurityError if push limit hit */ }
+    const destination = tabId === "adventures" ? "profile" : tabId;
+    setActiveTab(destination);
+    try { history.pushState({ tab: destination }, ""); } catch { /* iOS Safari SecurityError if push limit hit */ }
   }
 
   const dispatch = useCallback((action: AdventureAction) => {
@@ -911,30 +912,39 @@ export default function App() {
     ? editorTabs.filter((tab) => tab.id !== "cloudSaves")
     : editorTabs;
 
+  function renderAdventureLibrary(embedded = false) {
+    return (
+      <AdventuresPage
+        adventures={library.adventures}
+        currentAdventure={adventure}
+        onCreate={library.createAdventure}
+        onOpen={library.openAdventure}
+        onOpenEdit={async (id) => { await library.openAdventure(id); openEditor(); }}
+        onCreateAdventureFromImport={library.createAdventureFromImport}
+        onImportAdventure={library.importAdventure}
+        onDuplicate={library.duplicateAdventure}
+        onDelete={(id) => library.removeAdventure(id, adventure?.id)}
+        onPublish={backendReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
+        saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
+        savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
+        loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}
+        loadError={backendMode ? undefined : gitHubSaveLoad.loadError}
+        onDismissError={backendMode ? undefined : gitHubSaveLoad.clearLoadError}
+        onListSaves={backendMode ? undefined : () => void gitHubSaves.listSaves()}
+        onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
+        onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
+        providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
+        embedded={embedded}
+        headingEyebrow="Library"
+        headingTitle={embedded ? "Adventure Library" : "Choose an adventure"}
+        headingDescription="Continue a saved story, duplicate a setup, import a save, or start a new world."
+      />
+    );
+  }
+
   const page = (() => {
     if (activeTab === "adventures") {
-      return (
-        <AdventuresPage
-          adventures={library.adventures}
-          currentAdventure={adventure}
-          onCreate={library.createAdventure}
-          onOpen={library.openAdventure}
-          onOpenEdit={async (id) => { await library.openAdventure(id); openEditor(); }}
-          onCreateAdventureFromImport={library.createAdventureFromImport}
-          onImportAdventure={library.importAdventure}
-          onDuplicate={library.duplicateAdventure}
-          onDelete={(id) => library.removeAdventure(id, adventure?.id)}
-          saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
-          savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
-          loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}
-          loadError={backendMode ? undefined : gitHubSaveLoad.loadError}
-          onDismissError={backendMode ? undefined : gitHubSaveLoad.clearLoadError}
-          onListSaves={backendMode ? undefined : () => void gitHubSaves.listSaves()}
-          onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
-          onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
-          providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
-        />
-      );
+      return renderAdventureLibrary();
     }
 
     if (activeTab === "explore") {
@@ -989,12 +999,14 @@ export default function App() {
             openTab("profile");
           }}
           onOpenAdmin={isBackendAdmin ? () => openTab("admin") : undefined}
+          onOpenHelp={() => openTab("help")}
           onLogout={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
             setBackendProfile(undefined);
             setBackendSession(null);
           }}
+          adventureLibrary={showingPublicProfile ? undefined : renderAdventureLibrary(true)}
         />
       );
     }
@@ -1175,7 +1187,7 @@ export default function App() {
     }
   })();
 
-  const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab;
+  const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab === "adventures" ? "profile" : activeTab;
   const navHidden = activeTab === "play" && !navForceVisible;
 
   if (!backendSession?.sessionToken) {
@@ -1215,31 +1227,17 @@ export default function App() {
       )}
       <header className="app-header">
         <div className="app-title">
-          <button type="button" className="app-title-button" onClick={() => openTab("adventures")}>
+          <button type="button" className="app-title-button" onClick={() => {
+            setBackendPublicProfileUserId(null);
+            setBackendPublicProfile(undefined);
+            openTab("profile");
+          }}>
             <span className="app-brand">AI Story Teller</span>
             {adventure && activeTab === "play" && <span className="muted">{adventure.title}</span>}
           </button>
           <span className="app-version">{__COMMIT_HASH__}</span>
         </div>
         <nav className="app-nav" aria-label="Primary">
-          <button
-            type="button"
-            className={activeTopTab === "profile" ? "active" : ""}
-            onClick={() => {
-              setBackendPublicProfileUserId(null);
-              setBackendPublicProfile(undefined);
-              openTab("profile");
-            }}
-          >
-            Profile
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "adventures" ? "active" : ""}
-            onClick={() => openTab("adventures")}
-          >
-            Library
-          </button>
           {adventure && (
             <span
               className="open-adventure-nav-group"
@@ -1280,6 +1278,17 @@ export default function App() {
               </button>
             </span>
           )}
+          <button
+            type="button"
+            className={activeTopTab === "profile" ? "active" : ""}
+            onClick={() => {
+              setBackendPublicProfileUserId(null);
+              setBackendPublicProfile(undefined);
+              openTab("profile");
+            }}
+          >
+            Profile
+          </button>
           <button
             type="button"
             className={activeTopTab === "explore" ? "active" : ""}

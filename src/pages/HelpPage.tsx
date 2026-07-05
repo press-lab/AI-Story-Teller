@@ -20,7 +20,7 @@ const topics: DocTopic[] = [
       <>
         <p>
           Start by signing in with an invited account. This build does not expose the app shell until a backend session
-          exists. After sign-in, Settings can still switch runtime modes for owner testing.
+          exists. After sign-in, Profile is the home screen for account status, the new user guide, and your adventure library.
         </p>
         <p>
           Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
@@ -49,7 +49,7 @@ const topics: DocTopic[] = [
       <>
         <p>
           AI Story Teller is account-gated interactive fiction. The public app opens on a welcome screen and requires
-          backend login before Library, Explore, Profile, or Play are available. Browser Local remains an internal
+          backend login before Profile, Explore, or Play are available. Browser Local remains an internal
           signed-in runtime mode for owner testing; Local Backend is the default account-backed path.
         </p>
         <pre>{`npm.cmd test
@@ -65,15 +65,16 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
   },
   {
     id: "side-menu-library",
-    title: "Library",
-    category: "Side Menu",
-    summary: "Create, open, duplicate, and delete local adventures.",
-    tags: ["adventures", "library", "create", "open", "delete"],
+    title: "Profile / Library",
+    category: "Top Menu",
+    summary: "Use Profile as the account home, tutorial surface, and adventure library.",
+    tags: ["profile", "adventures", "library", "create", "open", "delete"],
     body: (
       <>
         <p>
-          Library is the adventure picker. Use it to create a fresh adventure, reopen a saved IndexedDB
-          adventure, duplicate an existing adventure, or delete one from local storage.
+          Profile is the home surface. It shows account state, the new user guide, authored scenarios, and the embedded
+          adventure library. Use the library section to create a fresh adventure, reopen a saved adventure, duplicate an
+          existing adventure, publish a reusable scenario, or delete a private playthrough.
         </p>
         <p>
           New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
@@ -83,8 +84,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
         <p>
-          Browser Local mode also has Personal Cloud Sync in Settings. Backend accounts save adventures to
-          the owner-hosted server instead.
+          Browser Local mode keeps its original local adventure tools inside the combined Profile surface. Backend
+          accounts save adventures to the owner-hosted server instead.
         </p>
         <p>
           API keys are not stored in adventure records, so exporting, duplicating, or deleting an adventure

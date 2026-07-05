@@ -106,12 +106,14 @@ describe("App adventure tool workspace", () => {
     const nav = screen.getByRole("navigation", { name: "Primary" });
     expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
       "Profile",
-      "Library",
       "Explore",
     ]);
+    expect(within(nav).queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: "Adventure" })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    expect(screen.getByText("New User Guide")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Adventure Library" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
     const titleInput = screen.getByDisplayValue("New Adventure");
@@ -123,11 +125,10 @@ describe("App adventure tool workspace", () => {
     await screen.findByRole("heading", { name: "Workspace Test" });
     expect(within(nav).getByText("Open: Workspace Test")).toBeInTheDocument();
     expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Profile",
-      "Library",
       "Adventure",
       "Play",
       "Edit",
+      "Profile",
       "Explore",
     ]);
     expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
