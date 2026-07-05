@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { applyResponseLengthHint, combineProviderUsage } from "./useAdventureRuntime";
+import { applyResponseLengthHint, combineProviderUsage, isRecoveredBackendTurn } from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
+import { createDefaultAdventure } from "../state/defaults";
 
 const baseConfig: RuntimeProviderSettings = {
   name: "openai-compatible",
@@ -51,5 +52,39 @@ describe("combineProviderUsage", () => {
 
   it("returns undefined when neither provider call reports usage", () => {
     expect(combineProviderUsage(undefined, undefined)).toBeUndefined();
+  });
+});
+
+describe("isRecoveredBackendTurn", () => {
+  it("recognizes a completed backend turn saved after an interrupted request", () => {
+    const before = createDefaultAdventure("Recovery");
+    before.id = "adv-recovery";
+    before.updatedAt = "2026-07-05T00:00:00.000Z";
+    const recovered = {
+      ...before,
+      updatedAt: "2026-07-05T00:00:03.000Z",
+      messages: [
+        ...before.messages,
+        { id: "msg-user", role: "user" as const, content: "You draw your sword", createdAt: "2026-07-05T00:00:01.000Z" },
+        { id: "msg-ai", role: "assistant" as const, content: "Steel clears the scabbard.", createdAt: "2026-07-05T00:00:02.000Z" },
+      ],
+    };
+
+    expect(isRecoveredBackendTurn(before, recovered, "You draw your sword")).toBe(true);
+  });
+
+  it("does not treat a user-only save as a completed backend turn", () => {
+    const before = createDefaultAdventure("Recovery");
+    before.id = "adv-recovery";
+    const recovered = {
+      ...before,
+      updatedAt: "2026-07-05T00:00:01.000Z",
+      messages: [
+        ...before.messages,
+        { id: "msg-user", role: "user" as const, content: "You draw your sword", createdAt: "2026-07-05T00:00:01.000Z" },
+      ],
+    };
+
+    expect(isRecoveredBackendTurn(before, recovered, "You draw your sword")).toBe(false);
   });
 });

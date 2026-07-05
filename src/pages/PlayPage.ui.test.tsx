@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -153,6 +153,46 @@ describe("PlayPage AID-style controls", () => {
 
     await user.click(screen.getByRole("button", { name: "Send" }));
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+  });
+
+  it("keeps mobile turn text visible until submit resolves", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    let resolveSubmit: (() => void) | undefined;
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(() => new Promise<void>((resolve) => {
+      resolveSubmit = resolve;
+    }));
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+    expect(input).toHaveValue("draw your sword");
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+
+    resolveSubmit?.();
+    await waitFor(() => expect(input).toHaveValue(""));
+  });
+
+  it("keeps mobile turn text after a rejected submit", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => {
+      throw new Error("Network failed");
+    });
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send" })).not.toBeDisabled());
+    expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
+    expect(input).toHaveValue("draw your sword");
   });
 
   it("edits story text inline and supports erase, undo, and redo", async () => {

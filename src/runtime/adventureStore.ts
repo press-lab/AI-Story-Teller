@@ -260,6 +260,7 @@ export function createBackendTurnRunner(config: RuntimeConfig, authToken: string
     runTurn(request) {
       return apiJson<TurnResult>(config, `/adventures/${encodeURIComponent(request.adventureId)}/turn`, {
         method: "POST",
+        keepalive: true,
         headers: { Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           input: request.input,

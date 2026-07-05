@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
 import { saveAccountAdventureBackup } from "../db/accountAdventureBackupDb";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
-import { createCachedBackendAdventureStore } from "./adventureStore";
+import { createBackendTurnRunner, createCachedBackendAdventureStore } from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
 
 const DB_NAME = "ai-story-teller";
@@ -77,5 +77,25 @@ describe("cached backend adventure store", () => {
         altText: "Cached cover",
       },
     });
+  });
+
+  it("marks backend turn posts as keepalive for mobile backgrounding", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      adventure: createDefaultAdventure("Turn Result"),
+      responseContent: "Done.",
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const runner = createBackendTurnRunner(config, "session-token");
+    await runner.runTurn({ adventureId: "adv-1", input: "You draw your sword", mode: "do" });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://backend.test/adventures/adv-1/turn",
+      expect.objectContaining({
+        method: "POST",
+        keepalive: true,
+      }),
+    );
   });
 });

@@ -149,6 +149,43 @@ const CHALLENGE_PHRASES = [
   /where did (you|that) come from/i,
 ];
 
+const BACKEND_TURN_RECOVERY_DELAYS_MS = [0, 750, 1500, 3000];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
+}
+
+export function isRecoveredBackendTurn(before: Adventure, recovered: Adventure | undefined, submittedText: string): recovered is Adventure {
+  if (!recovered || recovered.id !== before.id) return false;
+  const recoveredAdvanced = recovered.messages.length > before.messages.length || recovered.updatedAt > before.updatedAt;
+  if (!recoveredAdvanced) return false;
+
+  const newMessages = recovered.messages.slice(before.messages.length);
+  const normalizedSubmitted = submittedText.trim().replace(/\s+/g, " ");
+  const hasSubmittedUserMessage = normalizedSubmitted.length === 0 || newMessages.some((message) => {
+    if (message.role !== "user") return false;
+    return message.content.trim().replace(/\s+/g, " ") === normalizedSubmitted;
+  });
+  const hasAssistantResponse = newMessages.some((message) => message.role === "assistant");
+  return hasSubmittedUserMessage && hasAssistantResponse;
+}
+
+function shouldRecoverBackendTurn(error: unknown): boolean {
+  if (!(error instanceof Error)) return true;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("failed to fetch") ||
+    message.includes("network") ||
+    message.includes("aborted") ||
+    message.includes("aborterror") ||
+    message.includes("load failed") ||
+    message.includes("connection") ||
+    message.includes("http 502") ||
+    message.includes("http 503") ||
+    message.includes("http 504")
+  );
+}
+
 function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const base = mergeProviderConfig(adventure, settings);
   return resolveBackgroundProviderConfig(adventure, base) as RuntimeProviderSettings;
@@ -324,6 +361,24 @@ export function useAdventureRuntime(
     }
   }
 
+  async function recoverBackendTurnCompletion(before: Adventure, submittedText: string): Promise<boolean> {
+    for (const delayMs of BACKEND_TURN_RECOVERY_DELAYS_MS) {
+      if (delayMs > 0) await delay(delayMs);
+      try {
+        const recovered = await adventureStore.get(before.id);
+        if (!isRecoveredBackendTurn(before, recovered, submittedText)) continue;
+        setAdventure(recovered);
+        setContextResult(undefined);
+        setSaveStatus("saved");
+        await refreshAdventures();
+        return true;
+      } catch {
+        // If the backend is still unreachable, keep polling through the short recovery window.
+      }
+    }
+    return false;
+  }
+
   async function submitTurn(text: string, mode: InputMode = "story") {
     if (!adventure || loading) return;
     isSubmittingRef.current = true;
@@ -338,7 +393,9 @@ export function useAdventureRuntime(
         setSaveStatus("saved");
         await refreshAdventures();
       } catch (backendError) {
+        if (shouldRecoverBackendTurn(backendError) && await recoverBackendTurnCompletion(adventure, text)) return;
         setError(backendError instanceof Error ? backendError.message : "Backend turn failed.");
+        throw backendError;
       } finally {
         setLoading(false);
         isSubmittingRef.current = false;
@@ -410,6 +467,7 @@ export function useAdventureRuntime(
       const errorState = snapshotWithUserMsg ?? base;
       setAdventure(errorState);
       await adventureStore.save(errorState);
+      throw providerError;
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;

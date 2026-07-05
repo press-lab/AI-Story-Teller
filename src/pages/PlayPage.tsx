@@ -142,6 +142,7 @@ export function PlayPage({
   const [showRemember, setShowRemember] = useState(false);
   const [showOverflow, setShowOverflow] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [turnSubmissionPending, setTurnSubmissionPending] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
   const [toolkitWidth, setToolkitWidth] = useState(() => {
@@ -296,11 +297,18 @@ export function PlayPage({
 
   async function submit() {
     const text = input.trim();
-    if (!text || loading) return;
-    updateInput("");
-    setComposerOpen(false);
-    setInputMode("do");
-    await onSubmitTurn(transformInput(text, inputMode), inputMode);
+    if (!text || loading || turnSubmissionPending) return;
+    setTurnSubmissionPending(true);
+    try {
+      await onSubmitTurn(transformInput(text, inputMode), inputMode);
+      updateInput("");
+      setComposerOpen(false);
+      setInputMode("do");
+    } catch {
+      // Runtime owns the visible error. Keep the draft where the user left it for retry.
+    } finally {
+      setTurnSubmissionPending(false);
+    }
   }
 
   async function remember() {
@@ -547,11 +555,11 @@ export function PlayPage({
               type="button"
               className="composer-send-btn"
               aria-label="Send"
-              disabled={loading || !input.trim()}
+              disabled={loading || turnSubmissionPending || !input.trim()}
               onClick={submit}
-              title={loading ? "Generating…" : "Send"}
+              title={loading || turnSubmissionPending ? "Generating…" : "Send"}
             >
-              {loading ? "…" : "↑"}
+              {loading || turnSubmissionPending ? "…" : "↑"}
             </button>
           </div>
           {showRemember && (
