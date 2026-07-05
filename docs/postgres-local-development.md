@@ -15,10 +15,33 @@ The API still supports the local JSON database for quick dev, but any shared UAT
 
 Install or run Postgres locally. Keep it bound to localhost. Do not expose Postgres through Cloudflare Tunnel or router port forwarding.
 
+For owner-hosted UAT, this repo includes an app-owned local Postgres flow that does not need the Windows `postgres` admin password. It uses the installed Postgres binaries, creates a separate cluster under `.local-backend/postgres-data`, and listens only on `127.0.0.1:55432`.
+
+Initialize/start it with:
+
+```sh
+npm.cmd run owner:postgres:init
+```
+
+After the first run, start/check it with:
+
+```sh
+npm.cmd run owner:postgres:start
+npm.cmd run owner:postgres:status
+```
+
+The script stores the generated database password in ignored local state:
+
+```text
+.local-backend/postgres-password.txt
+```
+
+It also writes `AIST_DATABASE_URL` into ignored `.env`.
+
 Example database URL:
 
 ```text
-AIST_DATABASE_URL=postgres://aist_user:a_strong_password@127.0.0.1:5432/aist_local
+AIST_DATABASE_URL=postgres://aist_owner:<generated_password>@127.0.0.1:55432/aist_local
 ```
 
 The API creates its own app tables on startup:
@@ -38,7 +61,7 @@ Back up the JSON file first:
 .local-backend/aist-api-db.json
 ```
 
-Set `AIST_DATABASE_URL` in `.env`, then run:
+Set `AIST_DATABASE_URL` in `.env`, or run `npm.cmd run owner:postgres:init` to set it automatically, then run:
 
 ```sh
 npm.cmd run api:postgres:migrate
@@ -58,6 +81,12 @@ Use the owner-hosted server command:
 
 ```sh
 npm.cmd run api:serve
+```
+
+Or use the owner watchdog, which starts the app-owned Postgres cluster before the API when `.env` points at `127.0.0.1:55432/aist_local`:
+
+```sh
+npm.cmd run owner:watch
 ```
 
 Check the API mode:

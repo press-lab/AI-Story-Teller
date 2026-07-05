@@ -71,12 +71,33 @@ function Get-LocalApiUrl {
   return "http://127.0.0.1:$(Get-ApiPort)"
 }
 
+function Get-ExpectedDatabaseMode {
+  $databaseUrl = Get-EnvValue "AIST_DATABASE_URL" ""
+  if ($databaseUrl -match "^postgres(ql)?://") { return "postgres" }
+  return "local-json"
+}
+
+function Ensure-PostgresIfConfigured {
+  $databaseUrl = Get-EnvValue "AIST_DATABASE_URL" ""
+  if (-not $databaseUrl) { return }
+  if ($databaseUrl -notmatch "^postgres(ql)?://") { return }
+  if ($databaseUrl -notmatch "127\.0\.0\.1:55432/aist_local") { return }
+  Write-OwnerLog "Ensuring app-owned Postgres is running."
+  & powershell.exe -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "owner-postgres.ps1") start
+  if ($LASTEXITCODE -ne 0) { throw "App-owned Postgres failed to start." }
+}
+
 function Start-HiddenCommand([string]$FilePath, [string]$Arguments, [string]$OutLog, [string]$ErrLog) {
   if (Test-Path $OutLog) { Clear-Content $OutLog -ErrorAction SilentlyContinue }
   if (Test-Path $ErrLog) { Clear-Content $ErrLog -ErrorAction SilentlyContinue }
+  $resolvedFilePath = $FilePath
+  if (-not [System.IO.Path]::IsPathRooted($resolvedFilePath)) {
+    $command = Get-Command $resolvedFilePath -ErrorAction SilentlyContinue
+    if ($command) { $resolvedFilePath = $command.Source }
+  }
   $psi = [System.Diagnostics.ProcessStartInfo]::new()
   $psi.FileName = $env:ComSpec
-  $psi.Arguments = "/d /c `"`"$FilePath`" $Arguments > `"$OutLog`" 2> `"$ErrLog`"`""
+  $psi.Arguments = "/d /c `"`"$resolvedFilePath`" $Arguments > `"$OutLog`" 2> `"$ErrLog`"`""
   $psi.WorkingDirectory = $RepoRoot
   $psi.UseShellExecute = $false
   $psi.CreateNoWindow = $true
@@ -86,7 +107,9 @@ function Start-HiddenCommand([string]$FilePath, [string]$Arguments, [string]$Out
 function Test-LocalApi {
   try {
     $response = Invoke-RestMethod -Uri "$(Get-LocalApiUrl)/version" -TimeoutSec 8
-    return $response.app -eq "ai-story-teller-api"
+    if ($response.app -ne "ai-story-teller-api") { return $false }
+    if ($response.database -ne (Get-ExpectedDatabaseMode)) { return $false }
+    return $true
   } catch {
     return $false
   }
@@ -257,6 +280,7 @@ Ensure-LocalFiles
 Ensure-Cloudflared
 
 do {
+  Ensure-PostgresIfConfigured
   Ensure-Api
   $url = Ensure-Tunnel
   $published = Get-PublishedPagesUrl
