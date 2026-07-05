@@ -57,8 +57,14 @@ beforeEach(async () => {
   clearRateLimitsForTests();
   tempDir = await mkdtemp(join(tmpdir(), "aist-api-"));
   api = createApiServer({
+    host: "127.0.0.1",
     port: 0,
     dataFile: join(tempDir, "db.json"),
+    databaseUrl: undefined,
+    adminKey: undefined,
+    adminEmails: [],
+    allowLocalGoogleStub: true,
+    allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
     policyMode: "enforce",
     googleOAuth: {
       clientId: "test-google-client",

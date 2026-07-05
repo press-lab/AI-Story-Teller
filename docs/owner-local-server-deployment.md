@@ -47,6 +47,47 @@ npm.cmd run pages:set-api -- https://random-name.trycloudflare.com
 
 Quick Tunnel URLs are not stable. If the tunnel restarts and the URL changes, rerun `pages:set-api` with the new URL and wait for GitHub Pages to redeploy.
 
+Cloudflare does not publish a fixed rotation schedule for Quick Tunnel URLs. In practice, treat the generated URL as valid only while that `cloudflared` process stays alive and Cloudflare keeps the free test tunnel available. Expect the URL to change when:
+
+- the owner machine reboots, sleeps long enough to kill the process, or loses network;
+- `cloudflared` exits, crashes, or is manually restarted;
+- Cloudflare interrupts the free Quick Tunnel service.
+
+Cloudflare documents Quick Tunnels as testing/development only, says they generate a random `trycloudflare.com` subdomain, and says there is no SLA or uptime guarantee. This is why Quick Tunnels are acceptable for UAT but not a stable production hostname.
+
+## Keep Quick Tunnel UAT Alive
+
+The local owner machine must fix the local pieces. A GitHub-hosted Action cannot restart `cloudflared`, restart the API, or wake the owner machine by itself.
+
+Use the local watchdog:
+
+```sh
+npm.cmd run owner:watch
+```
+
+For a single check/recovery pass:
+
+```sh
+npm.cmd run owner:watch:once
+```
+
+The watchdog:
+
+1. Starts the local API if `http://127.0.0.1:8787/version` is not healthy.
+2. Downloads `cloudflared.exe` into `.local-backend/tools/` if it is missing.
+3. Starts or restarts the Cloudflare Quick Tunnel when the public URL is missing or unhealthy.
+4. Reads the new `https://....trycloudflare.com` URL from the Cloudflare logs.
+5. Updates `.env` with `AIST_PUBLIC_API_BASE_URL` and `AIST_GOOGLE_REDIRECT_URI`.
+6. Runs `npm.cmd run pages:set-api -- <new-url> backend-local-implementation` only when the URL changes, which triggers the existing GitHub Pages workflow.
+
+This gives the right failure behavior:
+
+- API died, tunnel URL unchanged: restart local API, no Pages deploy needed.
+- Tunnel died and came back with the same URL: no Pages deploy needed.
+- Tunnel died and Cloudflare issued a new URL: local watchdog updates GitHub variable and triggers a Pages deploy.
+
+For a truly stable URL, replace Quick Tunnel with a named Cloudflare Tunnel on a real domain. Then GitHub Pages can point at the same hostname forever, and the watchdog no longer needs to redeploy Pages for tunnel URL changes.
+
 ## Start The Owner Server
 
 Copy `.env.example` to `.env`, then set the provider, admin, Google OAuth, and policy values.
