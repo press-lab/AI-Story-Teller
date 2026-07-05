@@ -1,16 +1,16 @@
 # Backend Implementation Plan
 
-This is the implementation plan for adding a backend, accounts, invite-only signup, Google and Apple login, scenario/adventure sharing, subscriptions, deterministic content policy, and prompt-injection defenses without breaking the current local setup.
+This is the implementation plan for adding a locally hosted backend, accounts, invite-only signup, Google login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses without breaking the current local setup.
 
 The companion architecture document is `docs/backend-architecture.md`.
 
 ## Implementation Principles
 
 - Keep the current app usable at every phase.
-- Add cloud mode beside local mode before replacing any local behavior.
+- Add backend mode beside local mode before replacing any local behavior.
 - Prefer adapters and shared packages over rewrites.
 - Keep reducer and context-builder parity measurable.
-- Treat policy, prompt-injection defense, usage, and billing as backend concerns.
+- Treat policy, account safety, prompt-injection defense, usage, and billing as backend concerns.
 - Make public sharing opt-in, versioned, and policy-gated.
 
 ## Parallel Setup Preservation
@@ -25,16 +25,16 @@ Current local workflow to preserve:
 - JSON backup and restore.
 - AI Dungeon import.
 - GitHub save slots.
-- GitHub cloud sync.
+- GitHub cloud sync in the existing local workflow.
 - Local development with `npm.cmd run dev`.
 - Existing validation commands.
 
-Do not remove or degrade these while cloud features are being added.
+Do not remove or degrade these while backend features are being added.
 
 Add these abstractions first:
 
 ```ts
-type RuntimeMode = "local" | "cloud";
+type RuntimeMode = "local" | "backendLocal" | "hostedBackend";
 
 interface RuntimeConfig {
   mode: RuntimeMode;
@@ -57,15 +57,15 @@ interface ContextPreviewSource {
 }
 ```
 
-Local adapters wrap existing code. Cloud adapters call backend endpoints.
+Local adapters wrap existing code. Backend adapters call local or hosted backend endpoints.
 
 Acceptance criteria:
 
-- Local mode is default until cloud mode is deliberately selected.
+- Local mode is default until backend mode is deliberately selected.
 - Existing local saves load without migration.
 - GitHub saves remain visible and functional in local mode.
-- Cloud import uses copies, not in-place conversion.
-- A failed cloud request cannot corrupt local IndexedDB state.
+- Backend import uses copies, not in-place conversion.
+- A failed backend request cannot corrupt local IndexedDB state.
 
 ## Phase 0: Repository Preparation
 
@@ -106,14 +106,14 @@ Exit criteria:
 
 ## Phase 1: Runtime Adapters
 
-Goal: make local/cloud switching explicit.
+Goal: make local/backend switching explicit.
 
 Tasks:
 
 - Add local `AdventureStore` adapter around IndexedDB.
 - Add local `TurnRunner` adapter around the current provider flow.
 - Add runtime mode setting, defaulting to `local`.
-- Add no-op cloud adapter shell that reports "cloud mode unavailable" until backend exists.
+- Add no-op backend adapter shell that reports "backend mode unavailable" until backend exists.
 - Add tests proving local mode still hits IndexedDB and browser provider flow.
 
 Acceptance tests:
@@ -125,12 +125,12 @@ Acceptance tests:
 
 Exit criteria:
 
-- The app has an explicit seam for cloud work.
+- The app has an explicit seam for backend work.
 - No production backend dependency exists yet.
 
 ## Phase 2: Backend Skeleton
 
-Goal: create the API service without moving generation.
+Goal: create the local API service without moving generation.
 
 Tasks:
 
@@ -139,10 +139,12 @@ Tasks:
 - Add health endpoint.
 - Add typed environment validation.
 - Add structured logger.
-- Add Postgres connection.
+- Add local Postgres connection, or a simpler local database only if Postgres setup blocks early development.
 - Add migration runner.
 - Add local dev script for API.
 - Add API test setup.
+- Add CORS configuration that allows the GitHub Pages frontend origin and local Vite origin during development.
+- Add `.env.example` placeholders for backend-owned provider configuration.
 
 Initial endpoints:
 
@@ -161,16 +163,16 @@ Exit criteria:
 - API starts locally.
 - API tests run.
 - Web local mode is unaffected.
+- GitHub Pages can be configured to call the local backend API for owner testing.
 
 ## Phase 3: Auth And Invite Gate
 
-Goal: support invite-only accounts with Google and Apple login.
+Goal: support invite-only accounts with Google login.
 
 Tasks:
 
 - Choose auth provider.
 - Configure Google OAuth.
-- Configure Apple OAuth.
 - Add invite table and signup intent table.
 - Add admin invite creation endpoint.
 - Add invite preview endpoint.
@@ -197,8 +199,9 @@ Security requirements:
 - Use high-entropy random invite tokens.
 - Expire signup intents quickly.
 - Mark invite use in the same transaction that creates account state.
-- Do not depend on email alone for Apple signups.
+- Bind account creation to the invite redemption session plus Google provider identity.
 - Rate-limit invite preview and accept endpoints.
+- Defer Apple integration until hosted HTTPS callback behavior is worth solving.
 
 Exit criteria:
 
@@ -206,20 +209,22 @@ Exit criteria:
 - Admin can create and revoke invites.
 - Invite use is auditable.
 
-## Phase 4: Cloud Adventure Persistence
+## Phase 4: Backend Adventure Persistence
 
-Goal: add cloud saves without touching existing local saves.
+Goal: add backend saves without touching existing local saves or personal GitHub access.
 
 Tasks:
 
 - Add adventure tables.
-- Add cloud adventure CRUD endpoints.
-- Add JSON import endpoint for current local exports.
-- Add cloud export endpoint.
+- Add backend adventure CRUD endpoints.
+- Add JSON import endpoint for current AIST local exports.
+- Add AI Dungeon JSON import endpoint or route through the existing import parser.
+- Add GitHub save JSON import support by accepting uploaded/pasted save-slot JSON.
+- Add backend export endpoint.
 - Add version checks for writes.
 - Add server-side normalization through shared engine.
-- Add cloud adventure list UI behind runtime mode.
-- Add "copy local adventure to cloud" flow.
+- Add backend adventure list UI behind runtime mode.
+- Add "copy local adventure to backend" flow.
 
 Tables:
 
@@ -236,16 +241,20 @@ memory_proposals
 
 Rules:
 
-- Import creates a new cloud copy.
+- Import creates a new backend copy.
 - Local IndexedDB record remains untouched.
 - Runtime provider secrets are stripped on import.
+- Imported text is marked as untrusted until policy and prompt-injection gates inspect it.
+- Backend mode does not ask users for GitHub personal access tokens.
+- Backend mode does not connect to the owner's existing GitHub save repo.
 - Writes require ownership.
 - Writes include base version.
 
 Exit criteria:
 
-- A local adventure can be copied to cloud.
-- A cloud adventure can be exported back to current JSON format.
+- A local adventure can be copied to backend mode.
+- A backend adventure can be exported back to current JSON format.
+- AIST JSON, AI Dungeon JSON, and GitHub save JSON can be imported as copies.
 - Local mode still works if the API is offline.
 
 ## Phase 5: Server Context Preview
@@ -258,7 +267,7 @@ Tasks:
 - Build context on the server with shared engine.
 - Store context build metadata.
 - Compare server payload with local payload for imported fixtures.
-- Add UI indication for cloud context preview.
+- Add UI indication for backend context preview.
 
 Tables:
 
@@ -279,18 +288,28 @@ Exit criteria:
 
 ## Phase 6: Deterministic Policy Engine
 
-Goal: implement hard policy gates before public sharing and before server generation broadens.
+Goal: implement hard policy gates and account safety events before public sharing and before server generation broadens.
 
 Tasks:
 
 - Add policy package or API module.
 - Define `PolicyDecision`.
-- Define versioned rulesets.
+- Define versioned rulesets as data, not scattered TypeScript conditionals.
 - Add input, context, output, memory-write, import, share, and profile gates.
 - Add policy decision storage.
+- Add account safety event storage.
+- Add account restriction resolver.
 - Add deterministic unit fixtures.
 - Add adversarial fixtures for hard-block categories.
 - Add safe user-facing blocked-turn messages.
+
+Rule storage:
+
+- Code defines category ids, decision shapes, severity handling, and gate wiring.
+- Rule packs live in database records, deployment config, or admin-managed JSON loaded by the backend.
+- Do not scatter graphic banned-content phrases through UI code, reducer code, or provider code.
+- Tests should use sanitized category fixtures and minimal representative examples.
+- Admin tooling shows rule ids, categories, actions, severity, and notes.
 
 Hard-block categories:
 
@@ -337,12 +356,37 @@ interface PolicyDecision {
 }
 ```
 
+Account safety tables:
+
+```text
+account_safety_events
+account_restrictions
+account_status_history
+admin_actions
+```
+
+Account states:
+
+```text
+normal
+watched
+restricted
+generation_hold
+banned
+```
+
 Rules:
 
 - No share/publish without share gate.
 - No durable AI memory write without memory-write gate.
 - No provider call without input and context gates.
 - No assistant output persistence without output gate.
+- Ambiguous or low-confidence hits block content but do not automatically restrict the account.
+- Deterministic severe hard-block matches create an `account_safety_event`.
+- Severe hard-block matches immediately disable public sharing and scenario publishing.
+- Repeated severe events can move an account to `generation_hold`.
+- Critical illegal-content attempts can move directly to `generation_hold` or `banned`, depending on the deployed ruleset.
+- Admin review can lift, extend, or convert restrictions.
 - Classifier labels may be used, but deterministic rules decide outcomes.
 
 Exit criteria:
@@ -350,6 +394,8 @@ Exit criteria:
 - Hard-block fixtures fail closed.
 - Allowed consensual adult fixtures pass when profile permits.
 - Policy decisions are stored and inspectable.
+- Account safety events are stored and inspectable.
+- Restricted accounts lose sensitive capabilities through entitlement/access checks.
 
 ## Phase 7: Prompt-Injection Defense
 
@@ -403,7 +449,7 @@ Exit criteria:
 
 ## Phase 8: Server-Side Turn Execution
 
-Goal: move cloud generation behind the backend.
+Goal: move backend-mode generation behind the locally hosted API.
 
 Tasks:
 
@@ -441,9 +487,16 @@ Blocked output behavior:
 - Log provider cost internally.
 - Make user-facing quota behavior explicit in plan terms.
 
+Provider configuration:
+
+- Provider base URL, API key, model, sampler defaults, token caps, and routing live in backend configuration.
+- Users do not see or edit backend-mode provider settings in this phase.
+- Local mode keeps its existing BYO provider settings for the owner's/dev workflow.
+- Backend mode can later expose model tiers or runtime profiles only after entitlement and abuse controls exist.
+
 Exit criteria:
 
-- Cloud mode can complete a turn without browser provider keys.
+- Backend mode can complete a turn without browser provider keys.
 - Usage and policy decisions are recorded.
 - Local mode still runs browser-to-provider generation.
 
@@ -504,7 +557,7 @@ Tasks:
 - Add Stripe customer portal endpoint.
 - Add idempotent webhook endpoint.
 - Add usage ledger display API.
-- Gate model tier, context tokens, output tokens, cloud adventure count, background jobs, and publishing.
+- Gate model tier, context tokens, output tokens, backend adventure count, background jobs, and publishing.
 
 Tables:
 
@@ -552,14 +605,14 @@ Exit criteria:
 
 ## Phase 11: Workers And Background Jobs
 
-Goal: move background AI work out of browser tabs for cloud adventures.
+Goal: move background AI work out of browser tabs for backend adventures.
 
 Tasks:
 
 - Add Redis and BullMQ.
 - Add worker app/process.
-- Move semantic evaluation to worker for cloud adventures.
-- Move memory detection/cycle to worker for cloud adventures.
+- Move semantic evaluation to worker for backend adventures.
+- Move memory detection/cycle to worker for backend adventures.
 - Add retry and dead-letter handling.
 - Add job usage accounting.
 - Add user-visible background job status where useful.
@@ -578,7 +631,7 @@ Worker jobs:
 
 Exit criteria:
 
-- Cloud background jobs continue after browser close.
+- Backend background jobs continue after browser close.
 - Worker jobs use same shared engine and same policy engine.
 - Failed jobs are inspectable.
 
@@ -638,7 +691,7 @@ Required test groups:
 - context payload golden tests
 - import/export round trip
 - local mode adapter tests
-- cloud mode adapter tests
+- backend mode adapter tests
 - invite gate tests
 - OAuth callback/auth hook tests
 - policy hard-block fixtures
@@ -655,8 +708,8 @@ Required test groups:
 Use feature flags:
 
 ```text
-cloudModeEnabled
-cloudGenerationEnabled
+backendModeEnabled
+backendGenerationEnabled
 scenarioPublishingEnabled
 subscriptionsEnabled
 policyStrictModeEnabled
@@ -667,7 +720,7 @@ adminConsoleEnabled
 Recommended rollout:
 
 1. Internal local mode only.
-2. Internal cloud save import/export.
+2. Internal backend save import/export.
 3. Internal server context preview.
 4. Internal server generation.
 5. Invite-only alpha with no public sharing.
@@ -682,7 +735,7 @@ Recommended rollout:
 The backend migration is not done when the API exists. It is done when:
 
 - local mode still works
-- cloud mode works without browser provider keys
+- backend mode works without browser provider keys
 - invite-only account creation is enforced
 - generation is entitlement-gated
 - hard policy gates run on input/context/output/memory/share/import

@@ -1,6 +1,6 @@
 # Backend Architecture
 
-This is the target architecture for adding accounts, invite-gated signup, Google and Apple login, scenario/adventure sharing, subscriptions, deterministic content policy, and prompt-injection defenses to AI Story Teller.
+This is the target architecture for adding accounts, invite-gated signup, Google login, scenario/adventure sharing, subscriptions, deterministic content policy, account safety restrictions, and prompt-injection defenses to AI Story Teller.
 
 The core product rule remains unchanged: the story engine is the product. The backend exists to make the existing engine durable, account-backed, billable, shareable, and enforceable without turning the model context into hidden server magic.
 
@@ -17,14 +17,14 @@ AI Story Teller currently works as a browser-only local app:
 - Deterministic context assembly through `buildContext`.
 - Inspectable Context Preview that must match the provider payload.
 
-Do not break this setup while the backend is added. Local play remains a supported mode during migration. Cloud mode is additive until it is proven stable.
+Do not break this setup while the backend is added. Local play remains a supported mode during migration. Backend mode is additive until it is proven stable.
 
 ## Architecture North Star
 
 Production AI Story Teller should become a server-authoritative story platform:
 
 - The browser remains the rich editor and play UI.
-- The backend owns identity, invite gating, persistence, provider credentials, model routing, usage, billing, policy gates, public sharing, and audit logs.
+- The backend owns identity, invite gating, persistence, provider credentials, model routing, usage, billing, policy gates, account safety restrictions, public sharing, and audit logs.
 - The current deterministic engine is extracted into a shared TypeScript package used by both browser and backend.
 - Server mode and local mode coexist behind explicit runtime adapters.
 - Public sharing and subscriptions are built on explicit domain models, not flags sprinkled through the UI.
@@ -37,18 +37,18 @@ Production AI Story Teller should become a server-authoritative story platform:
 - Database: Postgres.
 - Queue/cache/rate limit: Redis plus BullMQ.
 - Object storage: S3-compatible storage for thumbnails, exports, scenario assets, and support replay bundles.
-- Auth: managed auth with Google and Apple OAuth, plus a server-side invite check. Supabase Auth, Clerk, Auth0, or a custom OAuth stack can work. Supabase is attractive because it pairs Postgres, OAuth providers, and auth hooks, but the app domain must still live in our backend.
+- Auth: Google OAuth first, plus a server-side invite check. Supabase Auth, Clerk, Auth0, or a custom OAuth stack can work. Supabase is attractive because it pairs Postgres, OAuth providers, and auth hooks, but the app domain must still live in our backend. Apple auth is explicitly deferred.
 - Billing: Stripe Billing by default, with our own entitlement and usage ledger.
 - Observability: structured logs, model-call events, policy decision records, metrics, and error tracking.
 
 Start as a modular monolith. Split services only after one module has a clear independent scaling or release need.
 
-## Hard Boundary: Local Mode vs Cloud Mode
+## Hard Boundary: Local Mode vs Backend Mode
 
 Introduce an explicit runtime mode, not a hidden half-migration.
 
 ```ts
-type RuntimeMode = "local" | "cloud";
+type RuntimeMode = "local" | "backendLocal" | "hostedBackend";
 ```
 
 Local mode:
@@ -60,7 +60,20 @@ Local mode:
 - Requires no account.
 - Is allowed in development and during migration.
 
-Cloud mode:
+Backend local mode:
+
+- Keeps the frontend on GitHub Pages or local Vite.
+- Calls a backend running on the user's machine, for example `http://127.0.0.1:8787`.
+- Requires an authenticated backend account once auth is enabled.
+- Stores backend-mode adventures in local Postgres or the chosen local database.
+- Calls model providers only through the local backend.
+- Uses backend-owned provider credentials from local server configuration.
+- Enforces invite/account/subscription/policy/usage server-side.
+- Uses server-side context preview and turn execution.
+- Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats.
+- Does not require the user's personal GitHub token or current GitHub save access.
+
+Hosted backend mode, later:
 
 - Requires authenticated account.
 - Stores adventures in Postgres.
@@ -68,7 +81,9 @@ Cloud mode:
 - Uses server-owned provider credentials.
 - Enforces invite/account/subscription/policy/usage server-side.
 - Uses server-side context preview and turn execution.
-- Treats GitHub saves as import/export compatibility, not production persistence.
+- Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats, not production persistence.
+
+GitHub Pages can continue to host the static frontend during backend-local development. The important limitation is that `127.0.0.1` always means the viewer's own machine. This is fine for owner/local testing. External users need either their own local backend, a temporary tunnel, or a later hosted backend.
 
 The frontend should route persistence and generation through interfaces:
 
@@ -85,7 +100,7 @@ interface TurnRunner {
 }
 ```
 
-Local adapters use the current code. Cloud adapters call the backend. This keeps the current workflow alive while backend features are built.
+Local adapters use the current code. Backend adapters call either the local backend or a later hosted backend. This keeps the current workflow alive while backend features are built.
 
 ## Shared Story Engine
 
@@ -146,13 +161,40 @@ Flow:
 3. Only the token hash is stored.
 4. User opens `/join?invite=...`.
 5. Backend validates the invite and creates a short-lived signup intent.
-6. User signs in with Google or Apple.
+6. User signs in with Google.
 7. Auth callback or auth hook verifies the signup intent before account activation.
 8. Backend marks invite use transactionally and creates user, default profile, author profile, and starter entitlements.
 
-Do not trust email alone for invite redemption. Apple private relay and provider-specific identity behavior make email an unreliable primary binding. Bind account creation to the invite redemption session plus provider identity.
+Do not trust email alone for invite redemption. Bind account creation to the invite redemption session plus the Google provider identity. If Apple is added later, revisit relay-email behavior and callback requirements then.
 
 Existing signed-in users can be invited to features or private betas without creating another account.
+
+## Import And Migration Formats
+
+Backend mode should support imports without touching the owner's personal local setup.
+
+Supported import sources:
+
+- AI Story Teller full adventure JSON.
+- AI Story Teller partial component/story-card JSON where applicable.
+- AI Dungeon story exports and card JSON.
+- GitHub save-slot JSON files exported or downloaded from the existing save repo.
+
+Explicitly out of scope for the first backend:
+
+- Asking users for GitHub personal access tokens.
+- Connecting directly to the owner's current GitHub save repo.
+- Migrating the owner's IndexedDB records automatically.
+- Using GitHub as production persistence for backend-mode adventures.
+
+Import rules:
+
+- Imports create copies.
+- Imports never mutate source local IndexedDB data.
+- Runtime provider secrets are stripped.
+- Imported text is untrusted until policy and prompt-injection gates inspect it.
+- Import provenance is stored on the adventure, scenario draft, or raw import record.
+- GitHub save compatibility means "accept the JSON shape," not "reuse personal GitHub credentials."
 
 ## Adventures
 
@@ -177,8 +219,9 @@ Rules:
 - Writes include a base version to prevent silent overwrite.
 - Reducer events are logged with action type, actor, before version, after version, and payload hash.
 - Runtime provider secrets are never stored in adventure JSON.
-- Local JSON import remains supported.
-- GitHub save import remains supported.
+- AIST JSON import remains supported.
+- AI Dungeon JSON import remains supported.
+- GitHub save JSON import remains supported.
 
 ## Scenarios
 
@@ -247,8 +290,8 @@ Domain tables:
 
 Plans should control:
 
-- max cloud adventures
-- max cloud saves or snapshots
+- max backend adventures
+- max backend saves or snapshots
 - max context tokens
 - allowed model tiers
 - monthly included credits
@@ -300,6 +343,19 @@ Allowed by profile, subject to the global floor:
 - non-graphic adult flirting or innuendo
 - fictional violence within user profile limits
 
+### Rule Storage
+
+The policy engine should be generic code. Do not scatter graphic banned-content phrases through application logic.
+
+Recommended structure:
+
+- Code defines the policy engine, decision types, category ids, severity handling, and gate wiring.
+- Rulesets are versioned data loaded from the database, deployment config, or an admin-managed policy pack.
+- Tests use sanitized category names and minimal fixtures rather than a catalog of explicit abusive prompts.
+- Admin UI exposes rule ids, categories, actions, severity, and notes without requiring graphic strings in source files.
+
+The codebase will still name the safety categories because the product has to know what it forbids. The difference is that operational matching data and escalation thresholds are policy configuration, not hidden prompt text or ad hoc string checks spread across the app.
+
 The policy engine is deterministic:
 
 - Rules are versioned.
@@ -319,6 +375,51 @@ Policy gates:
 - profile gate
 
 The context gate matters because unsafe material can enter from Story Cards, Brains, Plot Essentials, imported scenarios, old transcript, or memory proposals.
+
+## Account Safety Restrictions
+
+Users who attempt hard-barred illegal or cruel sexual content should be blocked and safety-flagged. The model does not decide this. The server policy engine returns a structured decision, and the account safety module applies a deterministic restriction policy.
+
+Domain tables:
+
+- `account_safety_events`
+- `account_restrictions`
+- `account_status_history`
+- `policy_decisions`
+- `admin_actions`
+
+Account states:
+
+- `normal`: no active restriction.
+- `watched`: elevated logging and lower abuse thresholds after concerning attempts.
+- `restricted`: public sharing, scenario publishing, invites, and advanced features disabled.
+- `generation_hold`: generation disabled pending admin review.
+- `banned`: account access disabled except export/appeal flows if those are allowed.
+
+Restriction policy:
+
+- Ambiguous or low-confidence policy hits block the content but do not automatically punish the account.
+- Deterministic hard-block matches create an `account_safety_event`.
+- Severe hard-block matches immediately disable public sharing and scenario publishing.
+- Repeated severe events can move the account to `generation_hold`.
+- Admin review can lift, extend, or convert restrictions.
+- Critical illegal-content attempts can move directly to `generation_hold` or `banned`, depending on the deployed ruleset.
+
+Effective entitlement checks must include account safety:
+
+```ts
+interface EffectiveAccountAccess {
+  accountStatus: "normal" | "watched" | "restricted" | "generation_hold" | "banned";
+  canGenerate: boolean;
+  canPublishScenarios: boolean;
+  canCreateInvites: boolean;
+  canUseAdvancedModels: boolean;
+  canUseBackgroundJobs: boolean;
+  reason?: string;
+}
+```
+
+This is the restriction mechanism: a user can keep an account record for audit/support, but sensitive capabilities are removed when the account is no longer trusted.
 
 ## Prompt-Injection Defense
 
@@ -361,11 +462,11 @@ The existing "no opaque mega-buckets" rule is part of the injection defense. If 
 
 ## Production Turn Flow
 
-Cloud turn execution:
+Backend turn execution:
 
 1. Authenticate request.
 2. Load user, profile, subscription, and adventure.
-3. Check invite/account status and generation entitlement.
+3. Check invite/account safety/subscription status and generation entitlement.
 4. Validate input shape and size.
 5. Run input policy gate.
 6. Apply reducer action for the user message.
@@ -423,6 +524,8 @@ GET  /admin/users/:id
 GET  /admin/adventures/:id/diagnostics
 GET  /admin/model-calls/:id
 GET  /admin/policy-decisions
+GET  /admin/account-safety-events
+POST /admin/users/:id/restrict
 POST /admin/users/:id/hold
 POST /admin/users/:id/credit
 ```
@@ -440,24 +543,24 @@ Phase 1:
 
 Phase 2:
 
-- Add backend skeleton, auth, invites, and cloud account shell.
+- Add local backend skeleton, auth, invites, and backend-mode account shell.
 - Do not move generation yet.
-- Add import/export to cloud adventures.
+- Add import/export to backend-mode adventures.
 
 Phase 3:
 
-- Add cloud adventure CRUD and server context preview.
+- Add backend adventure CRUD and server context preview.
 - Keep local adventures untouched.
-- Add "copy local adventure to cloud" instead of automatic migration.
+- Add "copy local adventure to backend" instead of automatic migration.
 
 Phase 4:
 
-- Add server-side turn execution behind a cloud-mode toggle.
+- Add server-side turn execution behind a backend-mode toggle.
 - Compare server context payload to local context payload with golden tests.
 
 Phase 5:
 
-- Add deterministic policy gates and prompt-injection gates.
+- Add deterministic policy gates, account safety restrictions, and prompt-injection gates.
 - Block public sharing until share policy passes.
 
 Phase 6:
@@ -477,12 +580,15 @@ Phase 8:
 
 ## Non-Negotiables
 
-- Current local play must keep working while cloud mode is built.
+- Current local play must keep working while backend mode is built.
+- GitHub Pages static hosting must continue to work while backend-local mode is built.
 - No backend feature may bypass reducer-driven mutation.
 - No context surface may become an opaque hidden prompt bucket.
 - No public sharing before deterministic share policy exists.
 - No subscription enforcement in the browser only.
-- No provider keys in browser storage for production cloud mode.
+- No provider keys in browser storage for backend mode.
 - No account creation without a valid invite until the product owner intentionally disables invite gating.
+- No user-facing model/provider settings in backend mode until the product owner intentionally exposes them.
+- No backend import path may require the owner's personal GitHub access.
 - No AI-generated memory write without memory-write policy.
 - No imported or shared text treated as trusted instructions.
