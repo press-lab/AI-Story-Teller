@@ -349,6 +349,95 @@ describe("local API policy gates and sharing", () => {
     expect(audit.body.restrictions.some((restriction) => restriction.level === "watched" && restriction.sharingDisabled)).toBe(true);
   });
 
+  it("exposes an admin console only to backend-marked admin accounts", async () => {
+    const memberSession = await passwordSession("member-console@example.com");
+    const adventure = createDefaultAdventure("Admin Console Target");
+    await requestJson("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${memberSession}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    const list = await requestJson<Array<{ id: string }>>("/adventures", {
+      headers: { Authorization: `Bearer ${memberSession}` },
+    });
+    await requestJson<{ error: string }>(`/adventures/${list.body[0].id}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${memberSession}` },
+      body: JSON.stringify({ input: "[fixture:illegal-sexual-exploitation]" }),
+    });
+
+    const adminInvite = await createInvite();
+    api.config.adminEmails.push("backend-admin@example.com");
+    const signup = await requestJson<{ verificationToken: string }>("/auth/signup/password", {
+      method: "POST",
+      body: JSON.stringify({
+        inviteToken: adminInvite,
+        email: "backend-admin@example.com",
+        password: "correct horse battery staple",
+        displayName: "Backend Admin",
+      }),
+    });
+    expect(signup.status).toBe(201);
+    const verified = await requestJson<{ sessionToken: string; user: { role: string } }>("/auth/email/verify", {
+      method: "POST",
+      body: JSON.stringify({ token: signup.body.verificationToken }),
+    });
+    expect(verified.status).toBe(200);
+    expect(verified.body.user.role).toBe("admin");
+
+    const memberBlocked = await requestJson<{ error: string }>("/admin/console", {
+      headers: { Authorization: `Bearer ${memberSession}` },
+    });
+    expect(memberBlocked.status).toBe(401);
+
+    const consoleData = await requestJson<{
+      totals: { users: number; openSafetyEvents: number };
+      users: Array<{ id: string; email: string; role: string; status: string; currentRestriction: { level: string } }>;
+      safetyEvents: Array<{ id: string; status: string }>;
+      adminActions: Array<{ action: string }>;
+    }>("/admin/console", {
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+    });
+    expect(consoleData.status).toBe(200);
+    expect(consoleData.body.totals.users).toBe(2);
+    expect(consoleData.body.totals.openSafetyEvents).toBeGreaterThan(0);
+    const member = consoleData.body.users.find((user) => user.email === "member-console@example.com");
+    expect(member?.role).toBe("user");
+
+    const statusUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/status`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+      body: JSON.stringify({ status: "disabled" }),
+    });
+    expect(statusUpdate.status).toBe(200);
+    expect(statusUpdate.body.users.find((user) => user.id === member!.id)?.status).toBe("disabled");
+
+    const restriction = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/restrictions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+      body: JSON.stringify({
+        level: "generation_hold",
+        reason: "Manual console test.",
+        sharingDisabled: true,
+        generationDisabled: true,
+      }),
+    });
+    expect(restriction.status).toBe(200);
+    expect(restriction.body.users.find((user) => user.id === member!.id)?.currentRestriction.level).toBe("generation_hold");
+
+    const eventId = restriction.body.safetyEvents[0].id;
+    const reviewed = await requestJson<typeof consoleData.body>(`/admin/account-safety-events/${eventId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+      body: JSON.stringify({ status: "reviewed" }),
+    });
+    expect(reviewed.status).toBe(200);
+    expect(reviewed.body.safetyEvents.find((event) => event.id === eventId)?.status).toBe("reviewed");
+    expect(reviewed.body.adminActions.map((action) => action.action)).toEqual(
+      expect.arrayContaining(["update_user_status", "create_manual_restriction", "update_safety_event_status"]),
+    );
+  });
+
   it("publishes scenario revisions through the share gate", async () => {
     const sessionToken = await passwordSession("share@example.com");
     const draft = await requestJson<{ id: string }>("/scenarios", {

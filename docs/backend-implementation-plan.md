@@ -202,6 +202,7 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Normal backend-account UI masking: `src/pages/SettingsPage.tsx`, `src/pages/AdventuresPage.tsx` props from `src/App.tsx`, and the Play model selector gate.
 - Real Google OAuth/OIDC: `/auth/google/start`, `/auth/google/callback`, short-lived OAuth state records, and frontend OAuth session pickup.
 - Backend-owned platform settings: `apps/api/platformSettings.ts`, `/admin/platform-settings`, and the admin-only Platform Settings panel.
+- Backend admin console: `apps/api/adminConsole.ts`, `/admin/console`, admin user-status/restriction/safety-event mutation endpoints, and `src/pages/AdminConsolePage.tsx`.
 - API coverage: `apps/api/server.test.ts`.
 
 The policy pack includes everything that currently makes sense as a draft, but it is explicitly for owner review. Do not treat the draft category thresholds, refusal behavior, raw-text retention, restriction transitions, or real-user enforcement posture as final until the manual policy review is complete.
@@ -221,7 +222,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 9. Manual policy review | Ready for owner review | Draft policy pack includes the categories, matchers, severity, safety event triggers, and restriction transitions that currently make sense. Owner approval is still required before real-user enforcement. |
 | 10. Blocking implementation | Done | Input/context/output/memory-write/import/share gates are wired; blocked input/context returns before provider calls; policy decisions persist on blocked requests. |
 | 11. Backend turn execution | Done | `POST /adventures/:id/turn` loads account/adventure/restrictions, builds server context, uses backend provider config only, persists reducer-driven results/usage, and frontend backend mode calls it. |
-| 12. Account safety restrictions | Done | Safety events, restrictions, status history, effective access checks, sharing disablement, generation hold, and admin audit endpoint are implemented. |
+| 12. Account safety restrictions | Done | Safety events, restrictions, status history, effective access checks, sharing disablement, generation hold, admin console review controls, and admin audit logs are implemented. |
 | 13. Scenario and adventure sharing | Done | Scenario drafts, immutable revisions, publish/share-token endpoint, frontend publish action, Profile scenario summaries, Explore published-scenario listings, and share gate are implemented; publish content excludes transcript/private runtime memory by default. |
 
 ## User Workflow Status
@@ -236,11 +237,14 @@ Implemented in local backend mode:
 - Scenario drafts, immutable revisions, publish/share-token flow, and Explore listings for published revisions.
 - Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
 - Admin accounts can manage platform-wide non-secret settings from Settings; provider API keys and OAuth secrets stay in `.env` or environment variables.
+- Admin accounts can open Admin Console for platform totals, user lookup, account status changes, manual restrictions, safety event review, diagnostics, and admin audit logs.
+- Admin account assignment is backend-only. Use `AIST_ADMIN_EMAILS` or backend data; there is no frontend role-promotion control.
 
 Still intentionally limited in this branch:
 
 - Explore lists published scenarios but does not yet fork/open them as new adventures.
 - Policy pack step 9 remains owner-review-gated before real-user enforcement.
+- Workers are still deferred. They are not required for local UAT of auth, backend adventures, admin review, policy gates, or scenario sharing; they become useful when background jobs need to run without blocking user requests.
 
 Local backend commands:
 

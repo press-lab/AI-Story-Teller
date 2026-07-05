@@ -29,6 +29,7 @@ import { currentRestriction } from "./accountSafety";
 import { createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
 import { buildProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
+import { buildAdminConsole, createManualRestriction, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 
@@ -229,6 +230,55 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
         restrictions: data.accountRestrictions,
         policyDecisions: data.policyDecisions,
       }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/admin/console") {
+      await assertAdmin(request, config, db);
+      const data = await db.read();
+      sendJson(response, 200, buildAdminConsole(data, config), corsHeaders);
+      return;
+    }
+
+    if (request.method === "PATCH" && route.segments[0] === "admin" && route.segments[1] === "users" && route.segments[3] === "status") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const userId = route.segments[2];
+      const { body } = await readJsonBody<{ status: "pending_verification" | "active" | "disabled" }>(request);
+      const data = await db.update((draft) => {
+        updateUserStatus(draft, adminUserId, userId, body.status);
+        return buildAdminConsole(draft, config);
+      });
+      sendJson(response, 200, data, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.segments[0] === "admin" && route.segments[1] === "users" && route.segments[3] === "restrictions") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const userId = route.segments[2];
+      const { body } = await readJsonBody<{
+        level: "none" | "watched" | "restricted" | "generation_hold" | "banned";
+        reason: string;
+        sharingDisabled?: boolean;
+        generationDisabled?: boolean;
+        contextTokenCap?: number;
+      }>(request);
+      const data = await db.update((draft) => {
+        createManualRestriction(draft, adminUserId, userId, body);
+        return buildAdminConsole(draft, config);
+      });
+      sendJson(response, 200, data, corsHeaders);
+      return;
+    }
+
+    if (request.method === "PATCH" && route.segments[0] === "admin" && route.segments[1] === "account-safety-events") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const eventId = route.segments[2];
+      const { body } = await readJsonBody<{ status: "open" | "reviewed" | "dismissed" }>(request);
+      const data = await db.update((draft) => {
+        updateSafetyEventStatus(draft, adminUserId, eventId, body.status);
+        return buildAdminConsole(draft, config);
+      });
+      sendJson(response, 200, data, corsHeaders);
       return;
     }
 
@@ -456,7 +506,7 @@ function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, st
   return {
     "Access-Control-Allow-Origin": allowOrigin,
     "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Key",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
   };
 }

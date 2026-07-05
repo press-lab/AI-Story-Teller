@@ -40,10 +40,16 @@ export interface BackendImportRequest {
 
 export interface BackendPolicyDecision {
   id: string;
+  userId?: string;
+  subjectType?: string;
+  subjectId?: string;
   gate: string;
   action: string;
+  matchedRuleIds?: string[];
   categories: string[];
   severity: number;
+  manualReviewRequired?: boolean;
+  rationale?: string;
   createdAt: string;
 }
 
@@ -128,6 +134,102 @@ export interface BackendPlatformSettings {
   };
   updatedAt?: string;
   updatedByUserId?: string;
+}
+
+export interface BackendAdminConsoleData {
+  totals: {
+    users: number;
+    activeUsers: number;
+    adventures: number;
+    scenarioDrafts: number;
+    publishedScenarioRevisions: number;
+    openSafetyEvents: number;
+    policyDecisions: number;
+    usageLogs: number;
+  };
+  users: Array<{
+    id: string;
+    email: string;
+    displayName: string;
+    profileDisplayName: string;
+    role: "user" | "admin";
+    status: BackendUser["status"];
+    emailVerified: boolean;
+    createdAt: string;
+    updatedAt: string;
+    adventureCount: number;
+    scenarioCount: number;
+    publishedScenarioCount: number;
+    safetyEventCount: number;
+    openSafetyEventCount: number;
+    currentRestriction: BackendRestriction & { contextTokenCap?: number };
+  }>;
+  invites: Array<{
+    id: string;
+    tokenHashPrefix: string;
+    createdAt: string;
+    expiresAt?: string;
+    maxUses: number;
+    useCount: number;
+    createdByUserId?: string;
+    note?: string;
+    disabledAt?: string;
+  }>;
+  adventures: Array<AdventureSummary & { ownerUserId: string }>;
+  scenarios: Array<{
+    id: string;
+    ownerUserId: string;
+    title: string;
+    description: string;
+    revisionCount: number;
+    publishedRevisionCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  scenarioRevisions: Array<{
+    id: string;
+    scenarioId: string;
+    ownerUserId: string;
+    version: number;
+    title: string;
+    status: string;
+    createdAt: string;
+    publishedAt?: string;
+  }>;
+  safetyEvents: BackendSafetyEvent[];
+  restrictions: Array<BackendRestriction & { contextTokenCap?: number; reviewedAt?: string }>;
+  policyDecisions: BackendPolicyDecision[];
+  usageLogs: Array<{
+    id: string;
+    userId: string;
+    adventureId: string;
+    providerName: string;
+    model: string;
+    usage?: unknown;
+    createdAt: string;
+  }>;
+  contextBuilds: Array<{
+    id: string;
+    userId: string;
+    adventureId: string;
+    gate: string;
+    createdAt: string;
+    messageCount: number;
+    sectionCount: number;
+    totalEstimatedTokens: number;
+    excludedItemCount: number;
+    decisionCount: number;
+  }>;
+  adminActions: Array<{
+    id: string;
+    adminUserId?: string;
+    action: string;
+    targetType: string;
+    targetId: string;
+    reason?: string;
+    createdAt: string;
+  }>;
+  platformSettings: BackendPlatformSettings;
 }
 
 function authHeaders(session?: BackendSessionState): Record<string, string> {
@@ -221,6 +323,57 @@ export function saveBackendPlatformSettings(
   });
 }
 
+export function loadBackendAdminConsole(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<BackendAdminConsoleData>(config, "/admin/console", {
+    headers: authHeaders(session),
+  });
+}
+
+export function updateBackendAdminUserStatus(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  userId: string,
+  status: BackendUser["status"],
+) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/users/${encodeURIComponent(userId)}/status`, {
+    method: "PATCH",
+    headers: authHeaders(session),
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function createBackendAdminRestriction(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  userId: string,
+  input: {
+    level: "none" | "watched" | "restricted" | "generation_hold" | "banned";
+    reason: string;
+    sharingDisabled?: boolean;
+    generationDisabled?: boolean;
+    contextTokenCap?: number;
+  },
+) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/users/${encodeURIComponent(userId)}/restrictions`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateBackendAdminSafetyEventStatus(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  eventId: string,
+  status: BackendSafetyEvent["status"],
+) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/account-safety-events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    headers: authHeaders(session),
+    body: JSON.stringify({ status }),
+  });
+}
+
 export function importBackendAdventure(config: RuntimeConfig, session: BackendSessionState, input: BackendImportRequest) {
   return apiJson<{ adventures: AdventureSummary[] }>(config, "/adventures/import", {
     method: "POST",
@@ -274,10 +427,12 @@ export function publishBackendScenarioRevision(config: RuntimeConfig, session: B
   });
 }
 
-export function loadBackendSafetyAudit(config: RuntimeConfig) {
+export function loadBackendSafetyAudit(config: RuntimeConfig, session?: BackendSessionState) {
   return apiJson<{
     events: BackendSafetyEvent[];
     restrictions: BackendRestriction[];
     policyDecisions: BackendPolicyDecision[];
-  }>(config, "/admin/account-safety-events");
+  }>(config, "/admin/account-safety-events", {
+    headers: authHeaders(session),
+  });
 }

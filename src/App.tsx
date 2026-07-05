@@ -32,6 +32,7 @@ import { HelpPage } from "./pages/HelpPage";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ExplorePage } from "./pages/ExplorePage";
+import { AdminConsolePage } from "./pages/AdminConsolePage";
 import { premadeAdventures } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
@@ -47,7 +48,9 @@ import {
   createBackendInvite,
   createBackendScenario,
   createBackendScenarioRevision,
+  createBackendAdminRestriction,
   importAndOpenBackendAdventure,
+  loadBackendAdminConsole,
   loadBackendSafetyAudit,
   loadBackendExploreScenarios,
   loadBackendPlatformSettings,
@@ -59,7 +62,10 @@ import {
   signupBackendLocalGoogle,
   signupBackendPassword,
   startBackendGoogleOAuth,
+  updateBackendAdminSafetyEventStatus,
+  updateBackendAdminUserStatus,
   verifyBackendEmail,
+  type BackendAdminConsoleData,
   type BackendExploreScenarioSummary,
   type BackendImportRequest,
   type BackendProfileSummary,
@@ -70,6 +76,7 @@ type TabId =
   | "adventures"
   | "explore"
   | "profile"
+  | "admin"
   | "dashboard"
   | "play"
   | "edit"
@@ -185,10 +192,13 @@ export default function App() {
   const [backendProfileStatus, setBackendProfileStatus] = useState("");
   const [backendExploreScenarios, setBackendExploreScenarios] = useState<BackendExploreScenarioSummary[]>([]);
   const [backendExploreStatus, setBackendExploreStatus] = useState("");
+  const [backendAdminConsole, setBackendAdminConsole] = useState<BackendAdminConsoleData | undefined>();
+  const [backendAdminStatus, setBackendAdminStatus] = useState("");
   const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const backendReady = backendMode && Boolean(backendSession?.sessionToken);
-  const hideBackendUserDeveloperControls = backendMode && Boolean(backendSession) && backendSession?.user.role !== "admin";
+  const isBackendAdmin = backendMode && backendSession?.user.role === "admin";
+  const hideBackendUserDeveloperControls = backendMode && !isBackendAdmin;
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
@@ -331,7 +341,7 @@ export default function App() {
       openEditor(tabId as EditorTabId);
       return;
     }
-    if (["adventures", "explore", "profile", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
+    if (["adventures", "explore", "profile", "admin", "dashboard", "play", "edit", "settings", "help"].includes(tabId)) {
       setModalTab(undefined);
       navigateTo(tabId);
       return;
@@ -481,15 +491,84 @@ export default function App() {
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
 
+  const refreshBackendAdminConsole = useCallback(async () => {
+    if (!backendReady || !backendSession || backendSession.user.role !== "admin") {
+      setBackendAdminConsole(undefined);
+      setBackendAdminStatus("");
+      return;
+    }
+    setBackendAdminStatus("Loading admin console...");
+    try {
+      const result = await loadBackendAdminConsole(normalizedRuntimeConfig, backendSession);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Admin console refresh failed.");
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig]);
+
+  const setBackendAdminUserStatus = useCallback(async (userId: string, status: "pending_verification" | "active" | "disabled") => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Saving user status...");
+    try {
+      const result = await updateBackendAdminUserStatus(normalizedRuntimeConfig, backendSession, userId, status);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("User status updated.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "User status update failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
+  const createBackendAdminUserRestriction = useCallback(async (
+    userId: string,
+    input: {
+      level: "none" | "watched" | "restricted" | "generation_hold" | "banned";
+      reason: string;
+      sharingDisabled?: boolean;
+      generationDisabled?: boolean;
+      contextTokenCap?: number;
+    },
+  ) => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Applying restriction...");
+    try {
+      const result = await createBackendAdminRestriction(normalizedRuntimeConfig, backendSession, userId, input);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("Restriction applied.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Restriction update failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
+  const setBackendAdminSafetyEventStatus = useCallback(async (
+    eventId: string,
+    status: "open" | "reviewed" | "dismissed",
+  ) => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Saving safety event...");
+    try {
+      const result = await updateBackendAdminSafetyEventStatus(normalizedRuntimeConfig, backendSession, eventId, status);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("Safety event updated.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Safety event update failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
   useEffect(() => {
     if (!backendReady || !backendSession) {
       setBackendProfile(undefined);
       setBackendExploreScenarios([]);
+      setBackendAdminConsole(undefined);
       return;
     }
     if (activeTab === "profile") void refreshBackendProfile();
     if (activeTab === "explore") void refreshBackendExploreScenarios();
-  }, [activeTab, backendReady, backendSession, refreshBackendExploreScenarios, refreshBackendProfile]);
+    if (activeTab === "admin") void refreshBackendAdminConsole();
+  }, [activeTab, backendReady, backendSession, refreshBackendAdminConsole, refreshBackendExploreScenarios, refreshBackendProfile]);
 
   async function importToBackend(input: BackendImportRequest) {
     if (!backendSession) throw new Error("Sign in to the local backend before importing.");
@@ -636,7 +715,7 @@ export default function App() {
               return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
             }}
             onBackendImport={importToBackend}
-            onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
+            onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
             onPublishBackendScenario={publishCurrentAdventureScenario}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
@@ -722,6 +801,21 @@ export default function App() {
       );
     }
 
+    if (activeTab === "admin") {
+      return (
+        <AdminConsolePage
+          backendMode={backendMode}
+          backendSession={backendSession}
+          data={backendAdminConsole}
+          status={backendAdminStatus}
+          onRefresh={refreshBackendAdminConsole}
+          onSetUserStatus={setBackendAdminUserStatus}
+          onCreateRestriction={createBackendAdminUserRestriction}
+          onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
+        />
+      );
+    }
+
     if (activeTab === "help") {
       return <HelpPage />;
     }
@@ -782,7 +876,7 @@ export default function App() {
             return saveBackendPlatformSettings(normalizedRuntimeConfig, backendSession, settings);
           }}
           onBackendImport={importToBackend}
-          onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig)}
+          onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
           onPublishBackendScenario={publishCurrentAdventureScenario}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
@@ -948,6 +1042,15 @@ export default function App() {
           >
             Profile
           </button>
+          {isBackendAdmin && (
+            <button
+              type="button"
+              className={activeTopTab === "admin" ? "active" : ""}
+              onClick={() => openTab("admin")}
+            >
+              Admin
+            </button>
+          )}
           <button
             type="button"
             className={activeTopTab === "dashboard" ? "active" : ""}

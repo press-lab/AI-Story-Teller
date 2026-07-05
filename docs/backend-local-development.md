@@ -49,6 +49,8 @@ Provider secrets live only in `.env` or environment variables. Admin-editable pl
 
 Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role.
 
+The frontend Admin Console appears only when the signed-in backend session returns `user.role === "admin"`. There is no frontend control to promote a user to admin. Mark admin accounts through backend configuration (`AIST_ADMIN_EMAILS`) or backend data only.
+
 ## Google OAuth
 
 The local backend supports real Google OAuth/OIDC without NextAuth. This app is a static Vite frontend plus a custom Node API, so introducing NextAuth would require migrating the app to Next.js.
@@ -107,8 +109,27 @@ POST /scenarios
 POST /scenarios/:id/revisions
 POST /scenario-revisions/:id/publish
 GET /admin/account-safety-events
+GET /admin/console
+PATCH /admin/users/:id/status
+POST /admin/users/:id/restrictions
+PATCH /admin/account-safety-events/:id
 GET /admin/platform-settings
 PUT /admin/platform-settings
 ```
 
-Admin invite creation is open in local dev if `AIST_API_ADMIN_KEY` is unset. Set `AIST_API_ADMIN_KEY` to require `X-Admin-Key`.
+Admin invite creation is open in local dev only when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are unset. Set either value to require backend admin authorization.
+
+## Admin Console
+
+The Admin tab is available only in backend mode for backend admin sessions.
+
+It provides:
+
+- platform totals for users, adventures, scenarios, safety events, policy decisions, usage logs, and context builds
+- user lookup with account status and current restriction
+- manual account status changes (`pending_verification`, `active`, `disabled`)
+- manual account restrictions (`none`, `watched`, `restricted`, `generation_hold`, `banned`)
+- account safety event review/dismiss/reopen actions
+- invite, adventure, scenario, policy decision, usage, context-build, and admin-audit summaries
+
+It intentionally does not expose raw invite tokens, provider API keys, OAuth secrets, full context payloads, or a role-promotion button.

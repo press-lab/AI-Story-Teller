@@ -1529,6 +1529,73 @@ details.story-card-item:not([open]) > :not(summary) {
   gap: 18px;
 }
 
+.admin-console-page {
+  max-width: min(1400px, 100%);
+}
+
+.admin-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.admin-metric-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 112px;
+}
+
+.admin-metric-card strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.admin-section {
+  margin-top: 16px;
+}
+
+.admin-table th,
+.admin-table td {
+  vertical-align: top;
+}
+
+.admin-compact-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-compact-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.admin-compact-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.admin-compact-row > div {
+  min-width: 0;
+}
+
+.admin-compact-row p {
+  margin: 4px 0 0;
+}
+
+.admin-compact-row .status-pill {
+  flex: 0 0 auto;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
 .library-card {
   overflow: hidden;
   border: 1px solid var(--border);

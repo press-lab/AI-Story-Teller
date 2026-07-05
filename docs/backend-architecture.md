@@ -86,14 +86,17 @@ Implemented locally:
 - Signed-in backend accounts do not see browser model routing, background cost, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, premade/developer seed adventures, or the Play model selector.
 - Real Google OAuth/OIDC is implemented through `/auth/google/start` and `/auth/google/callback`; the local Google stub remains only for owner/dev testing.
 - Platform-wide non-secret settings live behind admin-only backend settings; secrets and bootstrap defaults stay in environment/config files.
+- Admin Console is available to backend admin sessions only and exposes platform totals, user lookup, account status changes, manual restrictions, safety event review, diagnostics, and admin action audit logs.
+- Admin role assignment is backend-controlled through `AIST_ADMIN_EMAILS` or stored backend data. The frontend does not provide admin promotion.
 
 Implementation notes:
 
 - The first local database is JSON-backed for low-friction local hosting. The schema mirrors future server tables so Postgres migration remains straightforward.
 - The first local password hash uses Node `scrypt` with per-password salt. Production can still switch to Argon2id/bcrypt during the hosted hardening pass.
-- The Google endpoint is a local stub (`POST /auth/google/local`) for owner testing. Real Google OAuth callback plumbing is still a later hosted/local-HTTPS task.
+- The local Google stub (`POST /auth/google/local`) remains for owner testing only; real Google OAuth/OIDC is implemented through the local callback route.
 - The draft policy pack lives at `apps/api/policy/rule-packs/manual-review-draft.json` and is marked `manualReviewRequired`.
 - `AIST_POLICY_MODE=reviewOnly` logs reviewed harmful-category matches without enforcing them; `AIST_POLICY_MODE=enforce` is for local owner-test enforcement. Prompt-injection/policy-evasion blocks immediately because it protects the system boundary.
+- Workers are a later backend scalability/latency improvement. The current local UAT path does not need workers because auth, backend adventure CRUD, server turn execution, policy gates, scenario sharing, and admin review all run synchronously in the API.
 
 ## Hard Boundary: Local Mode vs Backend Mode
 
