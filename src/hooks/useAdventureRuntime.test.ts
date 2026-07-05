@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { applyResponseLengthHint, combineProviderUsage, isRecoveredBackendTurn } from "./useAdventureRuntime";
+import { describe, expect, it, vi } from "vitest";
+import {
+  applyResponseLengthHint,
+  combineProviderUsage,
+  isRecoveredBackendTurn,
+  saveDeviceAdventureBeforeBackendTurn,
+} from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
 import { createDefaultAdventure } from "../state/defaults";
+import type { AdventureStore } from "../runtime/adventureStore";
 
 const baseConfig: RuntimeProviderSettings = {
   name: "openai-compatible",
@@ -86,5 +92,59 @@ describe("isRecoveredBackendTurn", () => {
     };
 
     expect(isRecoveredBackendTurn(before, recovered, "You draw your sword")).toBe(false);
+  });
+});
+
+describe("saveDeviceAdventureBeforeBackendTurn", () => {
+  it("saves the current device adventure before backend generation", async () => {
+    const adventure = createDefaultAdventure("Edited Device Copy");
+    adventure.id = "adv-device";
+    adventure.messages = [
+      { id: "msg-edited", role: "assistant", content: "Edited on this phone.", createdAt: "2026-07-05T00:00:00.000Z" },
+    ];
+    const store: AdventureStore = {
+      list: vi.fn(),
+      get: vi.fn(),
+      save: vi.fn(async () => undefined),
+      delete: vi.fn(),
+    };
+    const setSaveStatus = vi.fn();
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const result = await saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures);
+
+    expect(result).toBe(adventure);
+    expect(store.save).toHaveBeenCalledWith(expect.objectContaining({
+      id: "adv-device",
+      messages: expect.arrayContaining([
+        expect.objectContaining({ content: "Edited on this phone." }),
+      ]),
+    }));
+    expect(setSaveStatus).toHaveBeenLastCalledWith("saved");
+    expect(refreshAdventures).toHaveBeenCalledTimes(1);
+  });
+
+  it("uploads the local backup when the backend reports a save conflict", async () => {
+    const adventure = createDefaultAdventure("Local Conflict Winner");
+    adventure.id = "adv-conflict";
+    const resolved = { ...adventure, updatedAt: "2026-07-05T00:00:01.000Z" };
+    const store: AdventureStore = {
+      list: vi.fn(),
+      get: vi.fn(),
+      save: vi.fn(async () => {
+        throw new Error("Local backup conflict. Duplicate this local copy or restore a server backup before syncing.");
+      }),
+      delete: vi.fn(),
+      resolveSyncConflict: vi.fn(async () => resolved),
+    };
+    const setSaveStatus = vi.fn();
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const result = await saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures);
+
+    expect(result).toBe(resolved);
+    expect(store.resolveSyncConflict).toHaveBeenCalledWith("adv-conflict", "uploadLocal");
+    expect(setSaveStatus).toHaveBeenLastCalledWith("saved");
+    expect(refreshAdventures).toHaveBeenCalledTimes(1);
   });
 });

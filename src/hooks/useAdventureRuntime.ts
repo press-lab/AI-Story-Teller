@@ -186,6 +186,34 @@ function shouldRecoverBackendTurn(error: unknown): boolean {
   );
 }
 
+export function isLocalBackupConflictError(error: unknown): boolean {
+  return error instanceof Error && /local backup conflict|server copy changed|restore a server backup/i.test(error.message);
+}
+
+export async function saveDeviceAdventureBeforeBackendTurn(
+  adventure: Adventure,
+  adventureStore: AdventureStore,
+  setSaveStatus: (status: string) => void,
+  refreshAdventures: () => Promise<void>,
+): Promise<Adventure> {
+  setSaveStatus("saving");
+  try {
+    await adventureStore.save(adventure);
+    setSaveStatus("saved");
+    await refreshAdventures();
+    return adventure;
+  } catch (error) {
+    if (isLocalBackupConflictError(error) && adventureStore.resolveSyncConflict) {
+      const resolved = await adventureStore.resolveSyncConflict(adventure.id, "uploadLocal");
+      setSaveStatus("saved");
+      await refreshAdventures();
+      return resolved;
+    }
+    setSaveStatus(error instanceof Error ? error.message : "save failed");
+    throw error;
+  }
+}
+
 function buildBackgroundConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const base = mergeProviderConfig(adventure, settings);
   return resolveBackgroundProviderConfig(adventure, base) as RuntimeProviderSettings;
@@ -387,13 +415,15 @@ export function useAdventureRuntime(
 
     if (backendTurnRunner) {
       try {
-        const result = await backendTurnRunner.runTurn({ adventureId: adventure.id, input: text, mode });
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendTurnRunner.runTurn({ adventureId: syncedAdventure.id, input: text, mode });
         setAdventure(result.adventure);
         setContextResult(result.postTurnContext ?? result.preProviderContext);
         setSaveStatus("saved");
         await refreshAdventures();
       } catch (backendError) {
-        if (shouldRecoverBackendTurn(backendError) && await recoverBackendTurnCompletion(adventure, text)) return;
+        if (shouldRecoverBackendTurn(backendError) && await recoverBackendTurnCompletion(adventureRef.current ?? adventure, text)) return;
         setError(backendError instanceof Error ? backendError.message : "Backend turn failed.");
         throw backendError;
       } finally {
@@ -483,8 +513,10 @@ export function useAdventureRuntime(
 
     if (backendTurnRunner) {
       try {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
         const result = await backendTurnRunner.runTurn({
-          adventureId: adventure.id,
+          adventureId: syncedAdventure.id,
           input: "[continue]",
           mode: "story",
           recordUserInput: false,
@@ -557,8 +589,10 @@ export function useAdventureRuntime(
 
     if (backendTurnRunner) {
       try {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
         const result = await backendTurnRunner.runTurn({
-          adventureId: adventure.id,
+          adventureId: syncedAdventure.id,
           input: "[regenerate]",
           mode: "story",
           recordUserInput: false,
