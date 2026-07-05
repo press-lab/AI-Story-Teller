@@ -4,6 +4,11 @@ This document is an architect-facing handoff for taking AI Story Teller from a b
 
 It is intentionally full-stack. It describes what should exist, what must remain true from the current app, and where the production boundaries should be drawn.
 
+Companion docs:
+
+- `docs/backend-architecture.md`: target backend architecture, including parallel local/cloud modes, invite-gated auth, sharing, deterministic content policy, and prompt-injection defenses.
+- `docs/backend-implementation-plan.md`: phased implementation plan with validation gates and current-local-workflow preservation.
+
 ## Current State
 
 AI Story Teller is currently a browser-only React + TypeScript + Vite app.
