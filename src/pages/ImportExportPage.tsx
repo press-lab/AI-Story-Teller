@@ -11,6 +11,8 @@ interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
   onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
   onOpenImportedAdventure: () => void;
+  onSaveToCloud?: () => Promise<void>;
+  cloudSaveStatus?: string;
 }
 
 type ImportExportMode = "backup" | "restore" | "migrate";
@@ -37,12 +39,15 @@ export function ImportExportPage({
   onImportAdventure,
   onCreateAdventureFromImport,
   onOpenImportedAdventure,
+  onSaveToCloud,
+  cloudSaveStatus,
 }: ImportExportPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [mode, setMode] = useState<ImportExportMode>("backup");
   const [importText, setImportText] = useState("");
   const [importFilename, setImportFilename] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
+  const [cloudSaving, setCloudSaving] = useState(false);
 
   async function importAdventure() {
     if (importPreview.status !== "ready") {
@@ -89,6 +94,27 @@ export function ImportExportPage({
     const filename = `${slug()}.json`;
     download(filename, exportAdventureJson(adventure));
     setStatusMessage(`Downloaded full backup: ${filename}`);
+  }
+
+  async function handleSaveToCloud() {
+    if (!onSaveToCloud) {
+      setStatusMessage("Cloud save is unavailable in this mode.");
+      return;
+    }
+    setCloudSaving(true);
+    setStatusMessage("Saving to cloud...");
+    notify("Saving to cloud...", { type: "info" });
+    try {
+      await onSaveToCloud();
+      setStatusMessage("Saved current adventure to cloud.");
+      notify("Saved to cloud.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Cloud save failed.";
+      setStatusMessage(message);
+      notify(message, { type: "error" });
+    } finally {
+      setCloudSaving(false);
+    }
   }
 
   function handleExportStoryCards() {
@@ -192,8 +218,16 @@ export function ImportExportPage({
             <button type="button" className="primary-action" onClick={handleExport}>
               Download full backup
             </button>
+            {onSaveToCloud && (
+              <button type="button" onClick={() => void handleSaveToCloud()} disabled={cloudSaving}>
+                {cloudSaving ? "Saving..." : "Save to Cloud"}
+              </button>
+            )}
             <span className="muted">{backupSizeKb} KB JSON</span>
           </div>
+          {cloudSaveStatus && (
+            <p className="muted import-export-cloud-status">{cloudSaveStatus}</p>
+          )}
           <div className="import-export-secondary-actions" aria-label="Partial exports">
             <button type="button" onClick={handleExportStoryCards}>
               <span>Story Cards</span>

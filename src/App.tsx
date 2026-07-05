@@ -476,6 +476,20 @@ export default function App() {
     saveSyncedAdventures,
   );
 
+  const saveCurrentAdventureToCloud = useCallback(async () => {
+    if (!adventure) throw new Error("No adventure is open.");
+    setSaveStatus("Saving to cloud...");
+    try {
+      await adventureStore.save(adventure);
+      await library.refreshAdventures();
+      if (!backendMode) await pushCloudSync();
+      setSaveStatus("saved");
+    } catch (error) {
+      setSaveStatus(error instanceof Error ? error.message : "Cloud save failed.");
+      throw error;
+    }
+  }, [adventure, adventureStore, backendMode, library.refreshAdventures, pushCloudSync]);
+
   const gitHubSaves = useGitHubSaves(cloudSyncSettings, gitHubSaveSettings);
 
   useEffect(() => {
@@ -995,6 +1009,8 @@ export default function App() {
               setModalTab(undefined);
               navigateTo("play");
             }}
+            onSaveToCloud={saveCurrentAdventureToCloud}
+            cloudSaveStatus={backendMode ? saveStatus : cloudSyncStatus}
           />
         );
       default:

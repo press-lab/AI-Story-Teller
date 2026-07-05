@@ -514,6 +514,7 @@ describe("side menu page smoke coverage", () => {
     const onImportAdventure = vi.fn(async () => undefined);
     const onCreateAdventureFromImport = vi.fn(async () => undefined);
     const onOpenImportedAdventure = vi.fn();
+    const onSaveToCloud = vi.fn(async () => undefined);
 
     renderWithAdventure((adventure, dispatch) => (
       <ContextPreviewPage adventure={adventure} dispatch={dispatch} onBuildContext={onBuildContext} />
@@ -535,10 +536,14 @@ describe("side menu page smoke coverage", () => {
         onImportAdventure={onImportAdventure}
         onCreateAdventureFromImport={onCreateAdventureFromImport}
         onOpenImportedAdventure={onOpenImportedAdventure}
+        onSaveToCloud={onSaveToCloud}
+        cloudSaveStatus="Cloud ready."
       />
     ));
     expect(screen.getByText("Back up this adventure")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Back Up/i })).toHaveAttribute("aria-selected", "true");
+    await user.click(screen.getByRole("button", { name: "Save to Cloud" }));
+    expect(onSaveToCloud).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole("tab", { name: /Migrate/i }));
     expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
     cleanup();

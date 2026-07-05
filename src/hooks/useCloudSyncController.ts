@@ -19,7 +19,9 @@ export function useCloudSyncController(
         `Pushed ${result.adventures.length} adventure(s) to ${result.owner}/${result.repo}:${result.path}.`,
       );
     } catch (err) {
-      setCloudSyncStatus(err instanceof Error ? err.message : "Cloud push failed.");
+      const message = err instanceof Error ? err.message : "Cloud push failed.";
+      setCloudSyncStatus(message);
+      throw err;
     }
   }
 
@@ -33,7 +35,9 @@ export function useCloudSyncController(
         `Pulled ${result.remoteAdventureCount} remote adventure(s); local library now has ${result.adventures.length}.`,
       );
     } catch (err) {
-      setCloudSyncStatus(err instanceof Error ? err.message : "Cloud pull failed.");
+      const message = err instanceof Error ? err.message : "Cloud pull failed.";
+      setCloudSyncStatus(message);
+      throw err;
     }
   }
 
