@@ -583,29 +583,55 @@ export default function App() {
     return next;
   }
 
-  async function publishCurrentAdventureScenario() {
+  async function publishAdventureScenario(adventureId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
-    if (!adventure) throw new Error("Open an adventure before publishing a scenario revision.");
-    const scenario = await createBackendScenario(normalizedRuntimeConfig, backendSession, {
-      title: adventure.title,
-      description: "Local backend scenario draft.",
-      sourceAdventureId: adventure.id,
-    });
-    const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenario.id, {
-      title: adventure.title,
-      description: "Scenario revision created from the current adventure. Transcript and runtime memory are excluded.",
-      content: {
-        title: adventure.title,
-        openingScene: adventure.openingScene,
-        components: adventure.components,
-        storyCards: adventure.storyCards,
-        thumbnailImage: getAdventureThumbnail(adventure),
-      },
-    });
-    const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
-    await refreshBackendProfile();
-    await refreshBackendExploreScenarios();
-    return published;
+    setBackendProfileStatus("Publishing scenario...");
+    try {
+      const source = adventure?.id === adventureId ? adventure : await adventureStore.get(adventureId);
+      if (!source) throw new Error("Adventure could not be loaded for publishing.");
+      const scenario = await createBackendScenario(normalizedRuntimeConfig, backendSession, {
+        title: source.title,
+        description: "Scenario draft created from a backend adventure.",
+        sourceAdventureId: source.id,
+      });
+      const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenario.id, {
+        title: source.title,
+        description: "Reusable scenario setup created from an adventure. Transcript and private runtime state are excluded.",
+        content: {
+          schemaVersion: 1,
+          title: source.title,
+          openingScene: source.openingScene,
+          components: source.components,
+          storyCards: source.storyCards,
+          brains: source.brains,
+          triggerRules: source.triggerRules,
+          thumbnailImage: getAdventureThumbnail(source),
+        },
+      });
+      const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
+      await refreshBackendProfile();
+      await refreshBackendExploreScenarios();
+      setBackendProfileStatus(`Published "${source.title}" to Explore.`);
+      return published;
+    } catch (error) {
+      setBackendProfileStatus(error instanceof Error ? error.message : "Scenario publish failed.");
+      throw error;
+    }
+  }
+
+  async function publishScenarioRevisionFromProfile(revisionId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
+    setBackendProfileStatus("Publishing scenario...");
+    try {
+      const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
+      await refreshBackendProfile();
+      await refreshBackendExploreScenarios();
+      setBackendProfileStatus("Published scenario to Explore.");
+      return published;
+    } catch (error) {
+      setBackendProfileStatus(error instanceof Error ? error.message : "Scenario publish failed.");
+      throw error;
+    }
   }
 
   async function startBackendExploreScenario(revisionId: string) {
@@ -747,7 +773,6 @@ export default function App() {
             }}
             onBackendImport={importToBackend}
             onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
-            onPublishBackendScenario={publishCurrentAdventureScenario}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
             onCloudSyncSettingsChange={setCloudSyncSettings}
@@ -831,6 +856,16 @@ export default function App() {
             await library.openAdventure(id);
             navigateTo("dashboard");
           }}
+          onEditAdventure={async (id) => {
+            await library.openAdventure(id);
+            openEditor();
+          }}
+          onPublishAdventure={async (id) => {
+            await publishAdventureScenario(id);
+          }}
+          onPublishScenarioRevision={async (revisionId) => {
+            await publishScenarioRevisionFromProfile(revisionId);
+          }}
         />
       );
     }
@@ -911,7 +946,6 @@ export default function App() {
           }}
           onBackendImport={importToBackend}
           onLoadBackendSafetyAudit={() => loadBackendSafetyAudit(normalizedRuntimeConfig, backendSession ?? undefined)}
-          onPublishBackendScenario={publishCurrentAdventureScenario}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
           onCloudSyncSettingsChange={setCloudSyncSettings}

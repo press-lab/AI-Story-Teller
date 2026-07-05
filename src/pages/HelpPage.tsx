@@ -11,17 +11,46 @@ interface DocTopic {
 
 const topics: DocTopic[] = [
   {
-    id: "overview",
-    title: "Overview",
+    id: "new-user-guide",
+    title: "New User Guide",
     category: "Getting Started",
-    summary: "Local-first architecture, provider keys, persistence model, and the main operating loop.",
-    tags: ["local-first", "indexeddb", "provider", "browser"],
+    summary: "The high-level path from account setup to Explore, adventures, imports, publishing, and advanced docs.",
+    tags: ["new user", "guide", "profile", "explore", "publish", "import"],
     body: (
       <>
         <p>
-          AI Story Teller is a browser-only interactive fiction system. Adventure data is stored in
-          IndexedDB. Tiny runtime preferences, including the provider API key, live in localStorage.
-          There is no backend service.
+          Start in Settings to choose Browser Local or Local Backend. Browser Local uses the current no-account setup.
+          Local Backend adds invite-gated accounts, backend adventures, Explore, Profile, and backend-owned model calls.
+        </p>
+        <p>
+          Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
+          are private playthroughs you can open, edit, or publish as a scenario. Publishing copies setup surfaces such
+          as the opening scene, World Blocks, Story Cards, Characters, automations, and thumbnail, not your transcript.
+        </p>
+        <p>
+          Explore lists built-in and community scenarios. Starting one creates a new adventure in your account. User
+          variables are not substituted yet, so edit the new adventure first if you do not want to use the premade
+          player character.
+        </p>
+        <p>
+          For deeper reference, see <code>docs/new-user-guide.md</code>, <code>docs/backend-local-development.md</code>,
+          <code>docs/building-a-scenario.md</code>, <code>docs/adventure-design.md</code>, and <code>FEATURES.md</code>.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "overview",
+    title: "Overview",
+    category: "Getting Started",
+    summary: "Local-first architecture, optional backend mode, provider keys, persistence model, and the main operating loop.",
+    tags: ["local-first", "indexeddb", "provider", "browser", "backend"],
+    body: (
+      <>
+        <p>
+          AI Story Teller is local-first interactive fiction. Browser Local stores adventure data in IndexedDB
+          and tiny runtime preferences, including the provider API key, in localStorage. Local Backend is optional
+          and adds account-backed persistence, sharing, policy gates, and server-owned provider configuration.
         </p>
         <pre>{`npm.cmd test
 npm.cmd run build

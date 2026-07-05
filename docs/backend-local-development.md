@@ -30,6 +30,9 @@ To use backend mode from the frontend:
 3. Set Execution mode to `Local Backend`.
 4. Create an invite, sign up, and verify or log in.
 5. Import backend JSON or create/open backend adventures from the Library.
+6. Use Profile to review your Scenarios and Adventures.
+
+For the high-level tester path, start with [New User Guide](./new-user-guide.md).
 
 In backend mode, Play submit/continue/regenerate and Context Preview use the local API. GitHub saves and cloud sync remain Browser Local only.
 
@@ -146,7 +149,18 @@ Before generating tester invite codes:
 - Choose `AIST_POLICY_MODE=reviewOnly` for friendly UAT or `AIST_POLICY_MODE=enforce` for local hard-block testing.
 - Confirm GitHub Pages is pointed at `backend-local-implementation`.
 - Confirm testers can reach the backend URL. `127.0.0.1` means each tester's own machine; remote testers need their own local backend, a tunnel, or a hosted backend.
-- Smoke test signup, login, import, scenario publishing, Explore -> Start Adventure, autosave, and Admin Console review before sending invites.
+- Smoke test signup, login, import, Profile -> Publish Scenario, Explore -> Start Adventure, autosave, and Admin Console review before sending invites.
+
+## Profile Library
+
+Profile is the backend account library.
+
+It separates:
+
+- Scenarios: reusable setup packages that can be published to Explore.
+- Adventures: private playthroughs with actions to open, edit, or publish reusable setup as a scenario.
+
+Publishing from an adventure creates a scenario draft, creates an immutable revision, runs the share gate, publishes the revision, and refreshes Profile and Explore. The published payload includes reusable setup surfaces such as opening scene, components, story cards, brains, trigger rules, and thumbnail. It excludes transcript messages and private runtime state.
 
 ## Explore Scenario Starts
 

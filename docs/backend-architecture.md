@@ -64,7 +64,8 @@ The `backend-local-implementation` branch now contains a local backend scaffold 
 Implemented locally:
 
 - `src/runtime/runtimeConfig.ts` and `src/runtime/adventureStore.ts` define local/backend runtime adapters.
-- Settings has a Runtime card with backend account, invite, import, audit, and scenario publish controls; `local` remains the default mode.
+- Settings has a Runtime card with backend account, invite, import, and audit controls; `local` remains the default mode.
+- Profile separates authored Scenarios from private Adventures and exposes publish actions for reusable scenario setup.
 - `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, and `src/hooks/useAdventureAutosave.ts` can operate through the active local or backend store.
 - In backend mode, play submit/continue/regenerate and Context Preview call the local API instead of browser provider credentials.
 - GitHub saves/sync remain local-mode only and are gated away from backend adventures.

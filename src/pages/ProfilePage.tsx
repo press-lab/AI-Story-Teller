@@ -7,6 +7,9 @@ interface ProfilePageProps {
   status?: string;
   onRefresh: () => Promise<void>;
   onOpenAdventure?: (id: string) => Promise<void>;
+  onEditAdventure?: (id: string) => Promise<void>;
+  onPublishAdventure?: (id: string) => Promise<void>;
+  onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
 }
 
 function formatDate(iso?: string): string {
@@ -21,6 +24,9 @@ export function ProfilePage({
   status,
   onRefresh,
   onOpenAdventure,
+  onEditAdventure,
+  onPublishAdventure,
+  onPublishScenarioRevision,
 }: ProfilePageProps) {
   if (!backendMode) {
     return (
@@ -77,8 +83,68 @@ export function ProfilePage({
       <section className="profile-section">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Library</p>
+            <p className="eyebrow">Shareable</p>
+            <h3>Scenarios</h3>
+            <p className="muted">
+              Published scenarios appear in Explore. They copy setup, not private transcripts.
+            </p>
+          </div>
+        </div>
+        {profile?.scenarios.length ? (
+          <div className="library-grid">
+            {profile.scenarios.map((scenario) => (
+              <article key={scenario.id} className="library-card">
+                <div className="library-card-body">
+                  <div>
+                    <h3>{scenario.title}</h3>
+                    {scenario.description && <p className="muted">{scenario.description}</p>}
+                    <div className="editor-stat-row">
+                      <span>{scenario.revisionCount} revisions</span>
+                      <span>{scenario.publishedRevisionCount} published</span>
+                      {scenario.latestRevision && (
+                        <span>
+                          v{scenario.latestRevision.version} {scenario.latestRevision.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {scenario.latestRevision && (
+                    <div className="library-card-actions">
+                      {scenario.latestRevision.status === "draft" && (
+                        <button
+                          type="button"
+                          className="primary-action"
+                          onClick={() => void onPublishScenarioRevision?.(scenario.latestRevision!.id)}
+                          disabled={!onPublishScenarioRevision}
+                        >
+                          Publish Latest
+                        </button>
+                      )}
+                      {scenario.latestRevision.status === "published" && (
+                        <span className="status-pill">Published in Explore</span>
+                      )}
+                      {scenario.latestRevision.status === "quarantined" && (
+                        <span className="status-pill">Needs review</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">No created scenarios yet. Publish an adventure below to create one.</p>
+        )}
+      </section>
+
+      <section className="profile-section">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Personal</p>
             <h3>Adventures</h3>
+            <p className="muted">
+              Adventures are your private playthroughs. Open to play, edit setup, or publish the reusable setup as a scenario.
+            </p>
           </div>
         </div>
         {profile?.adventures.length ? (
@@ -95,8 +161,19 @@ export function ProfilePage({
                     </div>
                   </div>
                   <div className="library-card-actions">
-                    <button type="button" onClick={() => void onOpenAdventure?.(adventure.id)}>
+                    <button type="button" onClick={() => void onOpenAdventure?.(adventure.id)} disabled={!onOpenAdventure}>
                       Open
+                    </button>
+                    <button type="button" onClick={() => void onEditAdventure?.(adventure.id)} disabled={!onEditAdventure}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-action"
+                      onClick={() => void onPublishAdventure?.(adventure.id)}
+                      disabled={!onPublishAdventure}
+                    >
+                      Publish Scenario
                     </button>
                   </div>
                 </div>
@@ -105,36 +182,6 @@ export function ProfilePage({
           </div>
         ) : (
           <p className="muted">No backend adventures yet.</p>
-        )}
-      </section>
-
-      <section className="profile-section">
-        <div className="panel-heading">
-          <div>
-            <p className="eyebrow">Creator</p>
-            <h3>Scenarios</h3>
-          </div>
-        </div>
-        {profile?.scenarios.length ? (
-          <div className="library-grid">
-            {profile.scenarios.map((scenario) => (
-              <article key={scenario.id} className="library-card">
-                <div className="library-card-body">
-                  <div>
-                    <h3>{scenario.title}</h3>
-                    {scenario.description && <p className="muted">{scenario.description}</p>}
-                    <div className="editor-stat-row">
-                      <span>{scenario.revisionCount} revisions</span>
-                      <span>{scenario.publishedRevisionCount} published</span>
-                      {scenario.latestRevision && <span>v{scenario.latestRevision.version} {scenario.latestRevision.status}</span>}
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p className="muted">No created scenarios yet.</p>
         )}
       </section>
     </section>

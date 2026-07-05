@@ -30,6 +30,7 @@ describe("HelpPage documentation UI", () => {
     render(<HelpPage />);
 
     [
+      "New User Guide",
       "Library",
       "Dashboard",
       "Play",
@@ -72,5 +73,16 @@ describe("HelpPage documentation UI", () => {
 
     expect(screen.getAllByText("Next Turn Note")[0]).toBeInTheDocument();
     expect(screen.getByText(/visible, token-counted, and expires after use by default/i)).toBeInTheDocument();
+  });
+
+  it("surfaces the high-level new user guide", async () => {
+    const user = userEvent.setup();
+    render(<HelpPage />);
+
+    await user.type(screen.getByLabelText(/search docs/i), "new user");
+
+    expect(screen.getAllByRole("link", { name: "New User Guide" })[0]).toBeInTheDocument();
+    expect(screen.getByText(/Scenarios are reusable setups/i)).toBeInTheDocument();
+    expect(screen.getByText(/docs\/new-user-guide\.md/i)).toBeInTheDocument();
   });
 });

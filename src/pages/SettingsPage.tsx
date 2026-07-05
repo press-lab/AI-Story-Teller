@@ -87,7 +87,6 @@ interface SettingsPageProps {
     restrictions: BackendRestriction[];
     policyDecisions: BackendPolicyDecision[];
   }>;
-  onPublishBackendScenario?: () => Promise<{ token: string; revision: { status: string } }>;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
   onCloudSyncSettingsChange?: (settings: CloudSyncSettings) => void;
@@ -124,7 +123,6 @@ export function SettingsPage({
   onSaveBackendPlatformSettings,
   onBackendImport,
   onLoadBackendSafetyAudit,
-  onPublishBackendScenario,
   cloudSyncSettings,
   cloudSyncStatus,
   onCloudSyncSettingsChange,
@@ -265,14 +263,6 @@ export function SettingsPage({
         `${result.events.length} event(s), ${result.restrictions.length} restriction(s), ${result.policyDecisions.length} decision(s).`,
       );
     }
-  }
-
-  async function publishBackendScenario() {
-    const result = await runBackendAction("Publish scenario", async () => {
-      if (!onPublishBackendScenario) throw new Error("Backend scenario publishing is unavailable.");
-      return onPublishBackendScenario();
-    });
-    if (result?.token) setBackendStatus(`Published scenario share token: ${result.token}`);
   }
 
   async function loadPlatformSettings() {
@@ -557,9 +547,6 @@ export function SettingsPage({
           <div className="toolbar">
             <button type="button" onClick={() => void importBackendJson()} disabled={!backendSession || !backendImportText.trim()}>
               Import to backend
-            </button>
-            <button type="button" onClick={() => void publishBackendScenario()} disabled={!backendSession || !adventure}>
-              Publish scenario
             </button>
             {!hideDeveloperControls && (
               <button type="button" onClick={() => void loadBackendAudit()}>
