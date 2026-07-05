@@ -98,6 +98,16 @@ export interface BackendProfileSummary {
   scenarios: BackendProfileScenarioSummary[];
 }
 
+export interface BackendPublicProfileSummary {
+  user: {
+    id: string;
+    displayName: string;
+    createdAt: string;
+  };
+  profile: BackendProfile;
+  scenarios: BackendExploreScenarioSummary[];
+}
+
 export interface BackendExploreScenarioSummary {
   scenarioId: string;
   revisionId: string;
@@ -295,6 +305,12 @@ export function loadBackendSession(config: RuntimeConfig, session: BackendSessio
 
 export function loadBackendProfile(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<BackendProfileSummary>(config, "/profile/me", {
+    headers: authHeaders(session),
+  });
+}
+
+export function loadBackendPublicProfile(config: RuntimeConfig, session: BackendSessionState, userId: string) {
+  return apiJson<BackendPublicProfileSummary>(config, `/profiles/${encodeURIComponent(userId)}`, {
     headers: authHeaders(session),
   });
 }

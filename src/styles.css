@@ -1737,6 +1737,24 @@ details.story-card-item:not([open]) > :not(summary) {
   min-height: 34px;
 }
 
+.profile-link-button {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  font-size: inherit;
+  font-weight: 700;
+  text-transform: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.profile-link-button:hover:not(:disabled) {
+  background: transparent;
+  color: var(--active-bg);
+}
+
 .profile-section {
   display: grid;
   gap: 12px;

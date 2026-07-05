@@ -9,6 +9,7 @@ interface ExplorePageProps {
   status?: string;
   onStartScenario?: (revisionId: string) => Promise<void>;
   onStartPremade?: (premadeId: PremadeAdventureId) => Promise<void>;
+  onOpenProfile?: (userId: string) => Promise<void>;
 }
 
 const scenarioStartWarning = "This scenario will start exactly as published. AI Story Teller does not substitute user variables yet. If you do not want to play the premade player character, edit the new adventure after it opens before continuing play.";
@@ -25,6 +26,7 @@ export function ExplorePage({
   status,
   onStartScenario,
   onStartPremade,
+  onOpenProfile,
 }: ExplorePageProps) {
   const canUseBackendScenarios = backendMode && Boolean(backendSession);
   const totalAvailable = scenarios.length + premadeAdventures.length;
@@ -106,7 +108,18 @@ export function ExplorePage({
                 </div>
                 <div className="library-card-body">
                   <div>
-                    <p className="eyebrow">By {scenario.ownerDisplayName}</p>
+                    <p className="eyebrow">
+                      By{" "}
+                      <button
+                        type="button"
+                        className="profile-link-button"
+                        aria-label={`Open ${scenario.ownerDisplayName} profile`}
+                        disabled={!onOpenProfile}
+                        onClick={() => void onOpenProfile?.(scenario.ownerUserId)}
+                      >
+                        {scenario.ownerDisplayName}
+                      </button>
+                    </p>
                     <h3>{scenario.title}</h3>
                     {scenario.description && <p className="muted">{scenario.description}</p>}
                     <div className="editor-stat-row">

@@ -531,7 +531,7 @@ describe("local API policy gates and sharing", () => {
     });
 
     const profile = await requestJson<{
-      user: { email: string };
+      user: { id: string; email: string };
       profile: { displayName: string };
       adventures: Array<{ title: string }>;
       scenarios: Array<{ title: string; revisionCount: number; publishedRevisionCount: number }>;
@@ -546,6 +546,31 @@ describe("local API policy gates and sharing", () => {
         title: "Explore Scenario",
         revisionCount: 1,
         publishedRevisionCount: 1,
+      }),
+    ]);
+
+    const viewerSession = await passwordSession("viewer@example.com");
+    const publicProfile = await requestJson<{
+      user: { id: string; displayName: string; email?: string };
+      profile: { displayName: string };
+      adventures?: Array<{ title: string }>;
+      scenarios: Array<{ title: string; ownerDisplayName: string; version: number }>;
+    }>(`/profiles/${profile.body.user.id}`, {
+      headers: { Authorization: `Bearer ${viewerSession}` },
+    });
+    expect(publicProfile.status).toBe(200);
+    expect(publicProfile.body.user).toEqual({
+      id: profile.body.user.id,
+      displayName: "Player",
+      createdAt: expect.any(String),
+    });
+    expect(publicProfile.body.user.email).toBeUndefined();
+    expect(publicProfile.body.adventures).toBeUndefined();
+    expect(publicProfile.body.scenarios).toEqual([
+      expect.objectContaining({
+        title: "Explore Scenario",
+        ownerDisplayName: "Player",
+        version: 1,
       }),
     ]);
 

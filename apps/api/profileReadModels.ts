@@ -28,6 +28,16 @@ export interface BackendProfileSummary {
   scenarios: ProfileScenarioSummary[];
 }
 
+export interface PublicProfileSummary {
+  user: {
+    id: string;
+    displayName: string;
+    createdAt: string;
+  };
+  profile: UserProfile;
+  scenarios: ExploreScenarioSummary[];
+}
+
 export interface ExploreScenarioSummary {
   scenarioId: string;
   revisionId: string;
@@ -56,6 +66,22 @@ export function buildProfileSummary(data: LocalDbData, userId: string): BackendP
       .filter((entry) => entry.ownerUserId === userId)
       .map((draft) => summarizeScenarioDraft(data, draft))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+  };
+}
+
+export function buildPublicProfileSummary(data: LocalDbData, userId: string): PublicProfileSummary {
+  const user = data.users.find((entry) => entry.id === userId);
+  const profile = data.profiles.find((entry) => entry.userId === userId);
+  if (!user || !profile) throw new Error("Profile not found.");
+
+  return {
+    user: {
+      id: user.id,
+      displayName: user.displayName,
+      createdAt: user.createdAt,
+    },
+    profile,
+    scenarios: listExploreScenarios(data).filter((scenario) => scenario.ownerUserId === userId),
   };
 }
 

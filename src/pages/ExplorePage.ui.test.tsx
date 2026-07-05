@@ -94,6 +94,7 @@ describe("ExplorePage", () => {
     const user = userEvent.setup();
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const onStartScenario = vi.fn(async () => undefined);
+    const onOpenProfile = vi.fn(async () => undefined);
 
     render(
       <ExplorePage
@@ -102,10 +103,14 @@ describe("ExplorePage", () => {
         scenarios={[backendScenario()]}
         premadeAdventures={[]}
         onStartScenario={onStartScenario}
+        onOpenProfile={onOpenProfile}
       />,
     );
 
     expect(screen.getByRole("heading", { name: "Published Scenarios" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open Creator profile" }));
+    expect(onOpenProfile).toHaveBeenCalledWith("user-creator");
+
     await user.click(screen.getByRole("button", { name: "Start Adventure" }));
 
     expect(onStartScenario).toHaveBeenCalledWith("revision-1");

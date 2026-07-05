@@ -5,7 +5,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { BackendProfileSummary, BackendSessionState } from "../runtime/backendApi";
+import type { BackendProfileSummary, BackendPublicProfileSummary, BackendSessionState } from "../runtime/backendApi";
 import { ProfilePage } from "./ProfilePage";
 
 const timestamp = "2026-07-04T00:00:00.000Z";
@@ -67,9 +67,40 @@ function profile(): BackendProfileSummary {
   };
 }
 
+function publicProfile(): BackendPublicProfileSummary {
+  return {
+    user: {
+      id: "user-creator",
+      displayName: "Creator",
+      createdAt: timestamp,
+    },
+    profile: {
+      userId: "user-creator",
+      displayName: "Creator",
+      bio: "Builds shared worlds.",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    scenarios: [
+      {
+        scenarioId: "scenario-public",
+        revisionId: "revision-public",
+        ownerUserId: "user-creator",
+        ownerDisplayName: "Creator",
+        title: "Published World",
+        description: "A public setup.",
+        version: 2,
+        createdAt: timestamp,
+        publishedAt: timestamp,
+      },
+    ],
+  };
+}
+
 describe("ProfilePage", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("separates scenarios from adventures and exposes library actions", async () => {
@@ -112,5 +143,36 @@ describe("ProfilePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Logout" }));
     expect(onLogout).toHaveBeenCalledOnce();
+  });
+
+  it("shows public profiles without private account data", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const onStartScenario = vi.fn(async () => undefined);
+    const onViewOwnProfile = vi.fn();
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        publicProfile={publicProfile()}
+        viewMode="public"
+        onStartScenario={onStartScenario}
+        onViewOwnProfile={onViewOwnProfile}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Creator" })).toBeInTheDocument();
+    expect(screen.getByText("Builds shared worlds.")).toBeInTheDocument();
+    expect(screen.getByText("Published World")).toBeInTheDocument();
+    expect(screen.queryByText("player@example.com")).not.toBeInTheDocument();
+    expect(screen.queryByText("Private Playthrough")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Logout" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start Adventure" }));
+    expect(onStartScenario).toHaveBeenCalledWith("revision-public");
+
+    await user.click(screen.getByRole("button", { name: "Your Profile" }));
+    expect(onViewOwnProfile).toHaveBeenCalledOnce();
   });
 });

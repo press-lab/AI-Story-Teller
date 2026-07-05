@@ -29,7 +29,7 @@ import {
 } from "./adventureStore";
 import { currentRestriction } from "./accountSafety";
 import { createAdventureFromScenarioRevision, createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
-import { buildProfileSummary, listExploreScenarios } from "./profileReadModels";
+import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { buildAdminConsole, createManualRestriction, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
@@ -206,6 +206,13 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       const session = await requireSession(request, db);
       const data = await db.read();
       sendJson(response, 200, buildProfileSummary(data, session.user.id), corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.segments[0] === "profiles" && route.segments.length === 2) {
+      await requireSession(request, db);
+      const data = await db.read();
+      sendJson(response, 200, buildPublicProfileSummary(data, route.segments[1]), corsHeaders);
       return;
     }
 

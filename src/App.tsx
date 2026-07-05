@@ -57,6 +57,7 @@ import {
   loadBackendExploreScenarios,
   loadBackendPlatformSettings,
   loadBackendProfile,
+  loadBackendPublicProfile,
   loginBackendPassword,
   publishBackendScenarioRevision,
   saveBackendPlatformSettings,
@@ -70,6 +71,7 @@ import {
   type BackendExploreScenarioSummary,
   type BackendImportRequest,
   type BackendProfileSummary,
+  type BackendPublicProfileSummary,
   type BackendSessionState,
 } from "./runtime/backendApi";
 
@@ -190,6 +192,8 @@ export default function App() {
     null,
   );
   const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
+  const [backendPublicProfile, setBackendPublicProfile] = useState<BackendPublicProfileSummary | undefined>();
+  const [backendPublicProfileUserId, setBackendPublicProfileUserId] = useState<string | null>(null);
   const [backendProfileStatus, setBackendProfileStatus] = useState("");
   const [backendExploreScenarios, setBackendExploreScenarios] = useState<BackendExploreScenarioSummary[]>([]);
   const [backendExploreStatus, setBackendExploreStatus] = useState("");
@@ -261,6 +265,8 @@ export default function App() {
     const rawSession = params.get("backendSession");
     if (!rawSession) return;
     try {
+      setBackendPublicProfileUserId(null);
+      setBackendPublicProfile(undefined);
       setBackendSession(JSON.parse(rawSession) as BackendSessionState);
       history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
     } catch {
@@ -496,6 +502,41 @@ export default function App() {
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
 
+  const refreshBackendPublicProfile = useCallback(async (userId: string) => {
+    if (!backendReady || !backendSession) {
+      setBackendPublicProfile(undefined);
+      setBackendProfileStatus("");
+      return;
+    }
+    if (userId === backendSession.user.id) {
+      setBackendPublicProfileUserId(null);
+      setBackendPublicProfile(undefined);
+      await refreshBackendProfile();
+      return;
+    }
+    setBackendProfileStatus("Loading profile...");
+    try {
+      const profile = await loadBackendPublicProfile(normalizedRuntimeConfig, backendSession, userId);
+      setBackendPublicProfile(profile);
+      setBackendProfileStatus("");
+    } catch (error) {
+      setBackendPublicProfile(undefined);
+      setBackendProfileStatus(error instanceof Error ? error.message : "Profile refresh failed.");
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig, refreshBackendProfile]);
+
+  const openBackendPublicProfile = useCallback(async (userId: string) => {
+    if (!backendReady || !backendSession) return;
+    if (userId === backendSession.user.id) {
+      setBackendPublicProfileUserId(null);
+      setBackendPublicProfile(undefined);
+    } else {
+      setBackendPublicProfileUserId(userId);
+      setBackendPublicProfile(undefined);
+    }
+    navigateTo("profile");
+  }, [backendReady, backendSession]);
+
   const refreshBackendExploreScenarios = useCallback(async () => {
     if (!backendReady || !backendSession) {
       setBackendExploreScenarios([]);
@@ -582,14 +623,31 @@ export default function App() {
   useEffect(() => {
     if (!backendReady || !backendSession) {
       setBackendProfile(undefined);
+      setBackendPublicProfile(undefined);
+      setBackendPublicProfileUserId(null);
       setBackendExploreScenarios([]);
       setBackendAdminConsole(undefined);
       return;
     }
-    if (activeTab === "profile") void refreshBackendProfile();
+    if (activeTab === "profile") {
+      if (backendPublicProfileUserId && backendPublicProfileUserId !== backendSession.user.id) {
+        void refreshBackendPublicProfile(backendPublicProfileUserId);
+      } else {
+        void refreshBackendProfile();
+      }
+    }
     if (activeTab === "explore") void refreshBackendExploreScenarios();
     if (activeTab === "admin") void refreshBackendAdminConsole();
-  }, [activeTab, backendReady, backendSession, refreshBackendAdminConsole, refreshBackendExploreScenarios, refreshBackendProfile]);
+  }, [
+    activeTab,
+    backendPublicProfileUserId,
+    backendReady,
+    backendSession,
+    refreshBackendAdminConsole,
+    refreshBackendExploreScenarios,
+    refreshBackendProfile,
+    refreshBackendPublicProfile,
+  ]);
 
   async function importToBackend(input: BackendImportRequest) {
     if (!backendSession) throw new Error("Sign in to the local backend before importing.");
@@ -831,8 +889,6 @@ export default function App() {
           onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
           onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
           providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
-          premadeAdventures={hideBackendUserDeveloperControls ? [] : premadeAdventures}
-          onLoadPremadeAdventure={hideBackendUserDeveloperControls ? undefined : library.loadPremadeAdventure}
         />
       );
     }
@@ -847,16 +903,22 @@ export default function App() {
           status={backendExploreStatus}
           onStartScenario={backendReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
+          onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
         />
       );
     }
 
     if (activeTab === "profile") {
+      const showingPublicProfile = Boolean(
+        backendPublicProfileUserId && backendPublicProfileUserId !== backendSession?.user.id,
+      );
       return (
         <ProfilePage
           backendMode={backendMode}
           backendSession={backendSession}
           profile={backendProfile}
+          publicProfile={showingPublicProfile ? backendPublicProfile : undefined}
+          viewMode={showingPublicProfile ? "public" : "own"}
           status={backendProfileStatus}
           onOpenAdventure={async (id) => {
             await library.openAdventure(id);
@@ -872,7 +934,18 @@ export default function App() {
           onPublishScenarioRevision={async (revisionId) => {
             await publishScenarioRevisionFromProfile(revisionId);
           }}
-          onLogout={() => setBackendSession(null)}
+          onStartScenario={backendReady ? startBackendExploreScenario : undefined}
+          onViewOwnProfile={() => {
+            setBackendPublicProfileUserId(null);
+            setBackendPublicProfile(undefined);
+            openTab("profile");
+          }}
+          onLogout={() => {
+            setBackendPublicProfileUserId(null);
+            setBackendPublicProfile(undefined);
+            setBackendProfile(undefined);
+            setBackendSession(null);
+          }}
         />
       );
     }
@@ -1076,12 +1149,16 @@ export default function App() {
         )}
         onVerifyEmail={async (token) => {
           const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
+          setBackendPublicProfileUserId(null);
+          setBackendPublicProfile(undefined);
           setBackendSession(session);
           navigateTo("profile");
           return session;
         }}
         onLoginPassword={async (input) => {
           const session = await loginBackendPassword(normalizedRuntimeConfig, input);
+          setBackendPublicProfileUserId(null);
+          setBackendPublicProfile(undefined);
           setBackendSession(session);
           navigateTo("profile");
           return session;
@@ -1124,7 +1201,11 @@ export default function App() {
           <button
             type="button"
             className={activeTopTab === "profile" ? "active" : ""}
-            onClick={() => openTab("profile")}
+            onClick={() => {
+              setBackendPublicProfileUserId(null);
+              setBackendPublicProfile(undefined);
+              openTab("profile");
+            }}
           >
             Profile
           </button>
