@@ -27,6 +27,7 @@ import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 import { useActionFeedback } from "../components/ActionFeedback";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -1052,10 +1053,12 @@ export function AdventuresPage({
       </header>
       <div className="library-grid">
         {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}
-        {adventures.map((adventure) => (
+        {adventures.map((adventure) => {
+          const liveThumbnail = currentAdventure?.id === adventure.id ? getAdventureThumbnail(currentAdventure) : undefined;
+          return (
           <article key={adventure.id} className="library-card">
             <AdventureThumbnailFrame
-              thumbnail={adventure.thumbnailImage}
+              thumbnail={liveThumbnail ?? adventure.thumbnailImage}
               title={adventure.title}
               className="library-card-cover"
             />
@@ -1093,7 +1096,8 @@ export function AdventuresPage({
             </div>
             </div>
           </article>
-        ))}
+          );
+        })}
       </div>
     </section>
   );

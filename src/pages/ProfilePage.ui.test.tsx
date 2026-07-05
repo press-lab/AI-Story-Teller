@@ -6,6 +6,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { BackendProfileSummary, BackendPublicProfileSummary, BackendSessionState } from "../runtime/backendApi";
+import { createDefaultAdventure } from "../state/defaults";
+import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import { ProfilePage } from "./ProfilePage";
 
 const timestamp = "2026-07-04T00:00:00.000Z";
@@ -171,6 +173,33 @@ describe("ProfilePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Logout" }));
     expect(onLogout).toHaveBeenCalledOnce();
+  });
+
+  it("uses the live adventure thumbnail when profile summaries are stale", () => {
+    const staleProfile = profile();
+    staleProfile.adventures[0].thumbnailImage = undefined;
+    staleProfile.scenarios[0].thumbnailImage = undefined;
+    const liveAdventure = createDefaultAdventure("Private Playthrough");
+    liveAdventure.id = "adventure-1";
+    liveAdventure.metadata = thumbnailMetadataPatch({
+      dataUrl: "data:image/png;base64,bGl2ZQ==",
+      mimeType: "image/png",
+      altText: "Live adventure cover",
+      updatedAt: timestamp,
+    });
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        profile={staleProfile}
+        liveAdventure={liveAdventure}
+      />,
+    );
+
+    const images = screen.getAllByAltText("Live adventure cover");
+    expect(images).toHaveLength(2);
+    expect(images[0]).toHaveAttribute("src", "data:image/png;base64,bGl2ZQ==");
   });
 
   it("shows public profiles without private account data", async () => {

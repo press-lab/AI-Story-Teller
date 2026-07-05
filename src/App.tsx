@@ -1024,6 +1024,7 @@ export default function App() {
           publicProfile={showingPublicProfile ? backendPublicProfile : undefined}
           viewMode={showingPublicProfile ? "public" : "own"}
           status={backendProfileStatus}
+          liveAdventure={showingPublicProfile ? undefined : adventure}
           onOpenAdventure={async (id) => {
             await library.openAdventure(id);
             navigateTo("dashboard");

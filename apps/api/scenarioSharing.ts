@@ -1,5 +1,6 @@
 import type { Adventure } from "../../src/types/adventure";
 import { createDefaultAdventure, normalizeAdventure } from "../../src/state/defaults";
+import { normalizeAdventureThumbnail } from "../../src/utils/adventureImages";
 import type { LocalDbData, ScenarioDraft, ScenarioRevision, ShareLink } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import { assertCanShare } from "./accountSafety";
@@ -118,7 +119,9 @@ export function createAdventureFromScenarioRevision(
   const base = createDefaultAdventure(revision.title);
   const openingScene = typeof content.openingScene === "string" ? content.openingScene : base.openingScene;
   const metadata = isRecord(content.metadata) ? { ...content.metadata } : {};
-  const thumbnailImage = isRecord(content.thumbnailImage) ? content.thumbnailImage : undefined;
+  const thumbnailImage =
+    normalizeAdventureThumbnail(content.thumbnailImage)
+    ?? (isRecord(content.metadata) ? normalizeAdventureThumbnail(content.metadata.thumbnailImage) : undefined);
   if (thumbnailImage) metadata.thumbnailImage = thumbnailImage;
   Object.assign(metadata, {
     sourceScenarioId: revision.scenarioId,

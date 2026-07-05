@@ -1,4 +1,5 @@
 import type { AdventureThumbnailImage } from "../../src/types/adventure";
+import { normalizeAdventureThumbnail } from "../../src/utils/adventureImages";
 import type { BackendUser, LocalDbData, ScenarioDraft, ScenarioRevision, UserProfile } from "./apiTypes";
 import { summarizeAdventure } from "./adventureStore";
 
@@ -145,22 +146,9 @@ function scenarioThumbnail(revision: ScenarioRevision): AdventureThumbnailImage 
   if (!isRecord(revision.content)) return undefined;
   const direct = revision.content.thumbnailImage;
   const metadataThumbnail = isRecord(revision.content.metadata) ? revision.content.metadata.thumbnailImage : undefined;
-  return toThumbnailImage(direct) ?? toThumbnailImage(metadataThumbnail);
+  return normalizeAdventureThumbnail(direct) ?? normalizeAdventureThumbnail(metadataThumbnail);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function toThumbnailImage(value: unknown): AdventureThumbnailImage | undefined {
-  if (!isRecord(value)) return undefined;
-  const dataUrl = value.dataUrl;
-  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return undefined;
-  return {
-    dataUrl,
-    name: typeof value.name === "string" ? value.name : undefined,
-    altText: typeof value.altText === "string" ? value.altText : undefined,
-    mimeType: typeof value.mimeType === "string" ? value.mimeType : undefined,
-    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : undefined,
-  };
 }

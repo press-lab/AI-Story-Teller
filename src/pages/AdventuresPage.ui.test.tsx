@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runAdventureGen } from "../ai/adventureGen";
 import { createDefaultAdventure } from "../state/defaults";
 import type { NewAdventureSetup } from "../types/adventure";
+import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import { exportAdventureJson } from "../utils/json";
 import { AdventuresPage } from "./AdventuresPage";
 
@@ -294,6 +295,35 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.getByRole("heading", { name: "Thumbnail Adventure" })).toBeInTheDocument();
     expect(screen.getByText(/12 turns/)).toBeInTheDocument();
     expect(screen.getByText(/25 story entries/)).toBeInTheDocument();
+  });
+
+  it("uses the live adventure thumbnail when the library summary is stale", () => {
+    const currentAdventure = createDefaultAdventure("Open Thumbnail Adventure");
+    currentAdventure.id = "adv-open-thumbnail";
+    currentAdventure.metadata = thumbnailMetadataPatch({
+      dataUrl: "data:image/png;base64,b3Blbg==",
+      altText: "Open adventure cover",
+      mimeType: "image/png",
+      updatedAt: "2026-01-03T00:00:00.000Z",
+    });
+
+    renderAdventuresPage(undefined, {
+      currentAdventure,
+      adventures: [
+        {
+          id: "adv-open-thumbnail",
+          title: "Open Thumbnail Adventure",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          turnCount: 12,
+          storyEntryCount: 25,
+        },
+      ],
+    });
+
+    const image = screen.getByAltText("Open adventure cover");
+    expect(image).toHaveAttribute("src", "data:image/png;base64,b3Blbg==");
+    expect(screen.getByText("Open")).toBeInTheDocument();
   });
 
   it("shows singular turn and story-entry text in the Library", () => {

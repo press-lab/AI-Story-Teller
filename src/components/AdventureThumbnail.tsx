@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent, type ReactNode } from "react";
 import type { AdventureThumbnailImage } from "../types/adventure";
-import { thumbnailAltText } from "../utils/adventureImages";
+import { normalizeAdventureThumbnail, thumbnailAltText } from "../utils/adventureImages";
 
 const MAX_THUMBNAIL_DIMENSION = 1400;
 const JPEG_QUALITY = 0.86;
@@ -60,10 +60,11 @@ export function AdventureThumbnailFrame({
   children?: ReactNode;
 }) {
   const initial = title.trim().slice(0, 1).toUpperCase() || "A";
+  const safeThumbnail = normalizeAdventureThumbnail(thumbnail);
   return (
-    <div className={`adventure-thumbnail-frame${thumbnail ? " has-thumbnail" : ""}${className ? ` ${className}` : ""}`}>
-      {thumbnail ? (
-        <img src={thumbnail.dataUrl} alt={thumbnailAltText(title, thumbnail)} />
+    <div className={`adventure-thumbnail-frame${safeThumbnail ? " has-thumbnail" : ""}${className ? ` ${className}` : ""}`}>
+      {safeThumbnail ? (
+        <img src={safeThumbnail.dataUrl} alt={thumbnailAltText(title, safeThumbnail)} />
       ) : (
         <div className="adventure-thumbnail-fallback" aria-hidden="true">
           <span>{initial}</span>

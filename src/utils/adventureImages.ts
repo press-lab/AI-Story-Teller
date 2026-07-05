@@ -6,8 +6,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function getAdventureThumbnail(source: Pick<Adventure, "metadata"> | { metadata?: JsonObject }): AdventureThumbnailImage | undefined {
-  const value = source.metadata?.[ADVENTURE_THUMBNAIL_METADATA_KEY];
+export function normalizeAdventureThumbnail(value: unknown): AdventureThumbnailImage | undefined {
   if (!isRecord(value)) return undefined;
   const dataUrl = value.dataUrl;
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return undefined;
@@ -18,6 +17,10 @@ export function getAdventureThumbnail(source: Pick<Adventure, "metadata"> | { me
     mimeType: typeof value.mimeType === "string" ? value.mimeType : undefined,
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : undefined,
   };
+}
+
+export function getAdventureThumbnail(source: Pick<Adventure, "metadata"> | { metadata?: JsonObject }): AdventureThumbnailImage | undefined {
+  return normalizeAdventureThumbnail(source.metadata?.[ADVENTURE_THUMBNAIL_METADATA_KEY]);
 }
 
 export function thumbnailMetadataPatch(thumbnail: AdventureThumbnailImage | null): JsonObject {

@@ -5,7 +5,9 @@ import type {
   BackendPublicProfileSummary,
   BackendSessionState,
 } from "../runtime/backendApi";
+import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
+import { getAdventureThumbnail } from "../utils/adventureImages";
 
 interface ProfilePageProps {
   backendMode: boolean;
@@ -14,6 +16,7 @@ interface ProfilePageProps {
   publicProfile?: BackendPublicProfileSummary;
   viewMode?: "own" | "public";
   status?: string;
+  liveAdventure?: Adventure;
   onOpenAdventure?: (id: string) => Promise<void>;
   onEditAdventure?: (id: string) => Promise<void>;
   onDeleteAdventure?: (id: string) => Promise<void>;
@@ -41,6 +44,7 @@ export function ProfilePage({
   publicProfile,
   viewMode = "own",
   status,
+  liveAdventure,
   onOpenAdventure,
   onEditAdventure,
   onDeleteAdventure,
@@ -107,6 +111,15 @@ export function ProfilePage({
     : profile?.profile.displayName || backendSession.profile.displayName || backendSession.user.displayName;
   const ownEmail = profile?.user.email || backendSession.user.email;
   const bio = isPublicProfile ? publicProfile!.profile.bio : profile?.profile.bio;
+  const liveAdventureThumbnail = liveAdventure ? getAdventureThumbnail(liveAdventure) : undefined;
+
+  function sourceAdventureThumbnail(sourceAdventureId?: string): AdventureThumbnailImage | undefined {
+    return liveAdventure?.id === sourceAdventureId ? liveAdventureThumbnail : undefined;
+  }
+
+  function profileAdventureThumbnail(adventureId: string, thumbnail?: AdventureThumbnailImage): AdventureThumbnailImage | undefined {
+    return liveAdventure?.id === adventureId ? liveAdventureThumbnail ?? thumbnail : thumbnail;
+  }
 
   return (
     <section className="page library-page">
@@ -196,7 +209,7 @@ export function ProfilePage({
             {profile.scenarios.map((scenario) => (
               <article key={scenario.id} className="library-card">
                 <AdventureThumbnailFrame
-                  thumbnail={scenario.thumbnailImage}
+                  thumbnail={scenario.thumbnailImage ?? sourceAdventureThumbnail(scenario.sourceAdventureId)}
                   title={scenario.title}
                   className="library-card-cover"
                 />
@@ -259,7 +272,7 @@ export function ProfilePage({
               {profile.adventures.map((adventure) => (
                 <article key={adventure.id} className="library-card">
                   <AdventureThumbnailFrame
-                    thumbnail={adventure.thumbnailImage}
+                    thumbnail={profileAdventureThumbnail(adventure.id, adventure.thumbnailImage)}
                     title={adventure.title}
                     className="library-card-cover"
                   />
