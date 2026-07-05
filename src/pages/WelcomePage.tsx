@@ -47,8 +47,8 @@ export function WelcomePage({
           <p className="eyebrow">AI Story Teller</p>
           <h1>Sign in to continue.</h1>
           <p>
-            This build requires an account. Use an invite code to create a backend account, then open Explore,
-            publish scenarios, and play saved adventures from your profile.
+            This build requires an account. Use an invite code to create an account on the owner-hosted backend,
+            then open Explore, publish scenarios, and play saved adventures from your profile.
           </p>
           <div className="welcome-checks" aria-label="Account features">
             <span>Invite-only signup</span>
@@ -63,7 +63,7 @@ export function WelcomePage({
             <div>
               <p className="eyebrow">Account</p>
               <h2>Welcome</h2>
-              <p className="muted">Enter the local backend URL and sign in with an invited account.</p>
+              <p className="muted">Sign in with an invited account. The API URL should already point at the owner-hosted server.</p>
             </div>
           </div>
 
@@ -78,7 +78,7 @@ export function WelcomePage({
                   mode: runtimeConfig.mode === "local" ? "backendLocal" : runtimeConfig.mode,
                   apiBaseUrl: event.target.value,
                 })}
-                placeholder="http://127.0.0.1:8787"
+                placeholder="https://your-public-api-domain.example"
               />
             </Field>
             <Field label="Invite token">

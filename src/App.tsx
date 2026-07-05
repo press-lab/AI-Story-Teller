@@ -37,7 +37,7 @@ import { WelcomePage } from "./pages/WelcomePage";
 import { premadeAdventures, type PremadeAdventureId } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
-import { defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
+import { applyConfiguredBackendDefault, defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
 import {
   createBackendAdventureStore,
   createBackendContextPreviewSource,
@@ -196,7 +196,7 @@ export default function App() {
   const [backendExploreStatus, setBackendExploreStatus] = useState("");
   const [backendAdminConsole, setBackendAdminConsole] = useState<BackendAdminConsoleData | undefined>();
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
-  const normalizedRuntimeConfig = useMemo(() => normalizeRuntimeConfig(runtimeConfig), [runtimeConfig]);
+  const normalizedRuntimeConfig = useMemo(() => applyConfiguredBackendDefault(runtimeConfig), [runtimeConfig]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const accountReady = Boolean(backendSession?.sessionToken);
   const backendReady = backendMode && accountReady;
@@ -273,6 +273,16 @@ export default function App() {
     if (backendSession || normalizedRuntimeConfig.mode !== "local") return;
     setRuntimeConfig({ ...normalizedRuntimeConfig, mode: "backendLocal" });
   }, [backendSession, normalizedRuntimeConfig, setRuntimeConfig]);
+
+  useEffect(() => {
+    const migrated = applyConfiguredBackendDefault(runtimeConfig);
+    if (
+      migrated.mode !== normalizeRuntimeConfig(runtimeConfig).mode
+      || migrated.apiBaseUrl !== normalizeRuntimeConfig(runtimeConfig).apiBaseUrl
+    ) {
+      setRuntimeConfig(migrated);
+    }
+  }, [runtimeConfig, setRuntimeConfig]);
 
   useEffect(() => {
     if (providerPresets.length === 0) return;

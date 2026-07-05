@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "api:dev": "tsx apps/api/index.ts",
+    "api:serve": "tsx apps/api/ownerServer.ts",
     "api:test": "vitest run apps/api",
+    "pages:set-api": "node scripts/set-pages-api-url.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "smoke:prod": "node scripts/production-smoke.mjs",

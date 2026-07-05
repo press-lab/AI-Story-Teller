@@ -57,15 +57,17 @@ If future context is compressed and the owner says "implement the next step," co
    - Wrap current IndexedDB adventure persistence as the local `AdventureStore`.
    - Wrap current browser provider turn flow as the local `TurnRunner`.
    - Add backend adapter shells that fail clearly while the API does not exist.
-   - Default every user to `local` mode.
+   - Default public users to backend mode, with Browser Local preserved only after sign-in for owner testing.
    - Validate that local IndexedDB saves, JSON import/export, and GitHub saves still work.
 
 3. **Local API skeleton**
    - Add `apps/api`.
    - Add local API start script.
+   - Add owner-server start script for shared UAT from the owner's machine.
    - Add `GET /health` and `GET /version`.
    - Add typed local environment configuration.
    - Add CORS for local Vite and GitHub Pages owner testing.
+   - Add Pages build configuration for the owner's public HTTPS API URL.
    - Add `.env.example` for backend-owned provider settings.
    - Add API smoke/unit test command.
 
@@ -162,7 +164,7 @@ npm.cmd run smoke:prod
 
 ## UAT Checklist
 
-GitHub Pages currently deploys from `main`; it is not automatically the branch preview environment for backend implementation work. The owner can temporarily switch GitHub Pages to build from `backend-local-implementation`, but that changes what the public Pages URL serves and should be an explicit UAT action. Branch work is validated through local/CI checks and branch pushes until the owner explicitly asks to merge. For owner review while away from the machine, use pushed branch commits, CI results, screenshots/logs from local smoke runs, and written UAT evidence. When a hosted backend or preview frontend is added later, this section should be updated with live review URLs.
+GitHub Pages deploys the static frontend. For backend UAT, the owner's machine is the shared server: the Pages build must use `AIST_PUBLIC_API_BASE_URL` pointing to an HTTPS tunnel/domain that forwards to the local API. Branch work is validated through local/CI checks and branch pushes until the owner explicitly asks to merge. For owner review while away from the machine, use pushed branch commits, CI results, screenshots/logs from local smoke runs, and written UAT evidence. When a hosted backend or preview frontend is added later, this section should be updated with live review URLs.
 
 Step 9, manual policy review, can happen at any time. It must be complete before real-user backend generation, imports, sharing, account restrictions, or active policy enforcement are enabled.
 
@@ -170,7 +172,7 @@ Step 9, manual policy review, can happen at any time. It must be complete before
 | --- | --- | --- |
 | 1 | [Baseline branch setup](#next-step-execution-checklist) | Branch is `backend-local-implementation`; `main` remains untouched; current local app still runs without backend dependency; baseline hash is reported. |
 | 2 | [Runtime mode adapters](#phase-1-runtime-adapters) | Local mode remains default; current IndexedDB adventures load; browser provider generation still works; JSON backup/restore and GitHub saves remain reachable. |
-| 3 | [Local API skeleton](#phase-2-backend-skeleton) | API starts locally; `GET /health` and `GET /version` pass; CORS accepts local Vite and GitHub Pages origin for owner testing; frontend still builds without API running. |
+| 3 | [Local API skeleton](#phase-2-backend-skeleton) | API starts locally; owner-server mode binds for shared access; `GET /health` and `GET /version` pass; CORS accepts local Vite and GitHub Pages origin for owner testing; frontend still builds without API running. |
 | 4 | [Local database and migrations](#phase-2-backend-skeleton) | Migration command runs from clean local DB; schema version is visible; failed DB connection produces a clear backend error without affecting local frontend mode. |
 | 5 | [Invite-gated auth](#phase-3-auth-and-invite-gate) | No account activates without invite; Google invited signup works; email/password invited signup works; email verification/reset paths work in local test mode; bad/reused/expired invites fail. |
 | 6 | [Backend adventure persistence](#phase-4-backend-adventure-persistence) | AIST JSON imports as a copy; AI Dungeon JSON imports as a copy; GitHub save JSON imports as a copy; provider secrets are stripped; local IndexedDB source is not mutated. |
@@ -191,8 +193,9 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Runtime mode contracts and backend adapter shells: `src/runtime/runtimeConfig.ts`, `src/runtime/adventureStore.ts`.
 - Runtime settings UI and backend account controls: `src/pages/SettingsPage.tsx`; default runtime is Local Backend and unauthenticated users see only the welcome/sign-in page.
 - Backend mode frontend wiring: `src/App.tsx`, `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, `src/hooks/useAdventureAutosave.ts`.
-- Local API service: `apps/api/server.ts`, `apps/api/index.ts`.
+- Local API service: `apps/api/server.ts`, `apps/api/index.ts`, `apps/api/ownerServer.ts`.
 - Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
+- Owner-hosted UAT deployment: `npm.cmd run api:serve`, `npm.cmd run pages:set-api`, `.github/workflows/deploy.yml`, and `docs/owner-local-server-deployment.md`.
 - Auth/invite gate: `apps/api/auth.ts`.
 - Backend adventure persistence/import/context/turn: `apps/api/adventureStore.ts`.
 - Deterministic policy engine and rule pack: `apps/api/policy.ts`, `apps/api/policy/rule-packs/manual-review-draft.json`.
@@ -213,7 +216,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | --- | --- | --- |
 | 1. Baseline branch setup | Done | Work is on `backend-local-implementation`; `main` untouched; baseline hash recorded in chat and prior commit notes; Browser Local remains available after sign-in for owner testing, but unauthenticated app usage is blocked. |
 | 2. Runtime mode adapters | Done | `RuntimeMode`, local/backend store adapters, backend turn/context adapters, Settings Runtime selector, and local-only GitHub save gating are implemented. |
-| 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, and `npm.cmd run api:test` exist. |
+| 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `npm.cmd run api:serve`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, owner-hosted Pages API URL support, and `npm.cmd run api:test` exist. |
 | 4. Local database and migrations | Done | Local JSON DB with schema version and migration metadata is implemented at `.local-backend/aist-api-db.json`; docs keep Postgres as hosted target. |
 | 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, real Google OAuth/OIDC, local Google dev stub, hashed passwords, rate limits, sessions, profiles, admin roles, and no-invite activation tests exist. |
 | 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, AI Dungeon import-as-copy, GitHub save JSON import-as-copy, provider-secret stripping, and no personal GitHub token use are implemented. |
@@ -383,8 +386,10 @@ Tasks:
 - Add local Postgres connection, or a simpler local database only if Postgres setup blocks early development.
 - Add migration runner.
 - Add local dev script for API.
+- Add owner-server script for shared UAT from the owner's machine.
 - Add API test setup.
 - Add CORS configuration that allows the GitHub Pages frontend origin and local Vite origin during development.
+- Add Pages build variable support for the owner's public HTTPS API URL.
 - Add `.env.example` placeholders for backend-owned provider configuration.
 - Add local-only startup documentation for API, database, and worker placeholders.
 
@@ -405,7 +410,7 @@ Exit criteria:
 - API starts locally.
 - API tests run.
 - Web local mode is unaffected.
-- GitHub Pages can be configured to call the local backend API for owner testing.
+- GitHub Pages can be configured to call the owner-hosted backend API through `AIST_PUBLIC_API_BASE_URL`.
 - No hosted backend dependency exists yet.
 
 ## Phase 3: Auth And Invite Gate

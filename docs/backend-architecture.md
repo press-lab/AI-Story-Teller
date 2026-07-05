@@ -48,14 +48,14 @@ Start as a modular monolith. Split services only after one module has a clear in
 The first backend implementation is local-only.
 
 - GitHub Pages can continue to host the static frontend.
-- The API runs locally, for example `http://127.0.0.1:8787`.
+- The API runs locally on the owner's machine and is exposed to testers through an HTTPS tunnel/domain.
 - The database runs locally.
 - Redis/worker infrastructure runs locally when introduced.
 - Provider credentials live only in local backend environment/configuration.
 - Admin-editable platform settings may override non-secret provider routing, background cadence, and feature defaults, but never provider API keys or OAuth secrets.
 - Hosted backend deployment is a later target after local mode proves the architecture.
 
-Because the backend is local, external users will not be able to use the owner's local API from GitHub Pages unless they run their own backend, use a temporary tunnel, or a hosted backend is added later.
+Because the backend is local, external users reach it through the owner's HTTPS tunnel/domain. Non-technical testers should not run their own backend; the owner machine is the shared server for UAT.
 
 ## Current Branch Implementation
 
@@ -64,6 +64,7 @@ The `backend-local-implementation` branch now contains a local backend scaffold 
 Implemented locally:
 
 - `src/runtime/runtimeConfig.ts` and `src/runtime/adventureStore.ts` define local/backend runtime adapters.
+- The GitHub Pages workflow reads `AIST_PUBLIC_API_BASE_URL` and builds the frontend so all testers default to the owner's public API URL.
 - The public app opens on an account-required welcome page; `backendLocal` is the default runtime.
 - Settings has a Runtime card with backend account, invite, import, and audit controls; `local` remains available only after sign-in for owner testing.
 - Profile separates authored Scenarios from private Adventures and exposes publish actions for reusable scenario setup.
@@ -121,7 +122,7 @@ Local mode:
 Backend local mode:
 
 - Keeps the frontend on GitHub Pages or local Vite.
-- Calls a backend running on the user's machine, for example `http://127.0.0.1:8787`.
+- Calls the owner-hosted local backend through the configured API URL.
 - Requires an authenticated backend account once auth is enabled.
 - Stores backend-mode adventures in local Postgres or the chosen local database.
 - Calls model providers only through the local backend.
@@ -141,7 +142,7 @@ Hosted backend mode, later:
 - Uses server-side context preview and turn execution.
 - Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats, not production persistence.
 
-GitHub Pages can continue to host the static frontend during backend-local development. The important limitation is that `127.0.0.1` always means the viewer's own machine. This is fine for owner/local testing. External users need either their own local backend, a temporary tunnel, or a later hosted backend.
+GitHub Pages can continue to host the static frontend during backend-local development. The important limitation is that `127.0.0.1` always means the viewer's own machine. Public UAT must therefore build the frontend with the owner's HTTPS API URL, which forwards to the local API on the owner's machine.
 
 The owner can also switch GitHub Pages to build from `backend-local-implementation` for branch review, but that changes what the public Pages URL serves. Treat that as an explicit owner-controlled UAT action, not an automatic implementation step.
 

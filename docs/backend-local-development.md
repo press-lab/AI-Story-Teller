@@ -1,6 +1,6 @@
 # Local Backend Development
 
-This is the owner-test local backend path for the `backend-local-implementation` branch.
+This is the owner-test local backend path for the `backend-local-implementation` branch. For public UAT, the intended model is one shared owner-hosted local server: testers open GitHub Pages, while accounts and data stay on the owner's machine. See [Owner-Hosted Local Server Deployment](./owner-local-server-deployment.md).
 
 ## Start
 
@@ -22,6 +22,18 @@ Default local database:
 ```
 
 The frontend now opens on an account-required welcome page. In Settings -> Runtime, signed-in users can still choose `Browser Local` for owner testing; it keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
+
+For shared tester access, use:
+
+```sh
+npm.cmd run api:serve
+```
+
+Then expose `http://127.0.0.1:8787` through an HTTPS tunnel/domain and set the GitHub Pages API URL with:
+
+```sh
+npm.cmd run pages:set-api -- https://your-public-api-domain.example
+```
 
 To use backend mode from the frontend:
 
@@ -148,7 +160,7 @@ Before generating tester invite codes:
 - Add the GitHub Pages origin to `AIST_API_ALLOWED_ORIGINS`.
 - Choose `AIST_POLICY_MODE=reviewOnly` for friendly UAT or `AIST_POLICY_MODE=enforce` for local hard-block testing.
 - Confirm GitHub Pages is pointed at `backend-local-implementation`.
-- Confirm testers can reach the backend URL. `127.0.0.1` means each tester's own machine; remote testers need their own local backend, a tunnel, or a hosted backend.
+- Confirm testers can reach the owner-hosted backend URL. `127.0.0.1` means each tester's own machine, so GitHub Pages UAT must point at the owner's HTTPS tunnel/domain, not raw localhost.
 - Smoke test signup, login, import, Profile -> Publish Scenario, Explore -> Start Adventure, autosave, and Admin Console review before sending invites.
 
 ## Profile Library

@@ -25,9 +25,21 @@ npm.cmd run preview
 
 The Vite config uses `base: "./"` so the built app can be served from a GitHub Pages project path.
 
+For account-backed UAT, GitHub Pages is only the frontend. The backend runs on the owner's machine and must be exposed through an HTTPS tunnel/domain. Set the Pages backend URL and trigger deployment with:
+
+```sh
+npm.cmd run pages:set-api -- https://your-public-api-domain.example
+```
+
+Then keep the owner backend running with:
+
+```sh
+npm.cmd run api:serve
+```
+
 1. Run `npm.cmd run build`.
 2. Publish the `dist/` folder with your preferred Pages workflow.
-3. No backend or server configuration is required.
+3. For browser-only static use, no backend is required. For account-backed UAT, keep `npm.cmd run api:serve` running and point Pages at the public HTTPS API URL.
 
 ## Architecture
 

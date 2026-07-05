@@ -10,9 +10,9 @@ The deployed app is account-gated. Without a backend session, users see only the
 
 **Browser Local** is the original storage/runtime setup, but it is now an internal signed-in mode rather than a public no-account entry path. It stores adventures in browser IndexedDB, stores small runtime settings in localStorage, and can still use the existing browser provider settings, import/export, and GitHub save tools after sign-in.
 
-**Local Backend** is the account-backed test setup. The static frontend can still be served locally or from GitHub Pages, but a local API must be running. Backend mode adds invite-gated signup, Google or email/password login, backend adventure saves, Profile, Explore, scenario publishing, admin controls, policy gates, and backend-owned model configuration.
+**Local Backend** is the account-backed test setup. For public UAT, the owner runs one shared local server and GitHub Pages points to that server through an HTTPS tunnel/domain. Testers do not install or run the backend. Backend mode adds invite-gated signup, Google or email/password login, backend adventure saves, Profile, Explore, scenario publishing, admin controls, policy gates, and backend-owned model configuration.
 
-Settings -> Runtime is where you choose the mode and enter the backend API URL.
+Settings -> Runtime is where the backend API URL is visible. In the public UAT build it should already point at the owner-hosted server.
 
 ## 2. Create Or Sign Into An Account
 
@@ -84,6 +84,7 @@ Admins can use Admin Console and admin-only Settings panels to manage platform-w
 
 ## 9. Where To Read More
 
+- [Owner-Hosted Local Server Deployment](./owner-local-server-deployment.md): how the owner runs the shared local server for non-technical testers.
 - [Local Backend Development](./backend-local-development.md): how to run the API, configure OAuth, prep invites, and test backend mode.
 - [Backend Architecture](./backend-architecture.md): why the backend is structured this way and how local/backend modes coexist.
 - [Backend Implementation Plan](./backend-implementation-plan.md): implementation status and phase-by-phase backend plan.
