@@ -56,6 +56,15 @@ const fallbackThrottle: ProviderRequestThrottle = {
   maxRequestsPerMinute: 20,
 };
 
+type BackendModelMode = "platform" | "personal";
+
+const personalProviderOptions = [
+  { label: "OpenRouter", name: "openrouter", baseUrl: "https://openrouter.ai/api/v1" },
+  { label: "DeepSeek", name: "deepseek", baseUrl: "https://api.deepseek.com" },
+  { label: "OpenAI", name: "openai", baseUrl: "https://api.openai.com/v1" },
+  { label: "Groq", name: "groq", baseUrl: "https://api.groq.com/openai/v1" },
+];
+
 interface SettingsPageProps {
   adventure?: Adventure;
   dispatch: (action: AdventureAction) => void;
@@ -70,6 +79,8 @@ interface SettingsPageProps {
   runtimeConfig?: RuntimeConfig;
   onRuntimeConfigChange?: (config: RuntimeConfig) => void;
   backendSession?: BackendSessionState | null;
+  backendModelMode?: BackendModelMode;
+  onBackendModelModeChange?: (mode: BackendModelMode) => void;
   hideDeveloperControls?: boolean;
   onCreateBackendInvite?: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
   onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
@@ -109,6 +120,8 @@ export function SettingsPage({
   runtimeConfig,
   onRuntimeConfigChange,
   backendSession,
+  backendModelMode = "platform",
+  onBackendModelModeChange,
   hideDeveloperControls = false,
   onCreateBackendInvite,
   onSignupBackendPassword,
@@ -147,7 +160,9 @@ export function SettingsPage({
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
   const isBackendAdmin = backendSession?.user.role === "admin";
+  const isBackendMode = runtimeConfig?.mode !== "local";
   const showRuntimeTechnicalControls = !hideDeveloperControls;
+  const showBackendModelSource = isBackendMode && Boolean(backendSession);
   const showBackendAuthControls = !backendSession || !hideDeveloperControls;
 
   function updateUi(patch: Partial<UiPreferences>) {
@@ -288,6 +303,17 @@ export function SettingsPage({
     onProviderPresetsChange(providerPresets.map((p) => (p.id === id ? { ...p, apiKey } : p)));
   }
 
+  function updateActivePersonalProvider(patch: Partial<ProviderPreset>) {
+    if (!activePreset) return;
+    updatePreset(activePreset.id, patch);
+  }
+
+  function selectPersonalProvider(baseUrl: string) {
+    const provider = personalProviderOptions.find((option) => option.baseUrl === baseUrl);
+    if (!provider || !activePreset) return;
+    updatePreset(activePreset.id, { name: provider.name, baseUrl: provider.baseUrl });
+  }
+
   function updateThrottle(id: string, patch: Partial<ProviderRequestThrottle>) {
     const preset = providerPresets.find((p) => p.id === id);
     if (!preset) return;
@@ -424,7 +450,7 @@ export function SettingsPage({
 
         {/* ── Models ────────────────────────────────── */}
         <article className="panel settings-card settings-runtime-panel">
-          <h3>Runtime</h3>
+          <h3>{hideDeveloperControls ? "Account" : "Runtime"}</h3>
           {showRuntimeTechnicalControls && (
             <>
               <Field label="Execution mode">
@@ -511,6 +537,76 @@ export function SettingsPage({
               Log out
             </button>
           </div>
+
+          {showBackendModelSource && (
+            <details className="setup-panel">
+              <summary>Model Source</summary>
+              <p className="muted">
+                Platform model uses the owner-hosted backend model. Personal model uses your key for generation requests while backend policy checks and saves stay active.
+              </p>
+              <Field label="Generation model source">
+                <select
+                  value={backendModelMode}
+                  onChange={(event) => onBackendModelModeChange?.(event.target.value as BackendModelMode)}
+                >
+                  <option value="platform">Platform model</option>
+                  <option value="personal">My personal model</option>
+                </select>
+              </Field>
+              {backendModelMode === "personal" && activePreset && (
+                <>
+                  <div className="grid two">
+                    <Field label="Provider">
+                      <select
+                        value={personalProviderOptions.some((option) => option.baseUrl === activePreset.baseUrl) ? activePreset.baseUrl : ""}
+                        onChange={(event) => selectPersonalProvider(event.target.value)}
+                      >
+                        <option value="" disabled>Select provider</option>
+                        {personalProviderOptions.map((provider) => (
+                          <option key={provider.baseUrl} value={provider.baseUrl}>{provider.label}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Model">
+                      <input
+                        value={activePreset.model}
+                        onChange={(event) => updateActivePersonalProvider({ model: event.target.value })}
+                        placeholder="deepseek/deepseek-v3.2"
+                      />
+                    </Field>
+                  </div>
+                  <Field label="API Key">
+                    <input
+                      type="password"
+                      value={activePreset.apiKey}
+                      onChange={(event) => updatePresetApiKey(activePreset.id, event.target.value)}
+                      placeholder="Stored in this browser and sent only for your turns"
+                    />
+                  </Field>
+                  <div className="grid two">
+                    <Field label="Temperature">
+                      <NumberInput
+                        min={0}
+                        max={2}
+                        value={activePreset.temperature}
+                        onChange={(temperature) => updateActivePersonalProvider({ temperature })}
+                      />
+                    </Field>
+                    <Field label="Max output tokens">
+                      <NumberInput
+                        min={1}
+                        value={activePreset.maxOutputTokens}
+                        onChange={(maxOutputTokens) => updateActivePersonalProvider({ maxOutputTokens })}
+                      />
+                    </Field>
+                  </div>
+                  <p className="notice">
+                    Personal provider URLs are restricted to approved HTTPS providers before the backend will call them.
+                  </p>
+                </>
+              )}
+            </details>
+          )}
 
           {advanced && !hideDeveloperControls && (
             <>
@@ -1141,7 +1237,7 @@ export function SettingsPage({
         )}
 
         {/* ── Cloud Sync ────────────────────────────── */}
-        {cloudSyncSettings && onCloudSyncSettingsChange && (
+        {!hideDeveloperControls && cloudSyncSettings && onCloudSyncSettingsChange && (
           <article className="panel settings-card settings-section-full cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
             <div className="panel-heading">
               <div>

@@ -273,11 +273,6 @@ function PublicScenarioCard({
   scenario: BackendExploreScenarioSummary;
   onStartScenario?: (revisionId: string) => Promise<void>;
 }) {
-  async function startScenario() {
-    if (!window.confirm(publicScenarioStartWarning)) return;
-    await onStartScenario?.(scenario.revisionId);
-  }
-
   return (
     <article className="library-card">
       <div className="library-card-body">
@@ -293,7 +288,7 @@ function PublicScenarioCard({
           <button
             type="button"
             className="primary-action"
-            onClick={() => void startScenario()}
+            onClick={() => void onStartScenario?.(scenario.revisionId)}
             disabled={!onStartScenario}
           >
             Start Adventure

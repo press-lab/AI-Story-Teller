@@ -83,8 +83,8 @@ npm.cmd run test:live   # optional, uses .env.test.local`}</pre>
           structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
         <p>
-          Library also contains Personal Cloud Sync. For a private single-user setup, it can push and pull
-          all adventures through a private GitHub repo so a phone and computer can continue the same story.
+          Browser Local mode also has Personal Cloud Sync in Settings. Backend accounts save adventures to
+          the owner-hosted server instead.
         </p>
         <p>
           API keys are not stored in adventure records, so exporting, duplicating, or deleting an adventure

@@ -225,6 +225,8 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByRole("heading", { name: "Background Cost" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "LLM Evaluation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Memory Detection" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Runtime" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Personal Cloud Sync")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Show advanced settings")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
@@ -233,7 +235,79 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Runtime" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByText("Model Source")).toBeInTheDocument();
+  });
+
+  it("lets backend users opt into a personal model without showing the full model panel", async () => {
+    const user = userEvent.setup();
+    const onProviderPresetsChange = vi.fn();
+    const onBackendModelModeChange = vi.fn();
+
+    function StatefulSettingsPage() {
+      const [presets, setPresets] = useState([makePreset()]);
+      const [mode, setMode] = useState<"platform" | "personal">("platform");
+      return (
+        <SettingsPage
+          adventure={createDefaultAdventure("Backend User Settings")}
+          dispatch={vi.fn()}
+          providerPresets={presets}
+          activePresetId="preset-test"
+          onProviderPresetsChange={(next) => {
+            setPresets(next);
+            onProviderPresetsChange(next);
+          }}
+          onSelectPreset={vi.fn()}
+          uiPreferences={{ ...defaultUiPreferences, showAdvancedSettings: true }}
+          onUiPreferencesChange={vi.fn()}
+          globalAdventureSettings={defaultGlobalAdventureSettings}
+          onGlobalAdventureSettingsChange={vi.fn()}
+          hideDeveloperControls
+          backendModelMode={mode}
+          onBackendModelModeChange={(next) => {
+            setMode(next);
+            onBackendModelModeChange(next);
+          }}
+          backendSession={{
+            sessionToken: "session-test",
+            user: {
+              id: "user-test",
+              email: "player@example.com",
+              displayName: "Player",
+              status: "active",
+              emailVerified: true,
+              createdAt: "2026-07-04T00:00:00.000Z",
+              updatedAt: "2026-07-04T00:00:00.000Z",
+            },
+            profile: {
+              userId: "user-test",
+              displayName: "Player",
+              bio: "",
+              createdAt: "2026-07-04T00:00:00.000Z",
+              updatedAt: "2026-07-04T00:00:00.000Z",
+            },
+          }}
+        />
+      );
+    }
+
+    render(<StatefulSettingsPage />);
+
+    await user.click(screen.getByText("Model Source"));
+    await user.selectOptions(screen.getByLabelText("Generation model source"), "personal");
+    expect(onBackendModelModeChange).toHaveBeenCalledWith("personal");
+    expect(screen.queryByRole("heading", { name: "Models" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Provider"), "https://openrouter.ai/api/v1");
+    expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "preset-test",
+          name: "openrouter",
+          baseUrl: "https://openrouter.ai/api/v1",
+        }),
+      ]),
+    );
   });
 
   it("shows platform settings for backend admin accounts", () => {

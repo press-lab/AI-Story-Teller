@@ -69,7 +69,6 @@ describe("ExplorePage", () => {
 
   it("exposes built-in premades in browser-local mode with the variable warning", async () => {
     const user = userEvent.setup();
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
     const onStartPremade = vi.fn(async () => undefined);
 
     render(
@@ -86,13 +85,11 @@ describe("ExplorePage", () => {
     expect(screen.getByRole("heading", { name: "Premade Scenarios" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Start Adventure" }));
 
-    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("does not substitute user variables yet"));
     expect(onStartPremade).toHaveBeenCalledWith("rookery");
   });
 
-  it("starts backend community scenarios after warning confirmation", async () => {
+  it("starts backend community scenarios from the visible warning", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const onStartScenario = vi.fn(async () => undefined);
     const onOpenProfile = vi.fn(async () => undefined);
 

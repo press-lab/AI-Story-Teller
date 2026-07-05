@@ -106,6 +106,8 @@ type EditorTabId =
   | "cloudSaves"
   | "importExport";
 
+type BackendModelMode = "platform" | "personal";
+
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
   { id: "components", label: "Plot" },
   { id: "storyCards", label: "Story Cards" },
@@ -191,6 +193,10 @@ export default function App() {
     "ai-story-teller-backend-session",
     null,
   );
+  const [backendModelMode, setBackendModelMode] = useLocalStorage<BackendModelMode>(
+    "ai-story-teller-backend-model-mode",
+    "platform",
+  );
   const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
   const [backendPublicProfile, setBackendPublicProfile] = useState<BackendPublicProfileSummary | undefined>();
   const [backendPublicProfileUserId, setBackendPublicProfileUserId] = useState<string | null>(null);
@@ -205,6 +211,10 @@ export default function App() {
   const backendReady = backendMode && accountReady;
   const isBackendAdmin = backendMode && backendSession?.user.role === "admin";
   const hideBackendUserDeveloperControls = backendMode && !isBackendAdmin;
+  const activePreset: RuntimeProviderSettings =
+    providerPresets.find((p) => p.id === activePresetId) ??
+    providerPresets[0] ??
+    providerInitial;
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
@@ -224,9 +234,13 @@ export default function App() {
   const storageLabel = !accountReady ? "your signed-in account" : backendMode ? "the local backend" : "IndexedDB";
   const backendTurnRunner = useMemo(
     () => backendReady && backendSession
-      ? createBackendTurnRunner(normalizedRuntimeConfig, backendSession.sessionToken)
+      ? createBackendTurnRunner(
+        normalizedRuntimeConfig,
+        backendSession.sessionToken,
+        backendModelMode === "personal" ? activePreset : undefined,
+      )
       : undefined,
-    [backendReady, backendSession, normalizedRuntimeConfig],
+    [activePreset, backendModelMode, backendReady, backendSession, normalizedRuntimeConfig],
   );
   const backendContextPreview = useMemo(
     () => backendReady && backendSession
@@ -380,11 +394,6 @@ export default function App() {
     setModalTab(undefined);
     navigateTo(tabId);
   }
-
-  const activePreset: RuntimeProviderSettings =
-    providerPresets.find((p) => p.id === activePresetId) ??
-    providerPresets[0] ??
-    providerInitial;
 
   const library = useAdventureLibrary(
     adventureStore,
@@ -724,9 +733,11 @@ export default function App() {
       await library.refreshAdventures();
       await refreshBackendProfile();
       setBackendExploreStatus("");
+      setBackendProfileStatus("");
     } catch (error) {
-      setBackendExploreStatus(error instanceof Error ? error.message : "Could not start scenario.");
-      throw error;
+      const message = error instanceof Error ? error.message : "Could not start scenario.";
+      setBackendExploreStatus(message);
+      setBackendProfileStatus(message);
     }
   }
 
@@ -738,7 +749,6 @@ export default function App() {
       setBackendExploreStatus("");
     } catch (error) {
       setBackendExploreStatus(error instanceof Error ? error.message : "Could not start built-in scenario.");
-      throw error;
     }
   }
 
@@ -810,6 +820,8 @@ export default function App() {
             runtimeConfig={normalizedRuntimeConfig}
             onRuntimeConfigChange={setRuntimeConfig}
             backendSession={backendSession}
+            backendModelMode={backendModelMode}
+            onBackendModelModeChange={setBackendModelMode}
             onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
             onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
             onVerifyBackendEmail={async (token) => {
@@ -867,6 +879,9 @@ export default function App() {
   }
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
+  const visibleEditorTabs = hideBackendUserDeveloperControls
+    ? editorTabs.filter((tab) => tab.id !== "cloudSaves")
+    : editorTabs;
 
   const page = (() => {
     if (activeTab === "adventures") {
@@ -878,6 +893,7 @@ export default function App() {
           onOpen={library.openAdventure}
           onOpenEdit={async (id) => { await library.openAdventure(id); openEditor(); }}
           onCreateAdventureFromImport={library.createAdventureFromImport}
+          onImportAdventure={library.importAdventure}
           onDuplicate={library.duplicateAdventure}
           onDelete={(id) => library.removeAdventure(id, adventure?.id)}
           saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
@@ -984,6 +1000,8 @@ export default function App() {
           runtimeConfig={normalizedRuntimeConfig}
           onRuntimeConfigChange={setRuntimeConfig}
           backendSession={backendSession}
+          backendModelMode={backendModelMode}
+          onBackendModelModeChange={setBackendModelMode}
           onCreateBackendInvite={(input) => createBackendInvite(normalizedRuntimeConfig, input)}
           onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
           onVerifyBackendEmail={async (token) => {
@@ -1104,7 +1122,7 @@ export default function App() {
               <p className="muted editor-save-status">{saveStatus}</p>
             </header>
             <nav className="editor-tabs" aria-label="Adventure editor">
-              {editorTabs.map((tab) => {
+              {visibleEditorTabs.map((tab) => {
                 const badge = tab.badge === "memory" ? pendingProposalCount : 0;
                 return (
                   <button

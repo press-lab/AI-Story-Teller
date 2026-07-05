@@ -4,6 +4,7 @@ import type { Adventure } from "../types/adventure";
 import type { AdventurePageProps } from "./pageTypes";
 import { Field } from "./shared";
 import { AidImportWizard } from "../components/AidImportWizard";
+import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 
 interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
@@ -12,22 +13,6 @@ interface ImportExportPageProps extends AdventurePageProps {
 }
 
 type ImportExportMode = "backup" | "restore" | "migrate";
-
-type BackupPreview =
-  | { status: "empty" }
-  | { status: "error"; message: string }
-  | {
-      status: "ready";
-      id: string;
-      title: string;
-      turn: number;
-      messages: number;
-      storyCards: number;
-      brains: number;
-      components: number;
-      rawImports: number;
-      updatedAt?: string;
-    };
 
 const modeOptions: Array<{ id: ImportExportMode; label: string; description: string }> = [
   { id: "backup", label: "Back Up", description: "Save a complete copy or reusable parts." },
@@ -43,48 +28,6 @@ function download(filename: string, text: string) {
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-function countArray(value: unknown) {
-  return Array.isArray(value) ? value.length : 0;
-}
-
-function parseBackupPreview(text: string): BackupPreview {
-  const trimmed = text.trim();
-  if (!trimmed) return { status: "empty" };
-
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (!isRecord(parsed)) {
-      return { status: "error", message: "This is JSON, but it is not an adventure backup." };
-    }
-
-    const id = typeof parsed.id === "string" ? parsed.id : "";
-    const title = typeof parsed.title === "string" ? parsed.title.trim() : "";
-    if (!id || !title) {
-      return { status: "error", message: "This does not look like a full adventure backup. It needs an adventure title and id." };
-    }
-
-    const activeState = isRecord(parsed.activeState) ? parsed.activeState : {};
-    return {
-      status: "ready",
-      id,
-      title,
-      turn: typeof activeState.turn === "number" ? activeState.turn : 0,
-      messages: countArray(parsed.messages),
-      storyCards: countArray(parsed.storyCards),
-      brains: countArray(parsed.brains),
-      components: countArray(parsed.components),
-      rawImports: countArray(isRecord(activeState) ? activeState.rawImports : undefined),
-      updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
-    };
-  } catch {
-    return { status: "error", message: "The pasted text is not valid JSON yet." };
-  }
 }
 
 export function ImportExportPage({
@@ -170,7 +113,7 @@ export function ImportExportPage({
   const transcriptCount = adventure.messages.length;
   const backupJson = exportAdventureJson(adventure);
   const backupSizeKb = Math.max(1, Math.ceil(new Blob([backupJson]).size / 1024));
-  const importPreview = useMemo(() => parseBackupPreview(importText), [importText]);
+  const importPreview = useMemo(() => parseAdventureBackupPreview(importText), [importText]);
 
   return (
     <section className="page editor-surface import-export-page">

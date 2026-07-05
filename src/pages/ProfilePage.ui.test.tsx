@@ -147,7 +147,6 @@ describe("ProfilePage", () => {
 
   it("shows public profiles without private account data", async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const onStartScenario = vi.fn(async () => undefined);
     const onViewOwnProfile = vi.fn();
 

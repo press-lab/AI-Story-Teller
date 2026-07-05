@@ -220,7 +220,7 @@ describe("local API auth and invite gate", () => {
   });
 });
 describe("local API adventure persistence", () => {
-  it("imports AIST JSON as a sanitized copy and previews context with the shared builder", async () => {
+  it("imports AIST JSON as a sanitized restorable backup and previews context with the shared builder", async () => {
     const sessionToken = await passwordSession();
     const original = createDefaultAdventure("Import Source");
     const sourceWithSecret = {
@@ -239,7 +239,7 @@ describe("local API adventure persistence", () => {
       }),
     });
     expect(imported.status).toBe(201);
-    expect(imported.body.adventures[0].id).not.toBe(original.id);
+    expect(imported.body.adventures[0].id).toBe(original.id);
 
     const loaded = await requestJson<typeof original>(`/adventures/${imported.body.adventures[0].id}`, {
       headers: { Authorization: `Bearer ${sessionToken}` },
@@ -334,6 +334,22 @@ describe("local API policy gates and sharing", () => {
     });
     expect(regenerateResult.status).toBe(400);
     expect(regenerateResult.body.error).toMatch(/provider api key/i);
+
+    const unsafePersonalProvider = await requestJson<{ error: string }>(`/adventures/${list.body[0].id}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        input: "Try the personal model.",
+        providerOverride: {
+          name: "local",
+          baseUrl: "http://127.0.0.1:9999",
+          model: "local-model",
+          apiKey: "user-key",
+        },
+      }),
+    });
+    expect(unsafePersonalProvider.status).toBe(400);
+    expect(unsafePersonalProvider.body.error).toMatch(/approved HTTPS provider/i);
   });
 
   it("creates account safety events and restrictions for severe reviewed policy hits", async () => {

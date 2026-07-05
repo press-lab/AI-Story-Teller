@@ -2,12 +2,14 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runAdventureGen } from "../ai/adventureGen";
+import { createDefaultAdventure } from "../state/defaults";
 import type { NewAdventureSetup } from "../types/adventure";
+import { exportAdventureJson } from "../utils/json";
 import { AdventuresPage } from "./AdventuresPage";
 
 vi.mock("../ai/adventureGen", () => ({
@@ -115,6 +117,33 @@ describe("AdventuresPage new adventure setup", () => {
       content: "Magic cannot cross the warded threshold.",
       type: "lore",
     });
+  });
+
+  it("imports a full AIST backup from the New Adventure menu", async () => {
+    const user = userEvent.setup();
+    const onImportAdventure = vi.fn(async (_text: string) => undefined);
+    const backup = createDefaultAdventure("Long Running Story");
+    backup.messages = [
+      { id: "msg-1", role: "user", content: "I open the old save.", createdAt: "2026-07-04T00:00:00.000Z" },
+      { id: "msg-2", role: "assistant", content: "The old save keeps going.", createdAt: "2026-07-04T00:01:00.000Z" },
+    ];
+    backup.activeState.turn = 44;
+    const text = exportAdventureJson(backup);
+    const file = new File([text], "long-running-story.json", { type: "application/json" });
+
+    renderAdventuresPage(undefined, { onImportAdventure });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Import from AIST" }));
+    await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
+
+    await waitFor(() => expect(screen.getByText("Long Running Story")).toBeInTheDocument());
+    expect(within(screen.getByText("Turn").closest("div")!).getByText("44")).toBeInTheDocument();
+    expect(within(screen.getByText("Messages").closest("div")!).getByText("2")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Import and Continue" }));
+
+    expect(onImportAdventure).toHaveBeenCalledWith(text);
   });
 
   it("prevents creation when an unpinned Story Card has no triggers", async () => {

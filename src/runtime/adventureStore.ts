@@ -1,5 +1,5 @@
 import { deleteAdventure, getAdventure, listAdventures, saveAdventure, type AdventureSummary } from "../db/adventureDb";
-import type { Adventure, ContextBuildResult, InputMode } from "../types/adventure";
+import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from "../types/adventure";
 import type { RuntimeConfig } from "./runtimeConfig";
 
 export interface AdventureStore {
@@ -23,6 +23,7 @@ export interface TurnRequest {
   recordUserInput?: boolean;
   providerCue?: string;
   regenerateLastAssistant?: boolean;
+  providerOverride?: Partial<ProviderConfig>;
 }
 
 export interface TurnRunner {
@@ -104,7 +105,7 @@ export function createBackendAdventureStore(config: RuntimeConfig, authToken?: s
   };
 }
 
-export function createBackendTurnRunner(config: RuntimeConfig, authToken: string): TurnRunner {
+export function createBackendTurnRunner(config: RuntimeConfig, authToken: string, providerOverride?: Partial<ProviderConfig>): TurnRunner {
   return {
     runTurn(request) {
       return apiJson<TurnResult>(config, `/adventures/${encodeURIComponent(request.adventureId)}/turn`, {
@@ -116,6 +117,7 @@ export function createBackendTurnRunner(config: RuntimeConfig, authToken: string
           recordUserInput: request.recordUserInput,
           providerCue: request.providerCue,
           regenerateLastAssistant: request.regenerateLastAssistant,
+          providerOverride: request.providerOverride ?? providerOverride,
         }),
       });
     },

@@ -382,6 +382,7 @@ async function handleAdventureRoute(
       recordUserInput?: boolean;
       providerCue?: string;
       regenerateLastAssistant?: boolean;
+      providerOverride?: NonNullable<Parameters<typeof runBackendTurn>[5]>["providerOverride"];
     }>(request);
     const result = await db.updatePersistingOnError((data) =>
       runBackendTurn(data, userId, adventureId, body.input ?? "", config, {
@@ -389,6 +390,7 @@ async function handleAdventureRoute(
         recordUserInput: body.recordUserInput,
         providerCue: body.providerCue,
         regenerateLastAssistant: body.regenerateLastAssistant,
+        providerOverride: body.providerOverride,
       }),
     );
     sendJson(response, 200, result, corsHeaders);

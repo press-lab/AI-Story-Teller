@@ -1,4 +1,4 @@
-import type { Adventure, ComponentEntry } from "../../src/types/adventure";
+import type { Adventure, ComponentEntry, ProviderConfig } from "../../src/types/adventure";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
@@ -34,7 +34,15 @@ export interface BackendTurnOptions {
   recordUserInput?: boolean;
   providerCue?: string;
   regenerateLastAssistant?: boolean;
+  providerOverride?: Partial<ProviderConfig>;
 }
+
+const allowedPersonalProviderHosts = new Set([
+  "api.deepseek.com",
+  "api.groq.com",
+  "api.openai.com",
+  "openrouter.ai",
+]);
 
 function asJsonText(input: ImportAdventureInput): string {
   if (typeof input.text === "string") return input.text;
@@ -165,7 +173,10 @@ export async function runBackendTurn(
   });
   assertPolicyAllowed(inputDecision);
 
-  const providerConfig = effectiveProviderConfig(data, config);
+  const platformProviderConfig = effectiveProviderConfig(data, config);
+  const providerConfig = options.providerOverride
+    ? { ...platformProviderConfig, ...sanitizePersonalProviderOverride(options.providerOverride) }
+    : platformProviderConfig;
   if (!providerConfig.apiKey?.trim()) {
     throw new Error("Backend provider API key is not configured. Set AIST_PROVIDER_API_KEY in .env for backend turns.");
   }
@@ -244,7 +255,33 @@ export function getOwnedAdventureRecord(data: LocalDbData, ownerUserId: string, 
 }
 
 function importAist(input: ImportAdventureInput): Adventure {
-  return importAdventureJson(asJsonText(input), true);
+  return importAdventureJson(asJsonText(input));
+}
+
+export function sanitizePersonalProviderOverride(
+  override: Partial<ProviderConfig> | undefined,
+): Partial<ProviderConfig> | undefined {
+  if (!override) return undefined;
+  if (!override.baseUrl || !override.model || !override.apiKey) {
+    throw new Error("Personal model mode requires a provider URL, model, and API key.");
+  }
+  const url = new URL(override.baseUrl);
+  if (url.protocol !== "https:" || !allowedPersonalProviderHosts.has(url.hostname.toLowerCase())) {
+    throw new Error("Personal model provider must use an approved HTTPS provider.");
+  }
+  const sanitized: Partial<ProviderConfig> = {
+    name: typeof override.name === "string" && override.name.trim() ? override.name.trim() : "personal",
+    baseUrl: url.toString().replace(/\/+$/, ""),
+    model: override.model.trim(),
+    apiKey: override.apiKey.trim(),
+    promptCaching: Boolean(override.promptCaching),
+  };
+  if (Number.isFinite(override.temperature)) sanitized.temperature = Math.max(0, Math.min(2, override.temperature!));
+  if (Number.isFinite(override.maxOutputTokens)) sanitized.maxOutputTokens = Math.max(1, Math.min(200_000, Math.round(override.maxOutputTokens!)));
+  if (override.topP !== undefined) sanitized.topP = Math.max(0, Math.min(1, override.topP));
+  if (override.presencePenalty !== undefined) sanitized.presencePenalty = Math.max(0, Math.min(2, override.presencePenalty));
+  if (override.frequencyPenalty !== undefined) sanitized.frequencyPenalty = Math.max(0, Math.min(2, override.frequencyPenalty));
+  return sanitized;
 }
 
 function importGitHubSave(input: ImportAdventureInput): Adventure[] {

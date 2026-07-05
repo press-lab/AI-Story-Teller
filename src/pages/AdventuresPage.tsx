@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import type {
   Adventure,
   AdventureThumbnailImage,
@@ -23,6 +23,7 @@ import {
   type AdventureStoryShape,
 } from "../ai/adventureGen";
 import { createId } from "../utils/id";
+import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 
@@ -34,6 +35,7 @@ interface AdventuresPageProps {
   onOpenEdit?: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onImportAdventure?: (text: string) => Promise<void>;
   onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
   savesStatus?: string;
@@ -218,6 +220,7 @@ export function AdventuresPage({
   onOpenEdit,
   onDuplicate,
   onDelete,
+  onImportAdventure,
   onCreateAdventureFromImport,
   saveSlots,
   savesStatus,
@@ -229,7 +232,7 @@ export function AdventuresPage({
   onDeleteSave,
   providerConfig,
 }: AdventuresPageProps) {
-  const [view, setView] = useState<"list" | "create" | "aidImport" | "github">("list");
+  const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
@@ -256,6 +259,9 @@ export function AdventuresPage({
   const [jsonStoryCards, setJsonStoryCards] = useState<StoryCard[]>([]);
   const [jsonImportError, setJsonImportError] = useState<string | undefined>();
   const [jsonImportMessages, setJsonImportMessages] = useState<string[]>([]);
+  const [aistImportText, setAistImportText] = useState("");
+  const [aistImportFilename, setAistImportFilename] = useState("");
+  const [aistImportStatus, setAistImportStatus] = useState("");
   const [premise, setPremise] = useState("");
   const [storyShape, setStoryShape] = useState<AdventureStoryShape>("balanced");
   const [proseMode, setProseMode] = useState<AdventureProseMode>("balanced");
@@ -264,6 +270,7 @@ export function AdventuresPage({
   const [adultBoundaries, setAdultBoundaries] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState<string | undefined>();
+  const aistImportPreview = useMemo(() => parseAdventureBackupPreview(aistImportText), [aistImportText]);
   const [setupError, setSetupError] = useState<string | undefined>();
 
   const starterComponents = componentDrafts.map(componentFromDraft).filter((component): component is ComponentEntry => Boolean(component));
@@ -313,6 +320,36 @@ export function AdventuresPage({
     const text = await file.text();
     setStoryCardJsonText(text);
     parseStoryCardJson(text);
+    event.target.value = "";
+  }
+
+  async function readAistImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAistImportFilename(file.name);
+    setAistImportText(await file.text());
+    setAistImportStatus(`Loaded ${file.name}. Review the preview, then import.`);
+    event.target.value = "";
+  }
+
+  async function importAistAdventure() {
+    if (!onImportAdventure) {
+      setAistImportStatus("AIST import is unavailable.");
+      return;
+    }
+    if (aistImportPreview.status !== "ready") {
+      setAistImportStatus("Choose a valid AIST adventure backup before importing.");
+      return;
+    }
+    try {
+      await onImportAdventure(aistImportText);
+      setAistImportText("");
+      setAistImportFilename("");
+      setAistImportStatus(`Imported and opened "${aistImportPreview.title}".`);
+      setView("list");
+    } catch (error) {
+      setAistImportStatus(error instanceof Error ? error.message : "AIST import failed.");
+    }
   }
 
   async function createAdventure() {
@@ -431,6 +468,11 @@ export function AdventuresPage({
               </p>
             </div>
             <div className="toolbar">
+              {onImportAdventure && (
+                <button type="button" onClick={() => setView("aistImport")}>
+                  Import from AIST
+                </button>
+              )}
               <button type="button" onClick={() => setView("aidImport")}>
                 Import from AI Dungeon
               </button>
@@ -772,6 +814,81 @@ export function AdventuresPage({
               </section>
             </div>
           </details>
+        </article>
+      </section>
+    );
+  }
+
+  if (view === "aistImport") {
+    return (
+      <section className="page">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <button type="button" onClick={() => setView("create")}>
+                ← New Adventure
+              </button>
+              <p className="eyebrow">Import</p>
+              <h3>Import from AIST</h3>
+              <p className="muted">
+                Restore a full AI Story Teller adventure backup and continue from its saved messages, turn state, cards, brains, and components.
+              </p>
+            </div>
+          </div>
+
+          {aistImportStatus && <p className="notice">{aistImportStatus}</p>}
+
+          <Field label="Upload AIST .json backup">
+            <input type="file" accept="application/json,.json" onChange={readAistImportFile} />
+          </Field>
+          {aistImportFilename && <p className="muted">Loaded file: {aistImportFilename}</p>}
+          <Field label="Paste AIST adventure JSON">
+            <textarea
+              rows={12}
+              value={aistImportText}
+              onChange={(event) => setAistImportText(event.target.value)}
+              placeholder="Paste a full AI Story Teller adventure backup JSON."
+            />
+          </Field>
+
+          <div className={`import-export-preview import-export-restore-preview import-export-preview-${aistImportPreview.status}`}>
+            {aistImportPreview.status === "empty" && (
+              <p>Upload or paste a full AIST adventure backup to preview it.</p>
+            )}
+            {aistImportPreview.status === "error" && (
+              <p>{aistImportPreview.message}</p>
+            )}
+            {aistImportPreview.status === "ready" && (
+              <>
+                <div className="import-export-preview-title">
+                  <strong>{aistImportPreview.title}</strong>
+                  {aistImportPreview.updatedAt && <small>Last saved {new Date(aistImportPreview.updatedAt).toLocaleString()}</small>}
+                </div>
+                <dl className="import-export-stats">
+                  <div><dt>Turn</dt><dd>{aistImportPreview.turn}</dd></div>
+                  <div><dt>Messages</dt><dd>{aistImportPreview.messages}</dd></div>
+                  <div><dt>Story Cards</dt><dd>{aistImportPreview.storyCards}</dd></div>
+                  <div><dt>Brains</dt><dd>{aistImportPreview.brains}</dd></div>
+                  <div><dt>Plot Blocks</dt><dd>{aistImportPreview.components}</dd></div>
+                  {aistImportPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{aistImportPreview.rawImports}</dd></div>}
+                </dl>
+              </>
+            )}
+          </div>
+
+          <div className="toolbar">
+            <button
+              type="button"
+              className="primary-action"
+              onClick={() => void importAistAdventure()}
+              disabled={aistImportPreview.status !== "ready" || !onImportAdventure}
+            >
+              Import and Continue
+            </button>
+            <button type="button" onClick={() => setView("create")}>
+              Cancel
+            </button>
+          </div>
         </article>
       </section>
     );

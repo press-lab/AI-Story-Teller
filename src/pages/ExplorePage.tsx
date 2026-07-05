@@ -31,11 +31,6 @@ export function ExplorePage({
   const canUseBackendScenarios = backendMode && Boolean(backendSession);
   const totalAvailable = scenarios.length + premadeAdventures.length;
 
-  async function confirmAndStart(action: () => Promise<void>) {
-    if (!window.confirm(scenarioStartWarning)) return;
-    await action();
-  }
-
   return (
     <section className="page library-page">
       <header className="library-header">
@@ -80,7 +75,7 @@ export function ExplorePage({
                       type="button"
                       className="primary-action"
                       disabled={!onStartPremade}
-                      onClick={() => void confirmAndStart(() => onStartPremade!(premade.id))}
+                      onClick={() => void onStartPremade?.(premade.id)}
                     >
                       Start Adventure
                     </button>
@@ -132,7 +127,7 @@ export function ExplorePage({
                       type="button"
                       className="primary-action"
                       disabled={!onStartScenario}
-                      onClick={() => void confirmAndStart(() => onStartScenario!(scenario.revisionId))}
+                      onClick={() => void onStartScenario?.(scenario.revisionId)}
                     >
                       Start Adventure
                     </button>
