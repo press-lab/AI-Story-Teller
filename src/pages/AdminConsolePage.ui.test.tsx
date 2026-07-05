@@ -260,10 +260,14 @@ describe("AdminConsolePage", () => {
 
     await user.clear(screen.getByLabelText("Provider model"));
     await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");
+    await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "latency");
     await user.click(screen.getByRole("button", { name: "Save Platform Settings" }));
     expect(onSavePlatformSettings).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: expect.objectContaining({ model: "deepseek/deepseek-chat" }),
+        provider: expect.objectContaining({
+          model: "deepseek/deepseek-chat",
+          openRouterProviderSort: "latency",
+        }),
       }),
     );
 

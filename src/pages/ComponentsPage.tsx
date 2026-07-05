@@ -5,6 +5,7 @@ import { makeComponent } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -362,6 +363,7 @@ const PLOT_GROUP_DEFINITIONS: Array<{
 ];
 
 export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [search, setSearch] = useState("");
   const [plotBuilderDescription, setPlotBuilderDescription] = useState("");
   const [plotBuilderTarget, setPlotBuilderTarget] = useState<PlotAIBuilderRequest["target"]>("plotEssentials");
@@ -383,7 +385,18 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     });
   }
 
-  function approveComponentAuditRec(rec: ComponentAuditRecommendation) {
+  async function approveComponentAuditRec(rec: ComponentAuditRecommendation) {
+    if (rec.action === "delete" || rec.action === "edit") {
+      const confirmed = await confirmAction({
+        title: rec.action === "delete" ? "Delete plot component?" : "Apply plot component edit?",
+        message: rec.action === "delete"
+          ? `Delete "${rec.title}"? ${rec.rationale}`
+          : `Apply the proposed edits to "${rec.title}"? ${rec.rationale}`,
+        confirmLabel: rec.action === "delete" ? "Delete" : "Apply Edit",
+        danger: rec.action === "delete",
+      });
+      if (!confirmed) return;
+    }
     if (rec.action === "delete" && rec.componentId) {
       dispatch({ type: "DELETE_COMPONENT", componentId: rec.componentId });
     } else if (rec.action === "edit" && rec.componentId) {
@@ -416,21 +429,41 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       });
     }
     updateComponentAuditRec(rec.id, { decision: "approved" });
+    notify(
+      rec.action === "delete" ? "Plot component deleted." : rec.action === "edit" ? "Plot component updated." : "Plot component created.",
+      { type: "success" },
+    );
   }
 
   async function runComponentAudit() {
     if (!onAuditComponents) return;
     setComponentAudit({ status: "running", recommendations: [] });
+    notify("Reviewing plot components...", { type: "info" });
     try {
       const recommendations = await onAuditComponents(componentAuditTurns, componentAuditIncludeAI);
       setComponentAudit({ status: "done", recommendations });
+      notify(recommendations.length > 0 ? `Found ${recommendations.length} plot component cleanup suggestions.` : "No plot component cleanup suggestions.", { type: "success" });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Component cleanup failed.";
       setComponentAudit({
         status: "error",
         recommendations: [],
-        errorMessage: err instanceof Error ? err.message : "Component cleanup failed.",
+        errorMessage: message,
       });
+      notify(message, { type: "error" });
     }
+  }
+
+  async function deleteComponent(component: ComponentEntry) {
+    const confirmed = await confirmAction({
+      title: "Delete plot component?",
+      message: `Delete "${component.title || TYPE_LABELS[component.type]}" from this adventure?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_COMPONENT", componentId: component.id });
+    notify("Plot component deleted.", { type: "success" });
   }
 
   function handleGraduateArc(component: ComponentEntry) {
@@ -450,11 +483,13 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   async function handleRegeneratePE(componentId: string) {
     if (!onRegeneratePlotEssentials || peRegenerating) return;
     setPeRegenerating(componentId);
+    notify("Generating plot component preview...", { type: "info" });
     try {
       const result = await onRegeneratePlotEssentials(componentId);
       setPePreview((prev) => ({ ...prev, [componentId]: result }));
-    } catch {
-      // silent — user can retry
+      notify("Plot component preview ready.", { type: "success" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Generation failed.", { type: "error" });
     } finally {
       setPeRegenerating(null);
     }
@@ -463,11 +498,13 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   async function handleGenerateComponent(componentId: string) {
     if (!onGenerateComponent || peRegenerating) return;
     setPeRegenerating(componentId);
+    notify("Generating plot component preview...", { type: "info" });
     try {
       const result = await onGenerateComponent(componentId);
       setPePreview((prev) => ({ ...prev, [componentId]: result }));
-    } catch {
-      // silent — user can retry
+      notify("Plot component preview ready.", { type: "success" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Generation failed.", { type: "error" });
     } finally {
       setPeRegenerating(null);
     }
@@ -643,7 +680,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     onClick={runComponentAudit}
                     title="Review existing plot components and get cleanup suggestions."
                   >
-                    {componentAudit?.status === "running" ? "Cleaning..." : "Clean Up Components"}
+                    {componentAudit?.status === "running" ? "Reviewing..." : "Clean Up Components"}
                   </button>
                   <label className="turn-window-field">
                     <span>Review last</span>
@@ -763,7 +800,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                       {peRegenerating === component.id ? "Generating..." : (component.content.trim() ? "Regenerate" : "Generate")}
                     </button>
                   )}
-                  <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
+                  <button type="button" className="danger" onClick={() => void deleteComponent(component)}>
                     Delete
                   </button>
                 </div>
@@ -994,7 +1031,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     </button>
                   </>
                 )}
-                <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_COMPONENT", componentId: component.id })}>
+                <button type="button" className="danger" onClick={() => void deleteComponent(component)}>
                   Delete
                 </button>
               </div>
@@ -1070,7 +1107,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                 )}
 
                 <div className="audit-rec-actions">
-                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => approveComponentAuditRec(rec)}>
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => void approveComponentAuditRec(rec)}>
                     Approve
                   </button>
                   <button type="button" disabled={rec.decision !== "pending"} onClick={() => updateComponentAuditRec(rec.id, { decision: "rejected" })}>

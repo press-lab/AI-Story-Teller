@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 function StoryParagraphs({ content, trailing }: { content: string; trailing?: React.ReactNode }) {
   const paras = content.split(/\n\n+/);
@@ -105,12 +106,37 @@ export function PlayPage({
   uiPreferences,
   onUiPreferencesChange,
 }: PlayRuntimeProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const draftKey = `play-input-draft-${adventure.id}`;
   const [input, setInput] = useState(() => { try { return localStorage.getItem(draftKey) ?? ""; } catch { return ""; } });
   function updateInput(value: string) {
     setInput(value);
     try { if (value) { localStorage.setItem(draftKey, value); } else { localStorage.removeItem(draftKey); } } catch { /* ignore */ }
   }
+  async function deleteMessage(message: Message) {
+    const confirmed = await confirmAction({
+      title: "Delete story entry?",
+      message: "Delete this transcript entry from the adventure?",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_MESSAGE", messageId: message.id });
+    notify("Story entry deleted.", { type: "success" });
+  }
+
+  async function deleteLastMessage() {
+    const confirmed = await confirmAction({
+      title: "Erase latest entry?",
+      message: "Erase the latest transcript entry from the adventure?",
+      confirmLabel: "Erase",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_LAST_MESSAGE" });
+    notify("Latest entry erased.", { type: "success" });
+  }
+
   const [inputMode, setInputMode] = useState<InputMode>("do");
   const [rememberInput, setRememberInput] = useState("");
   const [showRemember, setShowRemember] = useState(false);
@@ -384,7 +410,7 @@ export function PlayPage({
                 <button
                   type="button"
                   className="danger"
-                  onClick={() => dispatch({ type: "DELETE_MESSAGE", messageId: message.id })}
+                  onClick={() => void deleteMessage(message)}
                 >
                   Delete
                 </button>
@@ -555,7 +581,7 @@ export function PlayPage({
               <button
                 type="button"
                 disabled={loading || adventure.messages.length === 0}
-                onClick={() => dispatch({ type: "DELETE_LAST_MESSAGE" })}
+                onClick={() => void deleteLastMessage()}
               >
                 Erase
               </button>

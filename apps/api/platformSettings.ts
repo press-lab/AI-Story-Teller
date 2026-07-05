@@ -1,4 +1,4 @@
-import type { ProviderConfig } from "../../src/types/adventure";
+import type { OpenRouterProviderSort, ProviderConfig } from "../../src/types/adventure";
 import type { LocalDbData, PlatformSettingsRecord } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import { createId, nowIso } from "./ids";
@@ -14,6 +14,7 @@ export interface PlatformSettings {
     presencePenalty?: number;
     frequencyPenalty?: number;
     promptCaching?: boolean;
+    openRouterProviderSort?: OpenRouterProviderSort;
   };
   background: {
     semanticEvaluationEnabled: boolean;
@@ -104,6 +105,7 @@ function defaultPlatformSettings(config: ApiConfig): PlatformSettings {
       presencePenalty: config.providerConfig.presencePenalty,
       frequencyPenalty: config.providerConfig.frequencyPenalty,
       promptCaching: config.providerConfig.promptCaching,
+      openRouterProviderSort: config.providerConfig.openRouterProviderSort,
     },
     background: {
       semanticEvaluationEnabled: true,
@@ -143,6 +145,7 @@ function sanitizePlatformSettings(settings: PlatformSettings): PlatformSettings 
       presencePenalty: settings.provider.presencePenalty === undefined ? undefined : clampNumber(settings.provider.presencePenalty, 0, 2, 0.8),
       frequencyPenalty: settings.provider.frequencyPenalty === undefined ? undefined : clampNumber(settings.provider.frequencyPenalty, 0, 2, 0),
       promptCaching: Boolean(settings.provider.promptCaching),
+      openRouterProviderSort: sanitizeOpenRouterProviderSort(settings.provider.openRouterProviderSort),
     },
     background: {
       semanticEvaluationEnabled: Boolean(settings.background.semanticEvaluationEnabled),
@@ -171,4 +174,8 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
 
 function clampInteger(value: unknown, min: number, max: number, fallback: number): number {
   return Math.round(clampNumber(value, min, max, fallback));
+}
+
+function sanitizeOpenRouterProviderSort(value: unknown): OpenRouterProviderSort | undefined {
+  return value === "price" || value === "throughput" || value === "latency" ? value : undefined;
 }

@@ -650,16 +650,20 @@ describe("local API policy gates and sharing", () => {
     expect(current.status).toBe(200);
     expect(current.body.provider.model).toBe("test-model");
 
-    const saved = await requestJson<{ provider: { model: string; maxOutputTokens: number }; features: { scenarioPublishingEnabled: boolean } }>("/admin/platform-settings", {
+    const saved = await requestJson<{
+      provider: { model: string; maxOutputTokens: number; openRouterProviderSort?: string };
+      features: { scenarioPublishingEnabled: boolean };
+    }>("/admin/platform-settings", {
       method: "PUT",
       body: JSON.stringify({
-        provider: { model: "platform-model", maxOutputTokens: 2500 },
+        provider: { model: "platform-model", maxOutputTokens: 2500, openRouterProviderSort: "latency" },
         features: { scenarioPublishingEnabled: false },
       }),
     });
     expect(saved.status).toBe(200);
     expect(saved.body.provider.model).toBe("platform-model");
     expect(saved.body.provider.maxOutputTokens).toBe(2500);
+    expect(saved.body.provider.openRouterProviderSort).toBe("latency");
     expect(saved.body.features.scenarioPublishingEnabled).toBe(false);
 
     const sessionToken = await passwordSession("platform-settings@example.com");

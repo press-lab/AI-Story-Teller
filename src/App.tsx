@@ -34,6 +34,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ExplorePage } from "./pages/ExplorePage";
 import { AdminConsolePage } from "./pages/AdminConsolePage";
 import { WelcomePage } from "./pages/WelcomePage";
+import { useActionFeedback } from "./components/ActionFeedback";
 import { premadeAdventures, type PremadeAdventureId } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
@@ -152,6 +153,7 @@ const providerInitial: RuntimeProviderSettings = {
 };
 
 export default function App() {
+  const { confirmAction, notify } = useActionFeedback();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [modalTab, setModalTab] = useState<TabId | undefined>();
@@ -723,6 +725,7 @@ export default function App() {
 
   async function importToBackend(input: BackendImportRequest) {
     if (!backendSession) throw new Error("Sign in to the local backend before importing.");
+    notify("Importing adventure to backend...", { type: "info" });
     const next = await importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, input);
     setAdventure(next);
     setContextResult(undefined);
@@ -730,15 +733,23 @@ export default function App() {
     navigateTo("dashboard");
     await library.refreshAdventures();
     await refreshBackendProfile();
+    notify("Backend adventure imported.", { type: "success" });
     return next;
   }
 
   async function publishAdventureScenario(adventureId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
-    setBackendProfileStatus("Publishing scenario...");
     try {
       const source = adventure?.id === adventureId ? adventure : await adventureStore.get(adventureId);
       if (!source) throw new Error("Adventure could not be loaded for publishing.");
+      const confirmed = await confirmAction({
+        title: "Publish scenario?",
+        message: `Publish "${source.title}" to Explore? This shares the reusable setup, not the private transcript or runtime state.`,
+        confirmLabel: "Publish",
+      });
+      if (!confirmed) return undefined;
+      setBackendProfileStatus("Publishing scenario...");
+      notify("Publishing scenario...", { type: "info" });
       const scenario = await createBackendScenario(normalizedRuntimeConfig, backendSession, {
         title: source.title,
         description: "Scenario draft created from a backend adventure.",
@@ -762,24 +773,37 @@ export default function App() {
       await refreshBackendProfile();
       await refreshBackendExploreScenarios();
       setBackendProfileStatus(`Published "${source.title}" to Explore.`);
+      notify(`Published "${source.title}" to Explore.`, { type: "success" });
       return published;
     } catch (error) {
-      setBackendProfileStatus(error instanceof Error ? error.message : "Scenario publish failed.");
+      const message = error instanceof Error ? error.message : "Scenario publish failed.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
       throw error;
     }
   }
 
   async function publishScenarioRevisionFromProfile(revisionId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
+    const confirmed = await confirmAction({
+      title: "Publish scenario revision?",
+      message: "Publish this latest scenario revision to Explore?",
+      confirmLabel: "Publish",
+    });
+    if (!confirmed) return undefined;
     setBackendProfileStatus("Publishing scenario...");
+    notify("Publishing scenario revision...", { type: "info" });
     try {
       const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
       await refreshBackendProfile();
       await refreshBackendExploreScenarios();
       setBackendProfileStatus("Published scenario to Explore.");
+      notify("Published scenario to Explore.", { type: "success" });
       return published;
     } catch (error) {
-      setBackendProfileStatus(error instanceof Error ? error.message : "Scenario publish failed.");
+      const message = error instanceof Error ? error.message : "Scenario publish failed.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
       throw error;
     }
   }
@@ -787,6 +811,7 @@ export default function App() {
   async function startBackendExploreScenario(revisionId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before starting a shared scenario.");
     setBackendExploreStatus("Starting scenario...");
+    notify("Starting shared scenario...", { type: "info" });
     try {
       const next = await forkBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
       setAdventure(next);
@@ -797,21 +822,27 @@ export default function App() {
       await refreshBackendProfile();
       setBackendExploreStatus("");
       setBackendProfileStatus("");
+      notify("Scenario started.", { type: "success" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Could not start scenario.";
       setBackendExploreStatus(message);
       setBackendProfileStatus(message);
+      notify(message, { type: "error" });
     }
   }
 
   async function startPremadeExploreScenario(id: PremadeAdventureId) {
     setBackendExploreStatus("Starting built-in scenario...");
+    notify("Starting built-in scenario...", { type: "info" });
     try {
       await library.loadPremadeAdventure(id);
       if (backendReady) await refreshBackendProfile();
       setBackendExploreStatus("");
+      notify("Built-in scenario started.", { type: "success" });
     } catch (error) {
-      setBackendExploreStatus(error instanceof Error ? error.message : "Could not start built-in scenario.");
+      const message = error instanceof Error ? error.message : "Could not start built-in scenario.";
+      setBackendExploreStatus(message);
+      notify(message, { type: "error" });
     }
   }
 

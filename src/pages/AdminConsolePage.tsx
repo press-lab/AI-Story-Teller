@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useActionFeedback } from "../components/ActionFeedback";
 import type { BackendAdminConsoleData, BackendPlatformSettings, BackendSessionState } from "../runtime/backendApi";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
@@ -47,6 +48,7 @@ export function AdminConsolePage({
   onDisableInvite,
   onSavePlatformSettings,
 }: AdminConsolePageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [targetUserId, setTargetUserId] = useState("");
   const [restrictionLevel, setRestrictionLevel] = useState<RestrictionLevel>("watched");
   const [restrictionReason, setRestrictionReason] = useState("Manual admin review.");
@@ -92,6 +94,7 @@ export function AdminConsolePage({
 
   async function createInvite() {
     setAdminActionStatus("Creating invite...");
+    notify("Creating invite...", { type: "info" });
     try {
       const result = await onCreateInvite({
         note: inviteNote,
@@ -100,45 +103,122 @@ export function AdminConsolePage({
       });
       setCreatedInviteToken(result.token);
       setAdminActionStatus("Invite created.");
+      notify("Invite created.", { type: "success" });
     } catch (error) {
-      setAdminActionStatus(error instanceof Error ? error.message : "Invite creation failed.");
+      const message = error instanceof Error ? error.message : "Invite creation failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
     }
   }
 
   async function savePlatformSettings() {
     if (!platformDraft) return;
+    const confirmed = await confirmAction({
+      title: "Save platform settings?",
+      message: "These settings apply backend-wide to everyone using the platform defaults.",
+      confirmLabel: "Save Settings",
+    });
+    if (!confirmed) return;
     setAdminActionStatus("Saving platform settings...");
+    notify("Saving platform settings...", { type: "info" });
     try {
       const result = await onSavePlatformSettings(platformDraft);
       setPlatformDraft(result);
       setAdminActionStatus("Platform settings saved.");
+      notify("Platform settings saved.", { type: "success" });
     } catch (error) {
-      setAdminActionStatus(error instanceof Error ? error.message : "Platform settings save failed.");
+      const message = error instanceof Error ? error.message : "Platform settings save failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
     }
   }
 
   async function updateSafetyEvent(eventId: string, nextStatus: "open" | "reviewed" | "dismissed") {
     setSafetyEventActionId(eventId);
     setAdminActionStatus(`Updating safety event ${shortId(eventId)}...`);
+    notify(`Updating safety event ${shortId(eventId)}...`, { type: "info" });
     try {
       await onUpdateSafetyEvent(eventId, nextStatus);
       setAdminActionStatus(`Safety event ${shortId(eventId)} marked ${nextStatus}.`);
+      notify(`Safety event marked ${nextStatus}.`, { type: "success" });
     } catch (error) {
-      setAdminActionStatus(error instanceof Error ? error.message : "Safety event update failed.");
+      const message = error instanceof Error ? error.message : "Safety event update failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
     } finally {
       setSafetyEventActionId("");
     }
   }
 
+  async function updateUserStatus(userId: string, nextStatus: "pending_verification" | "active" | "disabled") {
+    const userLabel = data?.users.find((user) => user.id === userId)?.email ?? shortId(userId);
+    const confirmed = await confirmAction({
+      title: "Change account status?",
+      message: `Set ${userLabel} to ${nextStatus}? This changes their account access.`,
+      confirmLabel: "Change Status",
+      danger: nextStatus === "disabled",
+    });
+    if (!confirmed) return;
+    setAdminActionStatus(`Updating ${userLabel}...`);
+    notify("Updating account status...", { type: "info" });
+    try {
+      await onSetUserStatus(userId, nextStatus);
+      setAdminActionStatus(`${userLabel} set to ${nextStatus}.`);
+      notify("Account status updated.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "User status update failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
+    }
+  }
+
+  async function applyRestriction() {
+    if (!targetUser) return;
+    const confirmed = await confirmAction({
+      title: "Apply restriction?",
+      message: `Apply ${restrictionLevel} restriction to ${targetUser.email}? This can limit sharing or generation for the account.`,
+      confirmLabel: "Apply Restriction",
+      danger: restrictionLevel === "banned" || restrictionLevel === "generation_hold" || generationDisabled || sharingDisabled,
+    });
+    if (!confirmed) return;
+    setAdminActionStatus(`Applying restriction to ${targetUser.email}...`);
+    notify("Applying account restriction...", { type: "info" });
+    try {
+      await onCreateRestriction(targetUser.id, {
+        level: restrictionLevel,
+        reason: restrictionReason,
+        sharingDisabled,
+        generationDisabled,
+        contextTokenCap: contextTokenCap || undefined,
+      });
+      setAdminActionStatus(`Restriction applied to ${targetUser.email}.`);
+      notify("Restriction applied.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Restriction update failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
+    }
+  }
+
   async function disableInvite(inviteId: string) {
-    if (!window.confirm("Deactivate this invite link? It will no longer work for new account signup.")) return;
+    const confirmed = await confirmAction({
+      title: "Deactivate invite?",
+      message: "This invite link will no longer work for new account signup.",
+      confirmLabel: "Deactivate",
+      danger: true,
+    });
+    if (!confirmed) return;
     setInviteActionId(inviteId);
     setAdminActionStatus(`Disabling invite ${shortId(inviteId)}...`);
+    notify("Deactivating invite...", { type: "info" });
     try {
       await onDisableInvite(inviteId);
       setAdminActionStatus(`Invite ${shortId(inviteId)} disabled.`);
+      notify("Invite deactivated.", { type: "success" });
     } catch (error) {
-      setAdminActionStatus(error instanceof Error ? error.message : "Invite disable failed.");
+      const message = error instanceof Error ? error.message : "Invite disable failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
     } finally {
       setInviteActionId("");
     }
@@ -267,7 +347,26 @@ export function AdminConsolePage({
                     checked={platformDraft.provider.promptCaching ?? false}
                     onChange={(promptCaching) => updatePlatformProvider({ promptCaching })}
                   />
+                  <Field label="OpenRouter routing preference">
+                    <select
+                      value={platformDraft.provider.openRouterProviderSort ?? ""}
+                      onChange={(event) =>
+                        updatePlatformProvider({
+                          openRouterProviderSort: (event.target.value || undefined) as BackendPlatformSettings["provider"]["openRouterProviderSort"],
+                        })
+                      }
+                    >
+                      <option value="">Balanced default</option>
+                      <option value="price">Lowest price</option>
+                      <option value="latency">Lowest latency</option>
+                      <option value="throughput">Highest throughput</option>
+                    </select>
+                  </Field>
                 </div>
+                <p className="muted">
+                  OpenRouter routing is platform-wide when users use the platform model. Balanced default lets OpenRouter
+                  weigh cost and uptime; price, latency, or throughput force a stronger preference.
+                </p>
                 <div className="grid three" style={{ marginTop: "0.75rem" }}>
                   <CheckboxField
                     label="Enable semantic evaluation"
@@ -318,7 +417,7 @@ export function AdminConsolePage({
               <Field label="Account status">
                 <select
                   value={targetUser?.status ?? "active"}
-                  onChange={(event) => targetUser && void onSetUserStatus(targetUser.id, event.target.value as "pending_verification" | "active" | "disabled")}
+                  onChange={(event) => targetUser && void updateUserStatus(targetUser.id, event.target.value as "pending_verification" | "active" | "disabled")}
                 >
                   <option value="pending_verification">pending_verification</option>
                   <option value="active">active</option>
@@ -349,13 +448,7 @@ export function AdminConsolePage({
               <button
                 type="button"
                 disabled={!targetUser}
-                onClick={() => targetUser && void onCreateRestriction(targetUser.id, {
-                  level: restrictionLevel,
-                  reason: restrictionReason,
-                  sharingDisabled,
-                  generationDisabled,
-                  contextTokenCap: contextTokenCap || undefined,
-                })}
+                onClick={() => void applyRestriction()}
               >
                 Apply Restriction
               </button>

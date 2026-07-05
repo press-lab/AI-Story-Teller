@@ -10,6 +10,7 @@ import type { Adventure, ContextBuildResult, NewAdventureSetup } from "../types/
 import { exportAdventureJson, importAdventureJson } from "../utils/json";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import type { AdventureStore } from "../runtime/adventureStore";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 export function useAdventureLibrary(
   store: AdventureStore,
@@ -22,6 +23,7 @@ export function useAdventureLibrary(
   importWithBackend?: (text: string) => Promise<Adventure>,
 ) {
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
+  const { confirmAction, notify } = useActionFeedback();
 
   const refreshAdventures = useCallback(async () => {
     try {
@@ -86,13 +88,20 @@ export function useAdventureLibrary(
   }
 
   async function removeAdventure(id: string, currentAdventureId?: string) {
-    if (!window.confirm(`Delete this adventure from ${storageLabel}?`)) return;
+    const confirmed = await confirmAction({
+      title: "Delete adventure?",
+      message: `Delete this adventure from ${storageLabel}? This cannot be undone.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     await store.delete(id);
     if (currentAdventureId === id) {
       setAdventure(undefined);
       onModalClose();
     }
     await refreshAdventures();
+    notify("Adventure deleted.", { type: "success" });
   }
 
   async function importAdventure(text: string) {
@@ -104,8 +113,10 @@ export function useAdventureLibrary(
       onModalClose();
       onNavigate("dashboard");
       await refreshAdventures();
+      notify("Adventure imported.", { type: "success" });
     } catch (importError) {
       onError(importError instanceof Error ? importError.message : "Import failed.");
+      notify(importError instanceof Error ? importError.message : "Import failed.", { type: "error" });
       throw importError;
     }
   }

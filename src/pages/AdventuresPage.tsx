@@ -26,6 +26,7 @@ import { createId } from "../utils/id";
 import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -242,6 +243,7 @@ export function AdventuresPage({
   headingTitle = "Choose an adventure",
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
 }: AdventuresPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
@@ -251,6 +253,19 @@ export function AdventuresPage({
     // intentional: only fire when entering the github view
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
+
+  async function deleteSaveSlot(slot: GitHubSaveSlot) {
+    const confirmed = await confirmAction({
+      title: "Delete GitHub save?",
+      message: `Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    notify("Deleting GitHub save...", { type: "info" });
+    onDeleteSave?.(slot);
+  }
+
   const [title, setTitle] = useState("New Adventure");
   const [openingScene, setOpeningScene] = useState("");
   const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
@@ -351,14 +366,24 @@ export function AdventuresPage({
       setAistImportStatus("Choose a valid AIST adventure backup before importing.");
       return;
     }
+    const confirmed = await confirmAction({
+      title: "Import and open AIST backup?",
+      message: `Import and open "${aistImportPreview.title}"? Your current adventure remains saved, but the app will switch to this imported save.`,
+      confirmLabel: "Import",
+    });
+    if (!confirmed) return;
     try {
+      notify("Importing AIST backup...", { type: "info" });
       await onImportAdventure(aistImportText);
       setAistImportText("");
       setAistImportFilename("");
       setAistImportStatus(`Imported and opened "${aistImportPreview.title}".`);
+      notify(`Imported "${aistImportPreview.title}".`, { type: "success" });
       setView("list");
     } catch (error) {
-      setAistImportStatus(error instanceof Error ? error.message : "AIST import failed.");
+      const message = error instanceof Error ? error.message : "AIST import failed.";
+      setAistImportStatus(message);
+      notify(message, { type: "error" });
     }
   }
 
@@ -879,7 +904,7 @@ export function AdventuresPage({
                   <div><dt>Messages</dt><dd>{aistImportPreview.messages}</dd></div>
                   <div><dt>Story Cards</dt><dd>{aistImportPreview.storyCards}</dd></div>
                   <div><dt>Brains</dt><dd>{aistImportPreview.brains}</dd></div>
-                  <div><dt>Plot Blocks</dt><dd>{aistImportPreview.components}</dd></div>
+                  <div><dt>Plot Components</dt><dd>{aistImportPreview.components}</dd></div>
                   {aistImportPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{aistImportPreview.rawImports}</dd></div>}
                 </dl>
               </>
@@ -990,7 +1015,7 @@ export function AdventuresPage({
                           type="button"
                           className="danger"
                           disabled={!!loadingSlotId}
-                          onClick={() => { if (window.confirm(`Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`)) onDeleteSave?.(slot); }}
+                          onClick={() => void deleteSaveSlot(slot)}
                         >
                           Delete
                         </button>

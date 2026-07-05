@@ -35,6 +35,7 @@ import {
   createDispatchStoryCardsJson,
   dispatchAdventureTitle,
 } from "../dev/dispatchAdventure";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 function downloadJson(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json" });
@@ -124,6 +125,7 @@ export function SettingsPage({
   onLoadDevelopmentAdventure,
   onLoadDispatchAdventure,
 }: SettingsPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const isBackendMode = runtimeConfig ? runtimeConfig.mode !== "local" : false;
   const showLocalDeveloperControls = !isBackendMode && !hideDeveloperControls;
   const advanced = uiPreferences.showAdvancedSettings && showLocalDeveloperControls;
@@ -160,12 +162,16 @@ export function SettingsPage({
 
   async function runBackendAction<T>(label: string, action: () => Promise<T>): Promise<T | undefined> {
     setBackendStatus(`${label}...`);
+    notify(`${label}...`, { type: "info" });
     try {
       const result = await action();
       setBackendStatus(`${label} complete.`);
+      notify(`${label} complete.`, { type: "success" });
       return result;
     } catch (error) {
-      setBackendStatus(error instanceof Error ? error.message : `${label} failed.`);
+      const message = error instanceof Error ? error.message : `${label} failed.`;
+      setBackendStatus(message);
+      notify(message, { type: "error" });
       return undefined;
     }
   }
@@ -259,11 +265,65 @@ export function SettingsPage({
     setExpandedPresetId(newId);
   }
 
-  function deletePreset(id: string) {
+  async function deletePreset(id: string) {
+    const preset = providerPresets.find((p) => p.id === id);
+    const confirmed = await confirmAction({
+      title: "Delete model preset?",
+      message: `Delete "${preset?.label || "this preset"}"?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
     const remaining = providerPresets.filter((p) => p.id !== id);
     onProviderPresetsChange(remaining);
     if (id === activePresetId && remaining.length > 0) onSelectPreset(remaining[0].id);
     if (expandedPresetId === id) setExpandedPresetId(remaining[0]?.id ?? null);
+    notify("Model preset deleted.", { type: "success" });
+  }
+
+  async function runCloudAction(label: string, action?: () => Promise<void>) {
+    if (!action) return;
+    notify(`${label}...`, { type: "info" });
+    try {
+      await action();
+      notify(`${label} complete.`, { type: "success" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : `${label} failed.`, { type: "error" });
+    }
+  }
+
+  async function loadDevelopmentAdventure() {
+    if (!onLoadDevelopmentAdventure) return;
+    const confirmed = await confirmAction({
+      title: "Load development adventure?",
+      message: "This will save and open the development adventure in the current library.",
+      confirmLabel: "Load",
+    });
+    if (!confirmed) return;
+    notify("Loading development adventure...", { type: "info" });
+    try {
+      await onLoadDevelopmentAdventure();
+      notify("Development adventure loaded.", { type: "success" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Development adventure failed to load.", { type: "error" });
+    }
+  }
+
+  async function loadDispatchAdventure() {
+    if (!onLoadDispatchAdventure) return;
+    const confirmed = await confirmAction({
+      title: "Load Dispatch adventure?",
+      message: "This will save and open the Dispatch development adventure in the current library.",
+      confirmLabel: "Load",
+    });
+    if (!confirmed) return;
+    notify("Loading Dispatch adventure...", { type: "info" });
+    try {
+      await onLoadDispatchAdventure();
+      notify("Dispatch adventure loaded.", { type: "success" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Dispatch adventure failed to load.", { type: "error" });
+    }
   }
 
   function updateBudget(patch: Partial<TokenBudgetSettings>) {
@@ -594,7 +654,7 @@ export function SettingsPage({
                       <button type="button" onClick={() => onSelectPreset(preset.id)}>Use</button>
                     )}
                     {providerPresets.length > 1 && (
-                      <button type="button" className="danger" onClick={() => deletePreset(preset.id)}>Delete</button>
+                      <button type="button" className="danger" onClick={() => void deletePreset(preset.id)}>Delete</button>
                     )}
                   </div>
                 </div>
@@ -1059,10 +1119,10 @@ export function SettingsPage({
             </div>
 
             <div className="toolbar">
-              <button type="button" disabled={!onPullCloudSync} onClick={onPullCloudSync}>
+              <button type="button" disabled={!onPullCloudSync} onClick={() => void runCloudAction("Pull from GitHub", onPullCloudSync)}>
                 Pull From GitHub
               </button>
-              <button type="button" disabled={!onPushCloudSync} onClick={onPushCloudSync}>
+              <button type="button" disabled={!onPushCloudSync} onClick={() => void runCloudAction("Push to GitHub", onPushCloudSync)}>
                 Push To GitHub
               </button>
               {cloudSyncStatus && <span className="status-pill">{cloudSyncStatus}</span>}
@@ -1088,7 +1148,7 @@ export function SettingsPage({
               </div>
             </div>
             <div className="toolbar">
-              <button type="button" onClick={onLoadDevelopmentAdventure}>
+              <button type="button" onClick={() => void loadDevelopmentAdventure()}>
                 Load Development Adventure
               </button>
               <button
@@ -1126,7 +1186,7 @@ export function SettingsPage({
               </div>
             </div>
             <div className="toolbar">
-              <button type="button" onClick={onLoadDispatchAdventure}>
+              <button type="button" onClick={() => void loadDispatchAdventure()}>
                 Load Dispatch Adventure
               </button>
               <button

@@ -6,6 +6,7 @@ import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import type { ContextBuildResult, ContextItem, ContextSection, ProviderConfig, StoryCard } from "../types/adventure";
 import { CheckboxField } from "./shared";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 interface DuplicateWarning {
   a: ContextItem;
@@ -147,6 +148,7 @@ interface ContextPreviewPageProps extends AdventurePageProps {
 }
 
 export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuildContext, providerConfig }: ContextPreviewPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [preferLivePreview, setPreferLivePreview] = useState(false);
   const result = preferLivePreview ? buildContext(adventure) : (contextResult ?? buildContext(adventure));
   const duplicates = detectDuplicateContent(result.sections);
@@ -195,9 +197,21 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
     }
   }
 
-  function deleteItem(item: ContextItem) {
+  function deleteItemNow(item: ContextItem) {
     if (item.sourceType === "component") dispatch({ type: "DELETE_COMPONENT", componentId: item.id });
     else if (item.sourceType === "storyCard") dispatch({ type: "DELETE_STORY_CARD", storyCardId: item.id });
+  }
+
+  async function deleteItem(item: ContextItem) {
+    const confirmed = await confirmAction({
+      title: "Delete context item?",
+      message: `Delete "${item.title}" from this adventure?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    deleteItemNow(item);
+    notify("Context item deleted.", { type: "success" });
   }
 
   function applyCondenseToItem(item: ContextItem, content: string) {
@@ -224,6 +238,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   async function runDedup() {
     setDedupLoading(true);
     setDedupError(undefined);
+    notify("Reviewing context duplicates...", { type: "info" });
     try {
       const items: DedupInputItem[] = result.sections.flatMap((s) =>
         s.items
@@ -243,21 +258,36 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
       setDedupProposals(proposals);
       if (proposals.length === 0) {
         setDedupError(dedupIncludeAI ? "No significant duplicates found." : "No deterministic duplicates found.");
+        notify("No dedup suggestions found.", { type: "info" });
+      } else {
+        notify(`Found ${proposals.length} dedup suggestions.`, { type: "success" });
       }
     } catch (err) {
-      setDedupError(err instanceof Error ? err.message : "Dedup analysis failed.");
+      const message = err instanceof Error ? err.message : "Dedup analysis failed.";
+      setDedupError(message);
+      notify(message, { type: "error" });
     } finally {
       setDedupLoading(false);
     }
   }
 
-  function applyDedupProposal(proposal: DedupProposal) {
+  async function applyDedupProposal(proposal: DedupProposal) {
     if (proposal.isConflict) return;
     const trimItem = allItems.find((item) => item.id === proposal.trimItemId);
     if (!trimItem) return;
+    const confirmed = await confirmAction({
+      title: proposal.suggestedContent ? "Apply dedup trim?" : "Delete duplicate item?",
+      message: proposal.suggestedContent
+        ? `Apply the proposed trimmed content to "${trimItem.title}"?`
+        : `Delete duplicate context item "${trimItem.title}"?`,
+      confirmLabel: proposal.suggestedContent ? "Apply Trim" : "Delete",
+      danger: !proposal.suggestedContent,
+    });
+    if (!confirmed) return;
     if (proposal.suggestedContent) applyCondenseToItem(trimItem, proposal.suggestedContent);
-    else deleteItem(trimItem);
+    else deleteItemNow(trimItem);
     setDedupProposals((prev) => prev.filter((p) => p.id !== proposal.id));
+    notify(proposal.suggestedContent ? "Dedup trim applied." : "Duplicate item deleted.", { type: "success" });
   }
 
   function dismissProposal(proposalId: string) {
@@ -289,7 +319,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           Rebuild Preview
         </button>
         <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
-          {dedupLoading ? "Analyzing…" : "Auto Dedup"}
+          {dedupLoading ? "Reviewing..." : "Auto Dedup"}
         </button>
         <CheckboxField
           label="Include AI semantic pass"
@@ -342,7 +372,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
               )}
               <div className="toolbar">
                 {!proposal.isConflict && (
-                  <button type="button" className="primary-action" onClick={() => applyDedupProposal(proposal)}>
+                  <button type="button" className="primary-action" onClick={() => void applyDedupProposal(proposal)}>
                     {proposal.suggestedContent ? "Apply Trim" : "Delete Duplicate"}
                   </button>
                 )}
@@ -366,13 +396,13 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
                 <span><strong>{a.title}</strong> ↔ <strong>{b.title}</strong> <span className="muted">— {Math.round(overlap * 100)}%</span></span>
                 {(a.sourceType === "component" || a.sourceType === "storyCard") && (
                   <button type="button" className="danger" style={{ fontSize: "0.75rem", padding: "0.1rem 0.5rem" }}
-                    onClick={() => deleteItem(a)}>
+                    onClick={() => void deleteItem(a)}>
                     Delete "{a.title}"
                   </button>
                 )}
                 {(b.sourceType === "component" || b.sourceType === "storyCard") && (
                   <button type="button" className="danger" style={{ fontSize: "0.75rem", padding: "0.1rem 0.5rem" }}
-                    onClick={() => deleteItem(b)}>
+                    onClick={() => void deleteItem(b)}>
                     Delete "{b.title}"
                   </button>
                 )}

@@ -133,6 +133,7 @@ export interface BackendPlatformSettings {
     presencePenalty?: number;
     frequencyPenalty?: number;
     promptCaching?: boolean;
+    openRouterProviderSort?: "price" | "throughput" | "latency";
   };
   background: {
     semanticEvaluationEnabled: boolean;

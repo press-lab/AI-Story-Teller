@@ -5,6 +5,7 @@ import type { AdventurePageProps } from "./pageTypes";
 import { Field } from "./shared";
 import { AidImportWizard } from "../components/AidImportWizard";
 import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
@@ -37,6 +38,7 @@ export function ImportExportPage({
   onCreateAdventureFromImport,
   onOpenImportedAdventure,
 }: ImportExportPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [mode, setMode] = useState<ImportExportMode>("backup");
   const [importText, setImportText] = useState("");
   const [importFilename, setImportFilename] = useState("");
@@ -48,19 +50,25 @@ export function ImportExportPage({
       return;
     }
 
-    const shouldImport = window.confirm(
-      `Import and open "${importPreview.title}"? Your current adventure remains saved locally, but the app will switch to this imported save.`,
-    );
+    const shouldImport = await confirmAction({
+      title: "Import and open backup?",
+      message: `Import and open "${importPreview.title}"? Your current adventure remains saved locally, but the app will switch to this imported save.`,
+      confirmLabel: "Import",
+    });
     if (!shouldImport) return;
 
     try {
+      notify("Importing adventure backup...", { type: "info" });
       await onImportAdventure(importText);
       setImportText("");
       setImportFilename("");
       setMode("backup");
       setStatusMessage(`Imported and opened "${importPreview.title}".`);
+      notify(`Imported "${importPreview.title}".`, { type: "success" });
     } catch (error) {
-      setStatusMessage(error instanceof Error ? error.message : "Import failed.");
+      const message = error instanceof Error ? error.message : "Import failed.";
+      setStatusMessage(message);
+      notify(message, { type: "error" });
     }
   }
 
@@ -100,13 +108,17 @@ export function ImportExportPage({
     setStatusMessage(`Downloaded plot setup: ${filename}`);
   }
 
-  function resetRuntimeState() {
-    const shouldReset = window.confirm(
-      "Reset runtime queues and logs for this adventure? Authored plot, cards, brains, and transcript stay unchanged.",
-    );
+  async function resetRuntimeState() {
+    const shouldReset = await confirmAction({
+      title: "Reset runtime state?",
+      message: "Reset runtime queues and logs for this adventure? Authored plot, cards, brains, and transcript stay unchanged.",
+      confirmLabel: "Reset",
+      danger: true,
+    });
     if (!shouldReset) return;
     dispatch({ type: "RESET_RUNTIME_STATE" });
     setStatusMessage("Runtime queues and logs reset.");
+    notify("Runtime state reset.", { type: "success" });
   }
 
   const rawImportCount = adventure.activeState.rawImports.length;
@@ -240,7 +252,7 @@ export function ImportExportPage({
                   <div><dt>Messages</dt><dd>{importPreview.messages}</dd></div>
                   <div><dt>Story Cards</dt><dd>{importPreview.storyCards}</dd></div>
                   <div><dt>Brains</dt><dd>{importPreview.brains}</dd></div>
-                  <div><dt>Plot Blocks</dt><dd>{importPreview.components}</dd></div>
+                  <div><dt>Plot Components</dt><dd>{importPreview.components}</dd></div>
                   {importPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{importPreview.rawImports}</dd></div>}
                 </dl>
               </>
@@ -254,7 +266,7 @@ export function ImportExportPage({
           <details className="import-maintenance">
             <summary>Maintenance</summary>
             <p className="muted">Clears runtime queues and logs on the current adventure without changing authored content.</p>
-            <button type="button" className="danger" onClick={resetRuntimeState}>
+            <button type="button" className="danger" onClick={() => void resetRuntimeState()}>
               Reset Runtime State
             </button>
           </details>
@@ -311,7 +323,17 @@ export function ImportExportPage({
                 <button
                   type="button"
                   className="danger"
-                  onClick={() => dispatch({ type: "DELETE_RAW_IMPORT", rawImportId: raw.id })}
+                  onClick={async () => {
+                    const confirmed = await confirmAction({
+                      title: "Delete raw import?",
+                      message: `Delete raw import "${raw.source || raw.id}" from this adventure?`,
+                      confirmLabel: "Delete",
+                      danger: true,
+                    });
+                    if (!confirmed) return;
+                    dispatch({ type: "DELETE_RAW_IMPORT", rawImportId: raw.id });
+                    notify("Raw import deleted.", { type: "success" });
+                  }}
                 >
                   Delete Raw Import
                 </button>

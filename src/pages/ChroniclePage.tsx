@@ -1,9 +1,11 @@
 import { useState } from "react";
 import type { AdventurePageProps } from "./pageTypes";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 const PAGE_SIZE = 100;
 
 export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [editingId, setEditingId] = useState<string | undefined>();
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [search, setSearch] = useState("");
@@ -15,6 +17,19 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
     .filter(({ message }) => !searchLower || message.role.toLowerCase().includes(searchLower) || message.content.toLowerCase().includes(searchLower));
   const visible = filtered.slice(0, limit);
   const hasMore = filtered.length > limit;
+
+  async function deleteMessage(messageId: string) {
+    const confirmed = await confirmAction({
+      title: "Delete chronicle entry?",
+      message: "Delete this transcript entry from the adventure?",
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_MESSAGE", messageId });
+    setEditingId(undefined);
+    notify("Chronicle entry deleted.", { type: "success" });
+  }
 
   return (
     <section className="page editor-surface chronicle-page">
@@ -56,10 +71,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
                 <button
                   type="button"
                   className="danger"
-                  onClick={() => {
-                    dispatch({ type: "DELETE_MESSAGE", messageId: message.id });
-                    setEditingId(undefined);
-                  }}
+                  onClick={() => void deleteMessage(message.id)}
                 >
                   Delete
                 </button>

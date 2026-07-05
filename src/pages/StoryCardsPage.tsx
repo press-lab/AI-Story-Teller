@@ -6,6 +6,7 @@ import { makeStoryCard } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 const MEMORY_MODE_OPTIONS: StoryCardMemoryMode[] = ["static", "living", "historical"];
@@ -194,6 +195,7 @@ export function StoryCardsPage({
   onSuggestCardUpdates,
   onAuditStoryCards,
 }: StoryCardsPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [importText, setImportText] = useState("");
   const [aiDescription, setAiDescription] = useState("");
   const [aiIntent, setAiIntent] = useState<StoryCardAIBuilderIntent>("relationship");
@@ -221,7 +223,18 @@ export function StoryCardsPage({
     });
   }
 
-  function approveRec(rec: AuditRecommendation) {
+  async function approveRec(rec: AuditRecommendation) {
+    if (rec.action === "delete" || rec.action === "edit") {
+      const confirmed = await confirmAction({
+        title: rec.action === "delete" ? "Delete story card?" : "Apply story card edit?",
+        message: rec.action === "delete"
+          ? `Delete "${rec.title}"? ${rec.rationale}`
+          : `Apply the proposed edits to "${rec.title}"? ${rec.rationale}`,
+        confirmLabel: rec.action === "delete" ? "Delete" : "Apply Edit",
+        danger: rec.action === "delete",
+      });
+      if (!confirmed) return;
+    }
     if (rec.action === "delete" && rec.cardId) {
       dispatch({ type: "DELETE_STORY_CARD", storyCardId: rec.cardId });
     } else if (rec.action === "edit" && rec.cardId) {
@@ -252,17 +265,37 @@ export function StoryCardsPage({
       });
     }
     updateRec(rec.id, { decision: "approved" });
+    notify(
+      rec.action === "delete" ? "Story card deleted." : rec.action === "edit" ? "Story card updated." : "Story card created.",
+      { type: "success" },
+    );
   }
 
   async function runAudit() {
     if (!onAuditStoryCards) return;
     setAudit({ status: "running", recommendations: [] });
+    notify("Reviewing story cards...", { type: "info" });
     try {
       const recs = await onAuditStoryCards(auditTurns, auditIncludeAI);
       setAudit({ status: "done", recommendations: recs });
+      notify(recs.length > 0 ? `Found ${recs.length} story card cleanup suggestions.` : "No story card cleanup suggestions.", { type: "success" });
     } catch (err) {
-      setAudit({ status: "error", recommendations: [], errorMessage: err instanceof Error ? err.message : "Audit failed." });
+      const message = err instanceof Error ? err.message : "Audit failed.";
+      setAudit({ status: "error", recommendations: [], errorMessage: message });
+      notify(message, { type: "error" });
     }
+  }
+
+  async function deleteStoryCard(card: StoryCard) {
+    const confirmed = await confirmAction({
+      title: "Delete story card?",
+      message: `Delete "${card.title || "Untitled Card"}" from this adventure?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_STORY_CARD", storyCardId: card.id });
+    notify("Story card deleted.", { type: "success" });
   }
 
   useEffect(() => {
@@ -278,8 +311,9 @@ export function StoryCardsPage({
       if (!Array.isArray(parsed)) throw new Error("Expected an array of story cards.");
       parsed.forEach((card) => dispatch({ type: "UPSERT_STORY_CARD", storyCard: card }));
       setImportText("");
+      notify("Story cards imported.", { type: "success" });
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Could not import story cards.");
+      notify(error instanceof Error ? error.message : "Could not import story cards.", { type: "error" });
     }
   }
 
@@ -585,7 +619,7 @@ export function StoryCardsPage({
                     onClick={runAudit}
                     title="Review existing cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
                   >
-                    {audit?.status === "running" ? "Cleaning..." : "Clean Up Cards"}
+                    {audit?.status === "running" ? "Reviewing..." : "Clean Up Cards"}
                   </button>
                   <label className="turn-window-field">
                     <span>Review last</span>
@@ -794,7 +828,7 @@ export function StoryCardsPage({
 
                 {rec.decision === "pending" && (
                   <div className="audit-rec-actions">
-                    <button type="button" onClick={() => approveRec(rec)}>Approve</button>
+                    <button type="button" onClick={() => void approveRec(rec)}>Approve</button>
                     <button type="button" className="danger" onClick={() => updateRec(rec.id, { decision: "rejected" })}>Reject</button>
                   </div>
                 )}
@@ -842,7 +876,7 @@ export function StoryCardsPage({
                         ))}
                       </div>
                     </div>
-                    <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_STORY_CARD", storyCardId: card.id })}>
+                    <button type="button" className="danger" onClick={() => void deleteStoryCard(card)}>
                       Delete
                     </button>
                   </div>
@@ -1078,7 +1112,7 @@ export function StoryCardsPage({
                     <button type="button" onClick={() => dispatch({ type: "REORDER_STORY_CARD", storyCardId: card.id, direction: "down" })}>
                       Move Down
                     </button>
-                    <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_STORY_CARD", storyCardId: card.id })}>
+                    <button type="button" className="danger" onClick={() => void deleteStoryCard(card)}>
                       Delete
                     </button>
                   </div>

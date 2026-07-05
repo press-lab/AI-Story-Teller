@@ -1,4 +1,5 @@
 import type { AdventureAction, Adventure, GitHubSaveSettings, GitHubSaveSlot } from "../types/adventure";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
 interface CloudSavesPageProps {
@@ -36,8 +37,21 @@ export function CloudSavesPage({
   onLoadSave,
   onDeleteSave,
 }: CloudSavesPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   function update(patch: Partial<GitHubSaveSettings>) {
     onGitHubSaveSettingsChange({ ...gitHubSaveSettings, ...patch });
+  }
+
+  async function deleteSaveSlot(slot: GitHubSaveSlot) {
+    const confirmed = await confirmAction({
+      title: "Delete GitHub save?",
+      message: `Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    notify("Deleting GitHub save...", { type: "info" });
+    onDeleteSave(slot);
   }
 
   function updateAutoSave(autoSaveEnabled: boolean, autoSaveEveryNTurns: number, autoSaveEveryNMinutes?: number) {
@@ -143,7 +157,7 @@ export function CloudSavesPage({
                           type="button"
                           className="danger"
                           disabled={!!loadingSlotId}
-                          onClick={() => { if (window.confirm(`Delete save "${slot.title}" (${slot.saveType}, turn ${slot.turnCount})?`)) onDeleteSave(slot); }}
+                          onClick={() => void deleteSaveSlot(slot)}
                         >
                           Delete
                         </button>

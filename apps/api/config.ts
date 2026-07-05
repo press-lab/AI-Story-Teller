@@ -44,6 +44,11 @@ function boolEnv(name: string, fallback: boolean): boolean {
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
 }
 
+function openRouterProviderSortEnv(name: string): ProviderConfig["openRouterProviderSort"] {
+  const value = process.env[name]?.trim();
+  return value === "price" || value === "throughput" || value === "latency" ? value : undefined;
+}
+
 export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   loadDotEnv();
   const providerConfig: ProviderConfig = {
@@ -57,6 +62,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     presencePenalty: numberEnv("AIST_PROVIDER_PRESENCE_PENALTY", 0.8),
     frequencyPenalty: numberEnv("AIST_PROVIDER_FREQUENCY_PENALTY", 0),
     promptCaching: boolEnv("AIST_PROVIDER_PROMPT_CACHING", true),
+    openRouterProviderSort: openRouterProviderSortEnv("AIST_PROVIDER_OPENROUTER_SORT"),
   };
   const policyModeRaw = stringEnv("AIST_POLICY_MODE", "reviewOnly");
   const policyMode: PolicyMode = policyModeRaw === "enforce" ? "enforce" : "reviewOnly";

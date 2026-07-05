@@ -6,6 +6,7 @@ import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, NumberInput, TokenCountBadge, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
 import { useEffect, useState } from "react";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
 
@@ -240,6 +241,7 @@ function BrainSummary({ brain, query }: { brain: BrainEntry; query: string }) {
 }
 
 export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onAuditBrains, onGenerateBrain }: BrainsPageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [newName, setNewName] = useState("");
   const [search, setSearch] = useState("");
   const [openBrainId, setOpenBrainId] = useState<string | null>(null);
@@ -264,7 +266,18 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
     });
   }
 
-  function approveBrainAuditRec(rec: BrainAuditRecommendation) {
+  async function approveBrainAuditRec(rec: BrainAuditRecommendation) {
+    if (rec.action === "delete" || rec.action === "edit") {
+      const confirmed = await confirmAction({
+        title: rec.action === "delete" ? "Delete character brain?" : "Apply character brain edit?",
+        message: rec.action === "delete"
+          ? `Delete "${rec.title}"? ${rec.rationale}`
+          : `Apply the proposed edits to "${rec.title}"? ${rec.rationale}`,
+        confirmLabel: rec.action === "delete" ? "Delete" : "Apply Edit",
+        danger: rec.action === "delete",
+      });
+      if (!confirmed) return;
+    }
     if (rec.action === "delete" && rec.brainId) {
       dispatch({ type: "DELETE_BRAIN", brainId: rec.brainId });
     } else if (rec.action === "edit" && rec.brainId) {
@@ -298,21 +311,41 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
       });
     }
     updateBrainAuditRec(rec.id, { decision: "approved" });
+    notify(
+      rec.action === "delete" ? "Character brain deleted." : rec.action === "edit" ? "Character brain updated." : "Character brain created.",
+      { type: "success" },
+    );
   }
 
   async function runBrainAudit() {
     if (!onAuditBrains) return;
     setBrainAudit({ status: "running", recommendations: [] });
+    notify("Reviewing character brains...", { type: "info" });
     try {
       const recommendations = await onAuditBrains(brainAuditTurns, brainAuditIncludeAI);
       setBrainAudit({ status: "done", recommendations });
+      notify(recommendations.length > 0 ? `Found ${recommendations.length} character brain cleanup suggestions.` : "No character brain cleanup suggestions.", { type: "success" });
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Brain cleanup failed.";
       setBrainAudit({
         status: "error",
         recommendations: [],
-        errorMessage: err instanceof Error ? err.message : "Brain cleanup failed.",
+        errorMessage: message,
       });
+      notify(message, { type: "error" });
     }
+  }
+
+  async function deleteBrain(brain: BrainEntry) {
+    const confirmed = await confirmAction({
+      title: "Delete character brain?",
+      message: `Delete "${brain.characterName || "Unnamed"}" from this adventure?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_BRAIN", brainId: brain.id });
+    notify("Character brain deleted.", { type: "success" });
   }
 
   return (
@@ -393,7 +426,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                   onClick={runBrainAudit}
                   title="Review existing Character Brains and get cleanup suggestions."
                 >
-                  {brainAudit?.status === "running" ? "Cleaning..." : "Clean Up Brains"}
+                  {brainAudit?.status === "running" ? "Reviewing..." : "Clean Up Brains"}
                 </button>
                 <label className="turn-window-field">
                   <span>Review last</span>
@@ -449,7 +482,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                 <button type="button" disabled={loading} onClick={() => onUpdateBrainNow(brain.id)}>
                   Update Now
                 </button>
-                <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_BRAIN", brainId: brain.id })}>
+                <button type="button" className="danger" onClick={() => void deleteBrain(brain)}>
                   Delete
                 </button>
               </div>
@@ -739,7 +772,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                 )}
 
                 <div className="audit-rec-actions">
-                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => approveBrainAuditRec(rec)}>
+                  <button type="button" disabled={rec.decision !== "pending"} onClick={() => void approveBrainAuditRec(rec)}>
                     Approve
                   </button>
                   <button type="button" disabled={rec.decision !== "pending"} onClick={() => updateBrainAuditRec(rec.id, { decision: "rejected" })}>

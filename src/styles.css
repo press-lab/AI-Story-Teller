@@ -5901,4 +5901,96 @@ summary {
 
 }
 
+.action-toast-region {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.action-toast {
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  pointer-events: auto;
+}
+
+.action-toast-info {
+  border-left-color: var(--accent);
+}
+
+.action-toast-success {
+  border-left-color: #2f8f46;
+}
+
+.action-toast-error {
+  border-left-color: var(--danger, #c0392b);
+}
+
+.action-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.action-confirm-dialog {
+  width: min(420px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.action-confirm-dialog h3 {
+  margin: 0 0 8px;
+}
+
+.action-confirm-dialog p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.action-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+@media (max-width: 640px) {
+  .action-toast-region {
+    right: max(10px, env(safe-area-inset-right));
+    left: max(10px, env(safe-area-inset-left));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: auto;
+  }
+
+  .action-confirm-dialog {
+    padding: 16px;
+  }
+
+  .action-confirm-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
 .disabled-section { opacity: 0.4; pointer-events: none; }

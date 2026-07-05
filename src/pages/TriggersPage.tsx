@@ -3,6 +3,7 @@ import type { InlineMemoryCategory, TriggerEvaluationMode, TriggerMatchType, Tri
 import { makeTriggerRule } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, JsonTextarea, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
+import { useActionFeedback } from "../components/ActionFeedback";
 
 const sources: TriggerSource[] = ["input", "output", "both"];
 const matchTypes: TriggerMatchType[] = ["keyword", "phrase", "regex"];
@@ -23,6 +24,7 @@ const balancedMemoryCategories: Record<InlineMemoryCategory, boolean> = {
 };
 
 export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
+  const { confirmAction, notify } = useActionFeedback();
   const [flagKey, setFlagKey] = useState("");
   const [flagValue, setFlagValue] = useState("");
   const [ruleSearch, setRuleSearch] = useState("");
@@ -39,6 +41,18 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
       || rule.patterns.some((pattern) => pattern.toLowerCase().includes(searchLower))
     );
   });
+
+  async function deleteTriggerRule(ruleId: string, ruleName: string) {
+    const confirmed = await confirmAction({
+      title: "Delete automation rule?",
+      message: `Delete "${ruleName || "Untitled Rule"}" from this adventure?`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    dispatch({ type: "DELETE_TRIGGER_RULE", triggerRuleId: ruleId });
+    notify("Automation rule deleted.", { type: "success" });
+  }
   const enabledRuleCount = adventure.triggerRules.filter((rule) => rule.enabled).length;
 
   function createTrigger() {
@@ -286,7 +300,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                     <JsonTextarea value={rule.actions} onValidChange={(actions) => dispatch({ type: "UPDATE_TRIGGER_RULE", triggerRuleId: rule.id, patch: { actions } })} rows={8} />
                   </Field>
                   <p className="muted">Last fired turn: {rule.lastFiredTurn ?? "never"}</p>
-                  <button type="button" className="danger" onClick={() => dispatch({ type: "DELETE_TRIGGER_RULE", triggerRuleId: rule.id })}>
+                  <button type="button" className="danger" onClick={() => void deleteTriggerRule(rule.id, rule.name)}>
                     Delete
                   </button>
                 </div>
