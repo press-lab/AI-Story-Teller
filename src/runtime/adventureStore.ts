@@ -1,4 +1,12 @@
 import { deleteAdventure, getAdventure, listAdventures, saveAdventure, type AdventureSummary } from "../db/adventureDb";
+import {
+  deleteAccountAdventureBackup,
+  getAccountAdventureBackup,
+  listAccountAdventureBackups,
+  saveAccountAdventureBackup,
+  summarizeAccountAdventureBackup,
+  type AccountAdventureBackupRecord,
+} from "../db/accountAdventureBackupDb";
 import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from "../types/adventure";
 import type { RuntimeConfig } from "./runtimeConfig";
 
@@ -101,6 +109,147 @@ export function createBackendAdventureStore(config: RuntimeConfig, authToken?: s
         method: "DELETE",
         headers: authHeaders,
       });
+    },
+  };
+}
+
+export function createCachedBackendAdventureStore(
+  config: RuntimeConfig,
+  authToken: string,
+  ownerUserId: string,
+): AdventureStore {
+  const backend = createBackendAdventureStore(config, authToken);
+
+  async function cacheCleanAdventure(adventure: Adventure): Promise<void> {
+    await saveAccountAdventureBackup({
+      ownerUserId,
+      adventure,
+      syncStatus: "clean",
+      lastSyncedAt: new Date().toISOString(),
+      lastServerUpdatedAt: adventure.updatedAt,
+    });
+  }
+
+  async function markBackupFailed(adventure: Adventure, error: unknown): Promise<void> {
+    await saveAccountAdventureBackup({
+      ownerUserId,
+      adventure,
+      syncStatus: "failed",
+      lastSyncError: error instanceof Error ? error.message : "Backend sync failed.",
+    });
+  }
+
+  async function markBackupConflict(record: AccountAdventureBackupRecord, serverUpdatedAt: string): Promise<void> {
+    await saveAccountAdventureBackup({
+      ownerUserId,
+      adventure: record.adventure,
+      syncStatus: "conflict",
+      lastServerUpdatedAt: serverUpdatedAt,
+      lastSyncedAt: record.lastSyncedAt,
+      lastSyncError: `Server copy changed at ${new Date(serverUpdatedAt).toLocaleString()}. Open this local backup and resolve before syncing.`,
+    });
+  }
+
+  async function flushPendingBackups(): Promise<void> {
+    const backups = await listAccountAdventureBackups(ownerUserId);
+    for (const backup of backups) {
+      if (backup.syncStatus !== "pending" && backup.syncStatus !== "failed") continue;
+      try {
+        if (backup.lastServerUpdatedAt) {
+          const serverAdventure = await backend.get(backup.adventureId);
+          if (
+            serverAdventure
+            && serverAdventure.updatedAt > backup.lastServerUpdatedAt
+            && serverAdventure.updatedAt !== backup.adventure.updatedAt
+          ) {
+            await markBackupConflict(backup, serverAdventure.updatedAt);
+            continue;
+          }
+        }
+        await backend.save(backup.adventure);
+        await cacheCleanAdventure(backup.adventure);
+      } catch (error) {
+        await markBackupFailed(backup.adventure, error);
+      }
+    }
+  }
+
+  async function mergedListFromServer(): Promise<AdventureSummary[]> {
+    await flushPendingBackups();
+    const [serverSummaries, backups] = await Promise.all([
+      backend.list(),
+      listAccountAdventureBackups(ownerUserId),
+    ]);
+    const byId = new Map<string, AdventureSummary>(
+      serverSummaries.map((summary) => [summary.id, { ...summary, syncStatus: "clean", hasLocalBackup: false }]),
+    );
+    for (const backup of backups) {
+      const backupSummary = summarizeAccountAdventureBackup(backup);
+      const serverSummary = byId.get(backup.adventureId);
+      if (backup.syncStatus === "clean") {
+        if (serverSummary) {
+          byId.set(backup.adventureId, {
+            ...serverSummary,
+            hasLocalBackup: true,
+            lastSyncedAt: backup.lastSyncedAt,
+            localBackupUpdatedAt: backup.updatedAt,
+          });
+        }
+        continue;
+      }
+      byId.set(backup.adventureId, {
+        ...backupSummary,
+        title: serverSummary?.title ?? backupSummary.title,
+      });
+    }
+    return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  return {
+    async list() {
+      try {
+        return await mergedListFromServer();
+      } catch {
+        const backups = await listAccountAdventureBackups(ownerUserId);
+        return backups.map(summarizeAccountAdventureBackup);
+      }
+    },
+    async get(id) {
+      const backup = await getAccountAdventureBackup(ownerUserId, id);
+      if (backup && backup.syncStatus !== "clean") return backup.adventure;
+      try {
+        const adventure = await backend.get(id);
+        if (adventure) await cacheCleanAdventure(adventure);
+        return adventure ?? backup?.adventure;
+      } catch {
+        return backup?.adventure;
+      }
+    },
+    async save(adventure) {
+      const existingBackup = await getAccountAdventureBackup(ownerUserId, adventure.id);
+      if (existingBackup?.syncStatus === "conflict") {
+        await saveAccountAdventureBackup({
+          ownerUserId,
+          adventure,
+          syncStatus: "conflict",
+          lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
+          lastSyncedAt: existingBackup.lastSyncedAt,
+          lastSyncError: existingBackup.lastSyncError ?? "Server copy changed. Duplicate this local backup or restore a server backup before syncing.",
+        });
+        throw new Error("Local backup conflict. Duplicate this local copy or restore a server backup before syncing.");
+      }
+      await saveAccountAdventureBackup({ ownerUserId, adventure, syncStatus: "pending" });
+      try {
+        await backend.save(adventure);
+        await cacheCleanAdventure(adventure);
+      } catch (error) {
+        await markBackupFailed(adventure, error);
+        throw error;
+      }
+    },
+    async delete(id) {
+      await backend.delete(id);
+      await deleteAccountAdventureBackup(ownerUserId, id);
     },
   };
 }

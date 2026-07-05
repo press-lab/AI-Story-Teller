@@ -3,8 +3,9 @@ import { normalizeAdventure, sanitizeAdventureForPersistence } from "../state/de
 import { getAdventureThumbnail } from "../utils/adventureImages";
 
 const DB_NAME = "ai-story-teller";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "adventures";
+const ACCOUNT_BACKUP_STORE_NAME = "accountAdventureBackups";
 
 export interface AdventureSummary {
   id: string;
@@ -14,6 +15,11 @@ export interface AdventureSummary {
   turnCount: number;
   storyEntryCount: number;
   thumbnailImage?: AdventureThumbnailImage;
+  syncStatus?: "clean" | "pending" | "failed" | "conflict";
+  syncError?: string;
+  lastSyncedAt?: string;
+  localBackupUpdatedAt?: string;
+  hasLocalBackup?: boolean;
 }
 
 function normalizeCount(value: number | undefined): number {
@@ -33,6 +39,9 @@ function openDatabase(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(ACCOUNT_BACKUP_STORE_NAME)) {
+        db.createObjectStore(ACCOUNT_BACKUP_STORE_NAME, { keyPath: "key" });
       }
     };
     request.onsuccess = () => resolve(request.result);

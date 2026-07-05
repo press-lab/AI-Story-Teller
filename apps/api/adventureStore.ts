@@ -10,7 +10,7 @@ import { importAdventureJson } from "../../src/utils/json";
 import { getAdventureThumbnail } from "../../src/utils/adventureImages";
 import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
 import type { ApiConfig } from "./config";
-import type { BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
+import type { AdventureSnapshotRecord, BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
 import { assertCanGenerate } from "./accountSafety";
 import { assertPolicyAllowed, recordPolicyDecision } from "./policy";
 import { effectiveProviderConfig } from "./platformSettings";
@@ -37,6 +37,19 @@ export interface BackendTurnOptions {
   regenerateLastAssistant?: boolean;
   providerOverride?: Partial<ProviderConfig>;
 }
+
+export interface AdventureSnapshotSummary {
+  id: string;
+  adventureId: string;
+  source: AdventureSnapshotRecord["source"];
+  title: string;
+  createdAt: string;
+  adventureUpdatedAt: string;
+  turnCount: number;
+  storyEntryCount: number;
+}
+
+const MAX_SNAPSHOTS_PER_ADVENTURE = 100;
 
 const allowedPersonalProviderHosts = new Set([
   "api.deepseek.com",
@@ -71,7 +84,7 @@ export function saveBackendAdventure(
   data: LocalDbData,
   ownerUserId: string,
   adventure: Adventure,
-  source: "import" | "turn" | "manualSave",
+  source: AdventureSnapshotRecord["source"],
 ): BackendAdventureRecord {
   const now = nowIso();
   const cleanAdventure = normalizeAdventure(sanitizeAdventureForPersistence(adventure));
@@ -96,7 +109,38 @@ export function saveBackendAdventure(
     adventure: cleanAdventure,
     createdAt: now,
   });
+  pruneAdventureSnapshots(data, ownerUserId, cleanAdventure.id);
   return data.adventures.find((entry) => entry.id === cleanAdventure.id && entry.ownerUserId === ownerUserId)!;
+}
+
+export function listAdventureSnapshots(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+): AdventureSnapshotSummary[] {
+  getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  return data.adventureSnapshots
+    .filter((snapshot) => snapshot.userId === ownerUserId && snapshot.adventureId === adventureId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .map(summarizeAdventureSnapshot);
+}
+
+export function restoreAdventureSnapshot(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  snapshotId: string,
+): Adventure {
+  getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const snapshot = data.adventureSnapshots.find(
+    (entry) => entry.id === snapshotId && entry.userId === ownerUserId && entry.adventureId === adventureId,
+  );
+  if (!snapshot) throw new Error("Adventure backup not found.");
+  const restored = normalizeAdventure({
+    ...snapshot.adventure,
+    updatedAt: nowIso(),
+  });
+  return saveBackendAdventure(data, ownerUserId, restored, "restore").adventure;
 }
 
 export function importAdventureAsCopy(
@@ -254,6 +298,30 @@ export function getOwnedAdventureRecord(data: LocalDbData, ownerUserId: string, 
   const record = data.adventures.find((entry) => entry.id === adventureId && entry.ownerUserId === ownerUserId);
   if (!record) throw new Error("Adventure not found.");
   return record;
+}
+
+function summarizeAdventureSnapshot(snapshot: AdventureSnapshotRecord): AdventureSnapshotSummary {
+  const adventure = normalizeAdventure(snapshot.adventure);
+  return {
+    id: snapshot.id,
+    adventureId: snapshot.adventureId,
+    source: snapshot.source,
+    title: adventure.title,
+    createdAt: snapshot.createdAt,
+    adventureUpdatedAt: adventure.updatedAt,
+    turnCount: adventure.activeState.turn,
+    storyEntryCount: adventure.messages.filter((message) => message.role === "user" || message.role === "assistant").length,
+  };
+}
+
+function pruneAdventureSnapshots(data: LocalDbData, ownerUserId: string, adventureId: string): void {
+  const matching = data.adventureSnapshots
+    .filter((snapshot) => snapshot.userId === ownerUserId && snapshot.adventureId === adventureId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const keepIds = new Set(matching.slice(0, MAX_SNAPSHOTS_PER_ADVENTURE).map((snapshot) => snapshot.id));
+  data.adventureSnapshots = data.adventureSnapshots.filter(
+    (snapshot) => snapshot.userId !== ownerUserId || snapshot.adventureId !== adventureId || keepIds.has(snapshot.id),
+  );
 }
 
 function importAist(input: ImportAdventureInput): Adventure {

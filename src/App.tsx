@@ -40,7 +40,7 @@ import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
 import { applyConfiguredBackendDefault, defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
 import {
-  createBackendAdventureStore,
+  createCachedBackendAdventureStore,
   createBackendContextPreviewSource,
   createBackendTurnRunner,
   createLocalAdventureStore,
@@ -54,6 +54,7 @@ import {
   disableBackendInvite,
   forkBackendScenarioRevision,
   importAndOpenBackendAdventure,
+  listBackendAdventureSnapshots,
   loadBackendAdminConsole,
   loadBackendExploreScenarios,
   loadBackendProfile,
@@ -61,6 +62,7 @@ import {
   loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
+  restoreBackendAdventureSnapshot,
   saveBackendPlatformSettings,
   signupBackendPassword,
   startBackendGoogleOAuth,
@@ -224,7 +226,7 @@ export default function App() {
   );
   const backendAdventureStore = useMemo(
     () => backendReady && backendSession
-      ? createBackendAdventureStore(normalizedRuntimeConfig, backendSession.sessionToken)
+      ? createCachedBackendAdventureStore(normalizedRuntimeConfig, backendSession.sessionToken, backendSession.user.id)
       : undefined,
     [backendReady, backendSession, normalizedRuntimeConfig],
   );
@@ -846,6 +848,21 @@ export default function App() {
     }
   }
 
+  async function listBackendBackups(adventureId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before loading backups.");
+    const result = await listBackendAdventureSnapshots(normalizedRuntimeConfig, backendSession, adventureId);
+    return result.snapshots;
+  }
+
+  async function restoreBackendBackup(adventureId: string, snapshotId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before restoring backups.");
+    const restored = await restoreBackendAdventureSnapshot(normalizedRuntimeConfig, backendSession, adventureId, snapshotId);
+    setAdventure((current) => current?.id === restored.id ? restored : current);
+    if (adventure?.id === restored.id) setContextResult(undefined);
+    await refreshBackendProfile();
+    await library.refreshAdventures();
+  }
+
   function renderAdventureTool(tabId: TabId) {
     if (!adventure) return null;
     const common = { adventure, dispatch };
@@ -975,6 +992,8 @@ export default function App() {
         onDuplicate={library.duplicateAdventure}
         onDelete={(id) => library.removeAdventure(id, adventure?.id)}
         onPublish={backendReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
+        onListBackups={backendReady ? listBackendBackups : undefined}
+        onRestoreBackup={backendReady ? restoreBackendBackup : undefined}
         saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
         savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
         loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}

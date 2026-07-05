@@ -23,6 +23,8 @@ import {
   buildServerContextPreview,
   getOwnedAdventureRecord,
   importAdventureAsCopy,
+  listAdventureSnapshots,
+  restoreAdventureSnapshot,
   runBackendTurn,
   saveBackendAdventure,
   summarizeAdventure,
@@ -360,6 +362,16 @@ async function handleAdventureRoute(
   if (request.method === "GET" && segments.length === 2) {
     const data = await db.read();
     sendJson(response, 200, getOwnedAdventureRecord(data, userId, adventureId).adventure, corsHeaders);
+    return;
+  }
+  if (request.method === "GET" && segments[2] === "snapshots" && segments.length === 3) {
+    const data = await db.read();
+    sendJson(response, 200, { snapshots: listAdventureSnapshots(data, userId, adventureId) }, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "snapshots" && segments[4] === "restore") {
+    const restored = await db.update((data) => restoreAdventureSnapshot(data, userId, adventureId, segments[3]));
+    sendJson(response, 200, restored, corsHeaders);
     return;
   }
   if (request.method === "PUT" && segments.length === 2) {

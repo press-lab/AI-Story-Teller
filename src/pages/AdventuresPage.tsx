@@ -28,6 +28,7 @@ import { CheckboxField, Field, NumberInput, fromCommaList } from "./shared";
 import { AdventureThumbnailFrame, AdventureThumbnailPicker } from "../components/AdventureThumbnail";
 import { useActionFeedback } from "../components/ActionFeedback";
 import { getAdventureThumbnail } from "../utils/adventureImages";
+import type { BackendAdventureSnapshotSummary } from "../runtime/backendApi";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -38,6 +39,8 @@ interface AdventuresPageProps {
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onPublish?: (id: string) => Promise<void>;
+  onListBackups?: (id: string) => Promise<BackendAdventureSnapshotSummary[]>;
+  onRestoreBackup?: (id: string, snapshotId: string) => Promise<void>;
   onImportAdventure?: (text: string) => Promise<void>;
   onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
@@ -228,6 +231,8 @@ export function AdventuresPage({
   onDuplicate,
   onDelete,
   onPublish,
+  onListBackups,
+  onRestoreBackup,
   onImportAdventure,
   onCreateAdventureFromImport,
   saveSlots,
@@ -245,8 +250,12 @@ export function AdventuresPage({
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
 }: AdventuresPageProps) {
   const { confirmAction, notify } = useActionFeedback();
-  const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github">("list");
+  const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github" | "backups">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  const [backupAdventure, setBackupAdventure] = useState<AdventureSummary | undefined>();
+  const [backupSnapshots, setBackupSnapshots] = useState<BackendAdventureSnapshotSummary[]>([]);
+  const [backupStatus, setBackupStatus] = useState("");
+  const [backupLoading, setBackupLoading] = useState(false);
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
   useEffect(() => {
@@ -265,6 +274,50 @@ export function AdventuresPage({
     if (!confirmed) return;
     notify("Deleting GitHub save...", { type: "info" });
     onDeleteSave?.(slot);
+  }
+
+  async function openBackups(adventure: AdventureSummary) {
+    if (!onListBackups) return;
+    setBackupAdventure(adventure);
+    setBackupSnapshots([]);
+    setBackupStatus("Loading backups...");
+    setBackupLoading(true);
+    setView("backups");
+    try {
+      const snapshots = await onListBackups(adventure.id);
+      setBackupSnapshots(snapshots);
+      setBackupStatus(snapshots.length ? `${snapshots.length} backup save(s) available.` : "No backup saves yet.");
+    } catch (error) {
+      setBackupStatus(error instanceof Error ? error.message : "Could not load backup saves.");
+    } finally {
+      setBackupLoading(false);
+    }
+  }
+
+  async function restoreBackup(snapshot: BackendAdventureSnapshotSummary) {
+    if (!backupAdventure || !onRestoreBackup) return;
+    const confirmed = await confirmAction({
+      title: "Restore backup save?",
+      message: `Restore "${backupAdventure.title}" from ${new Date(snapshot.createdAt).toLocaleString()}? This replaces the current server copy, and the current copy remains in backup history.`,
+      confirmLabel: "Restore",
+      danger: true,
+    });
+    if (!confirmed) return;
+    setBackupLoading(true);
+    setBackupStatus("Restoring backup...");
+    try {
+      await onRestoreBackup(backupAdventure.id, snapshot.id);
+      const snapshots = onListBackups ? await onListBackups(backupAdventure.id) : [];
+      setBackupSnapshots(snapshots);
+      setBackupStatus("Backup restored.");
+      notify("Backup restored.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Backup restore failed.";
+      setBackupStatus(message);
+      notify(message, { type: "error" });
+    } finally {
+      setBackupLoading(false);
+    }
   }
 
   const [title, setTitle] = useState("New Adventure");
@@ -1032,6 +1085,64 @@ export function AdventuresPage({
     );
   }
 
+  if (view === "backups") {
+    return (
+      <section className="page">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <button type="button" onClick={() => setView("list")}>← Library</button>
+              <p className="eyebrow">Backup Saves</p>
+              <h3>{backupAdventure?.title ?? "Adventure backups"}</h3>
+              <p className="muted">
+                Server backups are stored on the owner-hosted backend. Restoring one replaces the current server copy.
+              </p>
+            </div>
+            <div className="toolbar">
+              <button
+                type="button"
+                disabled={backupLoading || !backupAdventure || !onListBackups}
+                onClick={() => backupAdventure && void openBackups(backupAdventure)}
+              >
+                Refresh
+              </button>
+              {backupLoading && <span className="status-pill">Working...</span>}
+            </div>
+          </div>
+          {backupStatus && <p className="notice">{backupStatus}</p>}
+          {backupSnapshots.length === 0 ? (
+            <p className="muted">No backup saves available.</p>
+          ) : (
+            <div className="list">
+              {backupSnapshots.map((snapshot) => (
+                <article key={snapshot.id} className="card">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>{new Date(snapshot.createdAt).toLocaleString()}</h3>
+                      <p className="muted">
+                        {snapshot.source} - {formatCount(snapshot.turnCount, "turn")} -{" "}
+                        {formatCount(snapshot.storyEntryCount, "story entry", "story entries")} - Adventure updated{" "}
+                        {new Date(snapshot.adventureUpdatedAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="danger"
+                      disabled={backupLoading || !onRestoreBackup}
+                      onClick={() => void restoreBackup(snapshot)}
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </article>
+      </section>
+    );
+  }
+
   return (
     <section className={embedded ? "profile-section adventure-library-section" : "page library-page"}>
       <header className="library-header">
@@ -1072,6 +1183,12 @@ export function AdventuresPage({
                 {new Date(adventure.createdAt).toLocaleString()}
               </p>
               {currentAdventure?.id === adventure.id && <p className="status-pill">Open</p>}
+              {adventure.syncStatus && adventure.syncStatus !== "clean" && (
+                <p className="status-pill">
+                  {adventure.syncStatus === "conflict" ? "Local backup conflict" : `Local backup ${adventure.syncStatus}`}
+                </p>
+              )}
+              {adventure.syncError && <p className="error-inline">{adventure.syncError}</p>}
             </div>
             <div className="library-card-actions">
               <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
@@ -1088,6 +1205,11 @@ export function AdventuresPage({
               <button type="button" className="danger" onClick={() => onDelete(adventure.id)}>
                 Delete
               </button>
+              {onListBackups && (
+                <button type="button" onClick={() => void openBackups(adventure)}>
+                  Backups
+                </button>
+              )}
               {onPublish && (
                 <button type="button" className="primary-action" onClick={() => void onPublish(adventure.id)}>
                   Publish Scenario

@@ -326,6 +326,47 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.getByText("Open")).toBeInTheDocument();
   });
 
+  it("opens backend backup saves and restores a selected snapshot", async () => {
+    const user = userEvent.setup();
+    const onListBackups = vi.fn(async () => [
+      {
+        id: "snapshot-1",
+        adventureId: "adv-backup",
+        source: "manualSave" as const,
+        title: "Backup Adventure",
+        createdAt: "2026-07-05T01:00:00.000Z",
+        adventureUpdatedAt: "2026-07-05T00:59:00.000Z",
+        turnCount: 8,
+        storyEntryCount: 16,
+      },
+    ]);
+    const onRestoreBackup = vi.fn(async () => undefined);
+
+    renderAdventuresPage(undefined, {
+      onListBackups,
+      onRestoreBackup,
+      adventures: [
+        {
+          id: "adv-backup",
+          title: "Backup Adventure",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-02T00:00:00.000Z",
+          turnCount: 8,
+          storyEntryCount: 16,
+        },
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Backups" }));
+    expect(await screen.findByRole("heading", { name: "Backup Adventure" })).toBeInTheDocument();
+    expect(screen.getByText("1 backup save(s) available.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+
+    expect(onRestoreBackup).toHaveBeenCalledWith("adv-backup", "snapshot-1");
+    expect(await screen.findByText("Backup restored.")).toBeInTheDocument();
+  });
+
   it("shows singular turn and story-entry text in the Library", () => {
     renderAdventuresPage(undefined, {
       adventures: [

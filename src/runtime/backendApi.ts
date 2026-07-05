@@ -99,6 +99,17 @@ export interface BackendProfileSummary {
   scenarios: BackendProfileScenarioSummary[];
 }
 
+export interface BackendAdventureSnapshotSummary {
+  id: string;
+  adventureId: string;
+  source: "import" | "turn" | "manualSave" | "restore";
+  title: string;
+  createdAt: string;
+  adventureUpdatedAt: string;
+  turnCount: number;
+  storyEntryCount: number;
+}
+
 export interface BackendPublicProfileSummary {
   user: {
     id: string;
@@ -407,6 +418,30 @@ export function importBackendAdventure(config: RuntimeConfig, session: BackendSe
     headers: authHeaders(session),
     body: JSON.stringify(input),
   });
+}
+
+export function listBackendAdventureSnapshots(config: RuntimeConfig, session: BackendSessionState, adventureId: string) {
+  return apiJson<{ snapshots: BackendAdventureSnapshotSummary[] }>(
+    config,
+    `/adventures/${encodeURIComponent(adventureId)}/snapshots`,
+    { headers: authHeaders(session) },
+  );
+}
+
+export function restoreBackendAdventureSnapshot(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  snapshotId: string,
+) {
+  return apiJson<Adventure>(
+    config,
+    `/adventures/${encodeURIComponent(adventureId)}/snapshots/${encodeURIComponent(snapshotId)}/restore`,
+    {
+      method: "POST",
+      headers: authHeaders(session),
+    },
+  );
 }
 
 export async function importAndOpenBackendAdventure(

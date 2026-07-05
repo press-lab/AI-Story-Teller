@@ -107,7 +107,7 @@ export interface AdventureSnapshotRecord {
   id: string;
   adventureId: string;
   userId: string;
-  source: "import" | "turn" | "manualSave";
+  source: "import" | "turn" | "manualSave" | "restore";
   adventure: Adventure;
   createdAt: string;
 }

@@ -302,6 +302,68 @@ describe("local API adventure persistence", () => {
     expect(imported.status).toBe(201);
     expect(imported.body.adventures[0].id).not.toBe(adventure.id);
   });
+
+  it("lists and restores server-side adventure backup snapshots", async () => {
+    const sessionToken = await passwordSession("backups@example.com");
+    const original = createDefaultAdventure("Snapshot Original");
+    const imported = await requestJson<{ adventures: Array<{ id: string; title: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        sourceType: "aist",
+        text: exportAdventureJson(original),
+      }),
+    });
+    expect(imported.status).toBe(201);
+    const adventureId = imported.body.adventures[0].id;
+
+    const changed = {
+      ...original,
+      title: "Snapshot Changed",
+      updatedAt: "2026-07-05T01:00:00.000Z",
+    };
+    const saved = await requestJson<{ title: string }>(`/adventures/${adventureId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ adventure: changed }),
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.title).toBe("Snapshot Changed");
+
+    const snapshots = await requestJson<{
+      snapshots: Array<{ id: string; source: string; title: string; turnCount: number }>;
+    }>(`/adventures/${adventureId}/snapshots`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(snapshots.status).toBe(200);
+    expect(snapshots.body.snapshots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: "import", title: "Snapshot Original" }),
+        expect.objectContaining({ source: "manualSave", title: "Snapshot Changed" }),
+      ]),
+    );
+
+    const importSnapshot = snapshots.body.snapshots.find((snapshot) => snapshot.source === "import");
+    expect(importSnapshot).toBeTruthy();
+    const restored = await requestJson<typeof original>(
+      `/adventures/${adventureId}/snapshots/${importSnapshot!.id}/restore`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      },
+    );
+    expect(restored.status).toBe(200);
+    expect(restored.body.title).toBe("Snapshot Original");
+
+    const afterRestore = await requestJson<{
+      snapshots: Array<{ source: string; title: string }>;
+    }>(`/adventures/${adventureId}/snapshots`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(afterRestore.body.snapshots).toEqual(
+      expect.arrayContaining([expect.objectContaining({ source: "restore", title: "Snapshot Original" })]),
+    );
+  });
 });
 
 describe("local API policy gates and sharing", () => {
