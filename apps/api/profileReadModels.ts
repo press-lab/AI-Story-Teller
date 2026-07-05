@@ -94,6 +94,7 @@ export function listExploreScenarios(data: LocalDbData): ExploreScenarioSummary[
     .filter((revision) => revision.status === "published" && revision.publishedAt)
     .map((revision) => {
       const profile = data.profiles.find((entry) => entry.userId === revision.ownerUserId);
+      const draft = data.scenarioDrafts.find((entry) => entry.id === revision.scenarioId && entry.ownerUserId === revision.ownerUserId);
       return {
         scenarioId: revision.scenarioId,
         revisionId: revision.id,
@@ -104,7 +105,7 @@ export function listExploreScenarios(data: LocalDbData): ExploreScenarioSummary[
         version: revision.version,
         createdAt: revision.createdAt,
         publishedAt: revision.publishedAt!,
-        thumbnailImage: scenarioThumbnail(revision),
+        thumbnailImage: scenarioThumbnail(revision) ?? sourceAdventureThumbnail(data, draft),
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
@@ -147,6 +148,14 @@ function scenarioThumbnail(revision: ScenarioRevision): AdventureThumbnailImage 
   const direct = revision.content.thumbnailImage;
   const metadataThumbnail = isRecord(revision.content.metadata) ? revision.content.metadata.thumbnailImage : undefined;
   return normalizeAdventureThumbnail(direct) ?? normalizeAdventureThumbnail(metadataThumbnail);
+}
+
+function sourceAdventureThumbnail(data: LocalDbData, draft: ScenarioDraft | undefined): AdventureThumbnailImage | undefined {
+  if (!draft?.sourceAdventureId) return undefined;
+  const sourceAdventure = data.adventures.find(
+    (entry) => entry.id === draft.sourceAdventureId && entry.ownerUserId === draft.ownerUserId,
+  );
+  return sourceAdventure ? summarizeAdventure(sourceAdventure.adventure).thumbnailImage : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -190,6 +190,7 @@ export function createCachedBackendAdventureStore(
         if (serverSummary) {
           byId.set(backup.adventureId, {
             ...serverSummary,
+            thumbnailImage: serverSummary.thumbnailImage ?? backupSummary.thumbnailImage,
             hasLocalBackup: true,
             lastSyncedAt: backup.lastSyncedAt,
             localBackupUpdatedAt: backup.updatedAt,

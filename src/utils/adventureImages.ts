@@ -20,7 +20,11 @@ export function normalizeAdventureThumbnail(value: unknown): AdventureThumbnailI
 }
 
 export function getAdventureThumbnail(source: Pick<Adventure, "metadata"> | { metadata?: JsonObject }): AdventureThumbnailImage | undefined {
-  return normalizeAdventureThumbnail(source.metadata?.[ADVENTURE_THUMBNAIL_METADATA_KEY]);
+  const legacySource = source as Record<string, unknown>;
+  return (
+    normalizeAdventureThumbnail(source.metadata?.[ADVENTURE_THUMBNAIL_METADATA_KEY])
+    ?? normalizeAdventureThumbnail(legacySource[ADVENTURE_THUMBNAIL_METADATA_KEY])
+  );
 }
 
 export function thumbnailMetadataPatch(thumbnail: AdventureThumbnailImage | null): JsonObject {

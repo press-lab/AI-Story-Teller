@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { createDefaultAdventure } from "../../src/state/defaults";
 import { exportAdventureJson } from "../../src/utils/json";
+import { thumbnailMetadataPatch } from "../../src/utils/adventureImages";
 import { clearRateLimitsForTests } from "./rateLimit";
 import { createApiServer, type ApiServer } from "./server";
 
@@ -627,6 +628,12 @@ describe("local API policy gates and sharing", () => {
   it("returns profile adventure/scenario summaries and explore scenario listings", async () => {
     const sessionToken = await passwordSession("profile@example.com");
     const adventure = createDefaultAdventure("Profile Adventure");
+    adventure.metadata = thumbnailMetadataPatch({
+      dataUrl: "data:image/png;base64,cHJvZmlsZQ==",
+      altText: "Profile adventure cover",
+      mimeType: "image/png",
+      updatedAt: "2026-07-05T00:00:00.000Z",
+    });
     await requestJson("/adventures/import", {
       method: "POST",
       headers: { Authorization: `Bearer ${sessionToken}` },
@@ -636,7 +643,11 @@ describe("local API policy gates and sharing", () => {
     const draft = await requestJson<{ id: string }>("/scenarios", {
       method: "POST",
       headers: { Authorization: `Bearer ${sessionToken}` },
-      body: JSON.stringify({ title: "Explore Scenario", description: "A public local test scenario." }),
+      body: JSON.stringify({
+        title: "Explore Scenario",
+        description: "A public local test scenario.",
+        sourceAdventureId: adventure.id,
+      }),
     });
     const revision = await requestJson<{ id: string }>(`/scenarios/${draft.body.id}/revisions`, {
       method: "POST",
@@ -651,17 +662,19 @@ describe("local API policy gates and sharing", () => {
     const profile = await requestJson<{
       user: { id: string; email: string };
       profile: { displayName: string };
-      adventures: Array<{ title: string }>;
-      scenarios: Array<{ title: string; revisionCount: number; publishedRevisionCount: number }>;
+      adventures: Array<{ title: string; thumbnailImage?: { altText?: string } }>;
+      scenarios: Array<{ title: string; thumbnailImage?: { altText?: string }; revisionCount: number; publishedRevisionCount: number }>;
     }>("/profile/me", {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
     expect(profile.status).toBe(200);
     expect(profile.body.user.email).toBe("profile@example.com");
     expect(profile.body.adventures.some((entry) => entry.title.startsWith("Profile Adventure"))).toBe(true);
+    expect(profile.body.adventures.find((entry) => entry.title.startsWith("Profile Adventure"))?.thumbnailImage?.altText).toBe("Profile adventure cover");
     expect(profile.body.scenarios).toEqual([
       expect.objectContaining({
         title: "Explore Scenario",
+        thumbnailImage: expect.objectContaining({ altText: "Profile adventure cover" }),
         revisionCount: 1,
         publishedRevisionCount: 1,
       }),
@@ -672,7 +685,7 @@ describe("local API policy gates and sharing", () => {
       user: { id: string; displayName: string; email?: string };
       profile: { displayName: string };
       adventures?: Array<{ title: string }>;
-      scenarios: Array<{ title: string; ownerDisplayName: string; version: number }>;
+      scenarios: Array<{ title: string; thumbnailImage?: { altText?: string }; ownerDisplayName: string; version: number }>;
     }>(`/profiles/${profile.body.user.id}`, {
       headers: { Authorization: `Bearer ${viewerSession}` },
     });
@@ -687,13 +700,14 @@ describe("local API policy gates and sharing", () => {
     expect(publicProfile.body.scenarios).toEqual([
       expect.objectContaining({
         title: "Explore Scenario",
+        thumbnailImage: expect.objectContaining({ altText: "Profile adventure cover" }),
         ownerDisplayName: "Player",
         version: 1,
       }),
     ]);
 
     const explore = await requestJson<{
-      scenarios: Array<{ title: string; ownerDisplayName: string; version: number }>;
+      scenarios: Array<{ title: string; thumbnailImage?: { altText?: string }; ownerDisplayName: string; version: number }>;
     }>("/explore/scenarios", {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
@@ -701,6 +715,7 @@ describe("local API policy gates and sharing", () => {
     expect(explore.body.scenarios).toEqual([
       expect.objectContaining({
         title: "Explore Scenario",
+        thumbnailImage: expect.objectContaining({ altText: "Profile adventure cover" }),
         ownerDisplayName: "Player",
         version: 1,
       }),
