@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { createDefaultAdventure } from "../../src/state/defaults";
 import { exportAdventureJson } from "../../src/utils/json";
@@ -108,6 +108,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await api.close();
   await rm(tempDir, { recursive: true, force: true });
+  vi.unstubAllGlobals();
 });
 
 describe("local API auth and invite gate", () => {
@@ -438,6 +439,84 @@ describe("local API policy gates and sharing", () => {
     });
     expect(unsafePersonalProvider.status).toBe(400);
     expect(unsafePersonalProvider.body.error).toMatch(/approved HTTPS provider/i);
+  });
+
+  it("runs story card and character AI tools through the backend provider", async () => {
+    const realFetch = globalThis.fetch;
+    const providerCalls: Array<{ authorization?: string; body: string }> = [];
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (url.startsWith("https://provider.test")) {
+        const body = String(init?.body ?? "");
+        providerCalls.push({
+          authorization: init?.headers instanceof Headers
+            ? init.headers.get("Authorization") ?? undefined
+            : (init?.headers as Record<string, string> | undefined)?.Authorization,
+          body,
+        });
+        const content = body.includes("AI Memory Builder")
+          ? JSON.stringify({
+            proposals: [{
+              action: "create",
+              title: "Mira's Promise",
+              storyCardType: "character",
+              memoryMode: "static",
+              content: "Mira promised to watch the north gate.",
+              keys: ["Mira", "north gate"],
+            }],
+            rationale: "A durable promise should become a Story Card.",
+          })
+          : JSON.stringify({
+            currentState: "Mira tests every promise against what people do under pressure.",
+            triggers: ["Mira"],
+            relationshipPressure: "She wants proof before trust.",
+            emotionalInterpretation: "She reads hesitation as hidden motive.",
+          });
+        return new Response(JSON.stringify({
+          choices: [{ message: { content } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
+    const sessionToken = await passwordSession("ai-tools@example.com");
+    const adventure = createDefaultAdventure("AI Tools");
+    const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    const adventureId = imported.body.adventures[0].id;
+
+    const storyCard = await requestJson<{ adventure: typeof adventure }>(`/adventures/${adventureId}/ai/story-card-builder`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        request: {
+          description: "Make a card for Mira's promise.",
+          intent: "character",
+          recentMessageCount: 0,
+        },
+      }),
+    });
+    expect(storyCard.status).toBe(200);
+    expect(
+      storyCard.body.adventure.activeState.memoryProposals.some((proposal) => proposal.title === "Mira's Promise")
+      || storyCard.body.adventure.storyCards.some((card) => card.title === "Mira's Promise"),
+    ).toBe(true);
+
+    const brain = await requestJson<{ adventure: typeof adventure }>(`/adventures/${adventureId}/ai/generate-brain`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ name: "Mira" }),
+    });
+    expect(brain.status).toBe(200);
+    expect(brain.body.adventure.brains.some((entry) => entry.characterName === "Mira")).toBe(true);
+    expect(providerCalls).toHaveLength(2);
+    expect(providerCalls.every((call) => call.authorization === "Bearer server-platform-key")).toBe(true);
   });
 
   it("creates account safety events and restrictions for severe reviewed policy hits", async () => {

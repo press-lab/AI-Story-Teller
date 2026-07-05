@@ -80,7 +80,7 @@ describe("cached backend adventure store", () => {
   });
 
   it("marks backend turn posts as keepalive for mobile backgrounding", async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    const fetchMock = vi.fn(async (..._args: Parameters<typeof fetch>) => new Response(JSON.stringify({
       adventure: createDefaultAdventure("Turn Result"),
       responseContent: "Done.",
     }), { status: 200, headers: { "Content-Type": "application/json" } }));
@@ -131,6 +131,84 @@ describe("cached backend adventure store", () => {
       syncStatus: "conflict",
       localBackupUpdatedAt: "2026-07-05T10:10:00.000Z",
       lastServerUpdatedAt: "2026-07-05T10:06:00.000Z",
+    });
+  });
+
+  it("skips the pre-generation upload when the clean local backup already matches the server copy", async () => {
+    const adventure = createDefaultAdventure("Already Synced");
+    adventure.id = "adv-clean";
+    adventure.updatedAt = "2026-07-05T01:00:00.000Z";
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure,
+      syncStatus: "clean",
+      lastSyncedAt: "2026-07-05T01:00:01.000Z",
+      lastServerUpdatedAt: adventure.updatedAt,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    const saved = await store.saveForGeneration!(adventure);
+
+    expect(saved).toBe(adventure);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uploads the open device adventure for generation instead of an older conflicted backup", async () => {
+    const oldBackup = createDefaultAdventure("Old Backup");
+    oldBackup.id = "adv-conflict";
+    oldBackup.updatedAt = "2026-07-05T01:00:00.000Z";
+    oldBackup.messages = [
+      { id: "old-user", role: "user", content: "This is the stale backup.", createdAt: "2026-07-05T00:59:00.000Z" },
+    ];
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure: oldBackup,
+      syncStatus: "conflict",
+      lastServerUpdatedAt: "2026-07-05T01:05:00.000Z",
+      lastSyncError: "Server copy changed.",
+    });
+    const openAdventure = {
+      ...oldBackup,
+      title: "Edited Open Copy",
+      updatedAt: "2026-07-05T01:10:00.000Z",
+      messages: [
+        { id: "edited-user", role: "user" as const, content: "This device edit must win.", createdAt: "2026-07-05T01:09:00.000Z" },
+      ],
+    };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      id: openAdventure.id,
+      title: openAdventure.title,
+      createdAt: openAdventure.createdAt,
+      updatedAt: openAdventure.updatedAt,
+      turnCount: 0,
+      storyEntryCount: 1,
+    }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    const saved = await store.saveForGeneration!(openAdventure);
+
+    expect(saved).toBe(openAdventure);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://backend.test/adventures/adv-conflict",
+      expect.objectContaining({
+        method: "PUT",
+        body: expect.stringContaining("This device edit must win."),
+      }),
+    );
+    const uploadCall = fetchMock.mock.calls[0] as unknown as [Parameters<typeof fetch>[0], RequestInit?];
+    expect(String(uploadCall[1]?.body)).not.toContain("This is the stale backup.");
+    const backup = await getAccountAdventureBackup("user-1", "adv-conflict");
+    expect(backup).toMatchObject({
+      syncStatus: "clean",
+      lastServerUpdatedAt: openAdventure.updatedAt,
+      adventure: expect.objectContaining({
+        title: "Edited Open Copy",
+      }),
     });
   });
 

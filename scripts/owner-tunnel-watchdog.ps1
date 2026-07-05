@@ -16,6 +16,7 @@ $EnvExamplePath = Join-Path $RepoRoot ".env.example"
 $CloudflaredExe = Join-Path $ToolsDir "cloudflared.exe"
 $ApiOutLog = Join-Path $LocalDir "api-serve.out.log"
 $ApiErrLog = Join-Path $LocalDir "api-serve.err.log"
+$ApiSourceVersionFile = Join-Path $LocalDir "api-source-version.txt"
 $TunnelOutLog = Join-Path $LocalDir "cloudflared.out.log"
 $TunnelErrLog = Join-Path $LocalDir "cloudflared.err.log"
 $TunnelResetLog = Join-Path $LocalDir "cloudflare-reset-events.log"
@@ -131,6 +132,42 @@ function Test-LocalApi {
   }
 }
 
+function Get-ApiSourceVersion {
+  $head = "unknown"
+  try {
+    $headValue = (& git -C $RepoRoot rev-parse HEAD 2>$null | Select-Object -First 1)
+    if (-not [string]::IsNullOrWhiteSpace($headValue)) { $head = $headValue.Trim() }
+  } catch {
+    $head = "unknown"
+  }
+
+  $latestTicks = 0L
+  $sourceRoots = @(
+    "apps\api",
+    "src\ai",
+    "src\contextBuilder",
+    "src\memory",
+    "src\providers",
+    "src\security",
+    "src\state",
+    "src\tokenizer",
+    "src\triggers",
+    "src\types",
+    "src\utils"
+  )
+  foreach ($relativeRoot in $sourceRoots) {
+    $root = Join-Path $RepoRoot $relativeRoot
+    if (-not (Test-Path $root)) { continue }
+    $latest = Get-ChildItem $root -Recurse -File -ErrorAction SilentlyContinue |
+      Sort-Object LastWriteTimeUtc -Descending |
+      Select-Object -First 1
+    if ($latest -and $latest.LastWriteTimeUtc.Ticks -gt $latestTicks) {
+      $latestTicks = $latest.LastWriteTimeUtc.Ticks
+    }
+  }
+  return "$head|$latestTicks"
+}
+
 function Stop-ApiListener {
   $port = Get-ApiPort
   $listeners = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
@@ -143,13 +180,22 @@ function Stop-ApiListener {
 }
 
 function Ensure-Api {
-  if (Test-LocalApi) { return }
+  $sourceVersion = Get-ApiSourceVersion
+  $recordedSourceVersion = ""
+  if (Test-Path $ApiSourceVersionFile) {
+    $recordedSourceVersion = (Get-Content $ApiSourceVersionFile -Raw).Trim()
+  }
+  if (Test-LocalApi) {
+    if ($recordedSourceVersion -eq $sourceVersion) { return }
+    Write-OwnerLog "Backend source changed; restarting owner API."
+  }
   Stop-ApiListener
   Write-OwnerLog "Starting owner API on $(Get-LocalApiUrl)."
   Start-HiddenCommand "npm.cmd" "run api:serve" $ApiOutLog $ApiErrLog | Out-Null
   for ($attempt = 1; $attempt -le 30; $attempt++) {
     Start-Sleep -Seconds 1
     if (Test-LocalApi) {
+      Set-Content -Path $ApiSourceVersionFile -Value $sourceVersion -Encoding ASCII
       Write-OwnerLog "Owner API is healthy."
       return
     }

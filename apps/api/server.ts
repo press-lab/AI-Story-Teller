@@ -25,6 +25,12 @@ import {
   importAdventureAsCopy,
   listAdventureSnapshots,
   restoreAdventureSnapshot,
+  runBackendBrainAudit,
+  runBackendBrainGeneration,
+  runBackendBrainUpdate,
+  runBackendStoryCardAudit,
+  runBackendStoryCardBuilder,
+  runBackendStoryCardUpdates,
   runBackendTurn,
   saveBackendAdventure,
   summarizeAdventure,
@@ -414,6 +420,73 @@ async function handleAdventureRoute(
   if (request.method === "GET" && segments[2] === "context-preview") {
     const context = await db.updatePersistingOnError((data) => buildServerContextPreview(data, userId, adventureId, config));
     sendJson(response, 200, context, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "story-card-builder") {
+    const { body } = await readJsonBody<{
+      request: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[3]>;
+      providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[5]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendStoryCardBuilder(data, userId, adventureId, body.request, config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "story-card-updates") {
+    const { body } = await readJsonBody<{
+      providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardUpdates>[4]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendStoryCardUpdates(data, userId, adventureId, config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "story-card-audit") {
+    const { body } = await readJsonBody<{
+      nTurns?: number;
+      includeAI?: boolean;
+      providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardAudit>[6]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendStoryCardAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "generate-brain") {
+    const { body } = await readJsonBody<{
+      name?: string;
+      providerOverride?: NonNullable<Parameters<typeof runBackendBrainGeneration>[5]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendBrainGeneration(data, userId, adventureId, body.name ?? "", config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "update-brain") {
+    const { body } = await readJsonBody<{
+      brainId?: string;
+      providerOverride?: NonNullable<Parameters<typeof runBackendBrainUpdate>[5]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendBrainUpdate(data, userId, adventureId, body.brainId ?? "", config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "brain-audit") {
+    const { body } = await readJsonBody<{
+      nTurns?: number;
+      includeAI?: boolean;
+      providerOverride?: NonNullable<Parameters<typeof runBackendBrainAudit>[6]>;
+    }>(request, 2_000_000);
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendBrainAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
+    );
+    sendJson(response, 200, result, corsHeaders);
     return;
   }
   if (request.method === "POST" && segments[2] === "turn") {

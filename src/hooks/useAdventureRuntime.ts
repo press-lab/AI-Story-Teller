@@ -54,6 +54,15 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
   return { ...adventure.modelConfig, ...settings, apiKey: settings.apiKey, sessionId };
 }
 
+export interface BackendAiTools {
+  buildStoryCardMemory(adventureId: string, request: StoryCardAIBuilderRequest): Promise<{ adventure: Adventure }>;
+  suggestStoryCardUpdates(adventureId: string): Promise<{ adventure: Adventure }>;
+  auditStoryCards(adventureId: string, nTurns: number, includeAI: boolean): Promise<AuditRecommendation[]>;
+  generateBrain(adventureId: string, name: string): Promise<{ adventure: Adventure }>;
+  updateBrain(adventureId: string, brainId: string): Promise<{ adventure: Adventure }>;
+  auditBrains(adventureId: string, nTurns: number, includeAI: boolean): Promise<BrainAuditRecommendation[]>;
+}
+
 export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number, hiddenReserveTokens = 0): RuntimeProviderSettings {
   const wordTarget = Number.isFinite(hint) ? Math.max(50, Math.min(500, Math.round(hint))) : 250;
   const visibleTokenCap = Math.ceil(wordTarget * 1.5) + 80;
@@ -198,6 +207,12 @@ export async function saveDeviceAdventureBeforeBackendTurn(
 ): Promise<Adventure> {
   setSaveStatus("saving");
   try {
+    if (adventureStore.saveForGeneration) {
+      const savedAdventure = await adventureStore.saveForGeneration(adventure);
+      setSaveStatus("saved");
+      await refreshAdventures();
+      return savedAdventure;
+    }
     await adventureStore.save(adventure);
     setSaveStatus("saved");
     await refreshAdventures();
@@ -231,6 +246,7 @@ export function useAdventureRuntime(
   globalMemorySettings: MemoryDetectionSettings,
   backendTurnRunner?: TurnRunner,
   backendContextPreview?: ContextPreviewSource,
+  backendAiTools?: BackendAiTools,
 ) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -242,6 +258,7 @@ export function useAdventureRuntime(
   const wasHiddenRef = useRef(false);
   const pendingRetryRef = useRef(false);
   const continueTurnRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const clearError = useCallback(() => setError(undefined), []);
 
   useEffect(() => { adventureRef.current = adventure; }, [adventure]);
   useEffect(() => { providerSettingsRef.current = providerSettings; }, [providerSettings]);
@@ -279,6 +296,14 @@ export function useAdventureRuntime(
       return next;
     });
   }, [adventureStore, setAdventure, setSaveStatus, refreshAdventures]);
+
+  async function applyBackendAdventureResult(next: Adventure) {
+    adventureRef.current = next;
+    setAdventure(next);
+    setContextResult(undefined);
+    setSaveStatus("saved");
+    await refreshAdventures();
+  }
 
   function queuePendingUpdate(actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
     const update: PendingAdventureUpdate = {
@@ -679,6 +704,13 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
     try {
+      if (backendAiTools) {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendAiTools.updateBrain(syncedAdventure.id, brainId);
+        await applyBackendAdventureResult(result.adventure);
+        return;
+      }
       const result = await runManualBrainUpdate(adventure, activeProviderConfig, brainId);
       applyActionsAndPersist(result.actions);
     } catch (manualError) {
@@ -723,6 +755,14 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
     try {
+      if (backendAiTools) {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendAiTools.suggestStoryCardUpdates(syncedAdventure.id);
+        await applyBackendAdventureResult(result.adventure);
+        openTab("memoryInbox");
+        return;
+      }
       const result = await runManualStoryCardsUpdate(adventure, activeProviderConfig);
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
@@ -738,6 +778,14 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
     try {
+      if (backendAiTools) {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendAiTools.buildStoryCardMemory(syncedAdventure.id, request);
+        await applyBackendAdventureResult(result.adventure);
+        openTab("memoryInbox");
+        return;
+      }
       const result = await runStoryCardAIBuilder(adventure, activeProviderConfig, request);
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
@@ -784,6 +832,11 @@ export function useAdventureRuntime(
 
   async function auditStoryCards(nTurns: number, includeAI = false): Promise<AuditRecommendation[]> {
     if (!adventure) return [];
+    if (backendAiTools) {
+      const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+      setAdventure(syncedAdventure);
+      return backendAiTools.auditStoryCards(syncedAdventure.id, nTurns, includeAI);
+    }
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns, { includeAI });
   }
 
@@ -794,6 +847,11 @@ export function useAdventureRuntime(
 
   async function auditBrains(nTurns: number, includeAI = false): Promise<BrainAuditRecommendation[]> {
     if (!adventure) return [];
+    if (backendAiTools) {
+      const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+      setAdventure(syncedAdventure);
+      return backendAiTools.auditBrains(syncedAdventure.id, nTurns, includeAI);
+    }
     return runBrainAudit(adventure, activeProviderConfig, nTurns, { includeAI });
   }
 
@@ -910,6 +968,13 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     setLoading(true);
     setError(undefined);
     try {
+      if (backendAiTools) {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendAiTools.generateBrain(syncedAdventure.id, name);
+        await applyBackendAdventureResult(result.adventure);
+        return;
+      }
       const brain = await generateBrainEntry(adventure, activeProviderConfig, name);
       applyActionsAndPersist([{ type: "UPSERT_BRAIN", brain }]);
     } catch (err) {
@@ -924,7 +989,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
   return {
     loading,
     error,
-    clearError: () => setError(undefined),
+    clearError,
     activeProviderConfig,
     buildPreview,
     submitTurn,

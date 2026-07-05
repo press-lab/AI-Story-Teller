@@ -14,6 +14,7 @@ export interface AdventureStore {
   list(): Promise<AdventureSummary[]>;
   get(id: string): Promise<Adventure | undefined>;
   save(adventure: Adventure): Promise<void>;
+  saveForGeneration?(adventure: Adventure): Promise<Adventure>;
   delete(id: string): Promise<void>;
   resolveSyncConflict?(id: string, resolution: AdventureSyncConflictResolution): Promise<Adventure>;
 }
@@ -131,6 +132,37 @@ export function createCachedBackendAdventureStore(
       lastSyncedAt: new Date().toISOString(),
       lastServerUpdatedAt: adventure.updatedAt,
     });
+  }
+
+  async function saveOpenDeviceAdventure(adventure: Adventure): Promise<Adventure> {
+    const existingBackup = await getAccountAdventureBackup(ownerUserId, adventure.id);
+    if (
+      existingBackup?.syncStatus === "clean"
+      && existingBackup.adventure.updatedAt === adventure.updatedAt
+      && existingBackup.lastServerUpdatedAt === adventure.updatedAt
+    ) {
+      return adventure;
+    }
+    await saveAccountAdventureBackup({ ownerUserId, adventure, syncStatus: "pending" });
+    try {
+      await backend.save(adventure);
+      await cacheCleanAdventure(adventure);
+      return adventure;
+    } catch (error) {
+      if (existingBackup?.syncStatus === "conflict") {
+        await saveAccountAdventureBackup({
+          ownerUserId,
+          adventure,
+          syncStatus: "conflict",
+          lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
+          lastSyncedAt: existingBackup.lastSyncedAt,
+          lastSyncError: error instanceof Error ? error.message : "Backend sync failed.",
+        });
+      } else {
+        await markBackupFailed(adventure, error);
+      }
+      throw error;
+    }
   }
 
   async function markBackupFailed(adventure: Adventure, error: unknown): Promise<void> {
@@ -253,6 +285,7 @@ export function createCachedBackendAdventureStore(
         throw error;
       }
     },
+    saveForGeneration: saveOpenDeviceAdventure,
     async delete(id) {
       await backend.delete(id);
       await deleteAccountAdventureBackup(ownerUserId, id);

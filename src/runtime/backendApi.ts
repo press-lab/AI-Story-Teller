@@ -1,5 +1,7 @@
 import type { AdventureSummary } from "../db/adventureDb";
-import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
+import type { BrainAuditRecommendation } from "../memory/brainAudit";
+import type { AuditRecommendation } from "../memory/storyCardAudit";
+import type { Adventure, AdventureThumbnailImage, ProviderConfig, StoryCardAIBuilderRequest } from "../types/adventure";
 import { apiJson } from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
 
@@ -466,6 +468,87 @@ export async function importAndOpenBackendAdventure(
   if (!first) throw new Error("Backend import did not return an adventure.");
   return apiJson<Adventure>(config, `/adventures/${encodeURIComponent(first.id)}`, {
     headers: authHeaders(session),
+  });
+}
+
+export function buildBackendStoryCardMemory(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  request: StoryCardAIBuilderRequest,
+  providerOverride?: Partial<ProviderConfig>,
+) {
+  return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-builder`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify({ request, providerOverride }),
+  });
+}
+
+export function suggestBackendStoryCardUpdates(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  providerOverride?: Partial<ProviderConfig>,
+) {
+  return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-updates`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify({ providerOverride }),
+  });
+}
+
+export function auditBackendStoryCards(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  input: { nTurns: number; includeAI: boolean; providerOverride?: Partial<ProviderConfig> },
+) {
+  return apiJson<{ recommendations: AuditRecommendation[] }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-audit`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify(input),
+  });
+}
+
+export function generateBackendBrain(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  name: string,
+  providerOverride?: Partial<ProviderConfig>,
+) {
+  return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/generate-brain`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify({ name, providerOverride }),
+  });
+}
+
+export function updateBackendBrain(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  brainId: string,
+  providerOverride?: Partial<ProviderConfig>,
+) {
+  return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/update-brain`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify({ brainId, providerOverride }),
+  });
+}
+
+export function auditBackendBrains(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  input: { nTurns: number; includeAI: boolean; providerOverride?: Partial<ProviderConfig> },
+) {
+  return apiJson<{ recommendations: BrainAuditRecommendation[] }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/brain-audit`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify(input),
   });
 }
 

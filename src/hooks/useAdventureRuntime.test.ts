@@ -124,6 +124,29 @@ describe("saveDeviceAdventureBeforeBackendTurn", () => {
     expect(refreshAdventures).toHaveBeenCalledTimes(1);
   });
 
+  it("uses the explicit generation save path when the store supports one", async () => {
+    const adventure = createDefaultAdventure("Edited Device Copy");
+    adventure.id = "adv-device";
+    const saved = { ...adventure, updatedAt: "2026-07-05T00:00:01.000Z" };
+    const store: AdventureStore = {
+      list: vi.fn(),
+      get: vi.fn(),
+      save: vi.fn(async () => undefined),
+      saveForGeneration: vi.fn(async () => saved),
+      delete: vi.fn(),
+    };
+    const setSaveStatus = vi.fn();
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const result = await saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures);
+
+    expect(result).toBe(saved);
+    expect(store.saveForGeneration).toHaveBeenCalledWith(adventure);
+    expect(store.save).not.toHaveBeenCalled();
+    expect(setSaveStatus).toHaveBeenLastCalledWith("saved");
+    expect(refreshAdventures).toHaveBeenCalledTimes(1);
+  });
+
   it("uploads the local backup when the backend reports a save conflict", async () => {
     const adventure = createDefaultAdventure("Local Conflict Winner");
     adventure.id = "adv-conflict";

@@ -1,4 +1,4 @@
-import type { Adventure, ComponentEntry, ProviderConfig } from "../../src/types/adventure";
+import type { Adventure, AdventureAction, ComponentEntry, ProviderConfig, StoryCardAIBuilderRequest } from "../../src/types/adventure";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
@@ -9,6 +9,14 @@ import { runTurnPipeline } from "../../src/state/turnPipeline";
 import { importAdventureJson } from "../../src/utils/json";
 import { getAdventureThumbnail } from "../../src/utils/adventureImages";
 import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
+import { generateBrainFromName as generateBrainEntry } from "../../src/ai/generators";
+import { runBrainAudit, type BrainAuditRecommendation } from "../../src/memory/brainAudit";
+import { runStoryCardAudit, type AuditRecommendation } from "../../src/memory/storyCardAudit";
+import {
+  runManualBrainUpdate,
+  runManualStoryCardsUpdate,
+  runStoryCardAIBuilder,
+} from "../../src/triggers/semanticEngine";
 import type { ApiConfig } from "./config";
 import type { AdventureSnapshotRecord, BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
 import { assertCanGenerate } from "./accountSafety";
@@ -36,6 +44,18 @@ export interface BackendTurnOptions {
   providerCue?: string;
   regenerateLastAssistant?: boolean;
   providerOverride?: Partial<ProviderConfig>;
+}
+
+export interface BackendAiToolResult {
+  adventure: Adventure;
+}
+
+export interface BackendStoryCardAuditResult {
+  recommendations: AuditRecommendation[];
+}
+
+export interface BackendBrainAuditResult {
+  recommendations: BrainAuditRecommendation[];
 }
 
 export interface AdventureSnapshotSummary {
@@ -199,6 +219,154 @@ export function buildServerContextPreview(
   return context;
 }
 
+function backendProviderConfig(
+  data: LocalDbData,
+  config: ApiConfig,
+  override?: Partial<ProviderConfig>,
+): ProviderConfig {
+  const platformProviderConfig = effectiveProviderConfig(data, config);
+  const providerConfig = override
+    ? { ...platformProviderConfig, ...sanitizePersonalProviderOverride(override) }
+    : platformProviderConfig;
+  if (!providerConfig.apiKey?.trim()) {
+    throw new Error("Backend provider API key is not configured. Ask the platform owner to configure the server model key.");
+  }
+  return providerConfig;
+}
+
+function assertBackendAiInputAllowed(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  text: string,
+  config: ApiConfig,
+): void {
+  const decision = recordPolicyDecision(data, {
+    gate: "input",
+    text,
+    userId: ownerUserId,
+    subjectType: "adventure",
+    subjectId: adventureId,
+    policyMode: config.policyMode,
+  });
+  assertPolicyAllowed(decision);
+}
+
+function applyActionsToAdventure(adventure: Adventure, actions: AdventureAction[]): Adventure {
+  let next = adventure;
+  for (const action of actions) {
+    next = adventureReducer(next, action);
+  }
+  return normalizeAdventure(sanitizeAdventureForPersistence(next));
+}
+
+function assertAiToolProducedWork(actionCount: number, errors: string[], fallback: string): void {
+  if (actionCount > 0) return;
+  if (errors.length > 0) throw new Error(errors[0]);
+  throw new Error(fallback);
+}
+
+export async function runBackendStoryCardBuilder(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  request: StoryCardAIBuilderRequest,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendAiToolResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  assertBackendAiInputAllowed(data, ownerUserId, adventureId, request.description ?? "", config);
+  const result = await runStoryCardAIBuilder(record.adventure, backendProviderConfig(data, config, providerOverride), request);
+  const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce a Story Card suggestion.");
+  const next = applyActionsToAdventure(record.adventure, result.actions);
+  return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
+}
+
+export async function runBackendStoryCardUpdates(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendAiToolResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const result = await runManualStoryCardsUpdate(record.adventure, backendProviderConfig(data, config, providerOverride));
+  const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce Story Card update suggestions.");
+  const next = applyActionsToAdventure(record.adventure, result.actions);
+  return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
+}
+
+export async function runBackendBrainGeneration(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  name: string,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendAiToolResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  assertBackendAiInputAllowed(data, ownerUserId, adventureId, name, config);
+  const brain = await generateBrainEntry(record.adventure, backendProviderConfig(data, config, providerOverride), name);
+  const next = adventureReducer(record.adventure, { type: "UPSERT_BRAIN", brain });
+  return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
+}
+
+export async function runBackendBrainUpdate(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  brainId: string,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendAiToolResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const result = await runManualBrainUpdate(record.adventure, backendProviderConfig(data, config, providerOverride), brainId);
+  const actionCount = result.actions.filter((action) => action.type !== "LOG_EVALUATION_RESULT").length;
+  assertAiToolProducedWork(actionCount, result.logEntry.errors, "The AI did not produce a character update.");
+  const next = applyActionsToAdventure(record.adventure, result.actions);
+  return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
+}
+
+export async function runBackendStoryCardAudit(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  nTurns: number,
+  includeAI: boolean,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendStoryCardAuditResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const providerConfig = includeAI ? backendProviderConfig(data, config, providerOverride) : effectiveProviderConfig(data, config);
+  return {
+    recommendations: await runStoryCardAudit(record.adventure, providerConfig, nTurns, { includeAI }),
+  };
+}
+
+export async function runBackendBrainAudit(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  nTurns: number,
+  includeAI: boolean,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendBrainAuditResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const providerConfig = includeAI ? backendProviderConfig(data, config, providerOverride) : effectiveProviderConfig(data, config);
+  return {
+    recommendations: await runBrainAudit(record.adventure, providerConfig, nTurns, { includeAI }),
+  };
+}
+
 export async function runBackendTurn(
   data: LocalDbData,
   ownerUserId: string,
@@ -219,13 +387,7 @@ export async function runBackendTurn(
   });
   assertPolicyAllowed(inputDecision);
 
-  const platformProviderConfig = effectiveProviderConfig(data, config);
-  const providerConfig = options.providerOverride
-    ? { ...platformProviderConfig, ...sanitizePersonalProviderOverride(options.providerOverride) }
-    : platformProviderConfig;
-  if (!providerConfig.apiKey?.trim()) {
-    throw new Error("Backend provider API key is not configured. Set AIST_PROVIDER_API_KEY in .env for backend turns.");
-  }
+  const providerConfig = backendProviderConfig(data, config, options.providerOverride);
 
   const baseAdventure = options.regenerateLastAssistant
     ? adventureReducer(record.adventure, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" })

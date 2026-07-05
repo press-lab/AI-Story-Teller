@@ -47,12 +47,16 @@ import {
   createUnavailableAdventureStore,
 } from "./runtime/adventureStore";
 import {
+  auditBackendBrains,
+  auditBackendStoryCards,
+  buildBackendStoryCardMemory,
   createBackendInvite,
   createBackendScenario,
   createBackendScenarioRevision,
   createBackendAdminRestriction,
   disableBackendInvite,
   forkBackendScenarioRevision,
+  generateBackendBrain,
   importAndOpenBackendAdventure,
   listBackendAdventureSnapshots,
   loadBackendAdminConsole,
@@ -66,7 +70,9 @@ import {
   restoreBackendAdventureSnapshot,
   saveBackendPlatformSettings,
   signupBackendPassword,
+  suggestBackendStoryCardUpdates,
   startBackendGoogleOAuth,
+  updateBackendBrain,
   updateBackendAdminSafetyEventStatus,
   updateBackendAdminUserStatus,
   verifyBackendEmail,
@@ -253,6 +259,24 @@ export default function App() {
       : undefined,
     [backendReady, backendSession, normalizedRuntimeConfig],
   );
+  const backendAiTools = useMemo(() => {
+    if (!backendReady || !backendSession) return undefined;
+    const providerOverride = backendModelMode === "personal" ? activePreset : undefined;
+    return {
+      buildStoryCardMemory: (adventureId: string, request: Parameters<typeof buildBackendStoryCardMemory>[3]) =>
+        buildBackendStoryCardMemory(normalizedRuntimeConfig, backendSession, adventureId, request, providerOverride),
+      suggestStoryCardUpdates: (adventureId: string) =>
+        suggestBackendStoryCardUpdates(normalizedRuntimeConfig, backendSession, adventureId, providerOverride),
+      auditStoryCards: async (adventureId: string, nTurns: number, includeAI: boolean) =>
+        (await auditBackendStoryCards(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
+      generateBrain: (adventureId: string, name: string) =>
+        generateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, name, providerOverride),
+      updateBrain: (adventureId: string, brainId: string) =>
+        updateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, brainId, providerOverride),
+      auditBrains: async (adventureId: string, nTurns: number, includeAI: boolean) =>
+        (await auditBackendBrains(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
+    };
+  }, [activePreset, backendModelMode, backendReady, backendSession, normalizedRuntimeConfig]);
   const reportLibraryError = useCallback((msg: string) => console.error(msg), []);
 
   // Migrate old default font size (15) to new default (20) for existing users
@@ -450,7 +474,12 @@ export default function App() {
     globalAdventureSettings.memoryDetectionSettings,
     backendTurnRunner,
     backendContextPreview,
+    backendAiTools,
   );
+
+  useEffect(() => {
+    runtime.clearError();
+  }, [activeTab, editorTab, modalTab, playPanelTab, adventure?.id, runtime.clearError]);
 
   async function saveSyncedAdventures(syncedAdventures: Adventure[]) {
     for (const synced of syncedAdventures) {
@@ -1471,9 +1500,20 @@ export default function App() {
 
       <main className={`main-content${activeTab === "play" ? " play-content" : ""}${activeTab === "edit" ? " edit-content" : ""}`}>
         {runtime.error && activeTab !== "play" && (
-          <div className="error-box error-dismissible">
+          <div className="error-box error-dismissible" role="alert">
             <span>{runtime.error}</span>
-            <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={runtime.clearError}>×</button>
+            <button
+              type="button"
+              className="error-dismiss"
+              aria-label="Dismiss error"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                runtime.clearError();
+              }}
+            >
+              x
+            </button>
           </div>
         )}
         {page}
