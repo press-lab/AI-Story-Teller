@@ -80,6 +80,14 @@ The watchdog:
 5. Updates `.env` with `AIST_PUBLIC_API_BASE_URL` and `AIST_GOOGLE_REDIRECT_URI`.
 6. Runs `npm.cmd run pages:set-api -- <new-url> backend-local-implementation` only when the URL changes, which triggers the existing GitHub Pages workflow.
 
+Every Cloudflare reset decision is appended to:
+
+```text
+.local-backend/cloudflare-reset-events.log
+```
+
+That log records when the watchdog decides a reset is needed, why it reset, the previous URL when known, the new URL, and whether a GitHub Pages URL publish was triggered.
+
 This gives the right failure behavior:
 
 - API died, tunnel URL unchanged: restart local API, no Pages deploy needed.

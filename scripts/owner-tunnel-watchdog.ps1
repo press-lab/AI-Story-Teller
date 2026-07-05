@@ -18,7 +18,9 @@ $ApiOutLog = Join-Path $LocalDir "api-serve.out.log"
 $ApiErrLog = Join-Path $LocalDir "api-serve.err.log"
 $TunnelOutLog = Join-Path $LocalDir "cloudflared.out.log"
 $TunnelErrLog = Join-Path $LocalDir "cloudflared.err.log"
+$TunnelResetLog = Join-Path $LocalDir "cloudflare-reset-events.log"
 $TunnelPidFile = Join-Path $LocalDir "cloudflared.pid"
+$WatchdogPidFile = Join-Path $LocalDir "owner-watchdog.pid"
 $StateFile = Join-Path $LocalDir "pages-api-url.txt"
 $CloudflaredDownloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 $forceDeployRequested = [bool]$ForceDeploy
@@ -26,6 +28,20 @@ $forceDeployRequested = [bool]$ForceDeploy
 function Write-OwnerLog([string]$Message) {
   $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
   Write-Host "[$timestamp] $Message"
+}
+
+function Write-TunnelResetLog([string]$Event, [hashtable]$Fields = @{}) {
+  New-Item -ItemType Directory -Force $LocalDir | Out-Null
+  $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+  $parts = New-Object System.Collections.Generic.List[string]
+  $parts.Add("[$timestamp]")
+  $parts.Add($Event)
+  foreach ($key in ($Fields.Keys | Sort-Object)) {
+    $value = [string]$Fields[$key]
+    if ($value -match "\s") { $value = '"' + ($value -replace '"', '\"') + '"' }
+    $parts.Add("$key=$value")
+  }
+  Add-Content -Path $TunnelResetLog -Value ($parts -join " ") -Encoding UTF8
 }
 
 function Ensure-LocalFiles {
@@ -197,6 +213,7 @@ function Stop-ManagedTunnel {
       $process = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
       if ($process) {
         Write-OwnerLog "Stopping managed cloudflared PID $pidValue."
+        Write-TunnelResetLog "cloudflare_tunnel_process_stopped" @{ pid = $pidValue; source = "managed_pid_file" }
         Stop-Process -Id $pidValue -Force -ErrorAction SilentlyContinue
         $stopped = $true
       }
@@ -208,15 +225,21 @@ function Stop-ManagedTunnel {
     try { $path = $process.Path } catch { $path = "" }
     if ($path -eq $CloudflaredExe -or [string]::IsNullOrWhiteSpace($path)) {
       Write-OwnerLog "Stopping existing cloudflared PID $($process.Id)."
+      Write-TunnelResetLog "cloudflare_tunnel_process_stopped" @{ pid = $process.Id; source = "existing_cloudflared_process" }
       Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
     }
   }
 }
 
-function Start-Tunnel {
+function Start-Tunnel([string]$Reason, [string]$PreviousUrl = "") {
   Stop-ManagedTunnel
   $target = Get-LocalApiUrl
   Write-OwnerLog "Starting Cloudflare Quick Tunnel to $target."
+  Write-TunnelResetLog "cloudflare_tunnel_reset_started" @{
+    reason = $Reason
+    previousUrl = $PreviousUrl
+    target = $target
+  }
   $startTime = Get-Date
   Start-HiddenCommand $CloudflaredExe "tunnel --no-autoupdate --url $target" $TunnelOutLog $TunnelErrLog | Out-Null
   Start-Sleep -Seconds 2
@@ -226,6 +249,7 @@ function Start-Tunnel {
     Select-Object -First 1
   if ($cloudflared) {
     Set-Content -Path $TunnelPidFile -Value $cloudflared.Id -Encoding ASCII
+    Write-TunnelResetLog "cloudflare_tunnel_process_started" @{ pid = $cloudflared.Id; target = $target }
   }
 }
 
@@ -243,15 +267,21 @@ function Wait-TunnelUrl {
 function Ensure-Tunnel {
   $url = Get-TunnelUrl
   if ($url -and (Test-PublicApi $url)) { return $url }
+  $reason = "missing_url"
   if ($url) {
     Write-OwnerLog "Tunnel URL exists but is not healthy: $url"
+    $reason = "unhealthy_url"
   }
-  Start-Tunnel
+  $previousUrl = ""
+  if ($url) { $previousUrl = $url }
+  Start-Tunnel $reason $previousUrl
   $url = Wait-TunnelUrl
   if (-not (Test-PublicApi $url)) {
+    Write-TunnelResetLog "cloudflare_tunnel_reset_failed" @{ url = $url; reason = "public_api_unhealthy" }
     throw "Cloudflare tunnel URL was created but /version did not respond: $url"
   }
   Write-OwnerLog "Tunnel is healthy: $url"
+  Write-TunnelResetLog "cloudflare_tunnel_reset_completed" @{ url = $url; reason = $reason }
   return $url
 }
 
@@ -267,6 +297,7 @@ function Get-PublishedPagesUrl {
 
 function Publish-TunnelUrl([string]$Url) {
   Write-OwnerLog "Publishing Pages API URL: $Url"
+  Write-TunnelResetLog "cloudflare_pages_url_publish_started" @{ url = $Url; branch = $Branch }
   Set-EnvValue "AIST_PUBLIC_API_BASE_URL" $Url
   Set-EnvValue "AIST_GOOGLE_REDIRECT_URI" "$Url/auth/google/callback"
   Set-Content -Path $StateFile -Value $Url -Encoding ASCII
@@ -274,10 +305,12 @@ function Publish-TunnelUrl([string]$Url) {
   Ensure-Api
   & npm.cmd run pages:set-api -- $Url $Branch
   if ($LASTEXITCODE -ne 0) { throw "GitHub Pages API URL update failed." }
+  Write-TunnelResetLog "cloudflare_pages_url_publish_completed" @{ url = $Url; branch = $Branch }
 }
 
 Ensure-LocalFiles
 Ensure-Cloudflared
+Set-Content -Path $WatchdogPidFile -Value $PID -Encoding ASCII
 
 do {
   Ensure-PostgresIfConfigured
