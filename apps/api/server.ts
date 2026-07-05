@@ -31,7 +31,7 @@ import { currentRestriction } from "./accountSafety";
 import { createAdventureFromScenarioRevision, createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
 import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
-import { buildAdminConsole, createManualRestriction, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
+import { buildAdminConsole, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 
@@ -101,6 +101,16 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
       const { body } = await readJsonBody<{ expiresInDays?: number; maxUses?: number; note?: string }>(request);
       const created = await db.update((data) => createInvite(data, { ...body, createdByUserId: adminUserId }));
       sendJson(response, 201, created, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.segments.length === 4 && route.segments[0] === "admin" && route.segments[1] === "invites" && route.segments[3] === "disable") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const consoleData = await db.update((data) => {
+        disableInviteLink(data, adminUserId, route.segments[2]);
+        return buildAdminConsole(data, config);
+      });
+      sendJson(response, 200, consoleData, corsHeaders);
       return;
     }
 

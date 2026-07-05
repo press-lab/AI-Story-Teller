@@ -168,6 +168,31 @@ describe("local API auth and invite gate", () => {
     expect(reused.body.error).toMatch(/used/i);
   });
 
+  it("lets admins deactivate invite links before signup", async () => {
+    const created = await requestJson<{ token: string; invite: { id: string } }>("/admin/invites", {
+      method: "POST",
+      body: JSON.stringify({ maxUses: 1, note: "disable me" }),
+    });
+    expect(created.status).toBe(201);
+
+    const disabled = await requestJson<{ invites: Array<{ id: string; disabledAt?: string }> }>(`/admin/invites/${created.body.invite.id}/disable`, {
+      method: "POST",
+    });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.invites.find((invite) => invite.id === created.body.invite.id)?.disabledAt).toBeTruthy();
+
+    const signup = await requestJson<{ error: string }>("/auth/signup/password", {
+      method: "POST",
+      body: JSON.stringify({
+        inviteToken: created.body.token,
+        email: "disabled-invite@example.com",
+        password: "correct horse battery staple",
+      }),
+    });
+    expect(signup.status).toBe(400);
+    expect(signup.body.error).toMatch(/disabled/i);
+  });
+
   it("supports the local Google signup stub behind the invite gate", async () => {
     const inviteToken = await createInvite();
     const signup = await requestJson<{ sessionToken: string; user: { emailVerified: boolean } }>("/auth/google/local", {

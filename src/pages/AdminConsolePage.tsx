@@ -22,6 +22,7 @@ interface AdminConsolePageProps {
   ) => Promise<void>;
   onUpdateSafetyEvent: (eventId: string, status: "open" | "reviewed" | "dismissed") => Promise<void>;
   onCreateInvite: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
+  onDisableInvite: (inviteId: string) => Promise<void>;
   onSavePlatformSettings: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
 }
 
@@ -43,6 +44,7 @@ export function AdminConsolePage({
   onCreateRestriction,
   onUpdateSafetyEvent,
   onCreateInvite,
+  onDisableInvite,
   onSavePlatformSettings,
 }: AdminConsolePageProps) {
   const [targetUserId, setTargetUserId] = useState("");
@@ -57,6 +59,7 @@ export function AdminConsolePage({
   const [createdInviteToken, setCreatedInviteToken] = useState("");
   const [adminActionStatus, setAdminActionStatus] = useState("");
   const [safetyEventActionId, setSafetyEventActionId] = useState("");
+  const [inviteActionId, setInviteActionId] = useState("");
   const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
 
   useEffect(() => {
@@ -124,6 +127,20 @@ export function AdminConsolePage({
       setAdminActionStatus(error instanceof Error ? error.message : "Safety event update failed.");
     } finally {
       setSafetyEventActionId("");
+    }
+  }
+
+  async function disableInvite(inviteId: string) {
+    if (!window.confirm("Deactivate this invite link? It will no longer work for new account signup.")) return;
+    setInviteActionId(inviteId);
+    setAdminActionStatus(`Disabling invite ${shortId(inviteId)}...`);
+    try {
+      await onDisableInvite(inviteId);
+      setAdminActionStatus(`Invite ${shortId(inviteId)} disabled.`);
+    } catch (error) {
+      setAdminActionStatus(error instanceof Error ? error.message : "Invite disable failed.");
+    } finally {
+      setInviteActionId("");
     }
   }
 
@@ -440,14 +457,43 @@ export function AdminConsolePage({
           </Section>
 
           <Section title="Invites">
-            <CompactList
-              items={data.invites.slice(0, 30).map((invite) => ({
-                id: invite.id,
-                title: `${invite.useCount}/${invite.maxUses} used - ${invite.tokenHashPrefix}`,
-                detail: invite.note || "No note",
-                meta: `expires ${formatDate(invite.expiresAt)}`,
-              }))}
-            />
+            {data.invites.length ? (
+              <div className="admin-compact-list">
+                {data.invites.slice(0, 30).map((invite) => {
+                  const disabled = Boolean(invite.disabledAt);
+                  const usedUp = invite.useCount >= invite.maxUses;
+                  return (
+                    <div key={invite.id} className="admin-compact-row">
+                      <div>
+                        <strong>{invite.useCount}/{invite.maxUses} used - {invite.tokenHashPrefix}</strong>
+                        <div className="muted">
+                          {invite.note || "No note"} / expires {formatDate(invite.expiresAt)}
+                          {disabled ? ` / disabled ${formatDate(invite.disabledAt)}` : ""}
+                        </div>
+                      </div>
+                      <div className="toolbar">
+                        {disabled ? (
+                          <span className="status-pill">Disabled</span>
+                        ) : usedUp ? (
+                          <span className="status-pill">Used up</span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="danger"
+                            disabled={inviteActionId === invite.id}
+                            onClick={() => void disableInvite(invite.id)}
+                          >
+                            {inviteActionId === invite.id ? "Disabling..." : "Deactivate"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="muted">No records.</p>
+            )}
           </Section>
 
           <Section title="Adventures">

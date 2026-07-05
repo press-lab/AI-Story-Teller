@@ -7,6 +7,7 @@ import { createDefaultAdventure, makeComponent, normalizeAdventure, sanitizeAdve
 import { adventureReducer } from "../../src/state/adventureReducer";
 import { runTurnPipeline } from "../../src/state/turnPipeline";
 import { importAdventureJson } from "../../src/utils/json";
+import { getAdventureThumbnail } from "../../src/utils/adventureImages";
 import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
 import type { ApiConfig } from "./config";
 import type { BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
@@ -62,6 +63,7 @@ export function summarizeAdventure(adventure: Adventure) {
     updatedAt: adventure.updatedAt,
     turnCount: adventure.activeState.turn,
     storyEntryCount: adventure.messages.filter((message) => message.role === "user" || message.role === "assistant").length,
+    thumbnailImage: getAdventureThumbnail(adventure),
   };
 }
 

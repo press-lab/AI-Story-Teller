@@ -1,3 +1,4 @@
+import type { AdventureThumbnailImage } from "../../src/types/adventure";
 import type { BackendUser, LocalDbData, ScenarioDraft, ScenarioRevision, UserProfile } from "./apiTypes";
 import { summarizeAdventure } from "./adventureStore";
 
@@ -10,6 +11,7 @@ export interface ProfileScenarioSummary {
   sourceAdventureId?: string;
   createdAt: string;
   updatedAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
   revisionCount: number;
   publishedRevisionCount: number;
   latestRevision?: {
@@ -48,6 +50,7 @@ export interface ExploreScenarioSummary {
   version: number;
   createdAt: string;
   publishedAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
 }
 
 export function buildProfileSummary(data: LocalDbData, userId: string): BackendProfileSummary {
@@ -100,6 +103,7 @@ export function listExploreScenarios(data: LocalDbData): ExploreScenarioSummary[
         version: revision.version,
         createdAt: revision.createdAt,
         publishedAt: revision.publishedAt!,
+        thumbnailImage: scenarioThumbnail(revision),
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
@@ -110,6 +114,9 @@ function summarizeScenarioDraft(data: LocalDbData, draft: ScenarioDraft): Profil
     .filter((entry) => entry.scenarioId === draft.id && entry.ownerUserId === draft.ownerUserId)
     .sort((a, b) => b.version - a.version);
   const latestRevision = revisions[0];
+  const sourceAdventure = draft.sourceAdventureId
+    ? data.adventures.find((entry) => entry.id === draft.sourceAdventureId && entry.ownerUserId === draft.ownerUserId)
+    : undefined;
   return {
     id: draft.id,
     title: draft.title,
@@ -117,6 +124,9 @@ function summarizeScenarioDraft(data: LocalDbData, draft: ScenarioDraft): Profil
     sourceAdventureId: draft.sourceAdventureId,
     createdAt: draft.createdAt,
     updatedAt: draft.updatedAt,
+    thumbnailImage:
+      (latestRevision ? scenarioThumbnail(latestRevision) : undefined)
+      ?? (sourceAdventure ? summarizeAdventure(sourceAdventure.adventure).thumbnailImage : undefined),
     revisionCount: revisions.length,
     publishedRevisionCount: revisions.filter((revision) => revision.status === "published").length,
     latestRevision: latestRevision
@@ -128,5 +138,29 @@ function summarizeScenarioDraft(data: LocalDbData, draft: ScenarioDraft): Profil
           publishedAt: latestRevision.publishedAt,
         }
       : undefined,
+  };
+}
+
+function scenarioThumbnail(revision: ScenarioRevision): AdventureThumbnailImage | undefined {
+  if (!isRecord(revision.content)) return undefined;
+  const direct = revision.content.thumbnailImage;
+  const metadataThumbnail = isRecord(revision.content.metadata) ? revision.content.metadata.thumbnailImage : undefined;
+  return toThumbnailImage(direct) ?? toThumbnailImage(metadataThumbnail);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function toThumbnailImage(value: unknown): AdventureThumbnailImage | undefined {
+  if (!isRecord(value)) return undefined;
+  const dataUrl = value.dataUrl;
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) return undefined;
+  return {
+    dataUrl,
+    name: typeof value.name === "string" ? value.name : undefined,
+    altText: typeof value.altText === "string" ? value.altText : undefined,
+    mimeType: typeof value.mimeType === "string" ? value.mimeType : undefined,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : undefined,
   };
 }

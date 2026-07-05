@@ -50,6 +50,7 @@ import {
   createBackendScenario,
   createBackendScenarioRevision,
   createBackendAdminRestriction,
+  disableBackendInvite,
   forkBackendScenarioRevision,
   importAndOpenBackendAdventure,
   loadBackendAdminConsole,
@@ -659,6 +660,19 @@ export default function App() {
     }
   }, [backendSession, normalizedRuntimeConfig]);
 
+  const disableBackendAdminInviteLink = useCallback(async (inviteId: string) => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Disabling invite...");
+    try {
+      const result = await disableBackendInvite(normalizedRuntimeConfig, backendSession, inviteId);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("Invite disabled.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Invite disable failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
   const saveBackendAdminPlatformSettings = useCallback(async (settings: Parameters<typeof saveBackendPlatformSettings>[2]) => {
     if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
     setBackendAdminStatus("Saving platform settings...");
@@ -1022,6 +1036,7 @@ export default function App() {
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
           onCreateInvite={createBackendAdminInviteLink}
+          onDisableInvite={disableBackendAdminInviteLink}
           onSavePlatformSettings={saveBackendAdminPlatformSettings}
         />
       );

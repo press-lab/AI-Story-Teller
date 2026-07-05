@@ -5,6 +5,7 @@ import type {
   BackendPublicProfileSummary,
   BackendSessionState,
 } from "../runtime/backendApi";
+import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 
 interface ProfilePageProps {
   backendMode: boolean;
@@ -194,6 +195,11 @@ export function ProfilePage({
           <div className="library-grid">
             {profile.scenarios.map((scenario) => (
               <article key={scenario.id} className="library-card">
+                <AdventureThumbnailFrame
+                  thumbnail={scenario.thumbnailImage}
+                  title={scenario.title}
+                  className="library-card-cover"
+                />
                 <div className="library-card-body">
                   <div>
                     <h3>{scenario.title}</h3>
@@ -252,6 +258,11 @@ export function ProfilePage({
             <div className="library-grid">
               {profile.adventures.map((adventure) => (
                 <article key={adventure.id} className="library-card">
+                  <AdventureThumbnailFrame
+                    thumbnail={adventure.thumbnailImage}
+                    title={adventure.title}
+                    className="library-card-cover"
+                  />
                   <div className="library-card-body">
                     <div>
                       <h3>{adventure.title}</h3>
@@ -300,7 +311,7 @@ export function ProfilePage({
 
 function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
   return (
-    <details className="setup-panel profile-guide" open>
+    <details className="setup-panel profile-guide">
       <summary>New User Guide</summary>
       <div className="profile-guide-grid">
         <article>
@@ -354,6 +365,11 @@ function PublicScenarioCard({
 }) {
   return (
     <article className="library-card">
+      <AdventureThumbnailFrame
+        thumbnail={scenario.thumbnailImage}
+        title={scenario.title}
+        className="library-card-cover"
+      />
       <div className="library-card-body">
         <div>
           <h3>{scenario.title}</h3>

@@ -9,6 +9,24 @@ import type { BackendProfileSummary, BackendPublicProfileSummary, BackendSession
 import { ProfilePage } from "./ProfilePage";
 
 const timestamp = "2026-07-04T00:00:00.000Z";
+const adventureThumbnail = {
+  dataUrl: "data:image/png;base64,YWR2ZW50dXJl",
+  mimeType: "image/png",
+  altText: "Private adventure cover",
+  updatedAt: timestamp,
+};
+const scenarioThumbnail = {
+  dataUrl: "data:image/png;base64,c2NlbmFyaW8=",
+  mimeType: "image/png",
+  altText: "Draft scenario cover",
+  updatedAt: timestamp,
+};
+const publicScenarioThumbnail = {
+  dataUrl: "data:image/png;base64,cHVibGlj",
+  mimeType: "image/png",
+  altText: "Published scenario cover",
+  updatedAt: timestamp,
+};
 
 function session(): BackendSessionState {
   return {
@@ -44,6 +62,7 @@ function profile(): BackendProfileSummary {
         updatedAt: timestamp,
         turnCount: 7,
         storyEntryCount: 14,
+        thumbnailImage: adventureThumbnail,
       },
     ],
     scenarios: [
@@ -54,6 +73,7 @@ function profile(): BackendProfileSummary {
         sourceAdventureId: "adventure-1",
         createdAt: timestamp,
         updatedAt: timestamp,
+        thumbnailImage: scenarioThumbnail,
         revisionCount: 1,
         publishedRevisionCount: 0,
         latestRevision: {
@@ -92,6 +112,7 @@ function publicProfile(): BackendPublicProfileSummary {
         version: 2,
         createdAt: timestamp,
         publishedAt: timestamp,
+        thumbnailImage: publicScenarioThumbnail,
       },
     ],
   };
@@ -130,6 +151,8 @@ describe("ProfilePage", () => {
     const scenariosHeading = screen.getByRole("heading", { name: "Scenarios" });
     const adventuresHeading = screen.getByRole("heading", { name: "Adventures" });
     expect(scenariosHeading.compareDocumentPosition(adventuresHeading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByAltText("Draft scenario cover")).toBeInTheDocument();
+    expect(screen.getByAltText("Private adventure cover")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Publish Latest" }));
     expect(onPublishScenarioRevision).toHaveBeenCalledWith("revision-1");
@@ -169,6 +192,7 @@ describe("ProfilePage", () => {
     expect(screen.getByRole("heading", { name: "Creator" })).toBeInTheDocument();
     expect(screen.getByText("Builds shared worlds.")).toBeInTheDocument();
     expect(screen.getByText("Published World")).toBeInTheDocument();
+    expect(screen.getByAltText("Published scenario cover")).toBeInTheDocument();
     expect(screen.queryByText("player@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText("Private Playthrough")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Logout" })).not.toBeInTheDocument();

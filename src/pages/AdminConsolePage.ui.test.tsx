@@ -190,6 +190,7 @@ function adminData(): BackendAdminConsoleData {
 describe("AdminConsolePage", () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
   it("does not expose the console to normal backend users", () => {
@@ -201,6 +202,7 @@ describe("AdminConsolePage", () => {
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
         onSavePlatformSettings={vi.fn()}
       />,
     );
@@ -215,6 +217,7 @@ describe("AdminConsolePage", () => {
     const onCreateRestriction = vi.fn(async () => undefined);
     const onUpdateSafetyEvent = vi.fn(async () => undefined);
     const onCreateInvite = vi.fn(async () => ({ token: "invite-token-test" }));
+    const onDisableInvite = vi.fn(async () => undefined);
     const onSavePlatformSettings = vi.fn(async (settings: Partial<BackendAdminConsoleData["platformSettings"]>) => ({
       ...adminData().platformSettings,
       ...settings,
@@ -232,6 +235,7 @@ describe("AdminConsolePage", () => {
         onCreateRestriction={onCreateRestriction}
         onUpdateSafetyEvent={onUpdateSafetyEvent}
         onCreateInvite={onCreateInvite}
+        onDisableInvite={onDisableInvite}
         onSavePlatformSettings={onSavePlatformSettings}
       />,
     );
@@ -249,6 +253,10 @@ describe("AdminConsolePage", () => {
     await user.click(screen.getByRole("button", { name: "Create Invite" }));
     expect(onCreateInvite).toHaveBeenCalledWith(expect.objectContaining({ note: "UAT tester", maxUses: 1, expiresInDays: 14 }));
     expect(await screen.findByDisplayValue("invite-token-test")).toBeInTheDocument();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("button", { name: "Deactivate" }));
+    expect(onDisableInvite).toHaveBeenCalledWith("invite-1");
 
     await user.clear(screen.getByLabelText("Provider model"));
     await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");

@@ -1,5 +1,5 @@
 import type { AdventureSummary } from "../db/adventureDb";
-import type { Adventure } from "../types/adventure";
+import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
 import { apiJson } from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
 
@@ -80,6 +80,7 @@ export interface BackendProfileScenarioSummary {
   sourceAdventureId?: string;
   createdAt: string;
   updatedAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
   revisionCount: number;
   publishedRevisionCount: number;
   latestRevision?: {
@@ -118,6 +119,7 @@ export interface BackendExploreScenarioSummary {
   version: number;
   createdAt: string;
   publishedAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
 }
 
 export interface BackendPlatformSettings {
@@ -251,6 +253,13 @@ export function createBackendInvite(config: RuntimeConfig, session: BackendSessi
     method: "POST",
     headers: authHeaders(session),
     body: JSON.stringify(input),
+  });
+}
+
+export function disableBackendInvite(config: RuntimeConfig, session: BackendSessionState, inviteId: string) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/invites/${encodeURIComponent(inviteId)}/disable`, {
+    method: "POST",
+    headers: authHeaders(session),
   });
 }
 

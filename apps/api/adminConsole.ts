@@ -222,6 +222,25 @@ export function updateUserStatus(
   });
 }
 
+export function disableInviteLink(
+  data: LocalDbData,
+  adminUserId: string | undefined,
+  inviteId: string,
+): void {
+  const invite = data.inviteLinks.find((entry) => entry.id === inviteId);
+  if (!invite) throw new Error("Invite not found.");
+  if (!invite.disabledAt) invite.disabledAt = nowIso();
+  data.adminActions.push({
+    id: createId("admin_action"),
+    adminUserId,
+    action: "disable_invite",
+    targetType: "invite",
+    targetId: inviteId,
+    reason: "Invite disabled from Admin Console.",
+    createdAt: nowIso(),
+  });
+}
+
 export function createManualRestriction(
   data: LocalDbData,
   adminUserId: string | undefined,
