@@ -90,17 +90,30 @@ describe("WelcomePage", () => {
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
   });
 
-  it("does not expose backend URL controls and requires an invite before Google", async () => {
+  it("keeps auth actions clickable and shows missing-field guidance", async () => {
+    const user = userEvent.setup();
+    const onLoginPassword = vi.fn(async () => session());
+    const onStartGoogleOAuth = vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }));
+
     render(
       <WelcomePage
         onSignupPassword={vi.fn(async () => ({ verificationToken: "verify-token" }))}
         onVerifyEmail={vi.fn(async () => session())}
-        onLoginPassword={vi.fn(async () => session())}
-        onStartGoogleOAuth={vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }))}
+        onLoginPassword={onLoginPassword}
+        onStartGoogleOAuth={onStartGoogleOAuth}
       />,
     );
 
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(screen.getByText("Enter your email and password to log in.")).toBeInTheDocument();
+    expect(onLoginPassword).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Continue with Google" }));
+    expect(screen.getByText("Enter an invite token to continue with Google.")).toBeInTheDocument();
+    expect(onStartGoogleOAuth).not.toHaveBeenCalled();
   });
 });

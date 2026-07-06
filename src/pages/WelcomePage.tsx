@@ -34,6 +34,12 @@ export function WelcomePage({
     }
   }
 
+  function requireFields(message: string, values: string[]): boolean {
+    if (values.every((value) => value.trim())) return true;
+    setStatus(message);
+    return false;
+  }
+
   return (
     <main className="welcome-page">
       <section className="welcome-shell">
@@ -82,11 +88,12 @@ export function WelcomePage({
             <button
               type="button"
               className="primary-action"
-              disabled={busy || !inviteToken.trim() || !email.trim() || !password}
+              disabled={busy}
               onClick={() => void run("Signing up", async () => {
+                if (!requireFields("Enter an invite token, email, and password to sign up.", [inviteToken, email, password])) return;
                 const result = await onSignupPassword({
-                  inviteToken,
-                  email,
+                  inviteToken: inviteToken.trim(),
+                  email: email.trim(),
                   password,
                   displayName: displayName.trim() || undefined,
                 });
@@ -98,9 +105,10 @@ export function WelcomePage({
             </button>
             <button
               type="button"
-              disabled={busy || !email.trim() || !password}
+              disabled={busy}
               onClick={() => void run("Logging in", async () => {
-                await onLoginPassword({ email, password });
+                if (!requireFields("Enter your email and password to log in.", [email, password])) return;
+                await onLoginPassword({ email: email.trim(), password });
                 setStatus("Signed in.");
               })}
             >
@@ -108,8 +116,9 @@ export function WelcomePage({
             </button>
             <button
               type="button"
-              disabled={busy || !inviteToken.trim()}
+              disabled={busy}
               onClick={() => void run("Opening Google", async () => {
+                if (!requireFields("Enter an invite token to continue with Google.", [inviteToken])) return;
                 const result = await onStartGoogleOAuth({
                   inviteToken: inviteToken.trim(),
                   returnTo: window.location.href,
