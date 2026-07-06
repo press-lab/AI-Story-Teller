@@ -12,7 +12,7 @@ function getCommitHash(): string {
 
 export default defineConfig({
   plugins: [react()],
-  base: "/AI-Story-Teller/",
+  base: process.env.VITE_BASE_PATH?.trim() || "/",
   define: {
     __COMMIT_HASH__: JSON.stringify(getCommitHash()),
   },

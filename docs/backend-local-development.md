@@ -83,7 +83,7 @@ AIST_GOOGLE_REDIRECT_URI=http://127.0.0.1:8787/auth/google/callback
 AIST_WEB_APP_URL=http://localhost:5173/
 ```
 
-The Google redirect URI configured in Google Cloud must exactly match `AIST_GOOGLE_REDIRECT_URI`. For GitHub Pages UAT, set `AIST_WEB_APP_URL` to the Pages URL and add that origin to `AIST_API_ALLOWED_ORIGINS`.
+The Google redirect URI configured in Google Cloud must exactly match `AIST_GOOGLE_REDIRECT_URI`. For GitHub Pages UAT, set `AIST_WEB_APP_URL` to `https://story.storymodeai.com/` and add that origin to `AIST_API_ALLOWED_ORIGINS`.
 
 ## Policy Mode
 

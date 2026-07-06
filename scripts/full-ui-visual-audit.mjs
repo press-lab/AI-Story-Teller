@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import net from "node:net";
 
-const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/AI-Story-Teller/";
+const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/";
 const viewport = { width: 1920, height: 917 };
 
 function chromePath() {

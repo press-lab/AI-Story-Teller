@@ -3,7 +3,7 @@
 This is the intended UAT shape while the backend is hosted locally:
 
 ```text
-tester browser -> GitHub Pages frontend -> HTTPS tunnel/domain -> owner machine -> local API -> .local-backend/aist-api-db.json
+tester browser -> story.storymodeai.com frontend -> HTTPS tunnel/domain -> owner machine -> local API -> .local-backend/aist-api-db.json
 ```
 
 Non-technical users should not run the backend. They only open the GitHub Pages app, sign in, and play. The owner machine is the server. Accounts, profiles, invites, adventures, scenarios, policy decisions, safety events, usage logs, and admin settings live in the owner's local backend database.
@@ -15,7 +15,7 @@ Non-technical users should not run the backend. They only open the GitHub Pages 
 - Expose the API through an HTTPS public URL.
 - Point the GitHub Pages build at that HTTPS URL.
 
-GitHub Pages is served over HTTPS. Browser security will block calls from `https://press-lab.github.io` to a plain `http://` public backend. Use an HTTPS tunnel or an HTTPS reverse proxy in front of the local API.
+GitHub Pages is served over HTTPS. Browser security will block calls from `https://story.storymodeai.com` to a plain `http://` public backend. Use an HTTPS tunnel or an HTTPS reverse proxy in front of the local API.
 
 Good local-server exposure options:
 
@@ -107,9 +107,9 @@ AIST_API_HOST=127.0.0.1
 AIST_API_PORT=8787
 AIST_API_DATA_FILE=.local-backend/aist-api-db.json
 AIST_DATABASE_URL=postgres://aist_owner:<generated_password>@127.0.0.1:55432/aist_local
-AIST_API_ALLOWED_ORIGINS=https://press-lab.github.io,http://localhost:5173,http://127.0.0.1:5173
-AIST_WEB_APP_URL=https://press-lab.github.io/AI-Story-Teller/
-AIST_PUBLIC_API_BASE_URL=https://your-public-api-domain.example
+AIST_API_ALLOWED_ORIGINS=https://story.storymodeai.com,https://press-lab.github.io,http://localhost:5173,http://127.0.0.1:5173
+AIST_WEB_APP_URL=https://story.storymodeai.com/
+AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com
 AIST_ADMIN_EMAILS=owner@example.com
 AIST_API_ALLOW_LOCAL_GOOGLE_STUB=false
 ```
@@ -159,7 +159,7 @@ http://127.0.0.1:8787
 Then verify from a device that is not the server:
 
 ```text
-https://your-public-api-domain.example/health
+https://api.storymodeai.com/health
 ```
 
 The response should include `ok: true`.
@@ -169,7 +169,7 @@ The response should include `ok: true`.
 After the public HTTPS API URL exists, run:
 
 ```sh
-npm.cmd run pages:set-api -- https://your-public-api-domain.example
+npm.cmd run pages:set-api -- https://api.storymodeai.com
 ```
 
 That command:
@@ -185,14 +185,14 @@ Existing users who previously loaded the old `127.0.0.1` default will be migrate
 For Google login, the Google Cloud redirect URI must use the public HTTPS backend URL:
 
 ```text
-https://your-public-api-domain.example/auth/google/callback
+https://api.storymodeai.com/auth/google/callback
 ```
 
 Set the backend environment to the same value:
 
 ```text
-AIST_GOOGLE_REDIRECT_URI=https://your-public-api-domain.example/auth/google/callback
-AIST_WEB_APP_URL=https://press-lab.github.io/AI-Story-Teller/
+AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
+AIST_WEB_APP_URL=https://story.storymodeai.com/
 ```
 
 Email/password login can work before Google OAuth is fully configured.
@@ -201,7 +201,7 @@ Email/password login can work before Google OAuth is fully configured.
 
 The tester flow is:
 
-1. Open `https://press-lab.github.io/AI-Story-Teller/`.
+1. Open `https://story.storymodeai.com/`.
 2. Enter invite code.
 3. Create account with email/password or Google.
 4. Use Profile, Explore, and Play. Profile contains the adventure library.
