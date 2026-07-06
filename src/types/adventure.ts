@@ -324,6 +324,8 @@ export interface ProviderConfig {
   sessionId?: string;
   /** OpenRouter-only provider routing preference. Empty/undefined keeps OpenRouter's balanced default. */
   openRouterProviderSort?: OpenRouterProviderSort;
+  /** OpenRouter-only data policy routing preference. Empty/undefined uses OpenRouter/account defaults. */
+  openRouterDataCollection?: OpenRouterDataCollection;
 }
 
 export interface ProviderRequestThrottle {
@@ -333,6 +335,7 @@ export interface ProviderRequestThrottle {
 }
 
 export type OpenRouterProviderSort = "price" | "throughput" | "latency";
+export type OpenRouterDataCollection = "allow" | "deny";
 
 /** Target word count for AI responses (50–200). Injected into every turn as a RESPONSE LENGTH instruction. */
 export type ResponseLengthHint = number;

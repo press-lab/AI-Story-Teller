@@ -193,15 +193,16 @@ describe("sendOpenAICompatibleChatCompletion", () => {
         promptCaching: true,
         sessionId: "ai-story-teller:adv-test",
         openRouterProviderSort: "latency",
+        openRouterDataCollection: "allow",
       },
     });
 
     const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
     expect(body.session_id).toBe("ai-story-teller:adv-test");
-    expect(body.provider).toEqual({ sort: "latency" });
+    expect(body.provider).toEqual({ sort: "latency", data_collection: "allow" });
   });
 
-  it("retries OpenRouter data-policy routing failures with balanced routing", async () => {
+  it("retries OpenRouter data-policy routing failures with balanced routing and explicit data collection", async () => {
     const spy = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce({
         ok: false,
@@ -230,7 +231,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     const firstBody = JSON.parse(spy.mock.calls[0][1]?.body as string);
     const retryBody = JSON.parse(spy.mock.calls[1][1]?.body as string);
     expect(firstBody.provider).toEqual({ sort: "price" });
-    expect(retryBody.provider).toBeUndefined();
+    expect(retryBody.provider).toEqual({ data_collection: "allow" });
     expect(retryBody.session_id).toBe("ai-story-teller:adv-test");
   });
 
@@ -252,9 +253,10 @@ describe("sendOpenAICompatibleChatCompletion", () => {
       config: {
         ...config,
         baseUrl: "https://openrouter.ai/api/v1",
+        openRouterDataCollection: "allow",
         openRouterProviderSort: "latency",
       },
-    })).rejects.toThrow("change the OpenRouter key data policy");
+    })).rejects.toThrow("key/workspace privacy or ZDR");
   });
 
   it("does not send OpenRouter-specific request fields to native providers", async () => {
@@ -267,6 +269,7 @@ describe("sendOpenAICompatibleChatCompletion", () => {
         promptCaching: true,
         sessionId: "ai-story-teller:adv-test",
         openRouterProviderSort: "price",
+        openRouterDataCollection: "allow",
       },
     });
 

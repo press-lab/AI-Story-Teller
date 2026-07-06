@@ -60,6 +60,8 @@ AIST_PROVIDER_MODEL=...
 
 Backend turns will fail clearly until `AIST_PROVIDER_API_KEY` is set. Browser-local generation still uses the existing localStorage provider presets.
 
+For OpenRouter, `AIST_PROVIDER_OPENROUTER_SORT` can be `price`, `latency`, or `throughput`; blank keeps OpenRouter's balanced default. `AIST_PROVIDER_OPENROUTER_DATA_COLLECTION` can be `allow` or `deny`; use `allow` when OpenRouter reports no endpoints under a stricter data policy. The Admin Console can override both as backend-wide non-secret platform settings.
+
 Provider secrets live only in `.env` or environment variables. Admin-editable platform settings live in the local backend database and can override non-secret platform-wide defaults such as provider name, base URL, model, sampling values, background cadence, and scenario publishing. The provider API key is never stored in the platform settings record.
 
 Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role.

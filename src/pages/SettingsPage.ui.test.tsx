@@ -75,7 +75,7 @@ describe("SettingsPage API throttle controls", () => {
     );
   });
 
-  it("lets the user choose an OpenRouter routing preference", async () => {
+  it("lets the user choose OpenRouter routing preferences", async () => {
     const user = userEvent.setup();
     const onProviderPresetsChange = vi.fn();
     const dispatch = vi.fn<(action: AdventureAction) => void>();
@@ -106,19 +106,24 @@ describe("SettingsPage API throttle controls", () => {
 
     await user.click(screen.getByRole("button", { name: /Test Model/ }));
     await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "price");
+    await user.selectOptions(screen.getByLabelText("OpenRouter data policy"), "allow");
 
     expect(onProviderPresetsChange).toHaveBeenLastCalledWith(
       expect.arrayContaining([
         expect.objectContaining({
           id: "preset-test",
           openRouterProviderSort: "price",
+          openRouterDataCollection: "allow",
         }),
       ]),
     );
     expect(dispatch).toHaveBeenLastCalledWith(
       expect.objectContaining({
         type: "SET_MODEL_CONFIG",
-        config: expect.objectContaining({ openRouterProviderSort: "price" }),
+        config: expect.objectContaining({
+          openRouterProviderSort: "price",
+          openRouterDataCollection: "allow",
+        }),
       }),
     );
   });

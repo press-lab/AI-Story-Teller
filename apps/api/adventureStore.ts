@@ -513,6 +513,12 @@ export function sanitizePersonalProviderOverride(
   if (override.topP !== undefined) sanitized.topP = Math.max(0, Math.min(1, override.topP));
   if (override.presencePenalty !== undefined) sanitized.presencePenalty = Math.max(0, Math.min(2, override.presencePenalty));
   if (override.frequencyPenalty !== undefined) sanitized.frequencyPenalty = Math.max(0, Math.min(2, override.frequencyPenalty));
+  if (override.openRouterProviderSort === "price" || override.openRouterProviderSort === "throughput" || override.openRouterProviderSort === "latency") {
+    sanitized.openRouterProviderSort = override.openRouterProviderSort;
+  }
+  if (override.openRouterDataCollection === "allow" || override.openRouterDataCollection === "deny") {
+    sanitized.openRouterDataCollection = override.openRouterDataCollection;
+  }
   return sanitized;
 }
 

@@ -1,4 +1,4 @@
-import type { OpenRouterProviderSort, ProviderConfig } from "../../src/types/adventure";
+import type { OpenRouterDataCollection, OpenRouterProviderSort, ProviderConfig } from "../../src/types/adventure";
 import type { LocalDbData, PlatformSettingsRecord } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import { createId, nowIso } from "./ids";
@@ -15,6 +15,7 @@ export interface PlatformSettings {
     frequencyPenalty?: number;
     promptCaching?: boolean;
     openRouterProviderSort?: OpenRouterProviderSort;
+    openRouterDataCollection?: OpenRouterDataCollection;
   };
   background: {
     semanticEvaluationEnabled: boolean;
@@ -106,6 +107,7 @@ function defaultPlatformSettings(config: ApiConfig): PlatformSettings {
       frequencyPenalty: config.providerConfig.frequencyPenalty,
       promptCaching: config.providerConfig.promptCaching,
       openRouterProviderSort: config.providerConfig.openRouterProviderSort,
+      openRouterDataCollection: config.providerConfig.openRouterDataCollection,
     },
     background: {
       semanticEvaluationEnabled: true,
@@ -146,6 +148,7 @@ function sanitizePlatformSettings(settings: PlatformSettings): PlatformSettings 
       frequencyPenalty: settings.provider.frequencyPenalty === undefined ? undefined : clampNumber(settings.provider.frequencyPenalty, 0, 2, 0),
       promptCaching: Boolean(settings.provider.promptCaching),
       openRouterProviderSort: sanitizeOpenRouterProviderSort(settings.provider.openRouterProviderSort),
+      openRouterDataCollection: sanitizeOpenRouterDataCollection(settings.provider.openRouterDataCollection),
     },
     background: {
       semanticEvaluationEnabled: Boolean(settings.background.semanticEvaluationEnabled),
@@ -178,4 +181,8 @@ function clampInteger(value: unknown, min: number, max: number, fallback: number
 
 function sanitizeOpenRouterProviderSort(value: unknown): OpenRouterProviderSort | undefined {
   return value === "price" || value === "throughput" || value === "latency" ? value : undefined;
+}
+
+function sanitizeOpenRouterDataCollection(value: unknown): OpenRouterDataCollection | undefined {
+  return value === "allow" || value === "deny" ? value : undefined;
 }

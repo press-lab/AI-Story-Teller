@@ -5,6 +5,7 @@ import type {
   CloudSyncSettings,
   MemoryAutoApproveSettings,
   MemoryDetectionSettings,
+  OpenRouterDataCollection,
   MemoryPriorityMode,
   OpenRouterProviderSort,
   ProviderRequestThrottle,
@@ -578,6 +579,22 @@ export function SettingsPage({
                         onChange={(maxOutputTokens) => updateActivePersonalProvider({ maxOutputTokens })}
                       />
                     </Field>
+                    {activePreset.baseUrl.toLowerCase().includes("openrouter.ai") && (
+                      <Field label="OpenRouter data policy">
+                        <select
+                          value={activePreset.openRouterDataCollection ?? ""}
+                          onChange={(event) =>
+                            updateActivePersonalProvider({
+                              openRouterDataCollection: (event.target.value || undefined) as OpenRouterDataCollection | undefined,
+                            })
+                          }
+                        >
+                          <option value="">Key or workspace default</option>
+                          <option value="allow">Allow provider data collection</option>
+                          <option value="deny">Exclude data-collection providers</option>
+                        </select>
+                      </Field>
+                    )}
                   </div>
                   <p className="notice">
                     Personal provider URLs are restricted to approved HTTPS providers before the backend will call them.
@@ -728,10 +745,24 @@ export function SettingsPage({
                             <option value="throughput">Highest throughput</option>
                           </select>
                         </Field>
+                        <Field label="OpenRouter data policy">
+                          <select
+                            value={preset.openRouterDataCollection ?? ""}
+                            onChange={(e) =>
+                              updatePreset(preset.id, {
+                                openRouterDataCollection: (e.target.value || undefined) as OpenRouterDataCollection | undefined,
+                              })
+                            }
+                          >
+                            <option value="">Key or workspace default</option>
+                            <option value="allow">Allow provider data collection</option>
+                            <option value="deny">Exclude data-collection providers</option>
+                          </select>
+                        </Field>
                           <p className="muted">
                             OpenRouter's default already weighs lower price with uptime. Lowest price disables that
                             load balancing; use latency or throughput if the model is feeling slow. If OpenRouter reports
-                            a data-policy endpoint error, use Balanced or adjust the OpenRouter key policy.
+                            a data-policy endpoint error, set data policy to Allow or adjust the OpenRouter key/workspace policy.
                           </p>
                         <h4>API Throttle</h4>
                         <CheckboxField

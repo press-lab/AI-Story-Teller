@@ -3,7 +3,10 @@ import type { ChatMessage, ProviderConfig, ProviderRequestThrottle, ProviderUsag
 type CacheBlock = { type: "text"; text: string; cache_control?: { type: "ephemeral" } };
 type CacheableContent = string | CacheBlock[];
 type CacheableMessage = { role: string; content: CacheableContent };
-type OpenRouterProviderPreferences = { sort?: "price" | "throughput" | "latency" };
+type OpenRouterProviderPreferences = {
+  sort?: "price" | "throughput" | "latency";
+  data_collection?: "allow" | "deny";
+};
 type OpenAICompatibleRaw = {
   error?: { message?: string };
   choices?: Array<{ message?: { content?: string } }>;
@@ -78,18 +81,39 @@ function openRouterSessionId(config: ProviderConfig): string | undefined {
 }
 
 function openRouterProviderPreferences(config: ProviderConfig): OpenRouterProviderPreferences | undefined {
-  if (!isOpenRouterProvider(config) || !config.openRouterProviderSort) return undefined;
-  return { sort: config.openRouterProviderSort };
+  if (!isOpenRouterProvider(config)) return undefined;
+  const provider: OpenRouterProviderPreferences = {};
+  if (config.openRouterProviderSort) provider.sort = config.openRouterProviderSort;
+  if (config.openRouterDataCollection) provider.data_collection = config.openRouterDataCollection;
+  return Object.keys(provider).length ? provider : undefined;
 }
 
 function isOpenRouterDataPolicyError(status: number, detail: string): boolean {
-  return status === 403 && /no endpoints found matching data policy/i.test(detail);
+  return status === 403 && (
+    /data policy|data collection|zero data retention|\bzdr\b/i.test(detail)
+    || /no endpoints/i.test(detail)
+  );
 }
 
-function providerErrorMessage(status: number, endpoint: string, detail: string, retriedBalancedRouting: boolean): string {
+function openRouterDataPolicyRetryProvider(
+  provider: OpenRouterProviderPreferences | undefined,
+  config: ProviderConfig,
+): OpenRouterProviderPreferences | undefined | null {
+  if (!isOpenRouterProvider(config)) return null;
+  if (provider?.sort) {
+    const retryProvider: OpenRouterProviderPreferences = { ...provider };
+    delete retryProvider.sort;
+    if (!retryProvider.data_collection && !config.openRouterDataCollection) retryProvider.data_collection = "allow";
+    return Object.keys(retryProvider).length ? retryProvider : undefined;
+  }
+  if (!config.openRouterDataCollection) return { data_collection: "allow" };
+  return null;
+}
+
+function providerErrorMessage(status: number, endpoint: string, detail: string, retriedProviderPolicy: boolean): string {
   if (isOpenRouterDataPolicyError(status, detail)) {
-    const retryText = retriedBalancedRouting ? " even after retrying with Balanced routing" : "";
-    return `Provider error ${status} (${endpoint}): OpenRouter could not find an endpoint matching this API key's data policy${retryText}. Use Balanced routing, change the OpenRouter key data policy, or choose a different model. OpenRouter said: ${detail}`;
+    const retryText = retriedProviderPolicy ? " even after retrying with Balanced routing and explicit provider data collection enabled" : "";
+    return `Provider error ${status} (${endpoint}): OpenRouter could not find an endpoint matching this API key or workspace data policy${retryText}. Set Admin OpenRouter data policy to Allow, change the OpenRouter key/workspace privacy or ZDR settings, or choose a different model. OpenRouter said: ${detail}`;
   }
   return `Provider error ${status} (${endpoint}): ${detail}`;
 }
@@ -189,7 +213,7 @@ async function sendOpenAIRequest(
   const outMessages = shouldApplyOpenAIMessageCacheControl(config) ? applyPromptCaching(messages) : messages;
   const sessionId = openRouterSessionId(config);
   const provider = openRouterProviderPreferences(config);
-  const requestBody = (includeProvider: boolean) => JSON.stringify({
+  const requestBody = (providerPreference: OpenRouterProviderPreferences | undefined) => JSON.stringify({
     model: config.model,
     messages: outMessages,
     temperature: config.temperature,
@@ -201,9 +225,9 @@ async function sendOpenAIRequest(
     ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
     ...(thinking ? { thinking: { type: thinking } } : {}),
     ...(sessionId ? { session_id: sessionId } : {}),
-    ...(includeProvider && provider ? { provider } : {}),
+    ...(providerPreference ? { provider: providerPreference } : {}),
   });
-  async function fetchRequest(includeProvider: boolean): Promise<Response> {
+  async function fetchRequest(providerPreference: OpenRouterProviderPreferences | undefined): Promise<Response> {
     try {
       return await fetch(endpoint, {
       method: "POST",
@@ -212,7 +236,7 @@ async function sendOpenAIRequest(
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.apiKey}`,
       },
-      body: requestBody(includeProvider),
+      body: requestBody(providerPreference),
     });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -220,21 +244,22 @@ async function sendOpenAIRequest(
     }
   }
 
-  let response = await fetchRequest(true);
+  let response = await fetchRequest(provider);
   let rawText = await response.text().catch(() => "");
   let raw = parseOpenAIRaw(rawText);
-  let retriedBalancedRouting = false;
+  let retriedProviderPolicy = false;
   let detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
-  if (!response.ok && provider && isOpenRouterDataPolicyError(response.status, detail)) {
-    retriedBalancedRouting = true;
-    response = await fetchRequest(false);
+  const retryProvider = openRouterDataPolicyRetryProvider(provider, config);
+  if (!response.ok && isOpenRouterDataPolicyError(response.status, detail) && retryProvider !== null) {
+    retriedProviderPolicy = true;
+    response = await fetchRequest(retryProvider);
     rawText = await response.text().catch(() => "");
     raw = parseOpenAIRaw(rawText);
     detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
   }
 
   if (!response.ok) {
-    throw new Error(providerErrorMessage(response.status, endpoint, detail, retriedBalancedRouting));
+    throw new Error(providerErrorMessage(response.status, endpoint, detail, retriedProviderPolicy));
   }
 
   const content = raw.choices?.[0]?.message?.content;

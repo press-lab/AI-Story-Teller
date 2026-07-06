@@ -49,6 +49,11 @@ function openRouterProviderSortEnv(name: string): ProviderConfig["openRouterProv
   return value === "price" || value === "throughput" || value === "latency" ? value : undefined;
 }
 
+function openRouterDataCollectionEnv(name: string): ProviderConfig["openRouterDataCollection"] {
+  const value = process.env[name]?.trim();
+  return value === "allow" || value === "deny" ? value : undefined;
+}
+
 export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   loadDotEnv();
   const providerConfig: ProviderConfig = {
@@ -63,6 +68,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     frequencyPenalty: numberEnv("AIST_PROVIDER_FREQUENCY_PENALTY", 0),
     promptCaching: boolEnv("AIST_PROVIDER_PROMPT_CACHING", true),
     openRouterProviderSort: openRouterProviderSortEnv("AIST_PROVIDER_OPENROUTER_SORT"),
+    openRouterDataCollection: openRouterDataCollectionEnv("AIST_PROVIDER_OPENROUTER_DATA_COLLECTION"),
   };
   const policyModeRaw = stringEnv("AIST_POLICY_MODE", "reviewOnly");
   const policyMode: PolicyMode = policyModeRaw === "enforce" ? "enforce" : "reviewOnly";

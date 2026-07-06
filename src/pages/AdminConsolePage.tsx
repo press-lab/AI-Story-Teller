@@ -367,11 +367,26 @@ export function AdminConsolePage({
                       <option value="throughput">Highest throughput</option>
                     </select>
                   </Field>
+                  <Field label="OpenRouter data policy">
+                    <select
+                      value={platformDraft.provider.openRouterDataCollection ?? ""}
+                      onChange={(event) =>
+                        updatePlatformProvider({
+                          openRouterDataCollection: (event.target.value || undefined) as BackendPlatformSettings["provider"]["openRouterDataCollection"],
+                        })
+                      }
+                    >
+                      <option value="">Key or workspace default</option>
+                      <option value="allow">Allow provider data collection</option>
+                      <option value="deny">Exclude data-collection providers</option>
+                    </select>
+                  </Field>
                 </div>
                   <p className="muted">
                     OpenRouter routing is platform-wide when users use the platform model. Balanced default lets OpenRouter
-                    weigh cost and uptime; price, latency, or throughput force a stronger preference. If OpenRouter reports
-                    a data-policy endpoint error, use Balanced or loosen the workspace key policy.
+                    weigh cost and uptime; price, latency, or throughput force a stronger preference. Data policy controls
+                    OpenRouter provider filtering. If endpoint errors persist on Allow, the OpenRouter key/workspace privacy
+                    or ZDR setting is still blocking the selected model.
                   </p>
                 <div className="grid three" style={{ marginTop: "0.75rem" }}>
                   <CheckboxField
