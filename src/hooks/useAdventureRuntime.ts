@@ -64,6 +64,33 @@ export interface BackendAiTools {
   auditBrains(adventureId: string, nTurns: number, includeAI: boolean): Promise<BrainAuditRecommendation[]>;
 }
 
+export interface MemoryReconcileRunSummary {
+  generatedCount: number;
+  pendingDelta: number;
+  recordedDelta: number;
+  error?: string;
+}
+
+function pendingMemoryProposalCount(adventure: Adventure): number {
+  return adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
+}
+
+function memoryReconcileGeneratedCount(adventure: Adventure): number | undefined {
+  const latest = adventure.activeState.evaluationLog[0];
+  const text = latest?.actionsExecuted.join("\n") ?? "";
+  const match = text.match(/Memory Reconcile:\s+(\d+)\s+proposal/i);
+  return match ? Number.parseInt(match[1], 10) : undefined;
+}
+
+function summarizeMemoryReconcile(before: Adventure, after: Adventure, generatedCount: number, error?: string): MemoryReconcileRunSummary {
+  return {
+    generatedCount,
+    pendingDelta: Math.max(0, pendingMemoryProposalCount(after) - pendingMemoryProposalCount(before)),
+    recordedDelta: Math.max(0, after.activeState.memoryProposals.length - before.activeState.memoryProposals.length),
+    error,
+  };
+}
+
 export function applyResponseLengthHint(config: RuntimeProviderSettings, hint: number, hiddenReserveTokens = 0): RuntimeProviderSettings {
   const wordTarget = Number.isFinite(hint) ? Math.max(50, Math.min(500, Math.round(hint))) : 250;
   const visibleTokenCap = Math.ceil(wordTarget * 1.5) + 80;
@@ -812,8 +839,8 @@ export function useAdventureRuntime(
     }
   }
 
-  async function reconcileMemory(request: MemoryReconcileRequest) {
-    if (!adventure || loading) return;
+  async function reconcileMemory(request: MemoryReconcileRequest): Promise<MemoryReconcileRunSummary | undefined> {
+    if (!adventure || loading) return undefined;
     setLoading(true);
     setError(undefined);
     try {
@@ -821,26 +848,30 @@ export function useAdventureRuntime(
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
         setAdventure(syncedAdventure);
         const result = await backendAiTools.reconcileMemory(syncedAdventure.id, request);
-        const proposalCount = result.adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length
-          - syncedAdventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
+        const latestLog = result.adventure.activeState.evaluationLog[0];
+        const issue = latestLog?.errors[0];
+        const generatedCount = memoryReconcileGeneratedCount(result.adventure)
+          ?? Math.max(0, result.adventure.activeState.memoryProposals.length - syncedAdventure.activeState.memoryProposals.length);
+        const summary = summarizeMemoryReconcile(syncedAdventure, result.adventure, generatedCount, issue);
         await applyBackendAdventureResult(result.adventure);
         openTab("memoryInbox");
-        if (proposalCount <= 0) {
-          const latestLog = [...result.adventure.activeState.evaluationLog].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
-          const issue = latestLog?.errors[0];
-          if (issue) setError(issue);
-        }
-        return;
+        if (summary.generatedCount <= 0 && summary.error) setError(summary.error);
+        return summary;
       }
       const result = await runMemoryReconcile(adventure, activeProviderConfig, request);
       const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+      const next = reduceActions(adventure, result.actions);
+      const summary = summarizeMemoryReconcile(adventure, next, proposalCount, result.logEntry.errors[0]);
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
       if (proposalCount === 0 && result.logEntry.errors.length > 0) {
         setError(result.logEntry.errors[0]);
       }
+      return summary;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Memory reconcile failed.");
+      const message = err instanceof Error ? err.message : "Memory reconcile failed.";
+      setError(message);
+      return { generatedCount: 0, pendingDelta: 0, recordedDelta: 0, error: message };
     } finally {
       setLoading(false);
     }

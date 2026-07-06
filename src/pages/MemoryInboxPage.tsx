@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
+import { useActionFeedback } from "../components/ActionFeedback";
+import type { MemoryReconcileRunSummary } from "../hooks/useAdventureRuntime";
 import type { MemoryAutoApproveSettings, MemoryProposal, MemoryProposalType, MemoryReconcileRequest, StoryCardType } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { AdventurePageProps } from "./pageTypes";
@@ -21,16 +23,18 @@ const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot"
 
 interface MemoryInboxPageProps extends AdventurePageProps {
   onRegenerateProposal?: (proposalId: string) => Promise<void>;
-  onReconcileMemory?: (request: MemoryReconcileRequest) => Promise<void>;
+  onReconcileMemory?: (request: MemoryReconcileRequest) => Promise<MemoryReconcileRunSummary | void>;
   loading?: boolean;
 }
 
 export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onReconcileMemory, loading = false }: MemoryInboxPageProps) {
+  const { notify } = useActionFeedback();
   const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [sourceText, setSourceText] = useState("");
   const [reconcileDirective, setReconcileDirective] = useState("");
   const [reconcileEntryCount, setReconcileEntryCount] = useState(20);
   const [reconcileIncludeBrains, setReconcileIncludeBrains] = useState(true);
+  const [reconcileStatus, setReconcileStatus] = useState("");
   const [search, setSearch] = useState("");
   const searchLower = search.toLowerCase().trim();
   const visibleProposals = allProposals.filter((proposal) => !searchLower
@@ -85,26 +89,65 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
     setSourceText("");
   }
 
+  function describeReconcileResult(summary: MemoryReconcileRunSummary | void, label: string): { message: string; type: "info" | "success" | "error" } {
+    if (!summary) return { message: `${label} finished.`, type: "success" };
+    if (summary.error && summary.generatedCount === 0) return { message: summary.error, type: "error" };
+    if (summary.pendingDelta > 0) {
+      return { message: `${label} drafted ${summary.pendingDelta} pending suggestion${summary.pendingDelta === 1 ? "" : "s"}.`, type: "success" };
+    }
+    if (summary.recordedDelta > 0) {
+      return { message: `${label} auto-approved ${summary.recordedDelta} suggestion${summary.recordedDelta === 1 ? "" : "s"}. Check History.`, type: "success" };
+    }
+    if (summary.generatedCount > 0) {
+      return { message: `${label} generated ${summary.generatedCount} update${summary.generatedCount === 1 ? "" : "s"}, but none became pending. Auto-approve or duplicate rules may have handled them.`, type: "info" };
+    }
+    return { message: `${label} found no updates to draft.`, type: "info" };
+  }
+
   async function runReconcile() {
     const directive = reconcileDirective.trim();
     if (!onReconcileMemory) return;
-    await onReconcileMemory({
-      directive,
-      entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
-      includeBrains: reconcileIncludeBrains,
-      targetScope: "auto",
-    });
+    const label = "Recent entry check";
+    setReconcileStatus(`${label} running...`);
+    notify(`${label} running...`, { type: "info" });
+    try {
+      const summary = await onReconcileMemory({
+        directive,
+        entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
+        includeBrains: reconcileIncludeBrains,
+        targetScope: "auto",
+      });
+      const result = describeReconcileResult(summary, label);
+      setReconcileStatus(result.message);
+      notify(result.message, { type: result.type });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Recent entry check failed.";
+      setReconcileStatus(message);
+      notify(message, { type: "error" });
+    }
   }
 
   async function runPlotCardReconcile() {
     const directive = reconcileDirective.trim();
     if (!onReconcileMemory) return;
-    await onReconcileMemory({
-      directive,
-      entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
-      includeBrains: false,
-      targetScope: "plotAndStoryCards",
-    });
+    const label = "Plot and card review";
+    setReconcileStatus(`${label} running...`);
+    notify(`${label} running...`, { type: "info" });
+    try {
+      const summary = await onReconcileMemory({
+        directive,
+        entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
+        includeBrains: false,
+        targetScope: "plotAndStoryCards",
+      });
+      const result = describeReconcileResult(summary, label);
+      setReconcileStatus(result.message);
+      notify(result.message, { type: result.type });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Plot and card review failed.";
+      setReconcileStatus(message);
+      notify(message, { type: "error" });
+    }
   }
 
   const autoApprove = adventure.memoryAutoApprove;
@@ -192,6 +235,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
             {loading ? "Drafting..." : "Draft Plot & Card Updates"}
           </button>
         </div>
+        {reconcileStatus && <p className="muted">{reconcileStatus}</p>}
       </details>
 
       <details className="panel">

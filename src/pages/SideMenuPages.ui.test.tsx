@@ -511,7 +511,7 @@ describe("side menu page smoke coverage", () => {
 
   it("drafts Plot and Story Card reconcile from recent entries", async () => {
     const user = userEvent.setup();
-    const onReconcileMemory = vi.fn(async () => undefined);
+    const onReconcileMemory = vi.fn(async () => ({ generatedCount: 2, pendingDelta: 0, recordedDelta: 2 }));
     renderWithAdventure((adventure, dispatch) => (
       <MemoryInboxPage adventure={adventure} dispatch={dispatch} onReconcileMemory={onReconcileMemory} />
     ));
@@ -525,6 +525,7 @@ describe("side menu page smoke coverage", () => {
       includeBrains: false,
       targetScope: "plotAndStoryCards",
     });
+    expect(await screen.findByText("Plot and card review auto-approved 2 suggestions. Check History.")).toBeInTheDocument();
   });
 
   it("covers Inspector pages and Chronicle/Summary entry points", async () => {
