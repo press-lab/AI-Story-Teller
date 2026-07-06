@@ -459,8 +459,10 @@ export interface MemoryProposal {
 
 export interface MemoryReconcileRequest {
   directive?: string;
+  sourceText?: string;
   entryCount: number;
   includeBrains: boolean;
+  targetScope?: "auto" | "plotAndStoryCards";
 }
 
 export type StoryCardAIBuilderIntent =

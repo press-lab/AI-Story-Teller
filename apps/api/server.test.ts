@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
-import { createDefaultAdventure } from "../../src/state/defaults";
+import { createDefaultAdventure, makeComponent, makeStoryCard } from "../../src/state/defaults";
 import { exportAdventureJson } from "../../src/utils/json";
 import { thumbnailMetadataPatch } from "../../src/utils/adventureImages";
 import { clearRateLimitsForTests } from "./rateLimit";
@@ -468,6 +468,21 @@ describe("local API policy gates and sharing", () => {
             }],
             rationale: "A durable promise should become a Story Card.",
           })
+          : body.includes("reconciling inspectable memory")
+            ? JSON.stringify({
+              updates: [{
+                targetId: "component-plot",
+                title: "Plot Essentials",
+                content: "- Cassandra Kiramman secretly communicated with Silco before the rocket.\n- Mel is using the riot cover story to slow Enforcers.",
+                rationale: "The planning conversation changed the current operating truth.",
+              }, {
+                targetId: "card-cover",
+                title: "Workshop Cover Story",
+                content: "Mel uses the riot cover story to justify observation-only Enforcer posture while staying close enough to reenter the social circle.",
+                rationale: "The planning conversation updates the cover story.",
+              }],
+              rationale: "Two targets need updates.",
+            })
           : JSON.stringify({
             currentState: "Mira tests every promise against what people do under pressure.",
             triggers: ["Mira"],
@@ -484,6 +499,26 @@ describe("local API policy gates and sharing", () => {
 
     const sessionToken = await passwordSession("ai-tools@example.com");
     const adventure = createDefaultAdventure("AI Tools");
+    adventure.components = [
+      makeComponent({
+        id: "component-plot",
+        title: "Plot Essentials",
+        type: "plotEssentials",
+        content: "- The current investigation needs stronger social friction.",
+        active: true,
+      }),
+    ];
+    adventure.storyCards = [
+      makeStoryCard({
+        id: "card-cover",
+        title: "Workshop Cover Story",
+        type: "plot",
+        memoryMode: "living",
+        content: "Mel has political cover to slow the Enforcers.",
+        keys: ["workshop cover"],
+        active: true,
+      }),
+    ];
     const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
       method: "POST",
       headers: { Authorization: `Bearer ${sessionToken}` },
@@ -515,7 +550,23 @@ describe("local API policy gates and sharing", () => {
     });
     expect(brain.status).toBe(200);
     expect(brain.body.adventure.brains.some((entry) => entry.characterName === "Mira")).toBe(true);
-    expect(providerCalls).toHaveLength(2);
+
+    const memoryReconcile = await requestJson<{ adventure: typeof adventure }>(`/adventures/${adventureId}/ai/memory-reconcile`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        request: {
+          directive: "Update Plot and Story Cards from this OOC planning conversation.",
+          sourceText: "Out of Character: Cassandra Kiramman had secret dealings with Silco. Bring Mel back into the social circle.",
+          entryCount: 5,
+          includeBrains: false,
+          targetScope: "plotAndStoryCards",
+        },
+      }),
+    });
+    expect(memoryReconcile.status).toBe(200);
+    expect(memoryReconcile.body.adventure.activeState.memoryProposals.some((proposal) => proposal.targetId === "card-cover")).toBe(true);
+    expect(providerCalls).toHaveLength(3);
     expect(providerCalls.every((call) => call.authorization === "Bearer server-platform-key")).toBe(true);
   });
 

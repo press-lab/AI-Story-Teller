@@ -68,6 +68,7 @@ import {
   loginBackendPassword,
   publishBackendScenarioRevision,
   restoreBackendAdventureSnapshot,
+  reconcileBackendMemory,
   saveBackendPlatformSettings,
   signupBackendPassword,
   suggestBackendStoryCardUpdates,
@@ -267,6 +268,8 @@ export default function App() {
         buildBackendStoryCardMemory(normalizedRuntimeConfig, backendSession, adventureId, request, providerOverride),
       suggestStoryCardUpdates: (adventureId: string) =>
         suggestBackendStoryCardUpdates(normalizedRuntimeConfig, backendSession, adventureId, providerOverride),
+      reconcileMemory: (adventureId: string, request: Parameters<typeof reconcileBackendMemory>[3]) =>
+        reconcileBackendMemory(normalizedRuntimeConfig, backendSession, adventureId, request, providerOverride),
       auditStoryCards: async (adventureId: string, nTurns: number, includeAI: boolean) =>
         (await auditBackendStoryCards(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
       generateBrain: (adventureId: string, name: string) =>

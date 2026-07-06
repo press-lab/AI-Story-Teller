@@ -29,6 +29,8 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
   const allProposals = [...adventure.activeState.memoryProposals].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const [sourceText, setSourceText] = useState("");
   const [reconcileDirective, setReconcileDirective] = useState("");
+  const [planningSourceText, setPlanningSourceText] = useState("");
+  const [planningDirective, setPlanningDirective] = useState("");
   const [reconcileEntryCount, setReconcileEntryCount] = useState(20);
   const [reconcileIncludeBrains, setReconcileIncludeBrains] = useState(true);
   const [search, setSearch] = useState("");
@@ -92,6 +94,19 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
       directive,
       entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
       includeBrains: reconcileIncludeBrains,
+      targetScope: "auto",
+    });
+  }
+
+  async function runPlanningReconcile() {
+    const source = planningSourceText.trim();
+    if (!source || !onReconcileMemory) return;
+    await onReconcileMemory({
+      directive: planningDirective.trim(),
+      sourceText: source,
+      entryCount: Math.max(1, Math.min(100, Math.round(reconcileEntryCount || 20))),
+      includeBrains: false,
+      targetScope: "plotAndStoryCards",
     });
   }
 
@@ -174,6 +189,29 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         </Field>
         <button type="button" disabled={!onReconcileMemory || loading} onClick={() => void runReconcile()}>
           {loading ? "Checking..." : "Check & Draft Updates"}
+        </button>
+      </details>
+
+      <details className="panel">
+        <summary>Update From AI Conversation</summary>
+        <Field label="AI conversation / OOC planning notes">
+          <textarea
+            rows={7}
+            value={planningSourceText}
+            onChange={(event) => setPlanningSourceText(event.target.value)}
+            placeholder="Paste an OOC planning exchange or the AI's answer to what should change in context."
+          />
+        </Field>
+        <Field label="Directive (optional)">
+          <textarea
+            rows={2}
+            value={planningDirective}
+            onChange={(event) => setPlanningDirective(event.target.value)}
+            placeholder="Optional: update Plot and Story Cards for the Cassandra/Silco discovery, Jinx pressure, and Mel's new position."
+          />
+        </Field>
+        <button type="button" disabled={!onReconcileMemory || loading || !planningSourceText.trim()} onClick={() => void runPlanningReconcile()}>
+          {loading ? "Drafting..." : "Draft Plot & Card Updates"}
         </button>
       </details>
 

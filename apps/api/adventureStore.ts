@@ -1,4 +1,4 @@
-import type { Adventure, AdventureAction, ComponentEntry, ProviderConfig, StoryCardAIBuilderRequest } from "../../src/types/adventure";
+import type { Adventure, AdventureAction, ComponentEntry, MemoryReconcileRequest, ProviderConfig, StoryCardAIBuilderRequest } from "../../src/types/adventure";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
@@ -15,6 +15,7 @@ import { runStoryCardAudit, type AuditRecommendation } from "../../src/memory/st
 import {
   runManualBrainUpdate,
   runManualStoryCardsUpdate,
+  runMemoryReconcile,
   runStoryCardAIBuilder,
 } from "../../src/triggers/semanticEngine";
 import type { ApiConfig } from "./config";
@@ -299,6 +300,32 @@ export async function runBackendStoryCardUpdates(
   const result = await runManualStoryCardsUpdate(record.adventure, backendProviderConfig(data, config, providerOverride));
   const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
   assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce Story Card update suggestions.");
+  const next = applyActionsToAdventure(record.adventure, result.actions);
+  return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
+}
+
+export async function runBackendMemoryReconcile(
+  data: LocalDbData,
+  ownerUserId: string,
+  adventureId: string,
+  request: MemoryReconcileRequest,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<BackendAiToolResult> {
+  assertCanGenerate(data, ownerUserId);
+  const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const userSuppliedText = [request.directive, request.sourceText].map((entry) => entry?.trim()).filter(Boolean).join("\n\n");
+  if (userSuppliedText) assertBackendAiInputAllowed(data, ownerUserId, adventureId, userSuppliedText, config);
+  const normalizedRequest: MemoryReconcileRequest = {
+    directive: request.directive ?? "",
+    sourceText: request.sourceText ?? "",
+    entryCount: Math.max(1, Math.min(100, Math.round(request.entryCount || 20))),
+    includeBrains: Boolean(request.includeBrains),
+    targetScope: request.targetScope === "plotAndStoryCards" ? "plotAndStoryCards" : "auto",
+  };
+  const result = await runMemoryReconcile(record.adventure, backendProviderConfig(data, config, providerOverride), normalizedRequest);
+  const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
+  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce memory update suggestions.");
   const next = applyActionsToAdventure(record.adventure, result.actions);
   return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
 }

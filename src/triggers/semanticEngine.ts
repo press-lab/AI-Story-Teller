@@ -1247,6 +1247,7 @@ const RECONCILE_STOPWORDS = new Set([
 ]);
 
 type ReconcileTargetType = "component" | "storyCard" | "brain";
+const RECONCILE_TARGET_LIMIT = 36;
 
 interface ReconcileTarget {
   id: string;
@@ -1377,18 +1378,25 @@ function deterministicComponentPatchFor(component: ComponentEntry, directive: st
   return { active: false, pinned: false, protected: false };
 }
 
-function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcileRequest): { recent: string; terms: string[]; targets: ReconcileTarget[] } {
+function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcileRequest): { recent: string; sourceMaterial: string; terms: string[]; targets: ReconcileTarget[] } {
   const recent = storyEntriesForReconcile(adventure, request.entryCount);
+  const planningSource = request.sourceText?.trim() ?? "";
+  const sourceMaterial = [
+    planningSource ? `Planning conversation / OOC source:\n${planningSource}` : "",
+    recent ? `Recent entries:\n${recent}` : "",
+  ].filter(Boolean).join("\n\n");
   const directive = request.directive ?? "";
   const directiveTerms = extractReconcileTerms(directive, true);
+  const sourceTerms = extractReconcileTerms(planningSource, true);
   const recentTerms = extractReconcileTerms(recent, false);
-  const terms = uniqTerms([...directiveTerms, ...recentTerms]);
-  const strongTerms = directiveTerms.length > 0 ? directiveTerms : terms;
+  const terms = uniqTerms([...directiveTerms, ...sourceTerms, ...recentTerms]);
+  const strongTerms = directiveTerms.length > 0 ? directiveTerms : sourceTerms.length > 0 ? sourceTerms : terms;
+  const broadPlotCardReconcile = request.targetScope === "plotAndStoryCards" && planningSource.length > 0;
   const duplicateIndexes = duplicateTitleIndexes(adventure.storyCards);
   const targets: ReconcileTarget[] = [];
 
   const addTarget = (target: ReconcileTarget) => {
-    if (!target.matchedTerms.length) return;
+    if (!target.matchedTerms.length && !broadPlotCardReconcile) return;
     targets.push(target);
   };
 
@@ -1397,15 +1405,15 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
     if (!["plotEssentials", "activePressure", "currentArc"].includes(component.type)) continue;
     const matched = matchedReconcileTerms(`${component.title}\n${component.content}`, strongTerms);
     const alwaysCurrent = component.type === "plotEssentials" || component.type === "activePressure";
-    if (!matched.length && !alwaysCurrent) continue;
+    if (!matched.length && !alwaysCurrent && !broadPlotCardReconcile) continue;
     addTarget({
       id: component.id,
       targetType: "component",
       title: component.title,
       subtype: component.type,
       currentContent: component.content,
-      matchedTerms: matched.length ? matched : strongTerms.slice(0, 3),
-      score: 100 + matched.length * 15 + (component.type === "activePressure" ? 20 : 0),
+      matchedTerms: matched.length ? matched : broadPlotCardReconcile ? [] : strongTerms.slice(0, 3),
+      score: 100 + matched.length * 15 + (component.type === "activePressure" ? 20 : 0) + (broadPlotCardReconcile ? 25 : 0),
       deterministicComponentPatch: deterministicComponentPatchFor(component, directive),
     });
   }
@@ -1415,7 +1423,7 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
     const titleMatches = matchedReconcileTerms(`${card.title}\n${card.keys.join("\n")}`, strongTerms);
     const contentMatches = matchedReconcileTerms(storyCardSearchText(card), strongTerms);
     const matched = uniqTerms([...titleMatches, ...contentMatches]);
-    if (!matched.length) continue;
+    if (!matched.length && !broadPlotCardReconcile) continue;
     const duplicateIndex = duplicateIndexes.get(card.id) ?? 0;
     const directTitleHit = titleMatches.length > 0;
     const score =
@@ -1424,9 +1432,10 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
       contentMatches.length * 8 +
       (card.pinned ? 12 : 0) +
       (card.protected ? 8 : 0) +
+      (broadPlotCardReconcile ? 18 : 0) +
       (directTitleHit ? 30 : 0) +
       Math.min(10, Math.max(0, card.priority / 10));
-    if (score < 68 && !directTitleHit) continue;
+    if (score < 68 && !directTitleHit && !broadPlotCardReconcile) continue;
     addTarget({
       id: card.id,
       targetType: "storyCard",
@@ -1465,7 +1474,7 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
     return order(a) - order(b) || b.score - a.score || a.title.localeCompare(b.title);
   });
 
-  return { recent, terms, targets: targets.slice(0, 18) };
+  return { recent, sourceMaterial, terms, targets: targets.slice(0, RECONCILE_TARGET_LIMIT) };
 }
 
 function proposedTypeForReconcileTarget(target: ReconcileTarget): MemoryProposal["proposedType"] | undefined {
@@ -1523,7 +1532,7 @@ export async function runMemoryReconcile(
     generatedContent: [],
     errors: [],
   };
-  const { recent, terms, targets } = discoverReconcileTargets(adventure, request);
+  const { recent, sourceMaterial, terms, targets } = discoverReconcileTargets(adventure, request);
   if (targets.length === 0) {
     const logEntry = { ...emptyLog, errors: ["No related memory targets found for the selected entries."] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
@@ -1538,7 +1547,7 @@ export async function runMemoryReconcile(
     matchedTerms: target.matchedTerms,
     deterministicStoryCardPatch: target.deterministicStoryCardPatch,
     deterministicComponentPatch: target.deterministicComponentPatch,
-    currentContent: target.currentContent.slice(0, 2400),
+    currentContent: target.currentContent.slice(0, request.sourceText ? 1200 : 2400),
   }));
 
   const systemPrompt = `You are reconciling inspectable memory for an interactive fiction game.
@@ -1546,7 +1555,8 @@ export async function runMemoryReconcile(
 The target list was selected deterministically. Do not add targets. Do not invent target IDs. Generate replacement/update content only for the listed targets.
 
 Rules:
-- If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the recent entries.
+- If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the source material.
+- If source material includes an out-of-character planning conversation, extract durable story-state decisions from it. Do not preserve meta chatter, boredom notes, or questions as story facts unless they define an actual direction or current pressure.
 - Remove stale active pressure. Preserve true completed events as historical facts.
 - Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
 - Active Pressure: exactly one sentence naming the current external pressure.
@@ -1572,10 +1582,10 @@ Respond ONLY with valid JSON:
 }`;
 
   const userPrompt = `Directive:
-${directive || "(none supplied; infer updates from recent entries)"}
+${directive || "(none supplied; infer updates from source material)"}
 
-Recent entries checked:
-${recent || "(none)"}
+Source material checked:
+${sourceMaterial || "(none)"}
 
 Deterministic terms:
 ${terms.join(", ") || "(none)"}
@@ -1612,11 +1622,13 @@ ${JSON.stringify(targetList, null, 2)}`;
     const targetById = new Map(targets.map((target) => [target.id, target]));
     const now = nowIso();
     const sourceTurnId = adventure.messages.at(-1)?.id ?? String(adventure.activeState.turn);
-    const sourceText = `Memory Reconcile
+    const proposalSourceText = `Memory Reconcile
 Directive: ${directive || "(none supplied)"}
 Entries checked: ${Math.max(1, Math.min(100, Math.round(request.entryCount || 10)))}
+Planning source supplied: ${request.sourceText?.trim() ? "yes" : "no"}
 Terms: ${terms.join(", ")}
 
+${request.sourceText?.trim() ? `Planning conversation / OOC source:\n${request.sourceText.trim()}\n\n` : ""}
 ${recent}`;
     const actions: AdventureAction[] = [];
     const generatedContent: GeneratedContentPreview[] = [];
@@ -1634,7 +1646,7 @@ ${recent}`;
       const proposal: MemoryProposal = {
         id: createId("proposal"),
         sourceTurnId,
-        sourceText,
+        sourceText: proposalSourceText,
         proposedType,
         title: update.title?.trim() || target.title,
         content: update.content.trim(),

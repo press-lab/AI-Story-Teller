@@ -28,6 +28,7 @@ import {
   runBackendBrainAudit,
   runBackendBrainGeneration,
   runBackendBrainUpdate,
+  runBackendMemoryReconcile,
   runBackendStoryCardAudit,
   runBackendStoryCardBuilder,
   runBackendStoryCardUpdates,
@@ -606,6 +607,29 @@ async function handleAdventureRoute(
       traceId,
       source: "ai",
       phase: "story_card_updates_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+    }));
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "ai" && segments[3] === "memory-reconcile") {
+    const { body } = await readJsonBody<{
+      request: NonNullable<Parameters<typeof runBackendMemoryReconcile>[3]>;
+      providerOverride?: NonNullable<Parameters<typeof runBackendMemoryReconcile>[5]>;
+    }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
+    const result = await db.updatePersistingOnError((data) =>
+      runBackendMemoryReconcile(data, userId, adventureId, body.request, config, body.providerOverride),
+    );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "ai",
+      phase: "memory_reconcile_total",
       route: pathname,
       method: request.method,
       userId,

@@ -1,7 +1,7 @@
 import type { AdventureSummary } from "../db/adventureDb";
 import type { BrainAuditRecommendation } from "../memory/brainAudit";
 import type { AuditRecommendation } from "../memory/storyCardAudit";
-import type { Adventure, AdventureThumbnailImage, ProviderConfig, StoryCardAIBuilderRequest } from "../types/adventure";
+import type { Adventure, AdventureThumbnailImage, MemoryReconcileRequest, ProviderConfig, StoryCardAIBuilderRequest } from "../types/adventure";
 import { apiJson } from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
 
@@ -528,6 +528,20 @@ export function suggestBackendStoryCardUpdates(
     method: "POST",
     headers: authHeaders(session),
     body: JSON.stringify({ providerOverride }),
+  });
+}
+
+export function reconcileBackendMemory(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  adventureId: string,
+  request: MemoryReconcileRequest,
+  providerOverride?: Partial<ProviderConfig>,
+) {
+  return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/memory-reconcile`, {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify({ request, providerOverride }),
   });
 }
 

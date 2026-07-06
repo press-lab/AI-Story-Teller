@@ -57,6 +57,7 @@ function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSett
 export interface BackendAiTools {
   buildStoryCardMemory(adventureId: string, request: StoryCardAIBuilderRequest): Promise<{ adventure: Adventure }>;
   suggestStoryCardUpdates(adventureId: string): Promise<{ adventure: Adventure }>;
+  reconcileMemory(adventureId: string, request: MemoryReconcileRequest): Promise<{ adventure: Adventure }>;
   auditStoryCards(adventureId: string, nTurns: number, includeAI: boolean): Promise<AuditRecommendation[]>;
   generateBrain(adventureId: string, name: string): Promise<{ adventure: Adventure }>;
   updateBrain(adventureId: string, brainId: string): Promise<{ adventure: Adventure }>;
@@ -816,6 +817,21 @@ export function useAdventureRuntime(
     setLoading(true);
     setError(undefined);
     try {
+      if (backendAiTools) {
+        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+        setAdventure(syncedAdventure);
+        const result = await backendAiTools.reconcileMemory(syncedAdventure.id, request);
+        const proposalCount = result.adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length
+          - syncedAdventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending").length;
+        await applyBackendAdventureResult(result.adventure);
+        openTab("memoryInbox");
+        if (proposalCount <= 0) {
+          const latestLog = [...result.adventure.activeState.evaluationLog].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+          const issue = latestLog?.errors[0];
+          if (issue) setError(issue);
+        }
+        return;
+      }
       const result = await runMemoryReconcile(adventure, activeProviderConfig, request);
       const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
       applyActionsAndPersist(result.actions);

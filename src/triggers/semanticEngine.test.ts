@@ -678,10 +678,90 @@ describe("AI memory builders", () => {
     });
 
     expect(mockProvider).toHaveBeenCalledOnce();
-    expect(mockProvider.mock.calls[0][0].messages[1].content).toContain("(none supplied; infer updates from recent entries)");
+    expect(mockProvider.mock.calls[0][0].messages[1].content).toContain("(none supplied; infer updates from source material)");
     const proposals = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL");
     expect(proposals).toHaveLength(2);
     expect(result.logEntry.errors).toEqual([]);
+  });
+
+  it("reconciles pasted planning conversations against plot components and active story cards", async () => {
+    const plot = makeComponent({
+      id: "component-plot",
+      title: "Plot Essentials",
+      type: "plotEssentials",
+      content: "- The baron investigation is easy because Avery is too powerful.",
+      active: true,
+    });
+    const pressure = makeComponent({
+      id: "component-pressure",
+      title: "Active Pressure",
+      type: "activePressure",
+      content: "The baron investigation has no real friction yet.",
+      active: true,
+    });
+    const cover = makeStoryCard({
+      id: "card-cover",
+      title: "Workshop Cover Story",
+      type: "plot",
+      memoryMode: "living",
+      content: "Mel has public cover to slow the Enforcers.",
+      keys: ["workshop cover"],
+      active: true,
+    });
+    const adventure = {
+      ...baseAdventure(),
+      components: [plot, pressure],
+      storyCards: [cover],
+    };
+
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        updates: [
+          {
+            targetId: "component-plot",
+            title: "Plot Essentials",
+            content: "- Avery and Jinx found evidence Cassandra Kiramman secretly communicated with Silco before the rocket.\n- Mel uses the workshop riot story to keep Enforcers in observation mode.\n- Jinx is focused but volatile about what Cassandra knew.",
+            rationale: "The pasted planning conversation defines the current investigation state.",
+          },
+          {
+            targetId: "component-pressure",
+            title: "Active Pressure",
+            content: "The Cassandra/Silco evidence could shatter Caitlyn and force Mel back into Avery and Jinx's social orbit.",
+            rationale: "The pressure is social and political rather than physical.",
+          },
+          {
+            targetId: "card-cover",
+            title: "Workshop Cover Story",
+            content: "Mel has used the workshop riot narrative to justify an observation-only Enforcer posture in Zaun while keeping the silver knot on her desk.",
+            rationale: "The planning conversation updates Mel's current political cover.",
+          },
+        ],
+      }),
+      raw: {},
+    });
+
+    const result = await runMemoryReconcile(adventure, providerConfig, {
+      directive: "Update Plot and Story Cards from this OOC planning conversation.",
+      sourceText: "Out of Character: Option 1 on Ekko and Cassandra. Lean on Jinx and Mel as romance pressure. Bring Mel back into the social circle. Cassandra Kiramman had secret talks with Silco.",
+      entryCount: 5,
+      includeBrains: false,
+      targetScope: "plotAndStoryCards",
+    });
+
+    expect(mockProvider).toHaveBeenCalledOnce();
+    const providerPrompt = mockProvider.mock.calls[0][0].messages.map((message) => message.content).join("\n");
+    expect(providerPrompt).toContain("Planning conversation / OOC source");
+    expect(providerPrompt).toContain("card-cover");
+    const proposals = result.actions.filter(
+      (action): action is Extract<typeof result.actions[number], { type: "ADD_MEMORY_PROPOSAL" }> =>
+        action.type === "ADD_MEMORY_PROPOSAL",
+    );
+    expect(proposals.map((action) => action.proposal.targetId)).toEqual([
+      "component-plot",
+      "component-pressure",
+      "card-cover",
+    ]);
+    expect(proposals.every((action) => action.proposal.proposedType !== "brainUpdate")).toBe(true);
   });
 
   it("drafts a living auto-updating Story Card proposal from a guided request", async () => {

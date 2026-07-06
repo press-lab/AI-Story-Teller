@@ -505,6 +505,30 @@ describe("side menu page smoke coverage", () => {
       directive: "",
       entryCount: 20,
       includeBrains: true,
+      targetScope: "auto",
+    });
+  });
+
+  it("drafts Memory reconcile from an AI planning conversation", async () => {
+    const user = userEvent.setup();
+    const onReconcileMemory = vi.fn(async () => undefined);
+    renderWithAdventure((adventure, dispatch) => (
+      <MemoryInboxPage adventure={adventure} dispatch={dispatch} onReconcileMemory={onReconcileMemory} />
+    ));
+
+    await user.type(
+      screen.getByLabelText("AI conversation / OOC planning notes"),
+      "Out of Character: Cassandra had secret dealings with Silco. Bring Mel back into the social circle.",
+    );
+    await user.type(screen.getByLabelText("Directive (optional)"), "Update Plot and Story Cards.");
+    await user.click(screen.getByRole("button", { name: "Draft Plot & Card Updates" }));
+
+    expect(onReconcileMemory).toHaveBeenCalledWith({
+      directive: "Update Plot and Story Cards.",
+      sourceText: "Out of Character: Cassandra had secret dealings with Silco. Bring Mel back into the social circle.",
+      entryCount: 20,
+      includeBrains: false,
+      targetScope: "plotAndStoryCards",
     });
   });
 
