@@ -1,8 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import type { LocalDbData } from "./apiTypes";
+import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import type { BackendDb, BackendReadOptions } from "./backendDb";
 import { createEmptyDb, normalizeDbData } from "./dbShape";
+import { appendPerformanceTrace } from "./performanceTrace";
 
 export { createEmptyDb };
 
@@ -56,6 +57,16 @@ export class LocalDb implements BackendDb {
     });
     this.writeChain = run.catch(() => undefined);
     return run;
+  }
+
+  async recordPerformanceTrace(record: PerformanceTraceRecord): Promise<void> {
+    const run = this.writeChain.then(async () => {
+      const data = await this.read();
+      appendPerformanceTrace(data, record);
+      await this.persist(data);
+    });
+    this.writeChain = run.catch(() => undefined);
+    await run;
   }
 
   private async persist(data: LocalDbData): Promise<void> {

@@ -209,6 +209,41 @@ export interface UsageLog {
   providerName: string;
   model: string;
   usage?: ProviderUsage;
+  durationMs?: number;
+  traceId?: string;
+  createdAt: string;
+}
+
+export type PerformanceTraceSource = "device" | "server" | "database" | "ai" | "policy" | "sync";
+export type PerformanceTraceStatus = "ok" | "error";
+
+export interface PerformanceTraceRecord {
+  id: string;
+  traceId: string;
+  parentTraceId?: string;
+  source: PerformanceTraceSource;
+  phase: string;
+  route?: string;
+  method?: string;
+  userId?: string;
+  adventureId?: string;
+  providerName?: string;
+  model?: string;
+  status: PerformanceTraceStatus;
+  statusCode?: number;
+  durationMs: number;
+  requestBytes?: number;
+  responseBytes?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+  cacheReadTokens?: number;
+  cacheCreationTokens?: number;
+  throttleWaitMs?: number;
+  retryCount?: number;
+  errorCategory?: string;
+  errorMessage?: string;
+  metadata?: Record<string, string | number | boolean | undefined>;
   createdAt: string;
 }
 
@@ -259,6 +294,7 @@ export interface LocalDbData {
   scenarioRevisions: ScenarioRevision[];
   shareLinks: ShareLink[];
   usageLogs: UsageLog[];
+  performanceTraces: PerformanceTraceRecord[];
   adminActions: AdminAction[];
   platformSettings: PlatformSettingsRecord[];
 }

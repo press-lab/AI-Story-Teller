@@ -22,6 +22,7 @@ export interface AdminConsoleData {
     openSafetyEvents: number;
     policyDecisions: number;
     usageLogs: number;
+    performanceTraces: number;
   };
   users: Array<{
     id: string;
@@ -76,6 +77,7 @@ export interface AdminConsoleData {
   restrictions: AccountRestriction[];
   policyDecisions: LocalDbData["policyDecisions"];
   usageLogs: LocalDbData["usageLogs"];
+  performanceTraces: LocalDbData["performanceTraces"];
   contextBuilds: Array<{
     id: string;
     userId: string;
@@ -94,7 +96,7 @@ export interface AdminConsoleData {
 
 export type AdminConsoleDetailsData = Pick<
   AdminConsoleData,
-  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "contextBuilds" | "adminActions"
+  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "performanceTraces" | "contextBuilds" | "adminActions"
 > & { detailsLoaded: true };
 
 interface AdminConsoleBuildOptions {
@@ -118,6 +120,7 @@ export function buildAdminConsole(
       openSafetyEvents: data.accountSafetyEvents.filter((event) => event.status === "open").length,
       policyDecisions: data.policyDecisions.length,
       usageLogs: data.usageLogs.length,
+      performanceTraces: data.performanceTraces.length,
     },
     users: data.users
       .map((user) => {
@@ -201,6 +204,7 @@ export function buildAdminConsoleDetails(data: LocalDbData): AdminConsoleDetails
     restrictions: [...data.accountRestrictions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     policyDecisions: [...data.policyDecisions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     usageLogs: [...data.usageLogs].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    performanceTraces: [...data.performanceTraces].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     contextBuilds: data.contextBuildEvents
       .map((event) => ({
         id: event.id,
@@ -226,6 +230,7 @@ function emptyAdminConsoleDetails(): AdminConsoleDetailsData {
     restrictions: [],
     policyDecisions: [],
     usageLogs: [],
+    performanceTraces: [],
     contextBuilds: [],
     adminActions: [],
   };

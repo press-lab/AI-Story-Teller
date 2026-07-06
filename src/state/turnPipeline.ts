@@ -30,6 +30,11 @@ export interface RunTurnPipelineOptions {
     adventureSnapshot: Adventure,
     context: ContextBuildResult,
   ) => Promise<MockableProviderResponse>;
+  onContextBuilt?: (
+    context: ContextBuildResult,
+    adventureSnapshot: Adventure,
+    durationMs: number,
+  ) => void | Promise<void>;
   providerConfig?: ProviderConfig;
   userMessageId?: string;
   assistantMessageId?: string;
@@ -210,6 +215,7 @@ export async function runTurnPipeline({
   text,
   mode = "story",
   sendChatCompletion,
+  onContextBuilt,
   providerConfig,
   userMessageId,
   assistantMessageId,
@@ -233,10 +239,12 @@ export async function runTurnPipeline({
     next = applyRuntimeEngines(next, { source: "input", text });
   }
 
+  const contextStartedAt = performance.now();
   const preProviderContext = buildContext(next, {
     currentInput: currentInputForContext ?? (recordUserInput ? text : undefined),
     latestModelOutput: latestAssistantOutput(next),
   });
+  await onContextBuilt?.(preProviderContext, next, Math.max(0, Math.round(performance.now() - contextStartedAt)));
   const providerPayload = providerCue
     ? [...preProviderContext.messages, { role: "user" as const, content: providerCue }]
     : preProviderContext.messages;

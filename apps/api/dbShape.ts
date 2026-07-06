@@ -24,6 +24,7 @@ export const dbCollectionKeys = [
   "scenarioRevisions",
   "shareLinks",
   "usageLogs",
+  "performanceTraces",
   "adminActions",
   "platformSettings",
 ] as const satisfies readonly (keyof LocalDbData)[];
@@ -55,6 +56,7 @@ export function createEmptyDb(): LocalDbData {
     scenarioRevisions: [],
     shareLinks: [],
     usageLogs: [],
+    performanceTraces: [],
     adminActions: [],
     platformSettings: [],
   };
@@ -87,6 +89,7 @@ export function normalizeDbData(raw: Partial<LocalDbData>): LocalDbData {
     scenarioRevisions: raw.scenarioRevisions ?? [],
     shareLinks: raw.shareLinks ?? [],
     usageLogs: raw.usageLogs ?? [],
+    performanceTraces: raw.performanceTraces ?? [],
     adminActions: raw.adminActions ?? [],
     platformSettings: raw.platformSettings ?? [],
   };

@@ -174,6 +174,7 @@ export interface BackendAdminConsoleData {
     openSafetyEvents: number;
     policyDecisions: number;
     usageLogs: number;
+    performanceTraces: number;
   };
   users: Array<{
     id: string;
@@ -234,6 +235,37 @@ export interface BackendAdminConsoleData {
     providerName: string;
     model: string;
     usage?: unknown;
+    durationMs?: number;
+    traceId?: string;
+    createdAt: string;
+  }>;
+  performanceTraces: Array<{
+    id: string;
+    traceId: string;
+    parentTraceId?: string;
+    source: "device" | "server" | "database" | "ai" | "policy" | "sync";
+    phase: string;
+    route?: string;
+    method?: string;
+    userId?: string;
+    adventureId?: string;
+    providerName?: string;
+    model?: string;
+    status: "ok" | "error";
+    statusCode?: number;
+    durationMs: number;
+    requestBytes?: number;
+    responseBytes?: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+    throttleWaitMs?: number;
+    retryCount?: number;
+    errorCategory?: string;
+    errorMessage?: string;
+    metadata?: Record<string, string | number | boolean | undefined>;
     createdAt: string;
   }>;
   contextBuilds: Array<{
@@ -262,7 +294,7 @@ export interface BackendAdminConsoleData {
 
 export type BackendAdminConsoleDetailsData = Pick<
   BackendAdminConsoleData,
-  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "contextBuilds" | "adminActions"
+  "safetyEvents" | "restrictions" | "policyDecisions" | "usageLogs" | "performanceTraces" | "contextBuilds" | "adminActions"
 > & { detailsLoaded: true };
 
 function authHeaders(session?: BackendSessionState): Record<string, string> {

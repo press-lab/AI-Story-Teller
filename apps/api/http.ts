@@ -6,14 +6,16 @@ export interface JsonRequest<T = unknown> {
 }
 
 export function sendJson(response: ServerResponse, status: number, body: unknown, extraHeaders: Record<string, string> = {}): void {
+  const payload = JSON.stringify(body, null, 2);
   response.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
+    "Content-Length": Buffer.byteLength(payload, "utf8"),
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer",
     ...extraHeaders,
   });
-  response.end(JSON.stringify(body, null, 2));
+  response.end(payload);
 }
 
 export async function readJsonBody<T = unknown>(request: IncomingMessage, limitBytes = 2_000_000): Promise<JsonRequest<T>> {

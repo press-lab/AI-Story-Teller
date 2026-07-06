@@ -45,6 +45,14 @@ export interface ProviderResponse {
   content: string;
   raw: unknown;
   usage?: ProviderUsage;
+  metrics?: {
+    endpoint?: string;
+    statusCode?: number;
+    durationMs?: number;
+    throttleWaitMs?: number;
+    retryCount?: number;
+    retriedProviderPolicy?: boolean;
+  };
 }
 
 let throttleQueue: Promise<void> = Promise.resolve();
@@ -182,9 +190,11 @@ function wait(ms: number, signal?: AbortSignal): Promise<void> {
   });
 }
 
-async function waitForProviderThrottle(config: ProviderConfig, signal?: AbortSignal): Promise<void> {
+async function waitForProviderThrottle(config: ProviderConfig, signal?: AbortSignal): Promise<number> {
   const throttle = normalizedThrottle(config);
-  if (!throttle.enabled) return;
+  if (!throttle.enabled) return 0;
+  let waitedMs = 0;
+  const queuedAt = performance.now();
 
   const run = throttleQueue.then(async () => {
     const now = Date.now();
@@ -201,6 +211,7 @@ async function waitForProviderThrottle(config: ProviderConfig, signal?: AbortSig
     }
 
     await wait(waitMs, signal);
+    waitedMs = Math.max(0, Math.round(performance.now() - queuedAt));
     const startedAt = Date.now();
     lastRequestStartedAt = startedAt;
     recentRequestStarts = [...recentRequestStarts.filter((timestamp) => startedAt - timestamp < 60_000), startedAt];
@@ -208,6 +219,7 @@ async function waitForProviderThrottle(config: ProviderConfig, signal?: AbortSig
 
   throttleQueue = run.catch(() => undefined);
   await run;
+  return waitedMs;
 }
 
 export function resetProviderThrottleForTests(): void {
@@ -262,10 +274,12 @@ async function sendOpenAIRequest(
   let rawText = await response.text().catch(() => "");
   let raw = parseOpenAIRaw(rawText);
   let retriedProviderPolicy = false;
+  let retryCount = 0;
   let detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
   const retryProvider = openRouterDataPolicyRetryProvider(provider, config);
   if (!response.ok && isOpenRouterDataPolicyError(response.status, detail) && retryProvider !== null) {
     retriedProviderPolicy = true;
+    retryCount += 1;
     response = await fetchRequest(retryProvider);
     rawText = await response.text().catch(() => "");
     raw = parseOpenAIRaw(rawText);
@@ -289,7 +303,17 @@ async function sendOpenAIRequest(
       }
     : undefined;
 
-  return { content, raw, usage };
+  return {
+    content,
+    raw,
+    usage,
+    metrics: {
+      endpoint,
+      statusCode: response.status,
+      retryCount,
+      retriedProviderPolicy,
+    },
+  };
 }
 
 async function sendAnthropicRequest(
@@ -360,7 +384,16 @@ async function sendAnthropicRequest(
       }
     : undefined;
 
-  return { content, raw, usage };
+  return {
+    content,
+    raw,
+    usage,
+    metrics: {
+      endpoint,
+      statusCode: response.status,
+      retryCount: 0,
+    },
+  };
 }
 
 export async function sendOpenAICompatibleChatCompletion({
@@ -374,13 +407,25 @@ export async function sendOpenAICompatibleChatCompletion({
     throw new Error("Missing API key. Add one in Settings before generating.");
   }
 
-  await waitForProviderThrottle(config, signal);
+  const startedAt = performance.now();
+  const throttleWaitMs = await waitForProviderThrottle(config, signal);
 
   const endpoint = completionEndpoint(config.baseUrl);
+  let response: ProviderResponse;
   if (isAnthropicFormat(config.baseUrl)) {
-    return sendAnthropicRequest(endpoint, messages, config, signal);
+    response = await sendAnthropicRequest(endpoint, messages, config, signal);
+  } else {
+    response = await sendOpenAIRequest(endpoint, messages, config, signal, responseFormat, thinking);
   }
-  return sendOpenAIRequest(endpoint, messages, config, signal, responseFormat, thinking);
+  return {
+    ...response,
+    metrics: {
+      ...response.metrics,
+      endpoint,
+      durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+      throttleWaitMs,
+    },
+  };
 }
 
 export function isNativeDeepSeekProvider(config: Pick<ProviderConfig, "baseUrl">): boolean {

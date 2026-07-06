@@ -9,6 +9,16 @@ import {
 } from "../db/accountAdventureBackupDb";
 import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from "../types/adventure";
 import type { RuntimeConfig } from "./runtimeConfig";
+import {
+  bodyByteLength,
+  clientNetworkMetadata,
+  createClientTraceId,
+  recordClientPerformanceTrace,
+  sanitizeClientError,
+  submitClientPerformanceTrace,
+  traceErrorCategory,
+  type ClientPerformanceTrace,
+} from "./performanceTrace";
 
 export interface AdventureStore {
   hydrateMissingThumbnails?: boolean;
@@ -75,22 +85,98 @@ export function createUnavailableAdventureStore(message: string): AdventureStore
 
 export async function apiJson<T>(config: RuntimeConfig, path: string, init: RequestInit = {}): Promise<T> {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
-  const response = await fetch(`${base}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
-  });
-  const text = await response.text();
-  const body = text ? JSON.parse(text) as unknown : undefined;
-  if (!response.ok) {
-    const message = body && typeof body === "object" && "error" in body
-      ? String((body as { error: unknown }).error)
-      : `Backend request failed with HTTP ${response.status}.`;
-    throw new Error(message);
+  const startedAt = performance.now();
+  const createdAt = new Date().toISOString();
+  const traceId = createClientTraceId();
+  const method = init.method ?? "GET";
+  const initHeaders = headersToRecord(init.headers);
+  const requestBytes = bodyByteLength(init.body);
+  const shouldSubmitTrace = path !== "/telemetry/client";
+  let statusCode: number | undefined;
+  let responseBytes: number | undefined;
+  let text = "";
+  let completedOk = false;
+  try {
+    const response = await fetch(`${base}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...initHeaders,
+        "X-AIST-Trace-Id": traceId,
+        "X-AIST-Client-Sent-At": createdAt,
+        "X-AIST-Client-Path": path,
+      },
+    });
+    statusCode = response.status;
+    text = await response.text();
+    responseBytes = new TextEncoder().encode(text).byteLength;
+    const body = text ? JSON.parse(text) as unknown : undefined;
+    if (!response.ok) {
+      const message = body && typeof body === "object" && "error" in body
+        ? String((body as { error: unknown }).error)
+        : `Backend request failed with HTTP ${response.status}.`;
+      throw new Error(message);
+    }
+    completedOk = true;
+    return body as T;
+  } catch (error) {
+    if (shouldSubmitTrace) {
+      recordAndSubmitDeviceTrace(config, {
+        id: `client_${traceId}`,
+        traceId,
+        source: "device",
+        phase: "http_round_trip",
+        route: path,
+        method,
+        status: "error",
+        statusCode,
+        durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+        requestBytes,
+        responseBytes,
+        errorCategory: traceErrorCategory(error, statusCode),
+        errorMessage: sanitizeClientError(error),
+        metadata: clientNetworkMetadata(),
+        createdAt,
+      }, initHeaders.Authorization);
+    }
+    throw error;
+  } finally {
+    if (shouldSubmitTrace && completedOk && statusCode !== undefined && statusCode < 400) {
+      recordAndSubmitDeviceTrace(config, {
+        id: `client_${traceId}`,
+        traceId,
+        source: "device",
+        phase: "http_round_trip",
+        route: path,
+        method,
+        status: "ok",
+        statusCode,
+        durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
+        requestBytes,
+        responseBytes,
+        metadata: clientNetworkMetadata(),
+        createdAt,
+      }, initHeaders.Authorization);
+    }
   }
-  return body as T;
+}
+
+function headersToRecord(headers?: HeadersInit): Record<string, string> {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    const out: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      out[key] = value;
+    });
+    return out;
+  }
+  if (Array.isArray(headers)) return Object.fromEntries(headers.map(([key, value]) => [key, value]));
+  return { ...headers };
+}
+
+function recordAndSubmitDeviceTrace(config: RuntimeConfig, trace: ClientPerformanceTrace, authHeader?: string): void {
+  recordClientPerformanceTrace(trace);
+  submitClientPerformanceTrace(config, trace, authHeader);
 }
 
 export function createBackendAdventureStore(config: RuntimeConfig, authToken?: string): AdventureStore {

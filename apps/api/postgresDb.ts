@@ -1,7 +1,7 @@
 import pg from "pg";
 import { buildAdminConsole, buildAdminConsoleDetails, type AdminConsoleData, type AdminConsoleDetailsData } from "./adminConsole";
 import type { AdventureSnapshotSummary } from "./adventureStore";
-import type { LocalDbData } from "./apiTypes";
+import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import type { BackendDb, BackendReadOptions } from "./backendDb";
 import type { ApiConfig } from "./config";
 import {
@@ -20,6 +20,7 @@ import {
   type ExploreScenarioSummary,
   type PublicProfileSummary,
 } from "./profileReadModels";
+import { MAX_PERFORMANCE_TRACES } from "./performanceTrace";
 
 const { Pool } = pg;
 const ADVISORY_LOCK_KEY = 4_263_117;
@@ -128,6 +129,37 @@ export class PostgresDb implements BackendDb {
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  async recordPerformanceTrace(record: PerformanceTraceRecord): Promise<void> {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query(
+        `
+        INSERT INTO aist_records (collection, id, data, updated_at)
+        VALUES ('performanceTraces', $1, $2::jsonb, now())
+        ON CONFLICT (collection, id) DO UPDATE SET data = excluded.data, updated_at = now();
+        `,
+        [record.id, JSON.stringify(record)],
+      );
+      await client.query(
+        `
+        DELETE FROM aist_records
+        WHERE collection = 'performanceTraces'
+          AND id NOT IN (
+            SELECT id
+            FROM aist_records
+            WHERE collection = 'performanceTraces'
+            ORDER BY data->>'createdAt' DESC, id DESC
+            LIMIT $1
+          );
+        `,
+        [MAX_PERFORMANCE_TRACES],
+      );
+    } finally {
+      client.release();
+    }
   }
 
   async readProfileSummary(userId: string): Promise<BackendProfileSummary> {
@@ -250,6 +282,7 @@ export class PostgresDb implements BackendDb {
       const consoleData = buildAdminConsole(data, config, { includeDetails: false });
       consoleData.totals.policyDecisions = await this.countRows(client, "policyDecisions");
       consoleData.totals.usageLogs = await this.countRows(client, "usageLogs");
+      consoleData.totals.performanceTraces = await this.countRows(client, "performanceTraces");
       return consoleData;
     } finally {
       client.release();
@@ -265,6 +298,7 @@ export class PostgresDb implements BackendDb {
         accountRestrictions: await this.readRows(client, "accountRestrictions", "", [], { orderByCreatedDesc: true, limit: 30 }),
         policyDecisions: await this.readRows(client, "policyDecisions", "", [], { orderByCreatedDesc: true, limit: 40 }),
         usageLogs: await this.readRows(client, "usageLogs", "", [], { orderByCreatedDesc: true, limit: 12 }),
+        performanceTraces: await this.readRows(client, "performanceTraces", "", [], { orderByCreatedDesc: true, limit: 50 }),
         adminActions: await this.readRows(client, "adminActions", "", [], { orderByCreatedDesc: true, limit: 40 }),
       });
       return {

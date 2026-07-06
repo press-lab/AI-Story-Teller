@@ -23,6 +23,7 @@ import { assertCanGenerate } from "./accountSafety";
 import { assertPolicyAllowed, recordPolicyDecision } from "./policy";
 import { effectiveProviderConfig } from "./platformSettings";
 import { createId, nowIso } from "./ids";
+import { appendPerformanceTrace, createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
 
 export interface ImportAdventureInput {
   sourceType: "aist" | "aid" | "githubSave";
@@ -44,6 +45,8 @@ export interface BackendTurnOptions {
   providerCue?: string;
   regenerateLastAssistant?: boolean;
   providerOverride?: Partial<ProviderConfig>;
+  traceId?: string;
+  route?: string;
 }
 
 export interface BackendAiToolResult {
@@ -375,8 +378,12 @@ export async function runBackendTurn(
   config: ApiConfig,
   options: BackendTurnOptions = {},
 ): Promise<TurnExecutionResult> {
+  const traceId = options.traceId ?? createTraceId();
+  const route = options.route ?? `/adventures/${adventureId}/turn`;
+  const turnStartedAt = performance.now();
   assertCanGenerate(data, ownerUserId);
   const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const inputPolicyStartedAt = performance.now();
   const inputDecision = recordPolicyDecision(data, {
     gate: "input",
     text: input,
@@ -386,8 +393,37 @@ export async function runBackendTurn(
     policyMode: config.policyMode,
   });
   assertPolicyAllowed(inputDecision);
+  recordTurnTrace(data, {
+    traceId,
+    source: "policy",
+    phase: "input_policy",
+    route,
+    userId: ownerUserId,
+    adventureId,
+    status: "ok",
+    durationMs: elapsedMs(inputPolicyStartedAt),
+    metadata: {
+      action: inputDecision.action,
+      severity: inputDecision.severity,
+      manualReviewRequired: inputDecision.manualReviewRequired,
+    },
+  });
 
+  const providerConfigStartedAt = performance.now();
   const providerConfig = backendProviderConfig(data, config, options.providerOverride);
+  recordTurnTrace(data, {
+    traceId,
+    source: "server",
+    phase: "provider_config",
+    route,
+    userId: ownerUserId,
+    adventureId,
+    providerName: providerConfig.name,
+    model: providerConfig.model,
+    status: "ok",
+    durationMs: elapsedMs(providerConfigStartedAt),
+    metadata: { personalOverride: Boolean(options.providerOverride) },
+  });
 
   const baseAdventure = options.regenerateLastAssistant
     ? adventureReducer(record.adventure, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" })
@@ -403,7 +439,28 @@ export async function runBackendTurn(
     incrementTurn: !options.regenerateLastAssistant,
     advanceArcPacing: !options.regenerateLastAssistant,
     providerConfig,
+    onContextBuilt: (context, _snapshot, durationMs) => {
+      recordTurnTrace(data, {
+        traceId,
+        source: "server",
+        phase: "context_build",
+        route,
+        userId: ownerUserId,
+        adventureId,
+        status: "ok",
+        durationMs,
+        requestBytes: estimateTextBytes(context.messages.map((message) => message.content).join("\n\n")),
+        totalTokens: context.totalEstimatedTokens,
+        metadata: {
+          messageCount: context.messages.length,
+          sectionCount: context.sections.filter((section) => section.items.length > 0).length,
+          excludedItemCount: context.excludedItems.length,
+          decisionCount: context.decisions.length,
+        },
+      });
+    },
     sendChatCompletion: async (messages, snapshot, context) => {
+      const contextPolicyStartedAt = performance.now();
       const contextDecision = recordPolicyDecision(data, {
         gate: "context",
         text: messages.map((message) => message.content).join("\n\n"),
@@ -413,6 +470,22 @@ export async function runBackendTurn(
         policyMode: config.policyMode,
       });
       assertPolicyAllowed(contextDecision);
+      recordTurnTrace(data, {
+        traceId,
+        source: "policy",
+        phase: "context_policy",
+        route,
+        userId: ownerUserId,
+        adventureId,
+        status: "ok",
+        durationMs: elapsedMs(contextPolicyStartedAt),
+        totalTokens: context.totalEstimatedTokens,
+        metadata: {
+          action: contextDecision.action,
+          severity: contextDecision.severity,
+          manualReviewRequired: contextDecision.manualReviewRequired,
+        },
+      });
       data.contextBuildEvents.push({
         id: createId("context"),
         userId: ownerUserId,
@@ -421,7 +494,50 @@ export async function runBackendTurn(
         context,
         createdAt: nowIso(),
       });
-      const providerResponse = await sendOpenAICompatibleChatCompletion({ messages, config: providerConfig });
+      const providerStartedAt = performance.now();
+      let providerResponse: Awaited<ReturnType<typeof sendOpenAICompatibleChatCompletion>>;
+      try {
+        providerResponse = await sendOpenAICompatibleChatCompletion({ messages, config: providerConfig });
+        recordTurnTrace(data, {
+          traceId,
+          source: "ai",
+          phase: "provider_call",
+          route,
+          userId: ownerUserId,
+          adventureId,
+          providerName: providerConfig.name,
+          model: providerConfig.model,
+          status: "ok",
+          durationMs: elapsedMs(providerStartedAt),
+          requestBytes: estimateTextBytes(messages.map((message) => message.content).join("\n\n")),
+          responseBytes: estimateTextBytes(providerResponse.content),
+          promptTokens: providerResponse.usage?.promptTokens,
+          completionTokens: providerResponse.usage?.completionTokens,
+          totalTokens: providerResponse.usage?.totalTokens,
+          cacheReadTokens: providerResponse.usage?.cacheReadTokens,
+          cacheCreationTokens: providerResponse.usage?.cacheCreationTokens,
+          throttleWaitMs: providerResponse.metrics?.throttleWaitMs,
+          retryCount: providerResponse.metrics?.retryCount,
+          statusCode: providerResponse.metrics?.statusCode,
+        });
+      } catch (error) {
+        recordTurnTrace(data, {
+          traceId,
+          source: "ai",
+          phase: "provider_call",
+          route,
+          userId: ownerUserId,
+          adventureId,
+          providerName: providerConfig.name,
+          model: providerConfig.model,
+          status: "error",
+          durationMs: elapsedMs(providerStartedAt),
+          requestBytes: estimateTextBytes(messages.map((message) => message.content).join("\n\n")),
+          error,
+        });
+        throw error;
+      }
+      const outputPolicyStartedAt = performance.now();
       const outputDecision = recordPolicyDecision(data, {
         gate: "output",
         text: providerResponse.content,
@@ -431,6 +547,23 @@ export async function runBackendTurn(
         policyMode: config.policyMode,
       });
       assertPolicyAllowed(outputDecision);
+      recordTurnTrace(data, {
+        traceId,
+        source: "policy",
+        phase: "output_policy",
+        route,
+        userId: ownerUserId,
+        adventureId,
+        status: "ok",
+        durationMs: elapsedMs(outputPolicyStartedAt),
+        responseBytes: estimateTextBytes(providerResponse.content),
+        metadata: {
+          action: outputDecision.action,
+          severity: outputDecision.severity,
+          manualReviewRequired: outputDecision.manualReviewRequired,
+        },
+      });
+      const memoryPolicyStartedAt = performance.now();
       const memoryDecision = recordPolicyDecision(data, {
         gate: "memoryWrite",
         text: providerResponse.content,
@@ -440,6 +573,22 @@ export async function runBackendTurn(
         policyMode: config.policyMode,
       });
       assertPolicyAllowed(memoryDecision);
+      recordTurnTrace(data, {
+        traceId,
+        source: "policy",
+        phase: "memory_write_policy",
+        route,
+        userId: ownerUserId,
+        adventureId,
+        status: "ok",
+        durationMs: elapsedMs(memoryPolicyStartedAt),
+        responseBytes: estimateTextBytes(providerResponse.content),
+        metadata: {
+          action: memoryDecision.action,
+          severity: memoryDecision.severity,
+          manualReviewRequired: memoryDecision.manualReviewRequired,
+        },
+      });
       data.usageLogs.push({
         id: createId("usage"),
         userId: ownerUserId,
@@ -447,12 +596,36 @@ export async function runBackendTurn(
         providerName: providerConfig.name,
         model: providerConfig.model,
         usage: providerResponse.usage,
+        durationMs: providerResponse.metrics?.durationMs,
+        traceId,
         createdAt: nowIso(),
       } satisfies UsageLog);
       return providerResponse;
     },
   });
+  recordTurnTrace(data, {
+    traceId,
+    source: "server",
+    phase: "turn_pipeline_total",
+    route,
+    userId: ownerUserId,
+    adventureId,
+    status: "ok",
+    durationMs: elapsedMs(turnStartedAt),
+    responseBytes: estimateTextBytes(result.responseContent),
+  });
+  const saveStartedAt = performance.now();
   saveBackendAdventure(data, ownerUserId, result.adventure, "turn");
+  recordTurnTrace(data, {
+    traceId,
+    source: "database",
+    phase: "adventure_turn_save_prepare",
+    route,
+    userId: ownerUserId,
+    adventureId,
+    status: "ok",
+    durationMs: elapsedMs(saveStartedAt),
+  });
   return { adventure: result.adventure, responseContent: result.responseContent };
 }
 
@@ -460,6 +633,14 @@ export function getOwnedAdventureRecord(data: LocalDbData, ownerUserId: string, 
   const record = data.adventures.find((entry) => entry.id === adventureId && entry.ownerUserId === ownerUserId);
   if (!record) throw new Error("Adventure not found.");
   return record;
+}
+
+function recordTurnTrace(data: LocalDbData, input: Parameters<typeof performanceTrace>[0]): void {
+  appendPerformanceTrace(data, performanceTrace(input));
+}
+
+function estimateTextBytes(text: string): number {
+  return Buffer.byteLength(text, "utf8");
 }
 
 function summarizeAdventureSnapshot(snapshot: AdventureSnapshotRecord): AdventureSnapshotSummary {

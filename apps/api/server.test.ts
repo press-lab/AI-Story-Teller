@@ -801,6 +801,75 @@ describe("local API policy gates and sharing", () => {
     ]);
   });
 
+  it("records sanitized performance traces for server/database and device timings", async () => {
+    const sessionToken = await passwordSession("latency@example.com");
+    const serverTraceId = "trace-profile-read";
+    const profile = await requestJson<{ user: { email: string } }>("/profile/me", {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "X-AIST-Trace-Id": serverTraceId,
+      },
+    });
+    expect(profile.status).toBe(200);
+
+    const deviceTrace = await requestJson<{ ok: boolean }>("/telemetry/client", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "X-AIST-Trace-Id": "trace-device-round-trip",
+      },
+      body: JSON.stringify({
+        traceId: "trace-device-round-trip",
+        phase: "http_round_trip",
+        route: "/profile/me",
+        method: "GET",
+        status: "error",
+        statusCode: 403,
+        durationMs: 42,
+        requestBytes: 12,
+        responseBytes: 34,
+        errorMessage: "Bearer secret sk-or-v1-abc123",
+        metadata: {
+          visibilityState: "hidden",
+          online: true,
+        },
+      }),
+    });
+    expect(deviceTrace.status).toBe(202);
+
+    const details = await requestJson<{
+      performanceTraces: Array<{
+        traceId: string;
+        source: string;
+        phase: string;
+        route?: string;
+        status: string;
+        durationMs: number;
+        errorMessage?: string;
+      }>;
+    }>("/admin/console/details");
+    expect(details.status).toBe(200);
+    expect(details.body.performanceTraces).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          traceId: serverTraceId,
+          source: "database",
+          phase: "profile_summary_read",
+          status: "ok",
+        }),
+        expect.objectContaining({
+          traceId: "trace-device-round-trip",
+          source: "device",
+          phase: "http_round_trip",
+          route: "/profile/me",
+          status: "error",
+          durationMs: 42,
+          errorMessage: "Bearer [redacted] [redacted-openrouter-key]",
+        }),
+      ]),
+    );
+  });
+
   it("stores non-secret platform settings in the backend and gates scenario publishing", async () => {
     const current = await requestJson<{ provider: { model: string }; features: { scenarioPublishingEnabled: boolean } }>("/admin/platform-settings");
     expect(current.status).toBe(200);

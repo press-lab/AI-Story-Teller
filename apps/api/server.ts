@@ -42,6 +42,8 @@ import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput
 import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
+import { createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
+import type { PerformanceTraceRecord } from "./apiTypes";
 
 export interface ApiServer {
   server: Server;
@@ -82,8 +84,11 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     return;
   }
 
+  const route = routePath(request);
+  const traceId = requestTraceId(request);
+  const requestStartedAt = performance.now();
+  const requestBytes = numericHeader(request.headers["content-length"]);
   try {
-    const route = routePath(request);
     if (request.method === "GET" && route.pathname === "/health") {
       const data = await db.read();
       sendJson(response, 200, {
@@ -222,34 +227,69 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
 
     if (request.method === "GET" && route.pathname === "/profile/me") {
       const session = await requireSession(request, db);
+      const dbStartedAt = performance.now();
       const profile = db.readProfileSummary
         ? await db.readProfileSummary(session.user.id)
         : buildProfileSummary(await db.read(), session.user.id);
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "profile_summary_read",
+        route: route.pathname,
+        method: request.method,
+        userId: session.user.id,
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { optimizedReadModel: Boolean(db.readProfileSummary) },
+      }));
       sendJson(response, 200, profile, corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.segments[0] === "profiles" && route.segments.length === 2) {
       await requireSession(request, db);
+      const dbStartedAt = performance.now();
       const profile = db.readPublicProfileSummary
         ? await db.readPublicProfileSummary(route.segments[1])
         : buildPublicProfileSummary(await db.read(), route.segments[1]);
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "public_profile_read",
+        route: route.pathname,
+        method: request.method,
+        userId: route.segments[1],
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { optimizedReadModel: Boolean(db.readPublicProfileSummary) },
+      }));
       sendJson(response, 200, profile, corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/explore/scenarios") {
       await requireSession(request, db);
+      const dbStartedAt = performance.now();
       const scenarios = db.readExploreScenarios
         ? await db.readExploreScenarios()
         : listExploreScenarios(await db.read());
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "explore_scenarios_read",
+        route: route.pathname,
+        method: request.method,
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { optimizedReadModel: Boolean(db.readExploreScenarios), resultCount: scenarios.length },
+      }));
       sendJson(response, 200, { scenarios }, corsHeaders);
       return;
     }
 
     if (route.segments[0] === "adventures") {
       const session = await requireSession(request, db);
-      await handleAdventureRoute(request, response, route.segments, session, config, db, corsHeaders);
+      await handleAdventureRoute(request, response, route.segments, session, config, db, corsHeaders, traceId, route.pathname);
       return;
     }
 
@@ -278,19 +318,62 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
 
     if (request.method === "GET" && route.pathname === "/admin/console") {
       await assertAdmin(request, config, db);
+      const dbStartedAt = performance.now();
       const consoleData = db.readAdminConsoleSummary
         ? await db.readAdminConsoleSummary(config)
         : buildAdminConsole(await db.read(), config);
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "admin_console_summary_read",
+        route: route.pathname,
+        method: request.method,
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { optimizedReadModel: Boolean(db.readAdminConsoleSummary) },
+      }));
       sendJson(response, 200, consoleData, corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/admin/console/details") {
       await assertAdmin(request, config, db);
+      const dbStartedAt = performance.now();
       const details = db.readAdminConsoleDetails
         ? await db.readAdminConsoleDetails(config)
         : buildAdminConsoleDetails(await db.read());
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "admin_console_details_read",
+        route: route.pathname,
+        method: request.method,
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { optimizedReadModel: Boolean(db.readAdminConsoleDetails) },
+      }));
       sendJson(response, 200, details, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/telemetry/client") {
+      const { body } = await readJsonBody<Partial<PerformanceTraceRecord>>(request, 200_000);
+      await recordTrace(db, performanceTrace({
+        traceId: typeof body.traceId === "string" ? body.traceId : traceId,
+        source: "device",
+        phase: typeof body.phase === "string" ? body.phase : "http_round_trip",
+        route: typeof body.route === "string" ? body.route : undefined,
+        method: typeof body.method === "string" ? body.method : undefined,
+        status: body.status === "error" ? "error" : "ok",
+        statusCode: typeof body.statusCode === "number" ? body.statusCode : undefined,
+        durationMs: typeof body.durationMs === "number" ? body.durationMs : 0,
+        requestBytes: typeof body.requestBytes === "number" ? body.requestBytes : undefined,
+        responseBytes: typeof body.responseBytes === "number" ? body.responseBytes : undefined,
+        errorCategory: typeof body.errorCategory === "string" ? body.errorCategory : undefined,
+        errorMessage: typeof body.errorMessage === "string" ? body.errorMessage : undefined,
+        metadata: typeof body.metadata === "object" && body.metadata ? body.metadata as PerformanceTraceRecord["metadata"] : undefined,
+      }));
+      sendJson(response, 202, { ok: true }, corsHeaders);
       return;
     }
 
@@ -355,6 +438,21 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
   } catch (error) {
     const status = error instanceof PolicyBlockedError ? 422 : /not found/i.test(errorMessage(error)) ? 404 : /unauthorized|forbidden|admin/i.test(errorMessage(error)) ? 401 : 400;
     sendJson(response, status, { error: errorMessage(error) }, corsHeaders);
+  } finally {
+    if (config.databaseUrl && shouldTraceRequest(route.pathname)) {
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "server",
+        phase: "http_request",
+        route: route.pathname,
+        method: request.method,
+        status: response.statusCode >= 400 ? "error" : "ok",
+        statusCode: response.statusCode,
+        durationMs: elapsedMs(requestStartedAt),
+        requestBytes,
+        responseBytes: numericHeader(response.getHeader("Content-Length")),
+      }));
+    }
   }
 }
 
@@ -366,25 +464,64 @@ async function handleAdventureRoute(
   config: ApiConfig,
   db: BackendDb,
   corsHeaders: Record<string, string>,
+  traceId: string,
+  pathname: string,
 ): Promise<void> {
   const userId = session.user.id;
   if (request.method === "GET" && segments.length === 1) {
+    const dbStartedAt = performance.now();
     const data = await db.read();
     const summaries = data.adventures.filter((entry) => entry.ownerUserId === userId).map((entry) => summarizeAdventure(entry.adventure));
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "database",
+      phase: "adventure_list_read",
+      route: pathname,
+      method: request.method,
+      userId,
+      status: "ok",
+      durationMs: elapsedMs(dbStartedAt),
+      metadata: { resultCount: summaries.length },
+    }));
     sendJson(response, 200, summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)), corsHeaders);
     return;
   }
   if (request.method === "POST" && segments[1] === "import") {
     const { body } = await readJsonBody(request, 10_000_000);
+    const dbStartedAt = performance.now();
     const imported = await db.updatePersistingOnError((data) => importAdventureAsCopy(data, userId, body as never, config));
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "database",
+      phase: "adventure_import_write",
+      route: pathname,
+      method: request.method,
+      userId,
+      status: "ok",
+      durationMs: elapsedMs(dbStartedAt),
+      metadata: { resultCount: imported.length },
+    }));
     sendJson(response, 201, { adventures: imported.map(summarizeAdventure) }, corsHeaders);
     return;
   }
   const adventureId = segments[1];
   if (!adventureId) throw new Error("Adventure id is required.");
   if (request.method === "GET" && segments.length === 2) {
+    const dbStartedAt = performance.now();
     const data = await db.read();
-    sendJson(response, 200, getOwnedAdventureRecord(data, userId, adventureId).adventure, corsHeaders);
+    const adventure = getOwnedAdventureRecord(data, userId, adventureId).adventure;
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "database",
+      phase: "adventure_get_read",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(dbStartedAt),
+    }));
+    sendJson(response, 200, adventure, corsHeaders);
     return;
   }
   if (request.method === "GET" && segments[2] === "snapshots" && segments.length === 3) {
@@ -401,7 +538,19 @@ async function handleAdventureRoute(
   }
   if (request.method === "PUT" && segments.length === 2) {
     const { body } = await readJsonBody<{ adventure: Adventure }>(request, 10_000_000);
+    const dbStartedAt = performance.now();
     const saved = await db.update((data) => saveBackendAdventure(data, userId, normalizeAdventure(sanitizeAdventureForPersistence(body.adventure)), "manualSave"));
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "database",
+      phase: "adventure_save_write",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(dbStartedAt),
+    }));
     sendJson(response, 200, summarizeAdventure(saved.adventure), corsHeaders);
     return;
   }
@@ -427,9 +576,21 @@ async function handleAdventureRoute(
       request: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[3]>;
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[5]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendStoryCardBuilder(data, userId, adventureId, body.request, config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "ai",
+      phase: "story_card_builder_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -437,9 +598,21 @@ async function handleAdventureRoute(
     const { body } = await readJsonBody<{
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardUpdates>[4]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendStoryCardUpdates(data, userId, adventureId, config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "ai",
+      phase: "story_card_updates_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -449,9 +622,22 @@ async function handleAdventureRoute(
       includeAI?: boolean;
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardAudit>[6]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendStoryCardAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: Boolean(body.includeAI) ? "ai" : "server",
+      phase: "story_card_audit_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+      metadata: { includeAI: Boolean(body.includeAI) },
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -460,9 +646,21 @@ async function handleAdventureRoute(
       name?: string;
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainGeneration>[5]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendBrainGeneration(data, userId, adventureId, body.name ?? "", config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "ai",
+      phase: "brain_generation_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -471,9 +669,21 @@ async function handleAdventureRoute(
       brainId?: string;
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainUpdate>[5]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendBrainUpdate(data, userId, adventureId, body.brainId ?? "", config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "ai",
+      phase: "brain_update_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -483,9 +693,22 @@ async function handleAdventureRoute(
       includeAI?: boolean;
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainAudit>[6]>;
     }>(request, 2_000_000);
+    const aiStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendBrainAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: Boolean(body.includeAI) ? "ai" : "server",
+      phase: "brain_audit_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(aiStartedAt),
+      metadata: { includeAI: Boolean(body.includeAI) },
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -498,6 +721,7 @@ async function handleAdventureRoute(
       regenerateLastAssistant?: boolean;
       providerOverride?: NonNullable<Parameters<typeof runBackendTurn>[5]>["providerOverride"];
     }>(request);
+    const turnStartedAt = performance.now();
     const result = await db.updatePersistingOnError((data) =>
       runBackendTurn(data, userId, adventureId, body.input ?? "", config, {
         mode: body.mode,
@@ -505,8 +729,21 @@ async function handleAdventureRoute(
         providerCue: body.providerCue,
         regenerateLastAssistant: body.regenerateLastAssistant,
         providerOverride: body.providerOverride,
+        traceId,
+        route: pathname,
       }),
     );
+    await recordTrace(db, performanceTrace({
+      traceId,
+      source: "server",
+      phase: "turn_route_total",
+      route: pathname,
+      method: request.method,
+      userId,
+      adventureId,
+      status: "ok",
+      durationMs: elapsedMs(turnStartedAt),
+    }));
     sendJson(response, 200, result, corsHeaders);
     return;
   }
@@ -648,10 +885,45 @@ function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, st
   const allowOrigin = typeof origin === "string" && config.allowedOrigins.includes(origin) ? origin : config.allowedOrigins[0] ?? "*";
   return {
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Key",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Key, X-AIST-Trace-Id, X-AIST-Client-Sent-At, X-AIST-Client-Path",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
   };
+}
+
+function requestTraceId(request: IncomingMessage): string {
+  const header = request.headers["x-aist-trace-id"];
+  const value = Array.isArray(header) ? header[0] : header;
+  return typeof value === "string" && value.trim() ? value.trim().slice(0, 200) : createTraceId();
+}
+
+function numericHeader(value: string | string[] | number | undefined): number | undefined {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = typeof raw === "number" ? raw : typeof raw === "string" ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function shouldTraceRequest(pathname: string): boolean {
+  return pathname !== "/health" && pathname !== "/version" && pathname !== "/telemetry/client";
+}
+
+async function recordTrace(db: BackendDb, record: PerformanceTraceRecord): Promise<void> {
+  try {
+    if (db.recordPerformanceTrace) {
+      await db.recordPerformanceTrace(record);
+      return;
+    }
+    await db.update((data) => {
+      data.performanceTraces.push(record);
+      if (data.performanceTraces.length > 2_000) {
+        data.performanceTraces = data.performanceTraces
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          .slice(0, 2_000);
+      }
+    });
+  } catch (error) {
+    console.warn("Failed to record performance trace:", errorMessage(error));
+  }
 }
 
 function errorMessage(error: unknown): string {

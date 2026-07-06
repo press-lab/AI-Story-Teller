@@ -1,6 +1,6 @@
 import type { AdminConsoleData, AdminConsoleDetailsData } from "./adminConsole";
 import type { AdventureSnapshotSummary } from "./adventureStore";
-import type { LocalDbData } from "./apiTypes";
+import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import type { BackendProfileSummary, ExploreScenarioSummary, PublicProfileSummary } from "./profileReadModels";
 
@@ -19,5 +19,6 @@ export interface BackendDb {
   readAdventureSnapshotSummaries?(ownerUserId: string, adventureId: string): Promise<AdventureSnapshotSummary[]>;
   readAdminConsoleSummary?(config: ApiConfig): Promise<AdminConsoleData>;
   readAdminConsoleDetails?(config: ApiConfig): Promise<AdminConsoleDetailsData>;
+  recordPerformanceTrace?(record: PerformanceTraceRecord): Promise<void>;
   close(): Promise<void>;
 }

@@ -37,6 +37,12 @@ function shortId(id: string): string {
   return id.length > 16 ? `${id.slice(0, 8)}...${id.slice(-4)}` : id;
 }
 
+function formatDuration(ms?: number): string {
+  if (!Number.isFinite(ms)) return "n/a";
+  if ((ms ?? 0) >= 1000) return `${((ms ?? 0) / 1000).toFixed(1)}s`;
+  return `${Math.round(ms ?? 0)}ms`;
+}
+
 export function AdminConsolePage({
   backendMode,
   backendSession,
@@ -278,6 +284,7 @@ export function AdminConsolePage({
             <Metric label="Safety" value={data.totals.openSafetyEvents} detail="open events" />
             <Metric label="Policy" value={data.totals.policyDecisions} detail="decisions" />
             <Metric label="Usage" value={data.totals.usageLogs} detail="model calls" />
+            <Metric label="Latency" value={data.totals.performanceTraces} detail="trace events" />
           </div>
 
           {adminActionStatus && <p className="notice">{adminActionStatus}</p>}
@@ -652,7 +659,7 @@ export function AdminConsolePage({
                     items={data.usageLogs.slice(0, 12).map((usage) => ({
                       id: usage.id,
                       title: `${usage.providerName} / ${usage.model}`,
-                      detail: `user ${shortId(usage.userId)} / adventure ${shortId(usage.adventureId)}`,
+                      detail: `user ${shortId(usage.userId)} / adventure ${shortId(usage.adventureId)}${usage.durationMs !== undefined ? ` / ${formatDuration(usage.durationMs)}` : ""}`,
                       meta: formatDate(usage.createdAt),
                     }))}
                   />
@@ -672,6 +679,24 @@ export function AdminConsolePage({
                 </div>
               </article>
             </div>
+          </Section>
+
+          <Section title="Latency Traces">
+            <CompactList
+              items={data.performanceTraces.slice(0, 50).map((trace) => ({
+                id: trace.id,
+                title: `${trace.source} / ${trace.phase} / ${trace.status} / ${formatDuration(trace.durationMs)}`,
+                detail: [
+                  trace.method,
+                  trace.route,
+                  trace.statusCode ? `HTTP ${trace.statusCode}` : undefined,
+                  trace.providerName ? `${trace.providerName} ${trace.model ?? ""}`.trim() : undefined,
+                  trace.totalTokens !== undefined ? `${trace.totalTokens} tokens` : undefined,
+                  trace.errorCategory,
+                ].filter(Boolean).join(" / ") || `trace ${shortId(trace.traceId)}`,
+                meta: formatDate(trace.createdAt),
+              }))}
+            />
           </Section>
 
           <Section title="Admin Audit Log">
@@ -724,7 +749,7 @@ function AdminConsoleLoading({ status }: { status: string }) {
         </div>
       </div>
       <div className="admin-metric-grid admin-loading-grid" aria-hidden="true">
-        {["Users", "Adventures", "Scenarios", "Safety", "Policy", "Usage"].map((label) => (
+        {["Users", "Adventures", "Scenarios", "Safety", "Policy", "Usage", "Latency"].map((label) => (
           <article className="panel admin-metric-card admin-metric-card-loading" key={label}>
             <p className="eyebrow">{label}</p>
             <span className="skeleton-line skeleton-number" />
