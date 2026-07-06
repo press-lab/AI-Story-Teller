@@ -631,6 +631,17 @@ export function publishBackendScenarioRevision(config: RuntimeConfig, session: B
   });
 }
 
+export function unpublishBackendScenarioRevision(config: RuntimeConfig, session: BackendSessionState, revisionId: string) {
+  return apiJson<{ revision: { status: string }; disabledShareLinkCount: number }>(
+    config,
+    `/scenario-revisions/${encodeURIComponent(revisionId)}/unpublish`,
+    {
+      method: "POST",
+      headers: authHeaders(session),
+    },
+  );
+}
+
 export function forkBackendScenarioRevision(config: RuntimeConfig, session: BackendSessionState, revisionId: string) {
   return apiJson<Adventure>(config, `/scenario-revisions/${encodeURIComponent(revisionId)}/fork`, {
     method: "POST",

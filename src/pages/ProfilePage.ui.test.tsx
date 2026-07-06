@@ -85,6 +85,24 @@ function profile(): BackendProfileSummary {
           createdAt: timestamp,
         },
       },
+      {
+        id: "scenario-2",
+        title: "Published Scenario",
+        description: "Reusable published setup.",
+        sourceAdventureId: "adventure-1",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        thumbnailImage: publicScenarioThumbnail,
+        revisionCount: 1,
+        publishedRevisionCount: 1,
+        latestRevision: {
+          id: "revision-2",
+          version: 1,
+          status: "published",
+          createdAt: timestamp,
+          publishedAt: timestamp,
+        },
+      },
     ],
   };
 }
@@ -133,6 +151,7 @@ describe("ProfilePage", () => {
     const onDeleteAdventure = vi.fn(async () => undefined);
     const onPublishAdventure = vi.fn(async () => undefined);
     const onPublishScenarioRevision = vi.fn(async () => undefined);
+    const onUnpublishScenarioRevision = vi.fn(async () => undefined);
     const onLogout = vi.fn();
 
     render(
@@ -145,6 +164,7 @@ describe("ProfilePage", () => {
         onDeleteAdventure={onDeleteAdventure}
         onPublishAdventure={onPublishAdventure}
         onPublishScenarioRevision={onPublishScenarioRevision}
+        onUnpublishScenarioRevision={onUnpublishScenarioRevision}
         onLogout={onLogout}
       />,
     );
@@ -158,6 +178,9 @@ describe("ProfilePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Publish Latest" }));
     expect(onPublishScenarioRevision).toHaveBeenCalledWith("revision-1");
+
+    await user.click(screen.getByRole("button", { name: "Unpublish" }));
+    expect(onUnpublishScenarioRevision).toHaveBeenCalledWith("revision-2");
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(onOpenAdventure).toHaveBeenCalledWith("adventure-1");

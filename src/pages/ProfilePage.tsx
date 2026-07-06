@@ -22,6 +22,7 @@ interface ProfilePageProps {
   onDeleteAdventure?: (id: string) => Promise<void>;
   onPublishAdventure?: (id: string) => Promise<void>;
   onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
+  onUnpublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onStartScenario?: (revisionId: string) => Promise<void>;
   onViewOwnProfile?: () => void;
   onOpenAdmin?: () => void;
@@ -50,6 +51,7 @@ export function ProfilePage({
   onDeleteAdventure,
   onPublishAdventure,
   onPublishScenarioRevision,
+  onUnpublishScenarioRevision,
   onStartScenario,
   onViewOwnProfile,
   onOpenAdmin,
@@ -240,7 +242,17 @@ export function ProfilePage({
                         </button>
                       )}
                       {scenario.latestRevision.status === "published" && (
-                        <span className="status-pill">Published in Explore</span>
+                        <>
+                          <span className="status-pill">Published in Explore</span>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => void onUnpublishScenarioRevision?.(scenario.latestRevision!.id)}
+                            disabled={!onUnpublishScenarioRevision}
+                          >
+                            Unpublish
+                          </button>
+                        </>
                       )}
                       {scenario.latestRevision.status === "quarantined" && (
                         <span className="status-pill">Needs review</span>

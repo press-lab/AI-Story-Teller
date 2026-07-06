@@ -713,7 +713,7 @@ describe("local API policy gates and sharing", () => {
     );
   });
 
-  it("publishes scenario revisions through the share gate and lets another user start them", async () => {
+  it("publishes and unpublishes scenario revisions through the share gate", async () => {
     const sessionToken = await passwordSession("share@example.com");
     const draft = await requestJson<{ id: string }>("/scenarios", {
       method: "POST",
@@ -766,6 +766,43 @@ describe("local API policy gates and sharing", () => {
     expect(testerAdventures.body).toEqual([
       expect.objectContaining({ id: forked.body.id, title: "Library Scenario" }),
     ]);
+
+    const unpublished = await requestJson<{ revision: { status: string; publishedAt?: string }; disabledShareLinkCount: number }>(
+      `/scenario-revisions/${revision.body.id}/unpublish`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      },
+    );
+    expect(unpublished.status).toBe(200);
+    expect(unpublished.body.revision.status).toBe("draft");
+    expect(unpublished.body.revision.publishedAt).toBeUndefined();
+    expect(unpublished.body.disabledShareLinkCount).toBe(1);
+
+    const explore = await requestJson<{ scenarios: Array<{ title: string }> }>("/explore/scenarios", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(explore.body.scenarios).toEqual([]);
+
+    const profile = await requestJson<{
+      scenarios: Array<{
+        publishedRevisionCount: number;
+        latestRevision?: { status: string };
+      }>;
+    }>("/profile/me", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(profile.body.scenarios[0]).toMatchObject({
+      publishedRevisionCount: 0,
+      latestRevision: { status: "draft" },
+    });
+
+    const blockedFork = await requestJson<{ error: string }>(`/scenario-revisions/${revision.body.id}/fork`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${testerSession}` },
+    });
+    expect(blockedFork.status).toBe(404);
+    expect(blockedFork.body.error).toMatch(/published scenario revision not found/i);
   });
 
   it("returns profile adventure/scenario summaries and explore scenario listings", async () => {

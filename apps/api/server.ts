@@ -37,7 +37,13 @@ import {
   summarizeAdventure,
 } from "./adventureStore";
 import { currentRestriction } from "./accountSafety";
-import { createAdventureFromScenarioRevision, createScenarioDraft, createScenarioRevision, publishScenarioRevision } from "./scenarioSharing";
+import {
+  createAdventureFromScenarioRevision,
+  createScenarioDraft,
+  createScenarioRevision,
+  publishScenarioRevision,
+  unpublishScenarioRevision,
+} from "./scenarioSharing";
 import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
@@ -818,6 +824,13 @@ async function handleScenarioRevisionRoute(
       assertScenarioPublishingEnabled(data, config);
       return publishScenarioRevision(data, session.user.id, segments[1], config);
     });
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
+  if (request.method === "POST" && segments[2] === "unpublish") {
+    const result = await db.updatePersistingOnError((data) =>
+      unpublishScenarioRevision(data, session.user.id, segments[1]),
+    );
     sendJson(response, 200, result, corsHeaders);
     return;
   }

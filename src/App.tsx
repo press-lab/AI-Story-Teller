@@ -73,6 +73,7 @@ import {
   signupBackendPassword,
   suggestBackendStoryCardUpdates,
   startBackendGoogleOAuth,
+  unpublishBackendScenarioRevision,
   updateBackendBrain,
   updateBackendAdminSafetyEventStatus,
   updateBackendAdminUserStatus,
@@ -884,6 +885,32 @@ export default function App() {
     }
   }
 
+  async function unpublishScenarioRevisionFromProfile(revisionId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before unpublishing.");
+    const confirmed = await confirmAction({
+      title: "Unpublish scenario?",
+      message: "Remove this scenario revision from Explore? Existing private adventures started from it are not deleted.",
+      confirmLabel: "Unpublish",
+      danger: true,
+    });
+    if (!confirmed) return undefined;
+    setBackendProfileStatus("Unpublishing scenario...");
+    notify("Unpublishing scenario...", { type: "info" });
+    try {
+      const unpublished = await unpublishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
+      await refreshBackendProfile();
+      await refreshBackendExploreScenarios();
+      setBackendProfileStatus("Unpublished scenario from Explore.");
+      notify("Unpublished scenario from Explore.", { type: "success" });
+      return unpublished;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scenario unpublish failed.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+      throw error;
+    }
+  }
+
   async function startBackendExploreScenario(revisionId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before starting a shared scenario.");
     setBackendExploreStatus("Starting scenario...");
@@ -1141,6 +1168,9 @@ export default function App() {
           }}
           onPublishScenarioRevision={async (revisionId) => {
             await publishScenarioRevisionFromProfile(revisionId);
+          }}
+          onUnpublishScenarioRevision={async (revisionId) => {
+            await unpublishScenarioRevisionFromProfile(revisionId);
           }}
           onStartScenario={backendReady ? startBackendExploreScenario : undefined}
           onViewOwnProfile={() => {

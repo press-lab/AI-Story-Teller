@@ -107,6 +107,30 @@ export function publishScenarioRevision(
   return { revision, shareLink, token };
 }
 
+export function unpublishScenarioRevision(
+  data: LocalDbData,
+  userId: string,
+  revisionId: string,
+): { revision: ScenarioRevision; disabledShareLinkCount: number } {
+  const revision = data.scenarioRevisions.find((entry) => entry.id === revisionId && entry.ownerUserId === userId);
+  if (!revision) throw new Error("Scenario revision not found.");
+  if (revision.status !== "published") throw new Error("Scenario revision is not published.");
+
+  revision.status = "draft";
+  delete revision.publishedAt;
+  let disabledShareLinkCount = 0;
+  const now = nowIso();
+  for (const link of data.shareLinks) {
+    if (link.ownerUserId === userId && link.targetType === "scenarioRevision" && link.targetId === revisionId && !link.disabledAt) {
+      link.disabledAt = now;
+      disabledShareLinkCount += 1;
+    }
+  }
+  const scenario = data.scenarioDrafts.find((entry) => entry.id === revision.scenarioId && entry.ownerUserId === userId);
+  if (scenario) scenario.updatedAt = now;
+  return { revision, disabledShareLinkCount };
+}
+
 export function createAdventureFromScenarioRevision(
   data: LocalDbData,
   userId: string,
