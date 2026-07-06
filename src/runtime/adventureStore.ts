@@ -110,12 +110,15 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
     statusCode = response.status;
     text = await response.text();
     responseBytes = new TextEncoder().encode(text).byteLength;
-    const body = text ? JSON.parse(text) as unknown : undefined;
+    const body = parseJsonBody(text);
     if (!response.ok) {
       const message = body && typeof body === "object" && "error" in body
         ? String((body as { error: unknown }).error)
-        : `Backend request failed with HTTP ${response.status}.`;
+        : backendHttpErrorMessage(response.status, text);
       throw new Error(message);
+    }
+    if (text && body === undefined) {
+      throw new Error(`Backend returned invalid JSON with HTTP ${response.status}.`);
     }
     completedOk = true;
     return body as T;
@@ -159,6 +162,26 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
       }, initHeaders.Authorization);
     }
   }
+}
+
+function parseJsonBody(text: string): unknown | undefined {
+  if (!text.trim()) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function backendHttpErrorMessage(status: number, text: string): string {
+  const detail = text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 220);
+  return detail
+    ? `Backend request failed with HTTP ${status}: ${detail}`
+    : `Backend request failed with HTTP ${status}.`;
 }
 
 function headersToRecord(headers?: HeadersInit): Record<string, string> {

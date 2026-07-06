@@ -99,6 +99,19 @@ describe("cached backend adventure store", () => {
     );
   });
 
+  it("preserves HTTP status when the backend returns a non-JSON tunnel error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      "<html><body>Bad Gateway</body></html>",
+      { status: 502, headers: { "Content-Type": "text/html" } },
+    )));
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const runner = createBackendTurnRunner(config, "session-token");
+
+    await expect(runner.runTurn({ adventureId: "adv-1", input: "You wait", mode: "do" }))
+      .rejects.toThrow("Backend request failed with HTTP 502");
+  });
+
   it("surfaces local and server save timestamps for conflicted backend summaries", async () => {
     const local = createDefaultAdventure("Local Conflict");
     local.id = "adv-conflict";

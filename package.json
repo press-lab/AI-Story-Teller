@@ -15,6 +15,7 @@
     "owner:postgres:status": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 status",
     "owner:postgres:stop": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 stop",
     "owner:watch": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-tunnel-watchdog.ps1",
+    "owner:watch:start": "powershell.exe -ExecutionPolicy Bypass -File scripts/start-owner-watchdog.ps1",
     "owner:watch:once": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-tunnel-watchdog.ps1 -Once",
     "pages:set-api": "node scripts/set-pages-api-url.mjs",
     "build": "tsc -b && vite build",
