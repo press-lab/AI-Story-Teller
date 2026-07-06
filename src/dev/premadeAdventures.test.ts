@@ -9,6 +9,7 @@ describe("premade adventure library", () => {
       "dispatch-sdn",
       "rookery",
       "arcane-after-rocket",
+      "avatar-commander-raizen",
     ]);
   });
 
@@ -89,5 +90,64 @@ describe("premade adventure library", () => {
     expect(adventure.storyCards.find((card) => card.title === "Loaded Season One History")?.memoryMode).toBe("historical");
     expect(brainNames).toContain("Vi");
     expect(brainNames).not.toContain("Ambessa Medarda");
+  });
+
+  it("loads Avatar Commander Raizen with Season 2 pressure and broad inspectable cards", () => {
+    const avatar = premadeAdventures.find((premade) => premade.id === "avatar-commander-raizen")!;
+    const adventure = avatar.createAdventure();
+    const pe = adventure.components.find((component) => component.type === "plotEssentials")?.content ?? "";
+    const activePressure = adventure.components.find((component) => component.type === "activePressure")?.content ?? "";
+    const currentArc = adventure.components.find((component) => component.type === "currentArc");
+    const setu = adventure.storyCards.find((card) => card.title === "Commander Setu Raizen");
+    const nyxa = adventure.storyCards.find((card) => card.title === "Princess Nyxa");
+    const teamAvatar = adventure.storyCards.find((card) => card.title === "Team Avatar During Season Two");
+    const baSingSe = adventure.storyCards.find((card) => card.title === "Ba Sing Se");
+    const cardTitles = adventure.storyCards.map((card) => card.title);
+    const brainNames = adventure.brains.map((brain) => brain.characterName);
+
+    expect(adventure.title).toBe("Avatar: Commander Raizen");
+    expect(adventure.openingScene).toContain("Commander Raizen");
+    expect(adventure.openingScene).toContain("Nyxa");
+    expect(pe.split("\n")).toHaveLength(8);
+    expect(pe).toContain("Setu Raizen is a mid-twenties Fire Nation commander");
+    expect(pe).toContain("Team Avatar has Toph");
+    expect(activePressure).toContain("before sunrise");
+    expect(currentArc?.arcTriggerMode).toBe("ask");
+    expect(currentArc?.arcPace).toBe("epic");
+    expect(currentArc?.arcThreadKeys?.length).toBeGreaterThanOrEqual(8);
+    expect(currentArc?.arcBreakInstruction).toContain("Setu remains overwhelmingly powerful");
+    expect(setu?.content).toContain("Never write Setu's dialogue");
+    expect(nyxa?.content).toContain("People close to Nyxa call her Nyx");
+    expect(nyxa?.content).toContain("VOICE CONTRACT");
+    expect(teamAvatar?.memoryMode).toBe("living");
+    expect(teamAvatar?.content).toContain("Aang has found Toph and is learning earthbending");
+    expect(baSingSe?.memoryMode).toBe("living");
+    expect(baSingSe?.content).toContain("there is no war within its walls");
+    expect(cardTitles).toEqual(expect.arrayContaining([
+      "Fire Lord Ozai",
+      "Princess Azula",
+      "Mai",
+      "Ty Lee",
+      "Prince Zuko in Exile",
+      "Uncle Iroh",
+      "Avatar Aang",
+      "Katara",
+      "Sokka",
+      "Toph Beifong",
+      "Long Feng",
+      "The Dai Li",
+      "Lake Laogai",
+      "Wan Shi Tong's Library",
+      "Sozin's Comet",
+    ]));
+    expect(brainNames).toEqual(expect.arrayContaining([
+      "Nyxa",
+      "Azula",
+      "Ozai",
+      "Zuko",
+      "Iroh",
+      "Aang",
+      "Long Feng",
+    ]));
   });
 });
