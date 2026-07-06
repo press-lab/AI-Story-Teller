@@ -259,6 +259,33 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     })).rejects.toThrow("key/workspace privacy or ZDR");
   });
 
+  it("explains OpenRouter key limit failures without exposing key-management URLs", async () => {
+    mockFetch(403, {
+      error: {
+        message:
+          "Key limit exceeded (total limit). Manage it using https://openrouter.ai/workspaces/default/keys/47f14b864184347564675e49a1d5b6e16d4eeb0862afbaeb882c6555466b8413",
+      },
+    });
+
+    let message = "";
+    try {
+      await sendOpenAICompatibleChatCompletion({
+        messages: [{ role: "user", content: "Continue." }],
+        config: {
+          ...config,
+          baseUrl: "https://openrouter.ai/api/v1",
+          openRouterDataCollection: "allow",
+        },
+      });
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toContain("OpenRouter key limit exceeded");
+    expect(message).not.toContain("workspaces/default/keys");
+    expect(message).not.toContain("47f14b864184347564675e49a1d5b6e16d4eeb0862afbaeb882c6555466b8413");
+  });
+
   it("does not send OpenRouter-specific request fields to native providers", async () => {
     const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
     await sendOpenAICompatibleChatCompletion({

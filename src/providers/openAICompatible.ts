@@ -95,6 +95,17 @@ function isOpenRouterDataPolicyError(status: number, detail: string): boolean {
   );
 }
 
+function isOpenRouterKeyLimitError(status: number, detail: string): boolean {
+  return status === 403 && /key limit exceeded|total limit/i.test(detail);
+}
+
+function sanitizedProviderDetail(detail: string): string {
+  return detail.replace(
+    /https:\/\/openrouter\.ai\/workspaces\/[^\s"')]+\/keys\/[A-Za-z0-9]+/gi,
+    "the OpenRouter key settings page",
+  );
+}
+
 function openRouterDataPolicyRetryProvider(
   provider: OpenRouterProviderPreferences | undefined,
   config: ProviderConfig,
@@ -111,11 +122,14 @@ function openRouterDataPolicyRetryProvider(
 }
 
 function providerErrorMessage(status: number, endpoint: string, detail: string, retriedProviderPolicy: boolean): string {
+  if (isOpenRouterKeyLimitError(status, detail)) {
+    return `Provider error ${status} (${endpoint}): OpenRouter key limit exceeded. Raise or reset the key limit in OpenRouter, add credits if needed, or configure a different backend provider key.`;
+  }
   if (isOpenRouterDataPolicyError(status, detail)) {
     const retryText = retriedProviderPolicy ? " even after retrying with Balanced routing and explicit provider data collection enabled" : "";
-    return `Provider error ${status} (${endpoint}): OpenRouter could not find an endpoint matching this API key or workspace data policy${retryText}. Set Admin OpenRouter data policy to Allow, change the OpenRouter key/workspace privacy or ZDR settings, or choose a different model. OpenRouter said: ${detail}`;
+    return `Provider error ${status} (${endpoint}): OpenRouter could not find an endpoint matching this API key or workspace data policy${retryText}. Set Admin OpenRouter data policy to Allow, change the OpenRouter key/workspace privacy or ZDR settings, or choose a different model. OpenRouter said: ${sanitizedProviderDetail(detail)}`;
   }
-  return `Provider error ${status} (${endpoint}): ${detail}`;
+  return `Provider error ${status} (${endpoint}): ${sanitizedProviderDetail(detail)}`;
 }
 
 function parseOpenAIRaw(rawText: string): OpenAICompatibleRaw {
