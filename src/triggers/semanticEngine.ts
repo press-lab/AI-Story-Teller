@@ -1391,7 +1391,7 @@ function discoverReconcileTargets(adventure: Adventure, request: MemoryReconcile
   const recentTerms = extractReconcileTerms(recent, false);
   const terms = uniqTerms([...directiveTerms, ...sourceTerms, ...recentTerms]);
   const strongTerms = directiveTerms.length > 0 ? directiveTerms : sourceTerms.length > 0 ? sourceTerms : terms;
-  const broadPlotCardReconcile = request.targetScope === "plotAndStoryCards" && planningSource.length > 0;
+  const broadPlotCardReconcile = request.targetScope === "plotAndStoryCards";
   const duplicateIndexes = duplicateTitleIndexes(adventure.storyCards);
   const targets: ReconcileTarget[] = [];
 
@@ -1557,6 +1557,7 @@ The target list was selected deterministically. Do not add targets. Do not inven
 Rules:
 - If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the source material.
 - If source material includes an out-of-character planning conversation, extract durable story-state decisions from it. Do not preserve meta chatter, boredom notes, or questions as story facts unless they define an actual direction or current pressure.
+- In Plot and Story Card review mode, review every listed Plot component and Story Card against the selected source material. Return updates only for targets whose current content is stale, incomplete, contradicted, or missing important durable context from the source material.
 - Remove stale active pressure. Preserve true completed events as historical facts.
 - Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
 - Active Pressure: exactly one sentence naming the current external pressure.

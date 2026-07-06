@@ -519,6 +519,20 @@ describe("local API policy gates and sharing", () => {
         active: true,
       }),
     ];
+    adventure.messages = [
+      {
+        id: "msg-ooc",
+        role: "user",
+        content: "Out of Character: Cassandra Kiramman had secret dealings with Silco. Bring Mel back into the social circle.",
+        createdAt: "2026-07-06T00:00:00.000Z",
+      },
+      {
+        id: "msg-plan",
+        role: "assistant",
+        content: "Mel uses the riot cover story to justify observation-only Enforcer posture while staying close enough to reenter the social circle.",
+        createdAt: "2026-07-06T00:01:00.000Z",
+      },
+    ];
     const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
       method: "POST",
       headers: { Authorization: `Bearer ${sessionToken}` },
@@ -556,8 +570,7 @@ describe("local API policy gates and sharing", () => {
       headers: { Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({
         request: {
-          directive: "Update Plot and Story Cards from this OOC planning conversation.",
-          sourceText: "Out of Character: Cassandra Kiramman had secret dealings with Silco. Bring Mel back into the social circle.",
+          directive: "Update Plot and Story Cards from the recent OOC planning conversation.",
           entryCount: 5,
           includeBrains: false,
           targetScope: "plotAndStoryCards",

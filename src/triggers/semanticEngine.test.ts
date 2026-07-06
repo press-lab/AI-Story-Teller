@@ -684,7 +684,7 @@ describe("AI memory builders", () => {
     expect(result.logEntry.errors).toEqual([]);
   });
 
-  it("reconciles pasted planning conversations against plot components and active story cards", async () => {
+  it("reviews recent planning entries against plot components and active story cards", async () => {
     const plot = makeComponent({
       id: "component-plot",
       title: "Plot Essentials",
@@ -712,6 +712,21 @@ describe("AI memory builders", () => {
       ...baseAdventure(),
       components: [plot, pressure],
       storyCards: [cover],
+      messages: [
+        ...baseAdventure().messages,
+        {
+          id: "m3",
+          role: "user" as const,
+          content: "Out of Character: Option 1 on Ekko and Cassandra. Lean on Jinx and Mel as romance pressure. Bring Mel back into the social circle.",
+          createdAt: "2026-01-01T00:02:00.000Z",
+        },
+        {
+          id: "m4",
+          role: "assistant" as const,
+          content: "Cassandra Kiramman secretly communicated with Silco before the rocket. Mel uses the workshop riot story to keep Enforcers in observation mode.",
+          createdAt: "2026-01-01T00:03:00.000Z",
+        },
+      ],
     };
 
     mockProvider.mockResolvedValueOnce({
@@ -741,8 +756,7 @@ describe("AI memory builders", () => {
     });
 
     const result = await runMemoryReconcile(adventure, providerConfig, {
-      directive: "Update Plot and Story Cards from this OOC planning conversation.",
-      sourceText: "Out of Character: Option 1 on Ekko and Cassandra. Lean on Jinx and Mel as romance pressure. Bring Mel back into the social circle. Cassandra Kiramman had secret talks with Silco.",
+      directive: "Update Plot and Story Cards from the recent OOC planning conversation.",
       entryCount: 5,
       includeBrains: false,
       targetScope: "plotAndStoryCards",
@@ -750,7 +764,8 @@ describe("AI memory builders", () => {
 
     expect(mockProvider).toHaveBeenCalledOnce();
     const providerPrompt = mockProvider.mock.calls[0][0].messages.map((message) => message.content).join("\n");
-    expect(providerPrompt).toContain("Planning conversation / OOC source");
+    expect(providerPrompt).toContain("Recent entries");
+    expect(providerPrompt).toContain("Cassandra Kiramman secretly communicated with Silco");
     expect(providerPrompt).toContain("card-cover");
     const proposals = result.actions.filter(
       (action): action is Extract<typeof result.actions[number], { type: "ADD_MEMORY_PROPOSAL" }> =>

@@ -689,6 +689,17 @@ pre {
   justify-self: end;
 }
 
+.button-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.button-row button {
+  flex: 1 1 12rem;
+}
+
 .editor-command-bar .sort-toggle {
   justify-self: end;
 }
