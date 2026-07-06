@@ -1247,7 +1247,9 @@ const RECONCILE_STOPWORDS = new Set([
 ]);
 
 type ReconcileTargetType = "component" | "storyCard" | "brain";
-const RECONCILE_TARGET_LIMIT = 36;
+const RECONCILE_TARGET_LIMIT = 60;
+const BROAD_RECONCILE_MAX_UPDATES = 8;
+const BROAD_RECONCILE_MIN_OUTPUT_TOKENS = 2600;
 
 interface ReconcileTarget {
   id: string;
@@ -1547,7 +1549,7 @@ export async function runMemoryReconcile(
     matchedTerms: target.matchedTerms,
     deterministicStoryCardPatch: target.deterministicStoryCardPatch,
     deterministicComponentPatch: target.deterministicComponentPatch,
-    currentContent: target.currentContent.slice(0, request.sourceText ? 1200 : 2400),
+    currentContent: target.currentContent.slice(0, request.targetScope === "plotAndStoryCards" ? 600 : request.sourceText ? 1200 : 2400),
   }));
 
   const systemPrompt = `You are reconciling inspectable memory for an interactive fiction game.
@@ -1558,6 +1560,7 @@ Rules:
 - If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the source material.
 - If source material includes an out-of-character planning conversation, extract durable story-state decisions from it. Do not preserve meta chatter, boredom notes, or questions as story facts unless they define an actual direction or current pressure.
 - In Plot and Story Card review mode, review every listed Plot component and Story Card against the selected source material. Return updates only for targets whose current content is stale, incomplete, contradicted, or missing important durable context from the source material.
+- In Plot and Story Card review mode, return at most ${BROAD_RECONCILE_MAX_UPDATES} highest-impact updates. Prefer Plot Essentials, Active Pressure, and directly changed Story Cards. Keep each Story Card update under 900 characters.
 - Remove stale active pressure. Preserve true completed events as historical facts.
 - Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
 - Active Pressure: exactly one sentence naming the current external pressure.
@@ -1596,13 +1599,16 @@ ${JSON.stringify(targetList, null, 2)}`;
 
   try {
     const resolvedConfig = evaluationConfig(adventure, config);
+    const requestConfig = request.targetScope === "plotAndStoryCards"
+      ? { ...resolvedConfig, maxOutputTokens: Math.max(resolvedConfig.maxOutputTokens, BROAD_RECONCILE_MIN_OUTPUT_TOKENS) }
+      : resolvedConfig;
     const response = await sendOpenAICompatibleChatCompletion({
-      config: resolvedConfig,
+      config: requestConfig,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      ...(isNativeDeepSeekProvider(resolvedConfig)
+      ...(isNativeDeepSeekProvider(requestConfig)
         ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
         : {}),
     });
@@ -1681,7 +1687,7 @@ ${recent}`;
   } catch (err) {
     const issue = backgroundProviderConfigIssue(adventure);
     const cause = err instanceof Error ? err.message : String(err);
-    const logEntry = { ...emptyLog, errors: [issue, `Memory reconcile failed: ${cause}`].filter((entry): entry is string => Boolean(entry)) };
+    const logEntry = { ...emptyLog, errors: [`Memory reconcile failed: ${cause}`, issue].filter((entry): entry is string => Boolean(entry)) };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 }

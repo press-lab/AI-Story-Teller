@@ -763,8 +763,10 @@ describe("AI memory builders", () => {
     });
 
     expect(mockProvider).toHaveBeenCalledOnce();
+    expect(mockProvider.mock.calls[0][0].config.maxOutputTokens).toBeGreaterThanOrEqual(2600);
     const providerPrompt = mockProvider.mock.calls[0][0].messages.map((message) => message.content).join("\n");
     expect(providerPrompt).toContain("Recent entries");
+    expect(providerPrompt).toContain("return at most 8 highest-impact updates");
     expect(providerPrompt).toContain("Cassandra Kiramman secretly communicated with Silco");
     expect(providerPrompt).toContain("card-cover");
     const proposals = result.actions.filter(

@@ -266,6 +266,8 @@ function applyActionsToAdventure(adventure: Adventure, actions: AdventureAction[
 
 function assertAiToolProducedWork(actionCount: number, errors: string[], fallback: string): void {
   if (actionCount > 0) return;
+  const actionable = errors.find((error) => /failed|provider|invalid|json|did not|no related|blocked|policy/i.test(error));
+  if (actionable) throw new Error(actionable);
   if (errors.length > 0) throw new Error(errors[0]);
   throw new Error(fallback);
 }
