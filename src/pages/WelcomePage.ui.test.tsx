@@ -52,11 +52,12 @@ describe("WelcomePage", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
     await user.type(screen.getByLabelText("Invite token"), "invite-1");
     await user.type(screen.getByLabelText("Email"), "player@example.com");
     await user.type(screen.getByLabelText("Display name"), "Player");
     await user.type(screen.getByLabelText("Password"), "correct horse battery staple");
-    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    await user.click(screen.getByRole("button", { name: "Create account" }));
 
     expect(onSignupPassword).toHaveBeenCalledWith({
       inviteToken: "invite-1",
@@ -82,6 +83,7 @@ describe("WelcomePage", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: "Log in" }));
     await user.type(screen.getByLabelText("Email"), "player@example.com");
     await user.type(screen.getByLabelText("Password"), "password");
     await user.click(screen.getByRole("button", { name: "Log in" }));
@@ -90,7 +92,7 @@ describe("WelcomePage", () => {
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
   });
 
-  it("keeps auth actions clickable and shows missing-field guidance", async () => {
+  it("opens dedicated auth screens and shows missing-field guidance", async () => {
     const user = userEvent.setup();
     const onLoginPassword = vi.fn(async () => session());
     const onStartGoogleOAuth = vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }));
@@ -105,12 +107,25 @@ describe("WelcomePage", () => {
     );
 
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
 
     await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(screen.getByRole("heading", { name: "Log In" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Invite token")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Log in" }));
     expect(screen.getByText("Enter your email and password to log in.")).toBeInTheDocument();
     expect(onLoginPassword).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await user.click(screen.getByRole("button", { name: "Sign up" }));
+    expect(screen.getByRole("heading", { name: "Sign Up" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Invite token")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Continue with Google" }));
     expect(screen.getByText("Enter an invite token to continue with Google.")).toBeInTheDocument();
