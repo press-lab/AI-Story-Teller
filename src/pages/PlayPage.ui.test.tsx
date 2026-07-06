@@ -224,6 +224,33 @@ describe("PlayPage AID-style controls", () => {
     expect(input).toHaveValue("draw your sword");
   });
 
+  it("renders runtime errors inside the story frame before transcript text", () => {
+    const error = "Provider error 403: OpenRouter key limit exceeded. Raise or reset the key limit.";
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        error={error}
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={() => undefined}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+        onDismissError={() => undefined}
+      />,
+    );
+
+    const alert = screen.getByRole("alert");
+    const storyFrame = alert.closest(".story-text-frame");
+    expect(storyFrame).toBeTruthy();
+    expect(alert).toHaveClass("play-error");
+    expect(storyFrame?.children[0]).toBe(alert);
+    expect(screen.getByText("I open the door.").compareDocumentPosition(alert)).toBe(Node.DOCUMENT_POSITION_PRECEDING);
+  });
+
   it("edits story text inline and supports erase, undo, and redo", async () => {
     const user = userEvent.setup();
     render(<StatefulPlayPage />);

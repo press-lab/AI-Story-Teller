@@ -2308,8 +2308,17 @@ button.primary-action:hover:not(:disabled),
   background: var(--border-strong);
 }
 
-.play-layout > .error-box {
-  grid-column: 1 / -1;
+.play-layout > .error-box:not(.play-error) {
+  display: none;
+}
+
+.play-error {
+  width: 100%;
+  margin: 0 0 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .play-main {
@@ -4792,6 +4801,8 @@ summary {
 }
 .error-dismissible span {
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .error-dismiss {
   background: none;

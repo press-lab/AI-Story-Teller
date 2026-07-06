@@ -377,6 +377,16 @@ export function PlayPage({
               aria-orientation="vertical"
             />
           )}
+          {error && (
+            <div className="error-box error-dismissible play-error" role="alert">
+              <span>{error}</span>
+              {onDismissError && (
+                <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={onDismissError}>
+                  Ã—
+                </button>
+              )}
+            </div>
+          )}
           {adventure.openingScene && (
             <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
               <div className="message-actions">
