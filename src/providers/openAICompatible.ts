@@ -4,6 +4,18 @@ type CacheBlock = { type: "text"; text: string; cache_control?: { type: "ephemer
 type CacheableContent = string | CacheBlock[];
 type CacheableMessage = { role: string; content: CacheableContent };
 type OpenRouterProviderPreferences = { sort?: "price" | "throughput" | "latency" };
+type OpenAICompatibleRaw = {
+  error?: { message?: string };
+  choices?: Array<{ message?: { content?: string } }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation_input_tokens?: number;
+    prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number };
+  };
+};
 
 /** Mark the last system message with an ephemeral cache breakpoint so stable context is reused. */
 function applyPromptCaching(messages: ChatMessage[]): CacheableMessage[] {
@@ -68,6 +80,26 @@ function openRouterSessionId(config: ProviderConfig): string | undefined {
 function openRouterProviderPreferences(config: ProviderConfig): OpenRouterProviderPreferences | undefined {
   if (!isOpenRouterProvider(config) || !config.openRouterProviderSort) return undefined;
   return { sort: config.openRouterProviderSort };
+}
+
+function isOpenRouterDataPolicyError(status: number, detail: string): boolean {
+  return status === 403 && /no endpoints found matching data policy/i.test(detail);
+}
+
+function providerErrorMessage(status: number, endpoint: string, detail: string, retriedBalancedRouting: boolean): string {
+  if (isOpenRouterDataPolicyError(status, detail)) {
+    const retryText = retriedBalancedRouting ? " even after retrying with Balanced routing" : "";
+    return `Provider error ${status} (${endpoint}): OpenRouter could not find an endpoint matching this API key's data policy${retryText}. Use Balanced routing, change the OpenRouter key data policy, or choose a different model. OpenRouter said: ${detail}`;
+  }
+  return `Provider error ${status} (${endpoint}): ${detail}`;
+}
+
+function parseOpenAIRaw(rawText: string): OpenAICompatibleRaw {
+  try {
+    return JSON.parse(rawText) as OpenAICompatibleRaw;
+  } catch {
+    return {};
+  }
 }
 
 function shouldApplyOpenAIMessageCacheControl(config: ProviderConfig): boolean {
@@ -157,46 +189,52 @@ async function sendOpenAIRequest(
   const outMessages = shouldApplyOpenAIMessageCacheControl(config) ? applyPromptCaching(messages) : messages;
   const sessionId = openRouterSessionId(config);
   const provider = openRouterProviderPreferences(config);
-  let response: Response;
-  try {
-    response = await fetch(endpoint, {
+  const requestBody = (includeProvider: boolean) => JSON.stringify({
+    model: config.model,
+    messages: outMessages,
+    temperature: config.temperature,
+    max_tokens: config.maxOutputTokens,
+    ...(config.topP !== undefined ? { top_p: config.topP } : {}),
+    ...(config.topK !== undefined && config.topK > 0 ? { top_k: config.topK } : {}),
+    ...(config.presencePenalty !== undefined ? { presence_penalty: config.presencePenalty } : {}),
+    ...(config.frequencyPenalty !== undefined ? { frequency_penalty: config.frequencyPenalty } : {}),
+    ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
+    ...(thinking ? { thinking: { type: thinking } } : {}),
+    ...(sessionId ? { session_id: sessionId } : {}),
+    ...(includeProvider && provider ? { provider } : {}),
+  });
+  async function fetchRequest(includeProvider: boolean): Promise<Response> {
+    try {
+      return await fetch(endpoint, {
       method: "POST",
       signal,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${config.apiKey}`,
       },
-      body: JSON.stringify({
-        model: config.model,
-        messages: outMessages,
-        temperature: config.temperature,
-        max_tokens: config.maxOutputTokens,
-        ...(config.topP !== undefined ? { top_p: config.topP } : {}),
-        ...(config.topK !== undefined && config.topK > 0 ? { top_k: config.topK } : {}),
-        ...(config.presencePenalty !== undefined ? { presence_penalty: config.presencePenalty } : {}),
-        ...(config.frequencyPenalty !== undefined ? { frequency_penalty: config.frequencyPenalty } : {}),
-        ...(responseFormat ? { response_format: { type: responseFormat } } : {}),
-        ...(thinking ? { thinking: { type: thinking } } : {}),
-        ...(sessionId ? { session_id: sessionId } : {}),
-        ...(provider ? { provider } : {}),
-      }),
+      body: requestBody(includeProvider),
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`Network error (${endpoint}): ${msg}. If using a local server, check CORS headers and that the server is reachable.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`Network error (${endpoint}): ${msg}. If using a local server, check CORS headers and that the server is reachable.`);
+    }
   }
 
-  const rawText = await response.text().catch(() => "");
-  let raw: { error?: { message?: string }; choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; prompt_tokens_details?: { cached_tokens?: number; cache_write_tokens?: number } } };
-  try {
-    raw = JSON.parse(rawText) as typeof raw;
-  } catch {
-    raw = {};
+  let response = await fetchRequest(true);
+  let rawText = await response.text().catch(() => "");
+  let raw = parseOpenAIRaw(rawText);
+  let retriedBalancedRouting = false;
+  let detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
+  if (!response.ok && provider && isOpenRouterDataPolicyError(response.status, detail)) {
+    retriedBalancedRouting = true;
+    response = await fetchRequest(false);
+    rawText = await response.text().catch(() => "");
+    raw = parseOpenAIRaw(rawText);
+    detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
   }
 
   if (!response.ok) {
-    const detail = raw.error?.message ?? rawText.slice(0, 300) ?? `HTTP ${response.status}`;
-    throw new Error(`Provider error ${response.status} (${endpoint}): ${detail}`);
+    throw new Error(providerErrorMessage(response.status, endpoint, detail, retriedBalancedRouting));
   }
 
   const content = raw.choices?.[0]?.message?.content;

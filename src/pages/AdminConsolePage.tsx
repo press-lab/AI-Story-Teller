@@ -368,10 +368,11 @@ export function AdminConsolePage({
                     </select>
                   </Field>
                 </div>
-                <p className="muted">
-                  OpenRouter routing is platform-wide when users use the platform model. Balanced default lets OpenRouter
-                  weigh cost and uptime; price, latency, or throughput force a stronger preference.
-                </p>
+                  <p className="muted">
+                    OpenRouter routing is platform-wide when users use the platform model. Balanced default lets OpenRouter
+                    weigh cost and uptime; price, latency, or throughput force a stronger preference. If OpenRouter reports
+                    a data-policy endpoint error, use Balanced or loosen the workspace key policy.
+                  </p>
                 <div className="grid three" style={{ marginTop: "0.75rem" }}>
                   <CheckboxField
                     label="Enable semantic evaluation"

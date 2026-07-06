@@ -201,6 +201,62 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     expect(body.provider).toEqual({ sort: "latency" });
   });
 
+  it("retries OpenRouter data-policy routing failures with balanced routing", async () => {
+    const spy = vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve(JSON.stringify({ error: { message: "No endpoints found matching data policy." } })),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ choices: [{ message: { content: "Recovered." } }] })),
+      } as unknown as Response);
+
+    const result = await sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "user", content: "Continue." }],
+      config: {
+        ...config,
+        baseUrl: "https://openrouter.ai/api/v1",
+        promptCaching: true,
+        sessionId: "ai-story-teller:adv-test",
+        openRouterProviderSort: "price",
+      },
+    });
+
+    expect(result.content).toBe("Recovered.");
+    expect(spy).toHaveBeenCalledTimes(2);
+    const firstBody = JSON.parse(spy.mock.calls[0][1]?.body as string);
+    const retryBody = JSON.parse(spy.mock.calls[1][1]?.body as string);
+    expect(firstBody.provider).toEqual({ sort: "price" });
+    expect(retryBody.provider).toBeUndefined();
+    expect(retryBody.session_id).toBe("ai-story-teller:adv-test");
+  });
+
+  it("explains OpenRouter data-policy failures when balanced retry cannot recover", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve(JSON.stringify({ error: { message: "No endpoints found matching data policy." } })),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve(JSON.stringify({ error: { message: "No endpoints found matching data policy." } })),
+      } as unknown as Response);
+
+    await expect(sendOpenAICompatibleChatCompletion({
+      messages: [{ role: "user", content: "Continue." }],
+      config: {
+        ...config,
+        baseUrl: "https://openrouter.ai/api/v1",
+        openRouterProviderSort: "latency",
+      },
+    })).rejects.toThrow("change the OpenRouter key data policy");
+  });
+
   it("does not send OpenRouter-specific request fields to native providers", async () => {
     const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
     await sendOpenAICompatibleChatCompletion({

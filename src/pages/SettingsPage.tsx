@@ -728,10 +728,11 @@ export function SettingsPage({
                             <option value="throughput">Highest throughput</option>
                           </select>
                         </Field>
-                        <p className="muted">
-                          OpenRouter's default already weighs lower price with uptime. Lowest price disables that
-                          load balancing; use latency or throughput if the model is feeling slow.
-                        </p>
+                          <p className="muted">
+                            OpenRouter's default already weighs lower price with uptime. Lowest price disables that
+                            load balancing; use latency or throughput if the model is feeling slow. If OpenRouter reports
+                            a data-policy endpoint error, use Balanced or adjust the OpenRouter key policy.
+                          </p>
                         <h4>API Throttle</h4>
                         <CheckboxField
                           label="Enable API request throttle"
