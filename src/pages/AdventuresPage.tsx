@@ -56,6 +56,8 @@ interface AdventuresPageProps {
   onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
   embedded?: boolean;
+  loading?: boolean;
+  openingAdventureId?: string;
   headingEyebrow?: string;
   headingTitle?: string;
   headingDescription?: string;
@@ -249,6 +251,8 @@ export function AdventuresPage({
   onDeleteSave,
   providerConfig,
   embedded = false,
+  loading = false,
+  openingAdventureId,
   headingEyebrow = "Library",
   headingTitle = "Choose an adventure",
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
@@ -1167,10 +1171,13 @@ export function AdventuresPage({
         </div>
       </header>
       <div className="library-grid">
-        {adventures.length === 0 && <p className="muted">No adventures saved yet.</p>}
+        {adventures.length === 0 && (
+          <p className="muted">{loading ? "Loading adventures..." : "No adventures saved yet."}</p>
+        )}
         {adventures.map((adventure) => {
           const liveThumbnail = currentAdventure?.id === adventure.id ? getAdventureThumbnail(currentAdventure) : undefined;
           const syncConflictVersionText = describeSyncConflictVersions(adventure);
+          const isOpening = openingAdventureId === adventure.id;
           return (
           <article key={adventure.id} className="library-card">
             <AdventureThumbnailFrame
@@ -1201,12 +1208,12 @@ export function AdventuresPage({
               {adventure.syncError && <p className="error-inline">{adventure.syncError}</p>}
             </div>
             <div className="library-card-actions">
-              <button type="button" className="primary-action" onClick={() => onOpen(adventure.id)}>
-                Select
+              <button type="button" className="primary-action" disabled={isOpening} onClick={() => void onOpen(adventure.id)}>
+                {isOpening ? "Opening..." : "Select"}
               </button>
               {onOpenEdit && (
-                <button type="button" onClick={() => onOpenEdit(adventure.id)}>
-                  Edit
+                <button type="button" disabled={isOpening} onClick={() => void onOpenEdit(adventure.id)}>
+                  {isOpening ? "Opening..." : "Edit"}
                 </button>
               )}
               <button type="button" onClick={() => onDuplicate(adventure.id)}>

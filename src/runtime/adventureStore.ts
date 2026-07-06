@@ -11,6 +11,7 @@ import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from ".
 import type { RuntimeConfig } from "./runtimeConfig";
 
 export interface AdventureStore {
+  hydrateMissingThumbnails?: boolean;
   list(): Promise<AdventureSummary[]>;
   get(id: string): Promise<Adventure | undefined>;
   save(adventure: Adventure): Promise<void>;
@@ -210,7 +211,7 @@ export function createCachedBackendAdventureStore(
   }
 
   async function mergedListFromServer(): Promise<AdventureSummary[]> {
-    await flushPendingBackups();
+    void flushPendingBackups().catch(() => undefined);
     const [serverSummaries, backups] = await Promise.all([
       backend.list(),
       listAccountAdventureBackups(ownerUserId),
@@ -244,6 +245,7 @@ export function createCachedBackendAdventureStore(
   }
 
   return {
+    hydrateMissingThumbnails: false,
     async list() {
       try {
         return await mergedListFromServer();

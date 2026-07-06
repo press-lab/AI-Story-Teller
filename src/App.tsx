@@ -1058,9 +1058,11 @@ export default function App() {
       <AdventuresPage
         adventures={library.adventures}
         currentAdventure={adventure}
+        loading={library.refreshing}
+        openingAdventureId={library.openingAdventureId}
         onCreate={library.createAdventure}
-        onOpen={library.openAdventure}
-        onOpenEdit={async (id) => { await library.openAdventure(id); openEditor(); }}
+        onOpen={async (id) => { await library.openAdventure(id); }}
+        onOpenEdit={async (id) => { const opened = await library.openAdventure(id); if (opened) openEditor(); }}
         onCreateAdventureFromImport={library.createAdventureFromImport}
         onImportAdventure={library.importAdventure}
         onDuplicate={library.duplicateAdventure}

@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
 import type { ContextBuildResult } from "../types/adventure";
@@ -56,5 +56,96 @@ describe("useAdventureLibrary", () => {
 
     await waitFor(() => expect(screen.getByTestId("thumbnail-alt")).toHaveTextContent("Profile hydrated cover"));
     expect(store.get).toHaveBeenCalledWith("adv-profile-cover");
+  });
+
+  it("skips full-record thumbnail hydration when the store opts out", async () => {
+    const adventure = createDefaultAdventure("Backend Summary Only");
+    adventure.id = "adv-backend-summary";
+    const store: AdventureStore = {
+      hydrateMissingThumbnails: false,
+      list: vi.fn(async () => [{
+        id: adventure.id,
+        title: adventure.title,
+        createdAt: adventure.createdAt,
+        updatedAt: adventure.updatedAt,
+        turnCount: 0,
+        storyEntryCount: 0,
+      }]),
+      get: vi.fn(async () => adventure),
+      save: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined),
+    };
+
+    function Harness() {
+      const library = useAdventureLibrary(
+        store,
+        "backend",
+        vi.fn(),
+        vi.fn((_result: ContextBuildResult | undefined) => undefined),
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+      );
+      return <span data-testid="title">{library.adventures[0]?.title ?? "missing"}</span>;
+    }
+
+    render(<Harness />);
+
+    await waitFor(() => expect(screen.getByTestId("title")).toHaveTextContent("Backend Summary Only"));
+    expect(store.get).not.toHaveBeenCalled();
+  });
+
+  it("keeps the previous list visible when a later refresh fails", async () => {
+    const adventure = createDefaultAdventure("Server Adventure");
+    adventure.id = "adv-server";
+    let shouldFail = false;
+    const errors: string[] = [];
+    const store: AdventureStore = {
+      list: vi.fn(async () => {
+        if (shouldFail) throw new Error("Backend list timed out.");
+        return [{
+          id: adventure.id,
+          title: adventure.title,
+          createdAt: adventure.createdAt,
+          updatedAt: adventure.updatedAt,
+          turnCount: 0,
+          storyEntryCount: 0,
+        }];
+      }),
+      get: vi.fn(async () => adventure),
+      save: vi.fn(async () => undefined),
+      delete: vi.fn(async () => undefined),
+    };
+
+    function Harness() {
+      const library = useAdventureLibrary(
+        store,
+        "backend",
+        vi.fn(),
+        vi.fn((_result: ContextBuildResult | undefined) => undefined),
+        vi.fn(),
+        vi.fn(),
+        (message) => errors.push(message),
+      );
+      return (
+        <div>
+          <span data-testid="titles">{library.adventures.map((entry) => entry.title).join(", ") || "empty"}</span>
+          <button type="button" onClick={() => {
+            shouldFail = true;
+            void library.refreshAdventures();
+          }}>
+            Refresh
+          </button>
+        </div>
+      );
+    }
+
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByTestId("titles")).toHaveTextContent("Server Adventure"));
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    await waitFor(() => expect(errors).toContain("Backend list timed out."));
+    expect(screen.getByTestId("titles")).toHaveTextContent("Server Adventure");
   });
 });

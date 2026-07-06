@@ -24,14 +24,22 @@ export function useAdventureLibrary(
   onSyncConflictResolved?: (adventure: Adventure) => void,
 ) {
   const [adventures, setAdventures] = useState<AdventureSummary[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [openingAdventureId, setOpeningAdventureId] = useState<string | undefined>();
   const { confirmAction, notify } = useActionFeedback();
 
   const refreshAdventures = useCallback(async () => {
+    setRefreshing(true);
     try {
-      setAdventures(await hydrateMissingThumbnails(store, await store.list()));
+      const summaries = await store.list();
+      const next = store.hydrateMissingThumbnails === false
+        ? summaries
+        : await hydrateMissingThumbnails(store, summaries);
+      setAdventures(next);
     } catch (error) {
-      setAdventures([]);
       onError(error instanceof Error ? error.message : "Could not refresh adventures.");
+    } finally {
+      setRefreshing(false);
     }
   }, [store, onError]);
 
@@ -45,13 +53,27 @@ export function useAdventureLibrary(
     return loaded.filter((a): a is Adventure => Boolean(a));
   }
 
-  async function openAdventure(id: string) {
-    const next = await store.get(id);
-    if (!next) { onError("Adventure could not be opened."); return; }
-    setAdventure(next);
-    setContextResult(undefined);
-    onModalClose();
-    onNavigate("dashboard");
+  async function openAdventure(id: string): Promise<Adventure | undefined> {
+    setOpeningAdventureId(id);
+    try {
+      const next = await store.get(id);
+      if (!next) {
+        onError("Adventure could not be opened.");
+        return undefined;
+      }
+      setAdventure(next);
+      setContextResult(undefined);
+      onModalClose();
+      onNavigate("dashboard");
+      return next;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Adventure could not be opened.";
+      onError(message);
+      notify(message, { type: "error" });
+      return undefined;
+    } finally {
+      setOpeningAdventureId(undefined);
+    }
   }
 
   async function createAdventure(setup: NewAdventureSetup) {
@@ -201,6 +223,8 @@ export function useAdventureLibrary(
 
   return {
     adventures,
+    refreshing,
+    openingAdventureId,
     refreshAdventures,
     allSavedAdventures,
     openAdventure,

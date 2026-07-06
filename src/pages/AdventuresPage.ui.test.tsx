@@ -120,6 +120,46 @@ describe("AdventuresPage new adventure setup", () => {
     });
   });
 
+  it("shows loading and opening states for backend-sized adventure loads", () => {
+    const adventure = createDefaultAdventure("Slow Backend Save");
+    adventure.id = "adv-slow";
+    const summary = {
+      id: adventure.id,
+      title: adventure.title,
+      createdAt: adventure.createdAt,
+      updatedAt: adventure.updatedAt,
+      turnCount: 12,
+      storyEntryCount: 24,
+    };
+
+    const { rerender } = render(
+      <AdventuresPage
+        adventures={[]}
+        loading
+        onCreate={vi.fn()}
+        onOpen={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Loading adventures...")).toBeInTheDocument();
+
+    rerender(
+      <AdventuresPage
+        adventures={[summary]}
+        openingAdventureId="adv-slow"
+        onCreate={vi.fn()}
+        onOpen={vi.fn()}
+        onDuplicate={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Opening..." })).toBeDisabled();
+    expect(screen.queryByText("No adventures saved yet.")).not.toBeInTheDocument();
+  });
+
   it("imports a full AIST backup from the New Adventure menu", async () => {
     const user = userEvent.setup();
     const onImportAdventure = vi.fn(async (_text: string) => undefined);
