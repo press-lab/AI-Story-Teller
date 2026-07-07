@@ -14,6 +14,8 @@ Do not directly mutate adventure objects in components, trigger engines, importe
 
 ## Profile Scenarios vs Adventures
 
+For backend profile-only scenario requests, read `docs/profile-only-scenario-context.md` first.
+
 A profile Scenario is a reusable template, not a playable save. A playable save is an Adventure.
 
 For backend profile-only scenario requests, prefer the API path:
