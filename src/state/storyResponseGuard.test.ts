@@ -34,13 +34,20 @@ describe("storyResponseGuard", () => {
   });
 
   it("does not flag an action the player already authored", () => {
-    expect(hasPlayerAgencyViolation("You look at Viktor as the core pulses.", "You look at Viktor.")).toBe(false);
-    expect(hasPlayerAgencyViolation("You look at Viktor. You nod once.", "You look at Viktor.")).toBe(true);
+    expect(hasPlayerAgencyViolation("You follow Viktor as the core pulses.", "You follow Viktor.")).toBe(false);
+    expect(hasPlayerAgencyViolation("You follow Viktor. You nod once.", "You follow Viktor.")).toBe(true);
   });
 
   it("maps first-person player input to allowed second-person local action", () => {
     expect(hasPlayerAgencyViolation("You follow Nyxa through the hall.", "I follow Nyxa.")).toBe(false);
     expect(hasPlayerAgencyViolation("You follow Nyxa. You board the ship.", "I follow Nyxa.")).toBe(true);
+  });
+
+  it("allows passive sensory pressure and interior possibility in second person", () => {
+    const draft = "Azula's gaze settles on you. You feel the room go still. You think she may be waiting for you to answer.";
+
+    expect(hasPlayerAgencyViolation(draft)).toBe(false);
+    expect(evaluateStoryResponseGuard(draft, 150).needsCorrection).toBe(false);
   });
 
   it("flags unauthorized travel and time skips", () => {

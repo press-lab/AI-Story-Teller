@@ -306,6 +306,8 @@ export function PlayPage({
       setInputMode("do");
     } catch {
       // Runtime owns the visible error. Keep the draft where the user left it for retry.
+      setComposerOpen(true);
+      setTimeout(() => textareaRef.current?.focus(), 0);
     } finally {
       setTurnSubmissionPending(false);
     }

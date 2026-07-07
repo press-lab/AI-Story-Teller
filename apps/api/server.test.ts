@@ -494,6 +494,55 @@ describe("local API policy gates and sharing", () => {
     expect(turn.body.adventure.messages.at(-1)?.usage?.totalTokens).toBe(30);
   });
 
+  it("keeps the submitted user entry when backend guard correction fails", async () => {
+    const realFetch = globalThis.fetch;
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (url.startsWith("https://provider.test")) {
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: "You nod once, accepting the mission. Hours later, you arrive at the harbor prison.",
+            },
+          }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
+    const sessionToken = await passwordSession("guard-failure-turn@example.com");
+    const adventure = createDefaultAdventure("Guard Failure Turn");
+    adventure.activeState.responseLengthHint = 50;
+    const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    const adventureId = imported.body.adventures[0].id;
+
+    const turn = await requestJson<{ error: string }>(`/adventures/${adventureId}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ input: "I wait for Azula's order.", mode: "story" }),
+    });
+    expect(turn.status).toBe(400);
+    expect(turn.body.error).toMatch(/story response guard/i);
+
+    const saved = await requestJson<ReturnType<typeof createDefaultAdventure>>(`/adventures/${adventureId}`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(saved.status).toBe(200);
+    expect(saved.body.messages).toHaveLength(1);
+    expect(saved.body.messages[0]).toMatchObject({
+      role: "user",
+      content: "I wait for Azula's order.",
+      inputMode: "story",
+    });
+  });
+
   it("runs story card and character AI tools through the backend provider", async () => {
     const realFetch = globalThis.fetch;
     const providerCalls: Array<{ authorization?: string; body: string }> = [];

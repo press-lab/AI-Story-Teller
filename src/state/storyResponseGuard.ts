@@ -14,16 +14,13 @@ const PLAYER_ACTION_VERBS = [
   "draw",
   "enter",
   "exit",
-  "feel",
   "fly",
   "follow",
   "go",
-  "glance",
   "grab",
   "head",
   "let",
   "leave",
-  "look",
   "make",
   "move",
   "nod",
@@ -43,9 +40,7 @@ const PLAYER_ACTION_VERBS = [
   "step",
   "take",
   "tell",
-  "think",
   "travel",
-  "turn",
   "walk",
 ];
 
@@ -86,7 +81,7 @@ const SCENE_JUMP_RE_LIST = [
   /\bby\s+the\s+time\s+you\b/i,
   /\bafter\s+(?:a|the)\s+(?:journey|voyage|ride|flight|march|trip|crossing)\b/i,
   /\bthe\s+(?:ship|boat|carriage|train|convoy|unit|team)\s+(?:arrives|reaches|lands|docks)\b/i,
-  /\byou\s+(?:arrive|reach|board|disembark|land|dock|leave|depart|enter|exit)\b/i,
+  /\byou\s+(?:arrive|reach|board|disembark|land|dock|leave|depart)\b/i,
   /\bthe\s+scene\s+(?:cuts|shifts|moves)\b/i,
 ];
 

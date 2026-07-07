@@ -26,7 +26,7 @@ import {
 import type { ApiConfig } from "./config";
 import type { AdventureSnapshotRecord, BackendAdventureRecord, LocalDbData, UsageLog } from "./apiTypes";
 import { assertCanGenerate } from "./accountSafety";
-import { assertPolicyAllowed, recordPolicyDecision } from "./policy";
+import { assertPolicyAllowed, PolicyBlockedError, recordPolicyDecision } from "./policy";
 import { effectiveProviderConfig } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 import { appendPerformanceTrace, createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
@@ -514,37 +514,43 @@ export async function runBackendTurn(
     ? adventureReducer(record.adventure, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" })
     : record.adventure;
   const lastUser = [...baseAdventure.messages].reverse().find((message) => message.role === "user")?.content;
-  const result = await runTurnPipeline({
-    adventure: baseAdventure,
-    text: input,
-    mode: options.mode ?? "story",
-    recordUserInput: options.recordUserInput,
-    providerCue: options.providerCue,
-    currentInputForContext: options.regenerateLastAssistant ? lastUser ?? input : undefined,
-    incrementTurn: !options.regenerateLastAssistant,
-    advanceArcPacing: !options.regenerateLastAssistant,
-    providerConfig,
-    onContextBuilt: (context, _snapshot, durationMs) => {
-      recordTurnTrace(data, {
-        traceId,
-        source: "server",
-        phase: "context_build",
-        route,
-        userId: ownerUserId,
-        adventureId,
-        status: "ok",
-        durationMs,
-        requestBytes: estimateTextBytes(context.messages.map((message) => message.content).join("\n\n")),
-        totalTokens: context.totalEstimatedTokens,
-        metadata: {
-          messageCount: context.messages.length,
-          sectionCount: context.sections.filter((section) => section.items.length > 0).length,
-          excludedItemCount: context.excludedItems.length,
-          decisionCount: context.decisions.length,
-        },
-      });
-    },
-    sendChatCompletion: async (messages, snapshot, context) => {
+  let snapshotWithUserInput: Adventure | undefined;
+  let result: Awaited<ReturnType<typeof runTurnPipeline>>;
+  try {
+    result = await runTurnPipeline({
+      adventure: baseAdventure,
+      text: input,
+      mode: options.mode ?? "story",
+      recordUserInput: options.recordUserInput,
+      providerCue: options.providerCue,
+      currentInputForContext: options.regenerateLastAssistant ? lastUser ?? input : undefined,
+      incrementTurn: !options.regenerateLastAssistant,
+      advanceArcPacing: !options.regenerateLastAssistant,
+      providerConfig,
+      onContextBuilt: (context, snapshot, durationMs) => {
+        if (options.recordUserInput !== false && !options.regenerateLastAssistant && snapshot.messages.length > baseAdventure.messages.length) {
+          snapshotWithUserInput = snapshot;
+        }
+        recordTurnTrace(data, {
+          traceId,
+          source: "server",
+          phase: "context_build",
+          route,
+          userId: ownerUserId,
+          adventureId,
+          status: "ok",
+          durationMs,
+          requestBytes: estimateTextBytes(context.messages.map((message) => message.content).join("\n\n")),
+          totalTokens: context.totalEstimatedTokens,
+          metadata: {
+            messageCount: context.messages.length,
+            sectionCount: context.sections.filter((section) => section.items.length > 0).length,
+            excludedItemCount: context.excludedItems.length,
+            decisionCount: context.decisions.length,
+          },
+        });
+      },
+      sendChatCompletion: async (messages, snapshot, context) => {
       const contextPolicyStartedAt = performance.now();
       const contextDecision = recordPolicyDecision(data, {
         gate: "context",
@@ -775,8 +781,26 @@ export async function runBackendTurn(
         createdAt: nowIso(),
       } satisfies UsageLog);
       return providerResponse;
-    },
-  });
+      },
+    });
+  } catch (error) {
+    if (snapshotWithUserInput && !(error instanceof PolicyBlockedError)) {
+      const partialSaveStartedAt = performance.now();
+      saveBackendAdventure(data, ownerUserId, snapshotWithUserInput, "turn");
+      recordTurnTrace(data, {
+        traceId,
+        source: "database",
+        phase: "adventure_turn_partial_save_prepare",
+        route,
+        userId: ownerUserId,
+        adventureId,
+        status: "ok",
+        durationMs: elapsedMs(partialSaveStartedAt),
+        error,
+      });
+    }
+    throw error;
+  }
   recordTurnTrace(data, {
     traceId,
     source: "server",

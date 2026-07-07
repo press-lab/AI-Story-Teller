@@ -220,7 +220,7 @@ describe("PlayPage AID-style controls", () => {
 
     await waitFor(() => expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do"));
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
-    expect(input.closest(".composer")).toHaveClass("composer-input-closed");
+    expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
     expect(input).toHaveValue("draw your sword");
   });
 
