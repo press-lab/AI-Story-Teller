@@ -59,6 +59,9 @@ Cloudflare documents Quick Tunnels as testing/development only, says they genera
 
 The local owner machine must fix the local pieces. A GitHub-hosted Action cannot restart `cloudflared`, restart the API, or wake the owner machine by itself.
 
+After the owner PC restarts, use the short reboot runbook in
+[`docs/restart-owner-server.md`](./restart-owner-server.md).
+
 Use the local watchdog:
 
 ```sh
