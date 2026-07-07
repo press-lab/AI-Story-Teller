@@ -153,7 +153,14 @@ export function useAdventureLibrary(
       danger: true,
     });
     if (!confirmed) return;
-    await store.delete(id);
+    try {
+      await store.delete(id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Adventure delete failed.";
+      onError(message);
+      notify(message, { type: "error" });
+      return;
+    }
     if (currentAdventureId === id) {
       setAdventure(undefined);
       onModalClose();

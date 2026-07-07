@@ -148,4 +148,49 @@ describe("useAdventureLibrary", () => {
     await waitFor(() => expect(errors).toContain("Backend list timed out."));
     expect(screen.getByTestId("titles")).toHaveTextContent("Server Adventure");
   });
+
+  it("surfaces delete failures after confirmation", async () => {
+    const adventure = createDefaultAdventure("Stubborn Adventure");
+    adventure.id = "adv-stubborn";
+    const errors: string[] = [];
+    const store: AdventureStore = {
+      list: vi.fn(async () => [{
+        id: adventure.id,
+        title: adventure.title,
+        createdAt: adventure.createdAt,
+        updatedAt: adventure.updatedAt,
+        turnCount: 0,
+        storyEntryCount: 0,
+      }]),
+      get: vi.fn(async () => adventure),
+      save: vi.fn(async () => undefined),
+      delete: vi.fn(async () => {
+        throw new Error("Backend delete failed.");
+      }),
+    };
+
+    function Harness() {
+      const library = useAdventureLibrary(
+        store,
+        "backend",
+        vi.fn(),
+        vi.fn((_result: ContextBuildResult | undefined) => undefined),
+        vi.fn(),
+        vi.fn(),
+        (message) => errors.push(message),
+      );
+      return (
+        <button type="button" onClick={() => void library.removeAdventure("adv-stubborn")}>
+          Delete
+        </button>
+      );
+    }
+
+    render(<Harness />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => expect(errors).toContain("Backend delete failed."));
+    expect(store.delete).toHaveBeenCalledWith("adv-stubborn");
+  });
 });

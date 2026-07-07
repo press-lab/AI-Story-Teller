@@ -385,4 +385,37 @@ describe("cached backend adventure store", () => {
       }),
     });
   });
+
+  it("deletes a conflicted local backup when the server save is already missing", async () => {
+    const local = createDefaultAdventure("Missing Server Conflict");
+    local.id = "adv-missing-server";
+    local.updatedAt = "2026-07-05T10:10:00.000Z";
+    await saveAccountAdventureBackup({
+      ownerUserId: "user-1",
+      adventure: local,
+      syncStatus: "conflict",
+      lastSyncError: "Server copy was not found.",
+    });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/telemetry/client")) {
+        return new Response("{}", { status: 202, headers: { "Content-Type": "application/json" } });
+      }
+      expect(init?.method).toBe("DELETE");
+      return new Response(JSON.stringify({ error: "Adventure not found." }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+    await store.delete("adv-missing-server");
+
+    expect(await getAccountAdventureBackup("user-1", "adv-missing-server")).toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://backend.test/adventures/adv-missing-server",
+      expect.objectContaining({ method: "DELETE" }),
+    );
+  });
 });

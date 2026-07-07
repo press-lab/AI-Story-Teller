@@ -453,7 +453,12 @@ export function createCachedBackendAdventureStore(
     },
     saveForGeneration: saveOpenDeviceAdventure,
     async delete(id) {
-      await backend.delete(id);
+      const backup = await getAccountAdventureBackup(ownerUserId, id);
+      try {
+        await backend.delete(id);
+      } catch (error) {
+        if (!backup || !isBackendNotFoundError(error)) throw error;
+      }
       await deleteAccountAdventureBackup(ownerUserId, id);
     },
     async resolveSyncConflict(id, resolution) {
@@ -471,6 +476,11 @@ export function createCachedBackendAdventureStore(
       return serverAdventure;
     },
   };
+}
+
+function isBackendNotFoundError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /(?:HTTP 404|not found)/i.test(message) && !/route not found/i.test(message);
 }
 
 export function createBackendTurnRunner(config: RuntimeConfig, authToken: string, providerOverride?: Partial<ProviderConfig>): TurnRunner {
