@@ -223,10 +223,6 @@ function shouldRecoverBackendTurn(error: unknown): boolean {
   );
 }
 
-export function isLocalBackupConflictError(error: unknown): boolean {
-  return error instanceof Error && /local backup conflict|server copy changed|restore a server backup/i.test(error.message);
-}
-
 export async function saveDeviceAdventureBeforeBackendTurn(
   adventure: Adventure,
   adventureStore: AdventureStore,
@@ -246,12 +242,6 @@ export async function saveDeviceAdventureBeforeBackendTurn(
     await refreshAdventures();
     return adventure;
   } catch (error) {
-    if (isLocalBackupConflictError(error) && adventureStore.resolveSyncConflict) {
-      const resolved = await adventureStore.resolveSyncConflict(adventure.id, "uploadLocal");
-      setSaveStatus("saved");
-      await refreshAdventures();
-      return resolved;
-    }
     setSaveStatus(error instanceof Error ? error.message : "save failed");
     throw error;
   }

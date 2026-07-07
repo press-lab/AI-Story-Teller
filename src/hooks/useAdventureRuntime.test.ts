@@ -147,10 +147,9 @@ describe("saveDeviceAdventureBeforeBackendTurn", () => {
     expect(refreshAdventures).toHaveBeenCalledTimes(1);
   });
 
-  it("uploads the local backup when the backend reports a save conflict", async () => {
+  it("stops before backend generation when the backend reports a save conflict", async () => {
     const adventure = createDefaultAdventure("Local Conflict Winner");
     adventure.id = "adv-conflict";
-    const resolved = { ...adventure, updatedAt: "2026-07-05T00:00:01.000Z" };
     const store: AdventureStore = {
       list: vi.fn(),
       get: vi.fn(),
@@ -158,16 +157,16 @@ describe("saveDeviceAdventureBeforeBackendTurn", () => {
         throw new Error("Local backup conflict. Duplicate this local copy or restore a server backup before syncing.");
       }),
       delete: vi.fn(),
-      resolveSyncConflict: vi.fn(async () => resolved),
+      resolveSyncConflict: vi.fn(),
     };
     const setSaveStatus = vi.fn();
     const refreshAdventures = vi.fn(async () => undefined);
 
-    const result = await saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures);
+    await expect(saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures))
+      .rejects.toThrow("Local backup conflict");
 
-    expect(result).toBe(resolved);
-    expect(store.resolveSyncConflict).toHaveBeenCalledWith("adv-conflict", "uploadLocal");
-    expect(setSaveStatus).toHaveBeenLastCalledWith("saved");
-    expect(refreshAdventures).toHaveBeenCalledTimes(1);
+    expect(store.resolveSyncConflict).not.toHaveBeenCalled();
+    expect(setSaveStatus).toHaveBeenLastCalledWith("Local backup conflict. Duplicate this local copy or restore a server backup before syncing.");
+    expect(refreshAdventures).not.toHaveBeenCalled();
   });
 });

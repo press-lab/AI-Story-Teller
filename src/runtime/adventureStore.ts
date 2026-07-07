@@ -246,11 +246,35 @@ export function createCachedBackendAdventureStore(
 
   async function saveOpenDeviceAdventure(adventure: Adventure): Promise<Adventure> {
     const existingBackup = await getAccountAdventureBackup(ownerUserId, adventure.id);
+    if (existingBackup?.syncStatus === "conflict") {
+      await saveAccountAdventureBackup({
+        ownerUserId,
+        adventure,
+        syncStatus: "conflict",
+        lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
+        lastSyncedAt: existingBackup.lastSyncedAt,
+        lastSyncError: existingBackup.lastSyncError ?? "Server copy changed. Choose which save should win before generating.",
+      });
+      throw new Error("Local backup conflict. Choose Upload Local Save or Download Server Save before generating.");
+    }
     if (
       existingBackup?.syncStatus === "clean"
       && existingBackup.adventure.updatedAt === adventure.updatedAt
       && existingBackup.lastServerUpdatedAt === adventure.updatedAt
     ) {
+      const serverAdventure = await backend.get(adventure.id);
+      if (!serverAdventure) {
+        await markMissingServerConflict(existingBackup);
+        throw new Error("Local backup conflict. Server copy was not found; choose Upload Local Save before generating.");
+      }
+      if (serverAdventure.updatedAt !== adventure.updatedAt) {
+        if (serverAdventure.updatedAt < adventure.updatedAt) {
+          await markOlderServerConflict(existingBackup, serverAdventure.updatedAt);
+        } else {
+          await markBackupConflict(existingBackup, serverAdventure.updatedAt);
+        }
+        throw new Error("Local backup conflict. Server copy changed; choose which save should win before generating.");
+      }
       return adventure;
     }
     await saveAccountAdventureBackup({ ownerUserId, adventure, syncStatus: "pending" });
@@ -259,18 +283,7 @@ export function createCachedBackendAdventureStore(
       await cacheCleanAdventure(adventure);
       return adventure;
     } catch (error) {
-      if (existingBackup?.syncStatus === "conflict") {
-        await saveAccountAdventureBackup({
-          ownerUserId,
-          adventure,
-          syncStatus: "conflict",
-          lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
-          lastSyncedAt: existingBackup.lastSyncedAt,
-          lastSyncError: error instanceof Error ? error.message : "Backend sync failed.",
-        });
-      } else {
-        await markBackupFailed(adventure, error);
-      }
+      await markBackupFailed(adventure, error);
       throw error;
     }
   }
@@ -284,15 +297,41 @@ export function createCachedBackendAdventureStore(
     });
   }
 
-  async function markBackupConflict(record: AccountAdventureBackupRecord, serverUpdatedAt: string): Promise<void> {
-    await saveAccountAdventureBackup({
+  async function markBackupConflict(
+    record: AccountAdventureBackupRecord,
+    serverUpdatedAt?: string,
+    lastSyncError?: string,
+  ): Promise<AccountAdventureBackupRecord> {
+    const serverDetail = serverUpdatedAt
+      ? `Server copy changed at ${new Date(serverUpdatedAt).toLocaleString()}.`
+      : "Server copy was not found.";
+    return saveAccountAdventureBackup({
       ownerUserId,
       adventure: record.adventure,
       syncStatus: "conflict",
-      lastServerUpdatedAt: serverUpdatedAt,
+      lastServerUpdatedAt: serverUpdatedAt ?? record.lastServerUpdatedAt,
       lastSyncedAt: record.lastSyncedAt,
-      lastSyncError: `Server copy changed at ${new Date(serverUpdatedAt).toLocaleString()}. Open this local backup and resolve before syncing.`,
+      lastSyncError: lastSyncError ?? `${serverDetail} This device's local backup was kept; choose which save should win before syncing.`,
     });
+  }
+
+  async function markMissingServerConflict(record: AccountAdventureBackupRecord): Promise<AccountAdventureBackupRecord> {
+    return markBackupConflict(
+      record,
+      undefined,
+      "Server copy was not found. This device's local backup was kept; upload local save to restore it or delete the local backup deliberately.",
+    );
+  }
+
+  async function markOlderServerConflict(
+    record: AccountAdventureBackupRecord,
+    serverUpdatedAt: string,
+  ): Promise<AccountAdventureBackupRecord> {
+    return markBackupConflict(
+      record,
+      serverUpdatedAt,
+      "Server copy is older than this device's local backup. The local backup was kept; choose Upload Local Save or Download Server Save.",
+    );
   }
 
   async function flushPendingBackups(): Promise<void> {
@@ -332,16 +371,24 @@ export function createCachedBackendAdventureStore(
       const backupSummary = summarizeAccountAdventureBackup(backup);
       const serverSummary = byId.get(backup.adventureId);
       if (backup.syncStatus === "clean") {
-        if (serverSummary) {
-          byId.set(backup.adventureId, {
-            ...serverSummary,
-            thumbnailImage: serverSummary.thumbnailImage ?? backupSummary.thumbnailImage,
-            hasLocalBackup: true,
-            lastSyncedAt: backup.lastSyncedAt,
-            localBackupUpdatedAt: backup.lastLocalUpdatedAt,
-            lastServerUpdatedAt: serverSummary.updatedAt,
-          });
+        if (!serverSummary) {
+          const conflict = await markMissingServerConflict(backup);
+          byId.set(backup.adventureId, summarizeAccountAdventureBackup(conflict));
+          continue;
         }
+        if (serverSummary.updatedAt < backup.adventure.updatedAt) {
+          const conflict = await markOlderServerConflict(backup, serverSummary.updatedAt);
+          byId.set(backup.adventureId, summarizeAccountAdventureBackup(conflict));
+          continue;
+        }
+        byId.set(backup.adventureId, {
+          ...serverSummary,
+          thumbnailImage: serverSummary.thumbnailImage ?? backupSummary.thumbnailImage,
+          hasLocalBackup: true,
+          lastSyncedAt: backup.lastSyncedAt,
+          localBackupUpdatedAt: backup.lastLocalUpdatedAt,
+          lastServerUpdatedAt: serverSummary.updatedAt,
+        });
         continue;
       }
       byId.set(backup.adventureId, {
@@ -368,6 +415,14 @@ export function createCachedBackendAdventureStore(
       if (backup && backup.syncStatus !== "clean") return backup.adventure;
       try {
         const adventure = await backend.get(id);
+        if (backup && !adventure) {
+          await markMissingServerConflict(backup);
+          return backup.adventure;
+        }
+        if (backup && adventure && adventure.updatedAt < backup.adventure.updatedAt) {
+          await markOlderServerConflict(backup, adventure.updatedAt);
+          return backup.adventure;
+        }
         if (adventure) await cacheCleanAdventure(adventure);
         return adventure ?? backup?.adventure;
       } catch {
