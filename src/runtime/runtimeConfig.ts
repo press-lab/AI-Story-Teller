@@ -32,15 +32,33 @@ export function isFallbackBackendApiBaseUrl(apiBaseUrl: string | undefined): boo
   return normalized === fallbackBackendApiBaseUrl;
 }
 
+export function isCloudflareQuickTunnelApiBaseUrl(apiBaseUrl: string | undefined): boolean {
+  const raw = apiBaseUrl?.trim();
+  if (!raw) return false;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "https:" && url.hostname.endsWith(".trycloudflare.com");
+  } catch {
+    return false;
+  }
+}
+
+function normalizedApiBaseUrl(apiBaseUrl: string): string {
+  return apiBaseUrl.trim().replace(/\/+$/, "");
+}
+
 export function applyConfiguredBackendDefault(
   value: Partial<RuntimeConfig> | undefined,
   configuredDefault: RuntimeConfig = defaultRuntimeConfig,
 ): RuntimeConfig {
   const normalized = normalizeRuntimeConfig(value);
-  if (
-    !isFallbackBackendApiBaseUrl(configuredDefault.apiBaseUrl)
-    && isFallbackBackendApiBaseUrl(normalized.apiBaseUrl)
-  ) {
+  const hasConfiguredBackendDefault = !isFallbackBackendApiBaseUrl(configuredDefault.apiBaseUrl);
+  const shouldReplaceFallbackDefault = hasConfiguredBackendDefault
+    && isFallbackBackendApiBaseUrl(normalized.apiBaseUrl);
+  const shouldReplaceRotatedQuickTunnel = hasConfiguredBackendDefault
+    && isCloudflareQuickTunnelApiBaseUrl(normalized.apiBaseUrl)
+    && normalizedApiBaseUrl(normalized.apiBaseUrl) !== normalizedApiBaseUrl(configuredDefault.apiBaseUrl);
+  if (shouldReplaceFallbackDefault || shouldReplaceRotatedQuickTunnel) {
     return {
       ...normalized,
       mode: normalized.mode === "local" ? configuredDefault.mode : normalized.mode,
