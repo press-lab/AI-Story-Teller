@@ -17,7 +17,7 @@ export interface GenStoryCard {
   memoryMode?: StoryCardMemoryMode;
   keys: string[];
   content: string;
-  pinned: boolean;
+  pinned?: boolean;
   priority: number;
 }
 
@@ -124,7 +124,6 @@ Output ONLY valid JSON — no explanation, no preamble, no markdown prose outsid
       "memoryMode": "static | living | historical",
       "keys": ["trigger1", "trigger2"],
       "content": "string — concise durable reference facts; bullet format preferred",
-      "pinned": false,
       "priority": 0
     }
   ]
@@ -148,6 +147,7 @@ Story card guidelines:
 - keys array: use the specific trigger phrases that should summon THIS card. Character aliases belong on character identity cards. Do not put broad character names on event, relationship, or subplot cards when those names already have character cards.
 - Aim for 4–12 cards depending on the complexity of the premise. Quality over quantity.
 - Each card's content should be self-contained reference material the AI will use mid-story.
+- Do not pin or protect generated Story Cards. Story Cards must enter context by specific triggers unless the user manually changes them later.
 - Location, faction, and lore cards: 3-6 bullet facts. Present tense unless memoryMode is "historical". What the AI needs to know to write it correctly.
 - Character cards MUST include a VOICE CONTRACT section. This is the single most important part of the card — it tells the AI how the character sounds, not just who they are. Also include a section on HOW THEY ENGAGE THE PLAYER: the specific tactics, tests, or social maneuvers this character uses with the player character specifically — not just their general personality. Use this exact structure:
 
@@ -239,7 +239,15 @@ export async function runAdventureGen(
     title: typeof raw.title === "string" ? raw.title : "New Adventure",
     openingScene: typeof raw.openingScene === "string" ? raw.openingScene : "",
     components: Array.isArray(raw.components) ? raw.components.filter(isValidComponent) : [],
-    storyCards: Array.isArray(raw.storyCards) ? raw.storyCards.filter(isValidCard) : [],
+    storyCards: Array.isArray(raw.storyCards) ? raw.storyCards.filter(isValidCard).map(normalizeGeneratedStoryCard) : [],
+  };
+}
+
+function normalizeGeneratedStoryCard(card: GenStoryCard): GenStoryCard {
+  return {
+    ...card,
+    // Generated cards should never force themselves into context. Users can pin manually later.
+    pinned: false,
   };
 }
 

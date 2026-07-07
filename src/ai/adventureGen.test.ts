@@ -49,6 +49,26 @@ describe("runAdventureGen", () => {
     expect(result.storyCards.map((card) => card.title)).toEqual(["Margo"]);
   });
 
+  it("does not allow generated story cards to arrive pinned", async () => {
+    vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
+      content: JSON.stringify({
+        title: "Unpinned",
+        openingScene: "Begin.",
+        components: [],
+        storyCards: [
+          { title: "Margo", type: "character", content: "Valid.", keys: ["Margo"], pinned: true },
+        ],
+      }),
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      raw: {},
+    });
+
+    const result = await runAdventureGen("A premise", config);
+
+    expect(result.storyCards).toHaveLength(1);
+    expect(result.storyCards[0].pinned).toBe(false);
+  });
+
   it("uses native DeepSeek structured output controls and memory-specific component guidance", async () => {
     vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
       content: JSON.stringify({ title: "Structured", openingScene: "", components: [], storyCards: [] }),
