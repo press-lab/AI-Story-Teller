@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStoryResponseCorrectionMessages,
+  coerceStoryResponseToTurnScope,
   evaluateStoryResponseGuard,
   hasPlayerAgencyViolation,
   hasSceneJumpViolation,
@@ -55,6 +56,28 @@ describe("storyResponseGuard", () => {
     expect(hasSceneJumpViolation("You follow Nyxa through the hall.", "I follow Nyxa.")).toBe(false);
     expect(hasSceneJumpViolation("You arrive at the prison harbor.", "I head to the prison harbor.")).toBe(false);
     expect(evaluateStoryResponseGuard("You arrive at the prison harbor.", 150, "I head to the prison harbor.").needsCorrection).toBe(false);
+  });
+
+  it("coerces a failed correction by preserving safe NPC and world response chunks", () => {
+    const draft = `You nod once, accepting the mission. Hours later, you arrive at the harbor prison. Azula smiles. "Good. Take Zuko and Nyxa."`;
+    const coerced = coerceStoryResponseToTurnScope(draft, 150, `You "Sensible. I'm on it"`);
+
+    expect(coerced).toContain("Azula smiles.");
+    expect(coerced).toContain("Take Zuko and Nyxa.");
+    expect(coerced).not.toContain("You nod");
+    expect(coerced).not.toContain("Hours later");
+    expect(evaluateStoryResponseGuard(coerced, 150, `You "Sensible. I'm on it"`).needsCorrection).toBe(false);
+  });
+
+  it("uses a neutral playable fallback when every chunk violates turn scope", () => {
+    const coerced = coerceStoryResponseToTurnScope(
+      "You nod once. You leave the palace. Hours later, you arrive at the harbor prison.",
+      150,
+      `You "Sensible. I'm on it"`,
+    );
+
+    expect(coerced).toBe("The immediate scene holds on the response to your choice, waiting for your next move.");
+    expect(evaluateStoryResponseGuard(coerced, 150, `You "Sensible. I'm on it"`).needsCorrection).toBe(false);
   });
 
   it("builds a correction prompt that prioritizes word limit and player agency", () => {

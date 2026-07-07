@@ -85,6 +85,10 @@ const SCENE_JUMP_RE_LIST = [
   /\bthe\s+scene\s+(?:cuts|shifts|moves)\b/i,
 ];
 
+const MIN_COERCED_RESPONSE_WORDS = 4;
+const NEUTRAL_TURN_SCOPE_FALLBACK =
+  "The immediate scene holds on the response to your choice, waiting for your next move.";
+
 export interface StoryResponseGuardResult {
   visibleWordCount: number;
   visibleWordLimit: number;
@@ -117,6 +121,28 @@ function stripQuotedText(text: string): string {
 export function visibleWordCount(text: string): number {
   const visible = stripHiddenTags(text);
   return visible.match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g)?.length ?? 0;
+}
+
+function visibleStoryChunks(text: string): string[] {
+  const visible = stripHiddenTags(text).replace(/\r\n/g, "\n").trim();
+  if (!visible) return [];
+  return visible
+    .split(/\n{2,}/)
+    .flatMap((paragraph) => paragraph.match(/[^.!?\n]+[.!?]+(?:["'”’])?|[^.!?\n]+$/g) ?? [paragraph])
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+}
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/[ \t]+\n/g, "\n").replace(/\s+/g, " ").trim();
+}
+
+function truncateToVisibleWordLimit(text: string, limit: number): string {
+  let count = 0;
+  return collapseWhitespace(text.replace(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)?/g, (word) => {
+    count += 1;
+    return count <= limit ? word : "";
+  }));
 }
 
 function playerActionPhrases(text: string): string[] {
@@ -176,6 +202,19 @@ export function evaluateStoryResponseGuard(text: string, hint: number, playerInp
   };
 }
 
+export function coerceStoryResponseToTurnScope(text: string, hint: number, playerInput = ""): string {
+  const visibleWordLimit = storyResponseWordLimit(hint);
+  const kept = visibleStoryChunks(text).filter(
+    (chunk) => !hasPlayerAgencyViolation(chunk, playerInput) && !hasSceneJumpViolation(chunk, playerInput),
+  );
+  let coerced = collapseWhitespace(kept.join(" "));
+  if (visibleWordCount(coerced) > visibleWordLimit) {
+    coerced = truncateToVisibleWordLimit(coerced, visibleWordLimit);
+  }
+  if (visibleWordCount(coerced) >= MIN_COERCED_RESPONSE_WORDS) return coerced;
+  return NEUTRAL_TURN_SCOPE_FALLBACK;
+}
+
 export function buildStoryResponseCorrectionMessages({
   playerInput,
   draft,
@@ -198,6 +237,7 @@ export function buildStoryResponseCorrectionMessages({
         `Do not narrate the player's unspoken actions, reactions, dialogue, consent, movement, decisions, acceptance, or internal conclusions.\n` +
         `Do not skip through travel, time, scene transitions, mission departure, arrival, or completion unless the player explicitly requested that transition.\n` +
         `If the player only said they follow someone, keep the movement local and immediate; do not turn it into a trip, arrival, or completed mission.\n` +
+        `Prefer NPC/world reactions in the current location. Avoid making "you" the subject of a sentence unless it is unavoidable.\n` +
         `NPCs and the world may react. Stop as soon as the player can reasonably answer, interrupt, refuse, choose, or redirect.\n` +
         `Do not include OOC commentary, explanations, word counts, option menus, <thought> tags, or <memory> tags.`,
     },

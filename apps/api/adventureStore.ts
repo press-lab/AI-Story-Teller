@@ -8,6 +8,7 @@ import { adventureReducer } from "../../src/state/adventureReducer";
 import { runTurnPipeline } from "../../src/state/turnPipeline";
 import {
   buildStoryResponseCorrectionMessages,
+  coerceStoryResponseToTurnScope,
   evaluateStoryResponseGuard,
   storyResponseWordLimit,
 } from "../../src/state/storyResponseGuard";
@@ -712,7 +713,33 @@ export async function runBackendTurn(
             reasons = guard.reasons;
           }
           if (guard.needsCorrection) {
-            throw new Error(`Story response guard could not produce a valid response after ${MAX_STORY_GUARD_CORRECTION_ATTEMPTS} correction attempts: ${guard.reasons.join("; ")}`);
+            const coercedContent = coerceStoryResponseToTurnScope(
+              providerResponse.content,
+              responseLengthHint,
+              playerInputForGuard,
+            );
+            const coercedGuard = evaluateStoryResponseGuard(coercedContent, responseLengthHint, playerInputForGuard);
+            recordTurnTrace(data, {
+              traceId,
+              source: "server",
+              phase: "story_response_guard_coerced",
+              route,
+              userId: ownerUserId,
+              adventureId,
+              status: coercedGuard.needsCorrection ? "error" : "ok",
+              durationMs: 0,
+              responseBytes: estimateTextBytes(coercedContent),
+              metadata: {
+                visibleWordCount: coercedGuard.visibleWordCount,
+                visibleWordLimit: coercedGuard.visibleWordLimit,
+                reasonCount: coercedGuard.reasons.length,
+                reasons: coercedGuard.reasons.join("; ").slice(0, 400),
+              },
+            });
+            if (coercedGuard.needsCorrection) {
+              throw new Error(`Story response guard could not produce a valid response after ${MAX_STORY_GUARD_CORRECTION_ATTEMPTS} correction attempts: ${guard.reasons.join("; ")}`);
+            }
+            providerResponse = { ...providerResponse, content: coercedContent };
           }
         }
       }

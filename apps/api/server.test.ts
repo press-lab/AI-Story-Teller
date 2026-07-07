@@ -494,7 +494,7 @@ describe("local API policy gates and sharing", () => {
     expect(turn.body.adventure.messages.at(-1)?.usage?.totalTokens).toBe(30);
   });
 
-  it("keeps the submitted user entry when backend guard correction fails", async () => {
+  it("saves a coerced assistant entry when backend guard correction still fails", async () => {
     const realFetch = globalThis.fetch;
     api.config.providerConfig.baseUrl = "https://provider.test";
     api.config.providerConfig.apiKey = "server-platform-key";
@@ -504,7 +504,7 @@ describe("local API policy gates and sharing", () => {
         return new Response(JSON.stringify({
           choices: [{
             message: {
-              content: "You nod once, accepting the mission. Hours later, you arrive at the harbor prison.",
+              content: "You nod once, accepting the mission. Hours later, you arrive at the harbor prison. Azula smiles. \"Good. Take Zuko and Nyxa.\"",
             },
           }],
           usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
@@ -523,23 +523,33 @@ describe("local API policy gates and sharing", () => {
     });
     const adventureId = imported.body.adventures[0].id;
 
-    const turn = await requestJson<{ error: string }>(`/adventures/${adventureId}/turn`, {
+    const turn = await requestJson<{
+      adventure: ReturnType<typeof createDefaultAdventure>;
+      responseContent: string;
+    }>(`/adventures/${adventureId}/turn`, {
       method: "POST",
       headers: { Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({ input: "I wait for Azula's order.", mode: "story" }),
     });
-    expect(turn.status).toBe(400);
-    expect(turn.body.error).toMatch(/story response guard/i);
+    expect(turn.status).toBe(200);
+    expect(turn.body.responseContent).toContain("Azula smiles.");
+    expect(turn.body.responseContent).toContain("Take Zuko and Nyxa.");
+    expect(turn.body.responseContent).not.toContain("You nod");
+    expect(turn.body.responseContent).not.toContain("Hours later");
 
     const saved = await requestJson<ReturnType<typeof createDefaultAdventure>>(`/adventures/${adventureId}`, {
       headers: { Authorization: `Bearer ${sessionToken}` },
     });
     expect(saved.status).toBe(200);
-    expect(saved.body.messages).toHaveLength(1);
+    expect(saved.body.messages).toHaveLength(2);
     expect(saved.body.messages[0]).toMatchObject({
       role: "user",
       content: "I wait for Azula's order.",
       inputMode: "story",
+    });
+    expect(saved.body.messages[1]).toMatchObject({
+      role: "assistant",
+      content: turn.body.responseContent,
     });
   });
 
