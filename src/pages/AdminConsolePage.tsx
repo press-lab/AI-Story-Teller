@@ -5,6 +5,8 @@ import { CheckboxField, Field, NumberInput } from "./shared";
 
 type RestrictionLevel = "none" | "watched" | "restricted" | "generation_hold" | "banned";
 type AdminConsoleView = "overview" | "safetyArchive" | "operations";
+type OperationsRecordType = "all" | "policy" | "usage" | "context" | "latency" | "audit";
+type OperationsFocus = "all" | "attention";
 type AdminUserSummary = BackendAdminConsoleData["users"][number];
 type UserLookup = Map<string, AdminUserSummary>;
 
@@ -56,6 +58,53 @@ function formatTokenCount(value: number): string {
   return value.toLocaleString();
 }
 
+function lowerSearch(value: unknown): string {
+  return String(value ?? "").toLowerCase();
+}
+
+function matchesSearch(search: string, parts: unknown[]): boolean {
+  if (!search) return true;
+  return parts.some((part) => lowerSearch(part).includes(search));
+}
+
+function matchesUserFilter(recordUserId: string | undefined, selectedUserId: string): boolean {
+  return !selectedUserId || recordUserId === selectedUserId;
+}
+
+function numericValue(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function usageTokens(usage: unknown): number | undefined {
+  if (!usage || typeof usage !== "object") return undefined;
+  const record = usage as { promptTokens?: unknown; completionTokens?: unknown; totalTokens?: unknown };
+  const total = numericValue(record.totalTokens);
+  if (total !== undefined) return total;
+  const prompt = numericValue(record.promptTokens) ?? 0;
+  const completion = numericValue(record.completionTokens) ?? 0;
+  return prompt + completion || undefined;
+}
+
+function policyNeedsAttention(decision: BackendAdminConsoleData["policyDecisions"][number]): boolean {
+  return decision.action !== "allow" || decision.manualReviewRequired === true || decision.severity >= 4;
+}
+
+function usageNeedsAttention(usage: BackendAdminConsoleData["usageLogs"][number]): boolean {
+  return (usage.durationMs ?? 0) >= 1000 || (usageTokens(usage.usage) ?? 0) >= 4000;
+}
+
+function contextNeedsAttention(build: BackendAdminConsoleData["contextBuilds"][number]): boolean {
+  return build.excludedItemCount > 0 || build.totalEstimatedTokens >= 4000;
+}
+
+function traceNeedsAttention(trace: BackendAdminConsoleData["performanceTraces"][number]): boolean {
+  return trace.status === "error" || trace.statusCode !== undefined && trace.statusCode >= 400 || trace.durationMs >= 1000 || (trace.retryCount ?? 0) > 0;
+}
+
+function auditNeedsAttention(action: BackendAdminConsoleData["adminActions"][number]): boolean {
+  return /restriction|safety|status|disable|ban|hold/i.test(`${action.action} ${action.targetType}`);
+}
+
 function userDisplayName(user?: AdminUserSummary): string {
   return user?.profileDisplayName?.trim() || user?.displayName?.trim() || user?.email || "";
 }
@@ -99,6 +148,10 @@ export function AdminConsolePage({
   const [inviteActionId, setInviteActionId] = useState("");
   const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
   const [activeView, setActiveView] = useState<AdminConsoleView>("overview");
+  const [operationsSearch, setOperationsSearch] = useState("");
+  const [operationsUserId, setOperationsUserId] = useState("");
+  const [operationsRecordType, setOperationsRecordType] = useState<OperationsRecordType>("all");
+  const [operationsFocus, setOperationsFocus] = useState<OperationsFocus>("all");
 
   useEffect(() => {
     if (!targetUserId && data?.users[0]) setTargetUserId(data.users[0].id);
@@ -160,6 +213,128 @@ export function AdminConsolePage({
     () => (data?.safetyEvents ?? []).filter((event) => event.status !== "open"),
     [data?.safetyEvents],
   );
+  const normalizedOperationsSearch = operationsSearch.trim().toLowerCase();
+  const filteredPolicyDecisions = useMemo(
+    () => (data?.policyDecisions ?? []).filter((decision) => (
+      matchesUserFilter(decision.userId, operationsUserId) &&
+      (operationsFocus === "all" || policyNeedsAttention(decision)) &&
+      matchesSearch(normalizedOperationsSearch, [
+        decision.id,
+        decision.action,
+        decision.gate,
+        decision.severity,
+        decision.categories.join(" "),
+        decision.rationale,
+        decision.matchedRuleIds?.join(" "),
+        decision.userId ? formatUserReference(decision.userId, usersById) : "system",
+      ])
+    )),
+    [data?.policyDecisions, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
+  );
+  const filteredUsageLogs = useMemo(
+    () => (data?.usageLogs ?? []).filter((usage) => (
+      matchesUserFilter(usage.userId, operationsUserId) &&
+      (operationsFocus === "all" || usageNeedsAttention(usage)) &&
+      matchesSearch(normalizedOperationsSearch, [
+        usage.id,
+        usage.traceId,
+        usage.providerName,
+        usage.model,
+        usage.adventureId,
+        formatUserReference(usage.userId, usersById),
+        usage.durationMs,
+        usageTokens(usage.usage),
+      ])
+    )),
+    [data?.usageLogs, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
+  );
+  const filteredContextBuilds = useMemo(
+    () => (data?.contextBuilds ?? []).filter((build) => (
+      matchesUserFilter(build.userId, operationsUserId) &&
+      (operationsFocus === "all" || contextNeedsAttention(build)) &&
+      matchesSearch(normalizedOperationsSearch, [
+        build.id,
+        build.gate,
+        build.adventureId,
+        formatUserReference(build.userId, usersById),
+        build.totalEstimatedTokens,
+        build.messageCount,
+        build.sectionCount,
+        build.excludedItemCount,
+      ])
+    )),
+    [data?.contextBuilds, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
+  );
+  const filteredPerformanceTraces = useMemo(
+    () => (data?.performanceTraces ?? []).filter((trace) => (
+      matchesUserFilter(trace.userId, operationsUserId) &&
+      (operationsFocus === "all" || traceNeedsAttention(trace)) &&
+      matchesSearch(normalizedOperationsSearch, [
+        trace.id,
+        trace.traceId,
+        trace.source,
+        trace.phase,
+        trace.status,
+        trace.statusCode,
+        trace.route,
+        trace.method,
+        trace.providerName,
+        trace.model,
+        trace.errorCategory,
+        trace.errorMessage,
+        trace.userId ? formatUserReference(trace.userId, usersById) : "system",
+      ])
+    )),
+    [data?.performanceTraces, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
+  );
+  const filteredAdminActions = useMemo(
+    () => (data?.adminActions ?? []).filter((action) => {
+      const targetUserId = action.targetType === "user" ? action.targetId : undefined;
+      const matchesSelectedUser = !operationsUserId || action.adminUserId === operationsUserId || targetUserId === operationsUserId;
+      return (
+        matchesSelectedUser &&
+        (operationsFocus === "all" || auditNeedsAttention(action)) &&
+        matchesSearch(normalizedOperationsSearch, [
+          action.id,
+          action.action,
+          action.targetType,
+          action.reason,
+          formatAdminTarget(action.targetType, action.targetId, usersById),
+          formatUserReference(action.adminUserId, usersById),
+        ])
+      );
+    }),
+    [data?.adminActions, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
+  );
+  const policyStats = useMemo(() => ({
+    blocked: filteredPolicyDecisions.filter((decision) => decision.action === "block").length,
+    manualReview: filteredPolicyDecisions.filter((decision) => decision.manualReviewRequired === true).length,
+    highSeverity: filteredPolicyDecisions.filter((decision) => decision.severity >= 4).length,
+  }), [filteredPolicyDecisions]);
+  const usageStats = useMemo(() => ({
+    calls: filteredUsageLogs.length,
+    tokens: filteredUsageLogs.reduce((sum, usage) => sum + (usageTokens(usage.usage) ?? 0), 0),
+    durationMs: filteredUsageLogs.reduce((sum, usage) => sum + (usage.durationMs ?? 0), 0),
+    slowCalls: filteredUsageLogs.filter(usageNeedsAttention).length,
+  }), [filteredUsageLogs]);
+  const contextStats = useMemo(() => ({
+    builds: filteredContextBuilds.length,
+    averageTokens: filteredContextBuilds.length
+      ? Math.round(filteredContextBuilds.reduce((sum, build) => sum + build.totalEstimatedTokens, 0) / filteredContextBuilds.length)
+      : 0,
+    excludedBuilds: filteredContextBuilds.filter((build) => build.excludedItemCount > 0).length,
+  }), [filteredContextBuilds]);
+  const traceStats = useMemo(() => ({
+    traces: filteredPerformanceTraces.length,
+    errors: filteredPerformanceTraces.filter((trace) => trace.status === "error" || (trace.statusCode ?? 0) >= 400).length,
+    slow: filteredPerformanceTraces.filter((trace) => trace.durationMs >= 1000).length,
+    worstMs: filteredPerformanceTraces.reduce((max, trace) => Math.max(max, trace.durationMs), 0),
+  }), [filteredPerformanceTraces]);
+  const showPolicyOperations = operationsRecordType === "all" || operationsRecordType === "policy";
+  const showUsageOperations = operationsRecordType === "all" || operationsRecordType === "usage";
+  const showContextOperations = operationsRecordType === "all" || operationsRecordType === "context";
+  const showLatencyOperations = operationsRecordType === "all" || operationsRecordType === "latency";
+  const showAuditOperations = operationsRecordType === "all" || operationsRecordType === "audit";
 
   function updatePlatformProvider(patch: Partial<BackendPlatformSettings["provider"]>) {
     if (!platformDraft) return;
@@ -671,6 +846,44 @@ export function AdminConsolePage({
 
           {activeView === "operations" && (
             <>
+          <Section title="Operations Filters" description="Filters apply to policy decisions, usage logs, context builds, latency traces, and audit rows. Counts below reflect the currently loaded admin activity slice.">
+            <div className="grid three">
+              <Field label="Search operations">
+                <input
+                  value={operationsSearch}
+                  onChange={(event) => setOperationsSearch(event.target.value)}
+                  placeholder="Route, model, category, phase, user..."
+                />
+              </Field>
+              <Field label="User filter">
+                <select value={operationsUserId} onChange={(event) => setOperationsUserId(event.target.value)}>
+                  <option value="">All users</option>
+                  {data.users.map((user) => (
+                    <option key={user.id} value={user.id}>{userDisplayName(user)}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Record type">
+                <select value={operationsRecordType} onChange={(event) => setOperationsRecordType(event.target.value as OperationsRecordType)}>
+                  <option value="all">All records</option>
+                  <option value="policy">Policy decisions</option>
+                  <option value="usage">Usage calls</option>
+                  <option value="context">Context builds</option>
+                  <option value="latency">Latency traces</option>
+                  <option value="audit">Admin audit</option>
+                </select>
+              </Field>
+              <Field label="Focus">
+                <select value={operationsFocus} onChange={(event) => setOperationsFocus(event.target.value as OperationsFocus)}>
+                  <option value="all">Everything loaded</option>
+                  <option value="attention">Needs attention</option>
+                </select>
+              </Field>
+            </div>
+          </Section>
+
+          {operationsRecordType === "all" && (
+            <>
           <Section title="Invites">
             {data.invites.length ? (
               <div className="admin-compact-list">
@@ -733,55 +946,100 @@ export function AdminConsolePage({
               }))}
             />
           </Section>
+            </>
+          )}
 
-          <Section title="Policy Decisions">
+          {showPolicyOperations && (
+          <Section title="Policy Decisions" description="Content-gate decisions. Blocks, manual review, and severity 4+ are the rows to inspect first.">
+            <InsightStrip
+              items={[
+                { label: "shown", value: formatCount(filteredPolicyDecisions.length), detail: `${formatCount(data.policyDecisions.length)} loaded` },
+                { label: "blocked", value: formatCount(policyStats.blocked) },
+                { label: "manual review", value: formatCount(policyStats.manualReview) },
+                { label: "severity 4+", value: formatCount(policyStats.highSeverity) },
+              ]}
+            />
             <CompactList
-              items={data.policyDecisions.slice(0, 40).map((decision) => ({
+              items={filteredPolicyDecisions.slice(0, 40).map((decision) => ({
                 id: decision.id,
                 title: `${decision.action} / ${decision.gate} / severity ${decision.severity}`,
                 detail: [
                   decision.userId ? `user ${formatUserReference(decision.userId, usersById)}` : undefined,
-                  decision.categories.join(", ") || decision.rationale || "No rationale",
+                  decision.categories.join(", ") || "No categories",
+                  decision.manualReviewRequired ? "manual review" : undefined,
+                  decision.rationale,
                 ].filter(Boolean).join(" / "),
                 meta: formatDate(decision.createdAt),
               }))}
             />
           </Section>
+          )}
 
-          <Section title="Usage And Context Builds">
-            <div className="library-grid">
-              <article className="library-card">
-                <div className="library-card-body">
+          {(showUsageOperations || showContextOperations) && (
+          <Section title="Usage And Context Builds" description="Usage rows are completed model calls. Context builds show how much prompt was assembled and whether anything was excluded.">
+            <div className="admin-inspection-grid">
+              {showUsageOperations && (
+              <div className="admin-inspection-block">
                   <h3>Usage Logs</h3>
+                  <InsightStrip
+                    items={[
+                      { label: "shown", value: formatCount(usageStats.calls), detail: `${formatCount(data.usageLogs.length)} loaded` },
+                      { label: "tokens", value: formatTokenCount(usageStats.tokens) },
+                      { label: "duration", value: formatDuration(usageStats.durationMs) },
+                      { label: "attention", value: formatCount(usageStats.slowCalls) },
+                    ]}
+                  />
                   <CompactList
-                    items={data.usageLogs.slice(0, 12).map((usage) => ({
+                    items={filteredUsageLogs.slice(0, 20).map((usage) => ({
                       id: usage.id,
                       title: `${usage.providerName} / ${usage.model}`,
-                      detail: `user ${formatUserReference(usage.userId, usersById)} / adventure ${shortId(usage.adventureId)}${usage.durationMs !== undefined ? ` / ${formatDuration(usage.durationMs)}` : ""}`,
+                      detail: [
+                        `user ${formatUserReference(usage.userId, usersById)}`,
+                        `adventure ${shortId(usage.adventureId)}`,
+                        usage.durationMs !== undefined ? formatDuration(usage.durationMs) : undefined,
+                        usageTokens(usage.usage) !== undefined ? `${formatTokenCount(usageTokens(usage.usage) ?? 0)} tokens` : undefined,
+                      ].filter(Boolean).join(" / "),
                       meta: formatDate(usage.createdAt),
                     }))}
                   />
-                </div>
-              </article>
-              <article className="library-card">
-                <div className="library-card-body">
+              </div>
+              )}
+              {showContextOperations && (
+              <div className="admin-inspection-block">
                   <h3>Context Builds</h3>
+                  <InsightStrip
+                    items={[
+                      { label: "shown", value: formatCount(contextStats.builds), detail: `${formatCount(data.contextBuilds.length)} loaded` },
+                      { label: "avg tokens", value: formatTokenCount(contextStats.averageTokens) },
+                      { label: "excluded", value: formatCount(contextStats.excludedBuilds) },
+                    ]}
+                  />
                   <CompactList
-                    items={data.contextBuilds.slice(0, 12).map((build) => ({
+                    items={filteredContextBuilds.slice(0, 20).map((build) => ({
                       id: build.id,
                       title: `${build.gate} / ${build.totalEstimatedTokens} tokens`,
                       detail: `user ${formatUserReference(build.userId, usersById)} / ${build.messageCount} messages, ${build.sectionCount} sections, ${build.excludedItemCount} excluded`,
                       meta: formatDate(build.createdAt),
                     }))}
                   />
-                </div>
-              </article>
+              </div>
+              )}
             </div>
           </Section>
+          )}
 
-          <Section title="Latency Traces">
+          {showLatencyOperations && (
+          <Section title="Latency Traces" description="Backend/client timing rows. Errors, HTTP 4xx/5xx, retries, and 1s+ traces are the first rows to investigate.">
+            <InsightStrip
+              items={[
+                { label: "shown", value: formatCount(traceStats.traces), detail: `${formatCount(data.performanceTraces.length)} loaded` },
+                { label: "errors", value: formatCount(traceStats.errors) },
+                { label: "slow", value: formatCount(traceStats.slow) },
+                { label: "worst", value: formatDuration(traceStats.worstMs) },
+              ]}
+            />
             <CompactList
-              items={data.performanceTraces.slice(0, 50).map((trace) => ({
+              items={filteredPerformanceTraces.slice(0, 50).map((trace) => ({
                 id: trace.id,
                 title: `${trace.source} / ${trace.phase} / ${trace.status} / ${formatDuration(trace.durationMs)}`,
                 detail: [
@@ -797,10 +1055,18 @@ export function AdminConsolePage({
               }))}
             />
           </Section>
+          )}
 
-          <Section title="Admin Audit Log">
+          {showAuditOperations && (
+          <Section title="Admin Audit Log" description="Admin-side mutations and review actions. Use this with the user filter to reconstruct account changes.">
+            <InsightStrip
+              items={[
+                { label: "shown", value: formatCount(filteredAdminActions.length), detail: `${formatCount(data.adminActions.length)} loaded` },
+                { label: "attention", value: formatCount(filteredAdminActions.filter(auditNeedsAttention).length) },
+              ]}
+            />
             <CompactList
-              items={data.adminActions.slice(0, 40).map((action) => ({
+              items={filteredAdminActions.slice(0, 40).map((action) => ({
                 id: action.id,
                 title: `${action.action} / ${formatAdminTarget(action.targetType, action.targetId, usersById)}`,
                 detail: `${action.reason || "No reason"} / by ${formatUserReference(action.adminUserId, usersById)}`,
@@ -808,6 +1074,7 @@ export function AdminConsolePage({
               }))}
             />
           </Section>
+          )}
             </>
           )}
         </>
@@ -879,6 +1146,19 @@ function Section({ title, description, children }: { title: string; description?
       {description && <p className="muted">{description}</p>}
       {children}
     </article>
+  );
+}
+
+function InsightStrip({ items }: { items: Array<{ label: string; value: string; detail?: string }> }) {
+  return (
+    <div className="admin-insight-strip">
+      {items.map((item) => (
+        <span key={item.label}>
+          <strong>{item.value}</strong>
+          <small>{item.label}{item.detail ? ` / ${item.detail}` : ""}</small>
+        </span>
+      ))}
+    </div>
   );
 }
 

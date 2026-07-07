@@ -417,4 +417,59 @@ describe("AdminConsolePage", () => {
     await user.click(screen.getByRole("button", { name: "Reopen" }));
     expect(onUpdateSafetyEvent).toHaveBeenCalledWith("event-archived", "open");
   });
+
+  it("filters operations diagnostics by record type, focus, and search", async () => {
+    const user = userEvent.setup();
+    const data = adminData();
+    data.performanceTraces.push({
+      id: "perf-fast",
+      traceId: "trace-fast",
+      source: "database",
+      phase: "quick_read",
+      route: "/admin/console",
+      method: "GET",
+      userId: "user-target",
+      status: "ok",
+      statusCode: 200,
+      durationMs: 24,
+      createdAt,
+    });
+
+    render(
+      <AdminConsolePage
+        backendMode
+        backendSession={session("admin")}
+        data={data}
+        onSetUserStatus={vi.fn()}
+        onCreateRestriction={vi.fn()}
+        onUpdateSafetyEvent={vi.fn()}
+        onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Operations" }));
+
+    expect(screen.getByRole("heading", { name: "Operations Filters" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Policy Decisions" })).toBeInTheDocument();
+    expect(screen.getByText(/provider_call/)).toBeInTheDocument();
+    expect(screen.getByText(/quick_read/)).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Record type"), "latency");
+
+    expect(screen.getByRole("heading", { name: "Latency Traces" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Policy Decisions" })).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Focus"), "attention");
+
+    expect(screen.getByText(/provider_call/)).toBeInTheDocument();
+    expect(screen.queryByText(/quick_read/)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Focus"), "all");
+    await user.type(screen.getByLabelText("Search operations"), "quick_read");
+
+    expect(screen.getByText(/quick_read/)).toBeInTheDocument();
+    expect(screen.queryByText(/provider_call/)).not.toBeInTheDocument();
+  });
 });
