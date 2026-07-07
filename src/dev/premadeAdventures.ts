@@ -15,12 +15,8 @@ import {
   arcaneAfterRocketAdventureTitle,
   createArcaneAfterRocketAdventure,
 } from "./arcaneAfterRocketAdventure";
-import {
-  avatarCommanderRaizenAdventureTitle,
-  createAvatarCommanderRaizenAdventure,
-} from "./avatarCommanderRaizenAdventure";
 
-export type PremadeAdventureId = "dispatch-sdn" | "rookery" | "arcane-after-rocket" | "avatar-commander-raizen";
+export type PremadeAdventureId = "dispatch-sdn" | "rookery" | "arcane-after-rocket";
 
 export interface PremadeAdventureDefinition {
   id: PremadeAdventureId;
@@ -161,18 +157,6 @@ function createArcaneAfterRocketPremadeStoryCardsJson(): string {
   return premadeStoryCardsJson(createArcaneAfterRocketPremadeAdventure);
 }
 
-function createAvatarCommanderRaizenPremadeAdventure(): Adventure {
-  return applyPremadeBestPractices(createAvatarCommanderRaizenAdventure());
-}
-
-function createAvatarCommanderRaizenPremadeAdventureJson(): string {
-  return premadeAdventureJson(createAvatarCommanderRaizenPremadeAdventure);
-}
-
-function createAvatarCommanderRaizenPremadeStoryCardsJson(): string {
-  return premadeStoryCardsJson(createAvatarCommanderRaizenPremadeAdventure);
-}
-
 export const premadeAdventures: PremadeAdventureDefinition[] = [
   {
     id: "dispatch-sdn",
@@ -203,16 +187,6 @@ export const premadeAdventures: PremadeAdventureDefinition[] = [
     createAdventure: createArcaneAfterRocketPremadeAdventure,
     createAdventureJson: createArcaneAfterRocketPremadeAdventureJson,
     createStoryCardsJson: createArcaneAfterRocketPremadeStoryCardsJson,
-  },
-  {
-    id: "avatar-commander-raizen",
-    title: avatarCommanderRaizenAdventureTitle,
-    eyebrow: "ATLA Season 3 AU",
-    summary: "Adult post-Ba Sing Se Fire Nation command drama with Setu Raizen, Nyxa, restored Zuko, imprisoned Iroh, and the private Avatar hunt.",
-    tags: ["Avatar", "Fire Nation", "Season 3", "starter scenario"],
-    createAdventure: createAvatarCommanderRaizenPremadeAdventure,
-    createAdventureJson: createAvatarCommanderRaizenPremadeAdventureJson,
-    createStoryCardsJson: createAvatarCommanderRaizenPremadeStoryCardsJson,
   },
 ];
 
