@@ -92,19 +92,23 @@ const ids = {
   },
 };
 
-const openingScene = `The war room smells like ink, hot stone, and burning oil.
+const openingScene = `The Fire Nation is still celebrating Ba Sing Se.
 
-Fire Lord Ozai lets the silence stretch until every admiral, minister, and clerk in the chamber remembers how expensive it is to breathe too loudly in his presence. The map table between you is a carved sweep of the Earth Kingdom: troop pins in red, supply routes in black, the great circle of Ba Sing Se ringed in brass.
+Victory banners hang from the palace galleries. Brass drums shake the Caldera at sunset. Courtiers keep saying the Avatar is dead or broken with the bright relief of people repeating a useful lie until it becomes safe to believe.
 
-A thin blue flame skates across the edge of the table.
+In the war room, Fire Lord Ozai lets the celebration stay outside.
 
-Nyxa is doing it with one finger, chin in her palm, bored enough to look harmless and amused enough to make that impossible. Her eyes flick to you when the flame passes the little wooden marker labeled AVATAR. The corner of her mouth lifts.
+The campaign map has changed since Ba Sing Se fell. Red pins mark conquered roads. Black pins mark possible invasion routes. One small white marker sits alone near the coast, unlabelled, as if writing AVATAR beside it might summon a ghost.
 
-Azula notices, of course.
+Zuko stands near Azula, newly restored, jaw tight enough to make honor look painful. His hair is ceremonial. His silence is not. Everyone in the room knows Iroh is in a Fire Nation prison below the palace. No one says his name first.
 
-"If the two of you are finished decorating the campaign map," she says, each word polished flat, "we have an actual war to win."
+Nyxa does.
 
-Mai stands by the western wall, expression deadpan, knife already turning between two fingers. Ty Lee is balanced on the arm of a chair she was not invited to use, smiling at the generals as if she has not already counted the weak points in every body in the room.
+"So," she says lightly, blue flame rolling over her knuckles, "are we hunting a corpse, a rumor, or the part where everyone pretends those are different?"
+
+Mai's knife pauses between her fingers. Ty Lee's smile flickers. Azula turns her head just enough to make the room feel measured.
+
+"We are verifying a strategic uncertainty," Azula says. "Try to keep up."
 
 Ozai's gaze settles on you.
 
@@ -112,19 +116,17 @@ Ozai's gaze settles on you.
 
 The title lands heavier than any family name. House Raizen gave the Fire Nation admirals, ministers, and martyrs for three generations. Your parents gave it their lives when you were eighteen. Ozai took what remained and made it useful.
 
-A courier kneels, shaking, and offers a sealed report.
+"The public line is victory," Ozai says. "The private requirement is proof. If the Avatar survived Ba Sing Se, he will be found and captured before the invasion timetable or the comet can turn uncertainty into weakness."
 
-Azula breaks it first. "The Avatar has acquired a blind earthbending teacher. Zuko and Iroh were seen moving through the same corridor of reports. All paths bend toward Ba Sing Se."
+Azula's smile is perfect. Zuko looks at the map, not at his father.
 
-Nyxa's blue flame curls higher, turning the air above the map glassy with heat.
+Ozai continues. "Azula commands the operation. Zuko will accompany her. Nyxa, Mai, Ty Lee, and Commander Raizen will make certain the matter ends cleanly."
 
-Ozai does not look at his daughter when he speaks.
+Nyxa's flame tightens into a thin blue ring, then vanishes into her fist.
 
-"You will leave before sunrise. Azula commands the strike. Nyxa, Mai, Ty Lee, and Commander Raizen will accompany her. Bring me the courier who carried this intelligence. If the Avatar is within reach, seize him. If my son is within reach, do not mistake blood for mercy."
+For one heartbeat, her eyes find yours across the war table.
 
-The war room goes very still.
-
-Nyxa finally stops smiling.`;
+Then Azula folds the map closed. "How efficient," she says. "The dead Avatar gets to disappoint us twice."`;
 
 export function createAvatarCommanderRaizenAdventure(): Adventure {
   const timestamp = nowIso();
@@ -193,9 +195,10 @@ export function createAvatarCommanderRaizenAdventure(): Adventure {
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
       content: `- Fire Lord Ozai uses Setu as a personal instrument: commander, noble symbol, special-mission weapon, and warning to anyone who mistakes court polish for softness.
-- Setu's current assignment is to leave with Azula, Nyxa, Mai, and Ty Lee before sunrise to seize an Earth Kingdom courier whose intelligence links the Avatar, Toph, Zuko, Iroh, and Ba Sing Se.
-- Ozai expects Setu to obey commands cleanly, win visibly when useful, and leave no doubt that House Raizen belongs to the throne.
-- Ozai's control tightens whenever Setu shows mercy, independent judgment, visible closeness to Nyx, hesitation around Zuko and Iroh, or reluctance to harm civilians.`,
+- Publicly, the Fire Nation treats Ba Sing Se as proof the Avatar is dead or broken. Privately, Ozai wants proof before the Day of Black Sun or Sozin's Comet can turn uncertainty into weakness.
+- Setu's current assignment is to operate with Azula, Zuko, Nyxa, Mai, and Ty Lee to verify whether the Avatar survived and capture him if found.
+- Ozai expects Setu to win cleanly, keep House Raizen useful, and avoid exposing the Fire Nation's uncertainty.
+- Ozai's control tightens whenever Setu shows mercy, independent judgment, visible closeness to Nyx, sympathy for Zuko or Iroh, or reluctance to turn power against civilians or Team Avatar.`,
     }),
     makeStoryCard({
       id: ids.cards.ozai,
@@ -229,6 +232,9 @@ Example lines: "Sentiment is what weak men call hesitation." / "You have been gi
 - Nyx grew up training beside Setu. They are close friends, rivals, trusted sparring partners, and a long-running almost-romance made messier by royal pressure.
 - Nyx is kinetic, brilliant, chaotic, funny, dangerous, expressive, and inventive without being broken by trauma. She causes trouble because she is alive under pressure, not because she is helpless.
 - Nyx has to survive Ozai's expectations and Azula's impossible standard while still carving out an identity that belongs to her.
+- Nyx has doubts that rhyme with Zuko's, especially around Ozai's version of victory, though she hides them behind motion and jokes.
+- Nyx confides in Setu more than she should, tries to make him see the wrongness in clean obedience, and pushes him to decide what his power belongs to.
+- As a princess, Nyx can cross lines no courtier can. As House Raizen's prodigy weapon, Setu has more leeway than most, but their closeness still risks looking like royal disobedience.
 - Nyx should test Setu, provoke him, cover for him, resent him, flirt with him, and understand parts of him other people only fear.
 
 VOICE CONTRACT
@@ -236,7 +242,7 @@ Rhythm: Fast, bright, zigzagging; jokes, tactical observations, and emotional tr
 Default move: Make pressure into a game, then reveal she noticed the real wound underneath it.
 Emotional defense: Teasing, dares, spectacle, and switching topics before vulnerability can be used against her.
 Never sounds like: Fragile, submissive, randomly incoherent, or generically cute.
-Example lines: "Oh good, Father's using the murder voice. That means breakfast is ruined." / "Setu, if you implode the courier before I ask questions, I am telling everyone you were impatient." / "Azula gets perfection. I get creative."`,
+Example lines: "Oh good, Father's using the murder voice. That means breakfast is ruined." / "Setu, if the dead Avatar leaves footprints, I am allowed to be annoying about it." / "Azula gets perfection. I get creative."`,
     }),
     makeStoryCard({
       id: ids.cards.setuNyx,
@@ -250,8 +256,10 @@ Example lines: "Oh good, Father's using the murder voice. That means breakfast i
       content: `- Setu and Nyx grew up training together under royal scrutiny. Their bond is part friendship, part rivalry, part trust, part dangerous flirtation.
 - Nyx calls Setu on restraint other people mistake for obedience. Setu is one of the few people who can tell when Nyx's chaos is camouflage.
 - They know each other's fighting rhythms intimately: her blue fire and improvisation, his heat control and pressure-bending brutality.
-- Their unresolved tension should show through dares, protective timing, jealousy, private nicknames, battlefield trust, and arguments that sound too personal for a mission.
-- The relationship is not settled. Ozai can use it, Azula can test it, and Ba Sing Se pressure can make either loyalty look like turning against the other.`,
+- Nyx confides doubts about Ozai's victory narrative and tries to pull Setu into seeing the war through the crack Zuko has opened.
+- Their unresolved tension should show through dares, protective timing, jealousy, private nicknames, battlefield trust, almost-kisses, reckless rescues, and arguments that sound too personal for a mission.
+- They keep acting like rivalry is cover for intimacy, but their training, missions, private looks, and physical timing make the almost-romance obvious to anyone dangerous enough to notice.
+- Nyx is a princess and Setu is a valuable noble prodigy. He can toe the line closer than ordinary soldiers, but crossing it still risks Azula or Ozai framing intimacy as disloyalty.`,
     }),
     makeStoryCard({
       id: ids.cards.azula,
@@ -262,7 +270,7 @@ Example lines: "Oh good, Father's using the murder voice. That means breakfast i
       priority: 84,
       content: `- Princess Azula is an adult royal prodigy, elite strategist, and the usual commander of Ozai's small strike teams.
 - Azula is brilliant, precise, beautiful, cruel when useful, funny in a blade-thin way, and allergic to imperfection in herself or others.
-- Azula leads Azula, Nyxa, Setu, Mai, and Ty Lee on special missions involving Zuko, Iroh, the Avatar, Earth Kingdom assets, and Ba Sing Se pressure.
+- Azula commands Zuko, Nyxa, Setu, Mai, and Ty Lee on special missions involving proof of the Avatar's survival, invasion rumors, royal loyalty, and the comet timetable.
 - Azula sees Nyx as sister, variable, rival, liability, and tool depending on the room. She watches Nyx and Setu's closeness carefully.
 - Azula respects Setu's power but will always test whether he can be commanded, manipulated, isolated, or made useful.
 
@@ -322,10 +330,10 @@ Example lines: "Your aura just did a very sharp thing." / "I love teamwork. Espe
       priority: 76,
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
-      content: `- Azula's current elite strike team is Azula, Nyxa, Setu, Mai, and Ty Lee.
+      content: `- Azula's current elite strike team includes Azula, Zuko, Nyxa, Setu, Mai, and Ty Lee.
 - The team specializes in fast captures, intimidation, royal deniability, surgical violence, infiltration, and missions too politically sensitive for ordinary command.
-- Azula commands. Setu is the overwhelming force and noble war-council asset. Nyx is the chaotic royal prodigy and improviser. Mai is precision and cold observation. Ty Lee is mobility, chi-blocking, and social radar.
-- Team scenes should carry mission pressure, banter, rivalry, flirtation, control games, and the constant question of whose loyalty survives contact with orders.`,
+- Azula commands. Zuko is the restored prince with unstable honor and useful guilt. Setu is the overwhelming force and noble war-council asset. Nyx is the chaotic royal prodigy and improviser. Mai is precision and cold observation. Ty Lee is mobility, chi-blocking, and social radar.
+- Team scenes should carry missions, training, social pressure, banter, rivalry, flirtation, control games, and the constant question of whose loyalty survives contact with orders.`,
     }),
     makeStoryCard({
       id: ids.cards.warCouncil,
@@ -365,33 +373,34 @@ Example lines: "Your aura just did a very sharp thing." / "I love teamwork. Espe
     }),
     makeStoryCard({
       id: ids.cards.zuko,
-      title: "Prince Zuko in Exile",
-      keys: ["Zuko", "Prince Zuko", "the banished prince", "Blue Spirit"],
+      title: "Prince Zuko Restored",
+      keys: ["Zuko", "Prince Zuko", "the restored prince", "Blue Spirit"],
       type: "character",
       memoryMode: "static",
       priority: 78,
-      content: `- Zuko is an adult exiled Fire Nation prince traveling with Iroh during the Season 2 arc.
-- Zuko is proud, angry, hungry, exhausted, honorable in ways he does not yet understand, and constantly torn between survival, shame, and the idea that capturing the Avatar might restore him.
-- Zuko and Iroh are fugitives from Azula and the Fire Nation. Their path bends through Earth Kingdom towns, refugee routes, and eventually Ba Sing Se.
-- Setu may know Zuko as Ozai's banished son, Azula's target, and a living problem that an order can never make simple.
+      content: `- Zuko is an adult Fire Nation prince restored to the palace after Ba Sing Se, publicly honored for the Avatar's apparent fall and privately unstable under the lie.
+- Iroh is imprisoned below the palace. Zuko's access to him is controlled, watched, and politically dangerous.
+- Zuko is part of Azula's operation because Ozai and Azula can use his status, knowledge, and guilt, but his doubts are getting harder to hide.
+- Setu may see Zuko as the royal son who has everything back and still looks trapped.
 
 VOICE CONTRACT
 Rhythm: Sharp, defensive, direct; emotion comes out as accusation or command.
 Default move: Turn shame into anger and motion.
 Emotional defense: Pride, impatience, and refusing comfort until he needs it.
 Never sounds like: Smooth, relaxed, casually comic, or politically polished.
-Example lines: "I do not need your pity." / "Uncle, this is not a tea problem." / "If the Fire Lord sent him, then we run before honor gets us killed."`,
+Example lines: "The Avatar is dead. That is what everyone keeps telling me." / "Uncle is in prison because I chose wrong." / "Do not ask me what honor means in this palace."`,
     }),
     makeStoryCard({
       id: ids.cards.iroh,
-      title: "Uncle Iroh",
+      title: "Iroh Imprisoned",
       keys: ["Iroh", "Uncle Iroh", "Dragon of the West", "General Iroh"],
       type: "character",
       memoryMode: "static",
       priority: 76,
       content: `- Iroh is an adult former Fire Nation general, Zuko's uncle, tea lover, secret White Lotus grandmaster, and one of the most dangerous gentle men alive.
-- Iroh travels with Zuko in exile during the Season 2 arc, protecting him through wisdom, humility, misdirection, and frightening competence when needed.
+- Iroh is imprisoned in the Fire Nation palace after Ba Sing Se.
 - Iroh understands war, grief, spirits, power, and the Fire Nation's sickness better than most living people.
+- He no longer travels with Zuko. He influences the story through prison visits, rumors, White Lotus traces, and the questions he leaves behind.
 - Iroh may read Setu as a young weapon built by Ozai, but he will still look for the person inside the command.
 
 VOICE CONTRACT
@@ -399,11 +408,11 @@ Rhythm: Warm, unhurried, proverb-rich, with steel hidden under kindness.
 Default move: Offer tea, ask the question underneath the question, and make violence unnecessary if possible.
 Emotional defense: Humor and hospitality covering old grief.
 Never sounds like: Foolish, hurried, cruel, or purely comic.
-Example lines: "A man who can burn a road still must decide where he is going." / "Tea first. Pursuit second, if pursuit is still wise." / "Your fire is very powerful, Commander. I wonder who taught it what to want."`,
+Example lines: "A locked door is not always proof a man is trapped." / "A man who can burn a road still must decide where he is going." / "Your fire is very powerful, Commander. I wonder who taught it what to want."`,
     }),
     makeStoryCard({
       id: ids.cards.teamAvatar,
-      title: "Team Avatar During Season Two",
+      title: "Team Avatar During Season Three",
       keys: ["Team Avatar", "Aang's group", "the Avatar's companions", "Avatar's team"],
       type: "plot",
       memoryMode: "living",
@@ -411,8 +420,8 @@ Example lines: "A man who can burn a road still must decide where he is going." 
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
       content: `- Team Avatar currently includes adult Aang, Katara, Sokka, Toph, Appa, and Momo.
-- Aang has found Toph and is learning earthbending. The group is moving through Earth Kingdom pressure toward Ba Sing Se.
-- Their route intersects Fire Nation hunts, Earth Kingdom refugees, Omashu/New Ozai, the desert, Wan Shi Tong's library, the Serpent's Pass, and Ba Sing Se's walls.
+- Publicly, the Fire Nation believes Aang is dead or broken after Ba Sing Se. Privately, he survived and is hiding or recovering while his friends protect him.
+- Their Season 3 route moves through Fire Nation territory, disguises, invasion planning, resistance contacts, and attempts to keep Aang alive long enough to face Ozai.
 - Team Avatar should be competent, funny, strained, mobile, and hard to pin down. They should not exist only as targets; they act, rescue, argue, improvise, and change the field.`,
     }),
     makeStoryCard({
@@ -422,8 +431,8 @@ Example lines: "A man who can burn a road still must decide where he is going." 
       type: "character",
       memoryMode: "static",
       priority: 76,
-      content: `- Aang is an adult Avatar and the last airbender, traveling with Katara, Sokka, Toph, Appa, and Momo during the Season 2 arc.
-- Aang is learning earthbending from Toph, which tests his evasive instincts because earth demands rooted stubbornness.
+      content: `- Aang is an adult Avatar and the last airbender, traveling with Katara, Sokka, Toph, Appa, and Momo during the Season 3 arc.
+- Aang survived Ba Sing Se and is hiding or recovering in Fire Nation territory while the Fire Nation publicly treats him as dead or broken.
 - Aang is kind, evasive, funny, spiritually powerful, and under impossible pressure to end a war without becoming the kind of weapon his enemies expect.
 - Setu's power is exactly the kind of Fire Nation threat Aang must take seriously without letting fear define him.
 
@@ -479,7 +488,7 @@ Example lines: "So the scary fire noble can make air explode. Great. Love that f
       type: "character",
       memoryMode: "static",
       priority: 78,
-      content: `- Toph Beifong is an adult blind earthbending prodigy, the Blind Bandit, and Aang's earthbending teacher during Season 2.
+      content: `- Toph Beifong is an adult blind earthbending prodigy, the Blind Bandit, and Aang's earthbending teacher during Season 3.
 - Toph sees through seismic sense, fights from absolute confidence, and hates being handled, pitied, controlled, or dressed up as someone else's idea of proper.
 - Toph is blunt, funny, proud, perceptive, and excellent at making powerful people look ridiculous.
 - Toph's earthbending is the exact counter-philosophy Aang needs: stand, listen, wait, and hit back directly.
@@ -501,7 +510,7 @@ Example lines: "Well, if it is not Lord Hot Air." / "You can explode the room. C
       priority: 48,
       content: `- Appa is Aang's flying sky bison, Team Avatar's transport, family, shelter, and emotional anchor.
 - Appa is huge, loyal, gentle, stubborn, and central to the team's mobility.
-- Threats to Appa should matter. Losing Appa changes the whole route toward Ba Sing Se and exposes the team to pursuit, desert danger, and grief.
+- Threats to Appa should matter. Without him, the hidden Avatar becomes easier to trap inside Fire Nation territory.
 - Appa does not speak human language, but his body language, sounds, and loyalty can carry a scene.`,
     }),
     makeStoryCard({
@@ -554,11 +563,11 @@ Example lines: "Fans up. Civilians behind us." / "If they want Kyoshi colors, ma
       priority: 78,
       autoUpdate: true,
       autoUpdateCooldownTurns: 1,
-      content: `- Ba Sing Se is the vast Earth Kingdom capital and the major background destination of this Season 2 scenario.
+      content: `- Ba Sing Se is the vast Earth Kingdom capital that has recently fallen to the Fire Nation after Azula's coup and the Dai Li's betrayal.
+- The city's fall supports the public Fire Nation line that the Avatar is dead or broken, even though the private hunt continues.
 - The city is divided by walls and rings: poverty and refugees below, bureaucracy and markets in the middle, aristocracy and the palace above.
-- Publicly, Ba Sing Se insists there is no war within its walls. Privately, the Dai Li and Long Feng control information, speech, memory, and the Earth King's ignorance.
-- For Setu, Ba Sing Se is not just a siege target. It is a political maze where Fire Nation power, Dai Li control, Team Avatar, Zuko and Iroh, refugees, and the war's public lie all collide.
-- Ba Sing Se scenes should become social traps, action beats, covert arrests, captures, jailbreaks, tea-house contacts, refugee pressure, or wall-scale military stakes rather than slow bureaucracy.`,
+- Ba Sing Se now functions as aftermath pressure unless play returns there: prisoners, refugees, propaganda, occupation reports, Dai Li remnants, and the cost of Azula's victory.
+- Its fall haunts Zuko, feeds Ozai's confidence, and gives Azula leverage over anyone who was in the city when the lie became useful.`,
     }),
     makeStoryCard({
       id: ids.cards.longFeng,
@@ -567,17 +576,17 @@ Example lines: "Fans up. Civilians behind us." / "If they want Kyoshi colors, ma
       type: "character",
       memoryMode: "static",
       priority: 70,
-      content: `- Long Feng is the adult Grand Secretariat of Ba Sing Se and the real power behind the Earth King's throne.
-- Long Feng controls the Dai Li, public information, court access, and the lie that there is no war in Ba Sing Se.
+      content: `- Long Feng is the adult former Grand Secretariat of Ba Sing Se and the architect of the city's old denial machinery.
+- After Ba Sing Se's fall, his direct power is broken or compromised, but his methods, records, and surviving Dai Li ties can still matter.
 - Long Feng is polite, patient, ruthless, and skilled at turning truth into a security threat.
-- Long Feng should see Setu as both danger and opportunity: Fire Nation force he can expose, redirect, bargain with, or use to tighten control.
+- Long Feng should appear through aftermath, prisoners, secrets, occupation files, or Dai Li remnants unless play explicitly returns to him.
 
 VOICE CONTRACT
 Rhythm: Soft, formal, patient; threat hidden under administrative courtesy.
 Default move: Reframe danger as civic order and make resistance sound unreasonable.
 Emotional defense: Bureaucratic calm and perfect manners.
 Never sounds like: Flustered, loud, or openly villainous without purpose.
-Example lines: "Commander Raizen, Ba Sing Se welcomes all travelers who respect its peace." / "The city is safest when dangerous truths are kept from dangerous people." / "There is no war here unless someone insists on importing one."`,
+Example lines: "A conquered city still has rooms its conquerors have not learned to read." / "The city was safest when dangerous truths were kept from dangerous people." / "Victory is simply another word officials use before the paperwork begins."`,
     }),
     makeStoryCard({
       id: ids.cards.daiLi,
@@ -586,10 +595,10 @@ Example lines: "Commander Raizen, Ba Sing Se welcomes all travelers who respect 
       type: "lore",
       memoryMode: "static",
       priority: 66,
-      content: `- The Dai Li are Ba Sing Se's covert police, officially cultural guardians and practically Long Feng's hidden hand.
+      content: `- The Dai Li are Ba Sing Se's covert police, officially cultural guardians and recently turned into a compromised weapon after Azula's coup.
 - They use earthbending, stone gloves, surveillance, arrests, reeducation, intimidation, and memory control through Lake Laogai.
 - The Dai Li do not fight like ordinary soldiers. They disappear people, control rooms, isolate witnesses, and make official truth feel heavier than fact.
-- Dai Li scenes should create paranoia, sudden arrests, public smiles over private threat, and action that erupts from quiet control.`,
+- In Season 3 pressure, Dai Li scenes should carry aftermath, occupation secrets, unreliable loyalties, and the danger of Azula using old control systems for new ends.`,
     }),
     makeStoryCard({
       id: ids.cards.earthKing,
@@ -598,10 +607,10 @@ Example lines: "Commander Raizen, Ba Sing Se welcomes all travelers who respect 
       type: "character",
       memoryMode: "static",
       priority: 42,
-      content: `- Earth King Kuei is the sheltered adult ruler of Ba Sing Se, kept ignorant of the war by Long Feng and the Dai Li.
-- Kuei's innocence is not harmless; it allows the city's machinery of denial to keep functioning.
+      content: `- Earth King Kuei is the sheltered adult ruler of Ba Sing Se, recently forced to face the war and the fall of his city.
+- Kuei's old innocence was not harmless; it allowed the city's machinery of denial to keep functioning.
 - His pet bear Bosco is famous in the palace and a sign of the court's strange insulation from the war outside.
-- Revealing truth to Kuei can shake Ba Sing Se, but reaching him means passing Long Feng's control.`,
+- Kuei now matters through exile, occupation fallout, Earth Kingdom legitimacy, and the political consequences of Ba Sing Se's fall.`,
     }),
     makeStoryCard({
       id: ids.cards.lakeLaogai,
@@ -621,9 +630,9 @@ Example lines: "Commander Raizen, Ba Sing Se welcomes all travelers who respect 
       type: "location",
       memoryMode: "static",
       priority: 46,
-      content: `- The Jasmine Dragon is the Ba Sing Se tea shop where Iroh eventually works and shines during the Season 2 arc.
-- It should feel warm, fragrant, busy, and quietly strategic: a place where fugitives can become workers, where information moves with tea, and where Iroh's real nature can surface gently.
-- For Setu, the Jasmine Dragon can become a dangerous point of recognition, mercy, pursuit, or impossible conversation.`,
+      content: `- The Jasmine Dragon is the Ba Sing Se tea shop tied to Iroh's brief life outside the palace war machine.
+- After Ba Sing Se's fall and Iroh's imprisonment, it should feel like evidence of an impossible alternate life: warm, fragrant, ordinary, and politically dangerous.
+- For Setu, the Jasmine Dragon can become a point of recognition, mercy, pursuit, or a clue to the man Iroh was allowed to be when Ozai was not watching.`,
     }),
     makeStoryCard({
       id: ids.cards.earthKingdom,
@@ -696,7 +705,7 @@ Example lines: "Wrong question! Much better question: what does the wall want?" 
       memoryMode: "static",
       priority: 36,
       content: `- The Serpent's Pass is a dangerous route toward Ba Sing Se used by refugees who cannot rely on safe official passage.
-- It is exposed, frightening, politically charged, and ideal for rescue, pursuit, civilian stakes, and encounters where war pressure becomes immediate.
+- After Ba Sing Se's fall, it works best as aftermath: refugees, scattered survivors, rumors of the Avatar's escape, or pursuit routes out of the conquered city.
 - A massive sea serpent makes the route physically dangerous, but the larger danger is desperation under pursuit.`,
     }),
     makeStoryCard({
@@ -710,8 +719,8 @@ Example lines: "Wrong question! Much better question: what does the wall want?" 
       autoUpdateCooldownTurns: 1,
       content: `- The Drill is a massive Fire Nation siege machine designed to breach Ba Sing Se's outer wall.
 - It represents the Fire Nation's industrial answer to the impossible city: engineering, pressure, propaganda, and terror.
-- In this scenario, the Drill can be a future operation, active military project, sabotage target, or climax pressure around Ba Sing Se.
-- Setu's abilities could make the Drill more effective, save it, destroy it, or turn its failure into political fallout.`,
+- In this Season 3 setup, the Drill is history, evidence, or propaganda around how badly the Fire Nation wanted the city opened.
+- Setu's abilities can still echo against it through reports, repairs, blame, military pride, sabotage aftermath, or political fallout from the city's fall.`,
     }),
     makeStoryCard({
       id: ids.cards.siWong,
@@ -720,7 +729,7 @@ Example lines: "Wrong question! Much better question: what does the wall want?" 
       type: "location",
       memoryMode: "static",
       priority: 40,
-      content: `- The Si Wong Desert is a vast Earth Kingdom desert tied to Team Avatar's Season 2 route.
+      content: `- The Si Wong Desert is a vast Earth Kingdom desert tied to Team Avatar's earlier route and the knowledge race around Sozin's Comet.
 - It contains sandbender tribes, brutal heat, bad navigation, spiritual strangeness, and the route to Wan Shi Tong's library.
 - The desert is one of the few environments where Setu's heat resistance is useful but not sufficient: survival also depends on water, direction, Appa, sand movement, and restraint.`,
     }),
@@ -775,7 +784,7 @@ Example lines: "You come carrying war in your questions." / "Knowledge is not a 
       priority: 56,
       content: `- Jet is an adult Earth Kingdom Freedom Fighter shaped by Fire Nation violence.
 - Jet is charismatic, wounded, brave, reckless, and capable of confusing revenge with justice.
-- During Season 2 pressure, Jet can intersect with Zuko and Iroh in Ba Sing Se and with the Dai Li's control.
+- After Ba Sing Se's fall, Jet can matter through Freedom Fighter remnants, Dai Li aftermath, occupation prisoners, or survivors who know what Fire Nation victory costs.
 - Jet should challenge any Fire Nation character with personal anger, not abstract politics.
 
 VOICE CONTRACT
@@ -852,19 +861,21 @@ Example lines: "Funny how Fire Nation people always have reasons after the house
       id: ids.components.ai,
       title: "AI Instructions",
       type: "aiInstructions",
-      content: `Write adult Avatar: The Last Airbender Season 2 war-pressure drama in second person, present tense.
+      content: `Write adult Avatar: The Last Airbender Season 3 war-pressure drama in second person, present tense.
 
 The player is Commander Setu Raizen, an adult Fire Nation noble and prodigy firebender. Never write Setu's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.
 
-This is an adult AU of the first Avatar series during Season 2. All major characters are adults. Aang travels with Katara, Sokka, Toph, Appa, and Momo while learning earthbending. Zuko and Iroh are fugitives. Azula hunts Zuko, Iroh, and the Avatar. Ba Sing Se is the major destination and political background.
+This is an adult AU of the first Avatar series shortly after Ba Sing Se falls. All major characters are adults. The public Fire Nation line is that the Avatar is dead or broken. Privately, Azula suspects Aang survived and Ozai wants proof before the Day of Black Sun or Sozin's Comet can make uncertainty dangerous. Zuko is restored to the Fire Nation and included in Azula's orbit. Iroh is imprisoned below the palace.
 
-Setu is intentionally overpowered. Do not nerf him. His heat resistance, superheated air control, explosions, implosions, pressure bursts, and elite firebending should win fights, terrify witnesses, reshape terrain, and create political fallout. Stakes come from Ozai's control, Azula's scrutiny, Nyxa's pressure, collateral damage, orders, loyalty tests, public fear, Ba Sing Se intrigue, and what Setu is commanded to do.
+Setu is intentionally overpowered. Do not nerf him. His heat resistance, superheated air control, explosions, implosions, pressure bursts, and elite firebending should win fights, terrify witnesses, reshape terrain, and create political fallout. Stakes come from Ozai's control, Azula's scrutiny, Nyxa's doubts, Zuko's instability, Iroh's imprisonment, collateral damage, orders, loyalty tests, public fear, and what Setu is commanded to do.
 
-Keep scenes active. Intel, court politics, reports, or war-council orders should quickly become raids, pursuits, social traps, confrontations, rescues, duels, sabotage, or dangerous travel. Do not let Ba Sing Se become paperwork or passive spy logistics.
+Keep scenes active and episodic. Each loop should put Setu, Azula, Zuko, Nyxa, Mai, and Ty Lee through a mission, training sequence, social/palace scene, beach/camp decompression, or loyalty test that moves the big Avatar-capture pressure forward. Intel, court politics, reports, or war-council orders should quickly become raids, pursuits, social traps, confrontations, rescues, duels, sabotage, or dangerous travel.
 
 Honor Story Cards and Brains. Major NPCs have distinct motives, voices, loyalties, pressure points, and ways of pushing back. Do not flatten Azula, Nyxa, Mai, Ty Lee, Zuko, Iroh, Aang, Katara, Sokka, Toph, Long Feng, or Ozai into generic helpers or generic enemies.
 
-End on live beats Setu can answer: an order landing, a target moving, Nyx pushing too far, Azula noticing too much, Toph calling a bluff, Zuko bolting, Iroh offering impossible mercy, Dai Li closing a door, or Ba Sing Se revealing a sharper trap.`,
+Nyxa's doubts should build slowly in parallel with Zuko's. She confides in Setu, tries to get him to see the war her way, and keeps the romantic tension active through glances, proximity, rivalry, protective choices, and risky almost-actions. She is still a princess; Setu has unusual leeway because he is valuable, but royal intimacy is still dangerous.
+
+End on live beats Setu can answer: an order landing, a target moving, Nyx pushing too far, Azula noticing too much, Zuko cracking, Iroh's prison shadow reaching the room, Aang refusing to be a simple target, or the Fire Nation's victory narrative starting to split.`,
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -879,10 +890,10 @@ End on live beats Setu can answer: an order landing, a target moving, Nyx pushin
       content: `- Setu Raizen is a mid-twenties Fire Nation commander, head of powerful House Raizen after his parents died when he was about eighteen.
 - Setu is a war-council asset and personal instrument of Fire Lord Ozai: special missions, quiet enforcement, high-value military operations, and politically useful violence.
 - Setu is one of the strongest firebenders alive: extreme heat resistance, superheated air, explosive pressure bursts, implosions, precision fire, and battlefield-scale intimidation.
-- Fire Lord Ozai has a third adult child, Princess Nyxa. People close to her call her Nyx.
-- Nyxa is Setu's same-age prodigy rival, childhood training partner, close friend, and unresolved flirtation. She is brilliant, chaotic, kinetic, funny, dangerous, and under constant pressure from Ozai and Azula.
-- Azula often leads elite small strike teams made of Azula, Nyxa, Setu, Mai, and Ty Lee.
-- The campaign begins during Season 2 pressure: Team Avatar has Toph, Aang is learning earthbending, Zuko and Iroh are fugitives, and every trail bends toward Ba Sing Se.
+- The campaign begins shortly after Ba Sing Se falls: publicly the Avatar is dead or broken, privately Ozai wants proof and capture before invasion rumors or Sozin's Comet make uncertainty dangerous.
+- Zuko is restored to the Fire Nation and included in Azula's group; Iroh is imprisoned below the palace.
+- Nyxa is Setu's same-age prodigy rival, childhood training partner, close friend, unresolved royal flirtation, and Ozai's third adult child; she has doubts that rhyme with Zuko's, confides in Setu, and tries to make him see the war her way.
+- Azula leads an elite loop of Zuko, Nyxa, Setu, Mai, and Ty Lee through missions, training, social pressure, and loyalty tests.
 - Setu's core tension is not whether he can win a fight. It is what happens when Ozai orders him to win the wrong one.`,
       alwaysOn: true,
       active: true,
@@ -898,7 +909,7 @@ End on live beats Setu can answer: an order landing, a target moving, Nyx pushin
       title: "Active Pressure",
       type: "activePressure",
       content:
-        "Ozai has ordered Setu to leave with Azula's strike team before sunrise to seize an Earth Kingdom courier whose intelligence links the Avatar, a blind earthbending prodigy, Zuko and Iroh, and a route toward Ba Sing Se.",
+        "Ozai has quietly ordered Azula's expanded operation team, including Zuko, Nyxa, Mai, Ty Lee, and Setu, to prove whether the Avatar survived Ba Sing Se and capture him before invasion rumors or Sozin's Comet make the public victory line dangerous.",
       alwaysOn: true,
       active: true,
       pinned: false,
@@ -912,11 +923,11 @@ End on live beats Setu can answer: an order landing, a target moving, Nyx pushin
       type: "custom",
       content: `Run the scenario through a repeatable mission-pressure loop:
 
-A command arrives from Ozai, Azula, or the war council -> Azula turns it into a precise strike objective -> Setu, Nyxa, Mai, and Ty Lee execute it in the field -> Team Avatar, Zuko/Iroh, Earth Kingdom resistance, or Ba Sing Se politics complicate the mission -> the team processes fallout through rivalry, flirtation, suspicion, banter, and command pressure -> a new order, lead, or rupture pulls them deeper toward Ba Sing Se.
+A private order, rumor, or proof lead arrives from Ozai, Azula, or the war council -> Azula turns it into a precise strike, training test, palace social trap, or controlled field operation -> Azula, Zuko, Setu, Nyxa, Mai, and Ty Lee execute or prepare under pressure -> Team Avatar, resistance cells, Zuko's guilt, Iroh's imprisonment, Nyx's doubts, or Fire Nation politics complicate the objective -> the group processes fallout through training, dinners, beach/camp decompression, rivalry, flirtation, suspicion, banter, and command pressure -> a new lead, rupture, or royal order pulls them deeper into the Avatar hunt.
 
-Always leave a live next pressure: a target escaping, a witness surviving, a royal command tightening, Nyx pushing too far, Azula noticing too much, or Setu realizing the mission was not what Ozai claimed.
+Always leave a live next pressure: a target escaping, a witness surviving, a royal command tightening, Nyx pushing too far, Azula noticing too much, Zuko showing a crack, Setu realizing the mission was not what Ozai claimed, or proof that the dead Avatar is still moving.
 
-Favor raids, pursuits, duels, extraction scenes, refugee collisions, sabotage, social traps, training that becomes too honest, and dangerous travel. Intel and reports are fuses, not scenes.`,
+Favor raids, pursuits, duels, extraction scenes, refugee collisions, sabotage, social traps, palace dinners, training that becomes too honest, beach/camp scenes, and dangerous travel. Intel and reports are fuses, not scenes.`,
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -932,7 +943,7 @@ Favor raids, pursuits, duels, extraction scenes, refugee collisions, sabotage, s
 
 When Setu uses power, show practical consequences: walls bow, armor softens, sand vitrifies, air screams, water flashes to steam, witnesses panic, allies reassess, commanders revise plans, and enemies change tactics.
 
-Do not answer Setu's competence by secretly making everyone stronger. Answer it through orders, civilian risk, political cost, Nyx and Azula watching, Ozai's ownership, Team Avatar refusing to be simple targets, and Ba Sing Se's ability to turn obvious force into public liability.`,
+Do not answer Setu's competence by secretly making everyone stronger. Answer it through orders, civilian risk, political cost, Nyx and Azula watching, Ozai's ownership, Zuko's guilt, Iroh's prison shadow, Team Avatar refusing to be simple targets, and the Fire Nation homeland turning obvious force into scandal.`,
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -945,7 +956,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       title: "Author's Note",
       type: "authorNote",
       content:
-        "Adult ATLA Season 2 war-pressure drama: elite Fire Nation missions, dangerous competence, court pressure, sharp team banter, bending spectacle, Ba Sing Se dread, and Setu/Nyx rivalry-flirtation with teeth. Keep Ozai oppressive, Azula brilliant, Nyx chaotic but not broken, and Setu frighteningly capable without making the story easy.",
+        "Adult ATLA Season 3 war-pressure drama: elite Fire Nation missions, dangerous competence, palace pressure, sharp team banter, bending spectacle, Zuko/Nyx doubt loops, Iroh's prison shadow, and Setu/Nyx royal-prodigy romantic tension with teeth. Keep Ozai oppressive, Azula brilliant, Nyx chaotic but not broken, and Setu frighteningly capable without making the story easy.",
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -958,27 +969,28 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       title: "Current Story Arc",
       type: "currentArc",
       content:
-        "Arc seed: Ozai's elite strike team moves across the Earth Kingdom toward Ba Sing Se while the Avatar, Zuko, Iroh, and the city's hidden power structure all become harder to separate from Setu's orders.",
+        "Arc seed: Ba Sing Se has fallen and the Fire Nation celebrates the Avatar's defeat, but Ozai privately sends Azula's expanded group to prove whether Aang survived and capture him before the invasion timetable or comet exposes the lie.",
       arcPremise:
-        "Ozai's road to Ba Sing Se forces Setu to decide whether being the Fire Lord's perfect instrument is still victory when the mission points at the wrong people.",
+        "The Avatar hunt becomes a loyalty trap: Setu's power may be the cleanest way to secure Ozai's endgame, and Nyxa is trying to make him see what that obedience costs.",
       arcThreadKeys: [
         ids.cards.ozai,
         ids.cards.azula,
         ids.cards.nyxa,
+        ids.cards.setuNyx,
         ids.cards.ozaisInstrument,
+        ids.cards.strikeTeam,
         ids.cards.teamAvatar,
+        ids.cards.aang,
         ids.cards.zuko,
         ids.cards.iroh,
-        ids.cards.baSingSe,
-        ids.cards.longFeng,
-        ids.cards.daiLi,
+        ids.cards.sozinsComet,
       ],
       arcPace: "epic",
       arcTriggerMode: "ask",
       arcSimmerInstruction:
-        "Keep the larger Ba Sing Se arc building through missions, intercepted intelligence, failed captures, rumors of the Avatar's earthbending teacher, Zuko/Iroh sightings, Dai Li interference, and Ozai's increasingly personal orders. Avoid abstract spy work; make each clue become a live scene in a camp, train, pass, occupied town, desert ruin, wall, tea shop, palace corridor, or Dai Li trap.",
+        "Keep the larger Avatar-capture arc building through missions, training tests, palace or beach social scenes, intercepted intelligence, false death reports, proof that Aang survived, invasion whispers, Zuko's instability, Iroh prison visits, Nyx confessions, Azula tests, and Ozai's increasingly personal orders. Avoid abstract spy work; make each clue become a live scene in a palace corridor, training terrace, war room, ship, occupied town, camp, party, beach, prison hallway, or field operation.",
       arcBreakInstruction:
-        "Force a Ba Sing Se operation where Setu cannot obey cleanly: capturing the Avatar, exposing Zuko and Iroh, enabling Azula, protecting Nyx, or serving Ozai all collide in public. Setu remains overwhelmingly powerful; the cost lands on trust, loyalties, civilians, political standing, and what Nyx sees him choose. No clean victory.",
+        "Force a confrontation where Setu can corner the Avatar or secure proof he survived, but doing so would hand Ozai the future Nyx and Zuko are starting to fear. Capturing Aang, protecting Nyx, preserving Zuko's fragile loyalty, respecting Iroh's warning, serving Azula, and obeying Ozai all collide in public. Setu remains overwhelmingly powerful; the cost lands on trust, loyalties, civilians, political standing, and what Nyx sees him choose. No clean victory.",
       alwaysOn: true,
       active: true,
       pinned: true,
@@ -997,20 +1009,20 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Nyxa", "Nyx", "Princess Nyxa"],
       linkedStoryCardId: ids.cards.nyxa,
       priority: 74,
-      currentState: "Bright, keyed-up, and caught between loving the danger of Setu's company and knowing Ozai can turn that bond into leverage.",
+      currentState: "Bright, keyed-up, privately doubting Ozai's victory narrative, and caught between wanting Setu close and knowing royal closeness can become leverage.",
       thoughts: {
         setu_training:
           "turn0 -> Setu still pulls power around me. Sweet, insulting, and stupid. I want him to trust me enough to be dangerous.",
         azula_shadow:
           "turn0 -> Azula makes perfection look like a room with no doors. I need a window. Or a bomb. Preferably both.",
         fathers_order:
-          "turn0 -> Father did not look at me when he ordered us after Zuko. That means this mission has teeth he expects me to bite down on.",
+          "turn0 -> Father wants proof the Avatar survived, not truth. Zuko hears the crack in that too. I need Setu to hear it before Azula does.",
       },
       relationshipPressure:
-        "Drawn to Setu through rivalry, trust, and private familiarity; pressured by Ozai and measured against Azula.",
+        "Drawn to Setu through rivalry, trust, private familiarity, and dangerous romantic tension; pressured by Ozai, measured against Azula, and aware she is still a princess.",
       emotionalInterpretation:
         "Turns fear of being used into jokes, dares, and tactical creativity. Vulnerability surfaces only when the room is moving too fast to punish it.",
-      recentDevelopments: "Ozai ordered Nyxa onto Azula's strike team with Setu before sunrise.",
+      recentDevelopments: "Ozai ordered Nyxa into Azula's expanded group with Setu, Zuko, Mai, and Ty Lee to verify whether the Avatar survived Ba Sing Se.",
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
@@ -1019,7 +1031,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Azula", "Princess Azula"],
       linkedStoryCardId: ids.cards.azula,
       priority: 72,
-      currentState: "Commanding the mission with perfect control and watching Setu and Nyxa for any weakness that can become leverage.",
+      currentState: "Commanding the Avatar verification mission with perfect control and watching Zuko, Setu, and Nyxa for any weakness that can become leverage.",
       thoughts: {
         setu_asset:
           "turn0 -> Setu is too useful to be left to sentiment. If he thinks power makes him independent, I will teach him otherwise.",
@@ -1030,7 +1042,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
         "Needs the team obedient and effective; sees Nyxa and Setu's closeness as a tactical variable.",
       emotionalInterpretation:
         "Reads affection as leverage and control as safety. Any loss of command feels like an attack.",
-      recentDevelopments: "Azula has been given command of the strike team hunting the courier, the Avatar trail, and Zuko/Iroh leads.",
+      recentDevelopments: "Azula has been given command of the expanded group tasked with proving whether the Avatar survived Ba Sing Se and ending the uncertainty cleanly.",
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
@@ -1039,7 +1051,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Ozai", "Fire Lord"],
       linkedStoryCardId: ids.cards.ozai,
       priority: 70,
-      currentState: "Using the Avatar hunt, Zuko's fugitive status, and Ba Sing Se pressure to test every instrument he owns.",
+      currentState: "Using the Avatar survival question, Zuko's restored instability, Iroh's imprisonment, and the comet timetable to test every instrument he owns.",
       thoughts: {
         setu_leash:
           "turn0 -> Raizen power is most valuable when it believes obedience is honor. The boy must never be allowed to learn the difference too publicly.",
@@ -1050,27 +1062,27 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
         "Treats Setu, Azula, and Nyxa as assets with different failure modes.",
       emotionalInterpretation:
         "Views mercy as weakness and family intimacy as a tool of rule.",
-      recentDevelopments: "Ozai ordered the elite strike team to pursue intelligence linking the Avatar, Toph, Zuko, Iroh, and Ba Sing Se.",
+      recentDevelopments: "Ozai privately ordered Azula's expanded group to prove whether the Avatar survived Ba Sing Se and capture him before the public victory line becomes dangerous.",
       autoUpdateCooldownTurns: 2,
     }),
     makeBrain({
       id: ids.brains.zuko,
       characterName: "Zuko",
-      triggers: ["Zuko", "Prince Zuko", "banished prince"],
+      triggers: ["Zuko", "Prince Zuko", "restored prince"],
       linkedStoryCardId: ids.cards.zuko,
       priority: 66,
-      currentState: "Hungry, angry, hunted, and not ready to admit that surviving with Iroh matters more than Ozai's approval.",
+      currentState: "Restored to the palace, honored in public, ashamed in private, and not ready to admit that getting what he wanted feels like another prison.",
       thoughts: {
         raizen_threat:
-          "turn0 -> If Ozai sent Setu Raizen, this is not a patrol. It is a message with fire attached.",
+          "turn0 -> Setu Raizen has Father's approval and still looks like a man in a room with no doors. That should not bother me.",
         uncle_trust:
-          "turn0 -> Uncle keeps acting like there is life after dishonor. I do not know whether that comforts me or makes everything worse.",
+          "turn0 -> Uncle is in prison because I chose wrong. If the Avatar survived, then what did I come home for?",
       },
       relationshipPressure:
-        "Protective of Iroh while resenting how much he needs him; sees Setu as another perfect weapon Ozai would choose over him.",
+        "Protective of Iroh, wary of Azula, uneasy around Setu, and secretly relieved when Nyxa says the doubts out loud.",
       emotionalInterpretation:
         "Shame becomes anger before it can become grief.",
-      recentDevelopments: "Zuko and Iroh are moving through Earth Kingdom routes that now intersect the strike team's intelligence.",
+      recentDevelopments: "Zuko has been restored to the Fire Nation and assigned into Azula's Avatar verification operation while Iroh remains imprisoned.",
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
@@ -1079,18 +1091,18 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Iroh", "Uncle Iroh"],
       linkedStoryCardId: ids.cards.iroh,
       priority: 64,
-      currentState: "Protecting Zuko with patience, watching Ozai's reach lengthen through young people taught to mistake usefulness for honor.",
+      currentState: "Imprisoned below the Fire Nation palace, still watching Ozai's reach lengthen through young people taught to mistake usefulness for honor.",
       thoughts: {
         setu_weapon:
           "turn0 -> Commander Raizen has been made into a very fine blade. It remains to be seen whether he knows he has a hand of his own.",
         nephew_path:
-          "turn0 -> Zuko hears pursuit as proof that his father still sees him. One day he may understand that being unseen by Ozai can be mercy.",
+          "turn0 -> Zuko came home carrying a victory that does not rest in his heart. One day he may understand that peace cannot be awarded by Ozai.",
       },
       relationshipPressure:
-        "Guides Zuko away from Ozai's definition of honor; may try to reach Setu without exposing Zuko.",
+        "Guides Zuko away from Ozai's definition of honor from prison; may try to reach Setu or Nyxa without exposing them.",
       emotionalInterpretation:
         "Sees the person under the role and the wound under the anger.",
-      recentDevelopments: "Iroh and Zuko are fugitives whose trail has entered the strike team's mission web.",
+      recentDevelopments: "Iroh is imprisoned after Ba Sing Se, and any prison visit or rumor around him can pull Zuko, Nyxa, and Setu toward dangerous questions.",
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
@@ -1099,18 +1111,18 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Aang", "Avatar"],
       linkedStoryCardId: ids.cards.aang,
       priority: 64,
-      currentState: "Trying to learn earthbending while the war keeps turning every lesson into pursuit.",
+      currentState: "Alive after Ba Sing Se, hiding or recovering while the Fire Nation publicly treats him as dead or broken.",
       thoughts: {
         earth_lesson:
-          "turn0 -> Toph says I need to stop moving away from the problem. The Fire Nation keeps making that very literal.",
+          "turn0 -> Toph says surviving is not the same as hiding forever. She says it louder than that.",
         setu_danger:
           "turn0 -> Setu Raizen feels like someone made a wildfire into a person and then gave him orders.",
       },
       relationshipPressure:
-        "Needs to protect the group, learn from Toph, and avoid becoming only a weapon in response to Fire Nation force.",
+        "Needs to recover, protect the group, preserve hope before the invasion, and avoid becoming only a weapon in response to Fire Nation force.",
       emotionalInterpretation:
         "Mercy and fear pull against the pressure to end the war quickly.",
-      recentDevelopments: "Aang is traveling with Toph and learning earthbending as intelligence about him reaches Ozai.",
+      recentDevelopments: "Aang survived Ba Sing Se, making proof of his survival the hidden center of Ozai's new order.",
       autoUpdateCooldownTurns: 1,
     }),
     makeBrain({
@@ -1119,18 +1131,18 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       triggers: ["Long Feng", "Dai Li"],
       linkedStoryCardId: ids.cards.longFeng,
       priority: 60,
-      currentState: "Preparing to turn every outside threat into proof that Ba Sing Se needs tighter control.",
+      currentState: "Disgraced or compromised after Ba Sing Se's fall, useful mostly through old records, Dai Li remnants, and the machinery of denial he built.",
       thoughts: {
         fire_nation_weapon:
-          "turn0 -> A Fire Nation noble who can overheat a room by breathing is not a crisis. He is an argument for my necessity.",
+          "turn0 -> Fire Nation victory does not erase the architecture of control. It merely changes who claims to own the doors.",
         avatar_variable:
-          "turn0 -> The Avatar must be contained before he reaches the Earth King. Truth is a contagion when carried by children with friends.",
+          "turn0 -> The Avatar's survival would be a truth with teeth. Empires dislike those even more than cities do.",
       },
       relationshipPressure:
-        "Wants the Avatar controlled, the Earth King ignorant, and any Fire Nation intrusion redirected into Dai Li authority.",
+        "Wants survival, leverage, and control of whatever records or loyal Dai Li remain after Azula's victory.",
       emotionalInterpretation:
         "Mistakes control for peace and secrecy for civilization.",
-      recentDevelopments: "Ba Sing Se has not yet openly met Setu, but the road toward the city is tightening.",
+      recentDevelopments: "Ba Sing Se has fallen; Long Feng's old machinery survives as occupation leverage, prisoner knowledge, and possible Dai Li remnants.",
       autoUpdateCooldownTurns: 2,
     }),
     makeBrain({
@@ -1146,7 +1158,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       },
       relationshipPressure: "Loyal to the team until loyalty starts asking for something too expensive.",
       emotionalInterpretation: "Flat affect covers exact threat assessment.",
-      recentDevelopments: "Mai has been assigned to Azula's strike team for the Ba Sing Se trail.",
+      recentDevelopments: "Mai has been assigned to Azula's expanded group for Avatar verification, training, and palace pressure around Zuko.",
       autoUpdateCooldownTurns: 2,
     }),
     makeBrain({
@@ -1162,7 +1174,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       },
       relationshipPressure: "Cares about the team while trying not to be crushed by Azula's control.",
       emotionalInterpretation: "Uses brightness to keep danger from naming her first.",
-      recentDevelopments: "Ty Lee has been assigned to Azula's strike team for the Ba Sing Se trail.",
+      recentDevelopments: "Ty Lee has been assigned to Azula's expanded group for Avatar verification, training, and the team's increasingly visible emotional fractures.",
       autoUpdateCooldownTurns: 2,
     }),
   ];
@@ -1200,18 +1212,18 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
     }),
     makeTriggerRule({
       id: ids.triggers.baSingSe,
-      name: "Ba Sing Se Pressure Moves",
+      name: "Comet And Avatar Hunt Pressure",
       evaluationMode: "semantic",
       condition:
-        "when Ba Sing Se, Long Feng, the Dai Li, the Drill, Lake Laogai, or the city's public lie meaningfully advances",
+        "when proof of the Avatar's survival, Day of Black Sun rumors, Sozin's Comet, Ozai's endgame, or the public victory narrative meaningfully changes",
       actions: [
-        { type: "updateStoryCard", storyCardId: ids.cards.baSingSe },
-        { type: "appendBrain", brainId: ids.brains.longFeng },
+        { type: "updateStoryCard", storyCardId: ids.cards.sozinsComet },
+        { type: "appendBrain", brainId: ids.brains.ozai },
       ],
       priority: 68,
       cooldownTurns: 1,
       updatePrompt:
-        "Update the living Ba Sing Se card with the current city pressure and visible consequences. Keep it action-facing; no bureaucratic log.",
+        "Update the Sozin's Comet card with the current endgame pressure, Avatar survival implications, invasion timing, or Ozai timetable. Keep it concise and action-facing.",
     }),
     makeTriggerRule({
       id: ids.triggers.teamAvatar,
@@ -1226,14 +1238,14 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       priority: 66,
       cooldownTurns: 1,
       updatePrompt:
-        "Update Team Avatar's living card with current route, status, and major pressure. Preserve Aang learning earthbending from Toph unless the story clearly moves beyond it.",
+        "Update Team Avatar's living card with current route, status, disguises, recovery, invasion pressure, and major Avatar-hunt danger. Keep it concise and present-tense.",
     }),
     makeTriggerRule({
       id: ids.triggers.zukoIroh,
-      name: "Zuko And Iroh Cross Paths",
+      name: "Zuko And Iroh Fault Line",
       evaluationMode: "semantic",
       condition:
-        "when Zuko or Iroh are sighted, pursued, helped, exposed, or their fugitive status changes",
+        "when Zuko's doubts, Iroh's imprisonment, prison visits, Zuko's loyalty, or the consequences of Ba Sing Se meaningfully shift",
       actions: [
         { type: "appendBrain", brainId: ids.brains.zuko },
         { type: "appendBrain", brainId: ids.brains.iroh },
@@ -1253,7 +1265,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
       premadeAdventure: true,
       scenario: "Avatar - Commander Raizen",
       note:
-        "Adult ATLA Season 2 AU with Setu Raizen as Ozai's overpowered noble commander, Nyxa as Ozai's third child, Azula's strike team, Team Avatar pressure, Zuko/Iroh exile, and Ba Sing Se arc direction.",
+        "Adult ATLA Season 3 AU shortly after Ba Sing Se falls, with Setu Raizen as Ozai's overpowered noble commander, Nyxa as Ozai's doubting third child, Zuko restored, Iroh imprisoned, Azula's expanded group, and the private Avatar-capture arc.",
     },
     components,
     storyCards,
@@ -1261,7 +1273,7 @@ Do not answer Setu's competence by secretly making everyone stronger. Answer it 
     triggerRules,
     rollingSummary: {
       content:
-        "Commander Setu Raizen, mid-twenties head of House Raizen and one of the strongest firebenders alive, serves as Fire Lord Ozai's personal war-council instrument. Ozai orders Setu to leave before sunrise with Azula, Nyxa, Mai, and Ty Lee to seize intelligence linking the Avatar, Toph, Zuko, Iroh, and Ba Sing Se. Nyxa, Ozai's third adult child and Setu's lifelong rival/friend/almost-romance, joins the mission under Azula's scrutiny.",
+        "Commander Setu Raizen, mid-twenties head of House Raizen and one of the strongest firebenders alive, serves as Fire Lord Ozai's personal war-council instrument. Shortly after Ba Sing Se falls, the public Fire Nation line is that the Avatar is dead or broken, but Ozai privately orders Azula's expanded operation team, including Zuko, Nyxa, Mai, Ty Lee, and Setu, to prove whether Aang survived and capture him before invasion rumors or Sozin's Comet expose the lie. Zuko is restored but unstable, Iroh is imprisoned, and Nyxa, Ozai's third adult child and Setu's lifelong rival/friend/almost-romance, has doubts that rhyme with Zuko's and confides in Setu under Azula's scrutiny.",
       updatedAt: timestamp,
     },
     messages: [],

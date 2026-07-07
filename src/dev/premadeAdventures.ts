@@ -207,9 +207,9 @@ export const premadeAdventures: PremadeAdventureDefinition[] = [
   {
     id: "avatar-commander-raizen",
     title: avatarCommanderRaizenAdventureTitle,
-    eyebrow: "ATLA Season 2 AU",
-    summary: "Adult Season 2 Fire Nation command drama with Setu Raizen, Nyxa, Azula's strike team, Team Avatar pressure, and Ba Sing Se.",
-    tags: ["Avatar", "Fire Nation", "Ba Sing Se", "starter scenario"],
+    eyebrow: "ATLA Season 3 AU",
+    summary: "Adult post-Ba Sing Se Fire Nation command drama with Setu Raizen, Nyxa, restored Zuko, imprisoned Iroh, and the private Avatar hunt.",
+    tags: ["Avatar", "Fire Nation", "Season 3", "starter scenario"],
     createAdventure: createAvatarCommanderRaizenPremadeAdventure,
     createAdventureJson: createAvatarCommanderRaizenPremadeAdventureJson,
     createStoryCardsJson: createAvatarCommanderRaizenPremadeStoryCardsJson,
