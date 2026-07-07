@@ -3,6 +3,7 @@ import {
   buildStoryResponseCorrectionMessages,
   evaluateStoryResponseGuard,
   hasPlayerAgencyViolation,
+  hasSceneJumpViolation,
   visibleWordCount,
 } from "./storyResponseGuard";
 
@@ -37,6 +38,18 @@ describe("storyResponseGuard", () => {
     expect(hasPlayerAgencyViolation("You look at Viktor. You nod once.", "You look at Viktor.")).toBe(true);
   });
 
+  it("maps first-person player input to allowed second-person local action", () => {
+    expect(hasPlayerAgencyViolation("You follow Nyxa through the hall.", "I follow Nyxa.")).toBe(false);
+    expect(hasPlayerAgencyViolation("You follow Nyxa. You board the ship.", "I follow Nyxa.")).toBe(true);
+  });
+
+  it("flags unauthorized travel and time skips", () => {
+    expect(hasSceneJumpViolation("Hours later, you arrive at the prison harbor.", "I follow Nyxa.")).toBe(true);
+    expect(hasSceneJumpViolation("You follow Nyxa through the hall.", "I follow Nyxa.")).toBe(false);
+    expect(hasSceneJumpViolation("You arrive at the prison harbor.", "I head to the prison harbor.")).toBe(false);
+    expect(evaluateStoryResponseGuard("You arrive at the prison harbor.", 150, "I head to the prison harbor.").needsCorrection).toBe(false);
+  });
+
   it("builds a correction prompt that prioritizes word limit and player agency", () => {
     const messages = buildStoryResponseCorrectionMessages({
       playerInput: "We can help Zaun now.",
@@ -48,6 +61,7 @@ describe("storyResponseGuard", () => {
     expect(messages[0].role).toBe("system");
     expect(messages[0].content).toContain("Hard limit: 150 words maximum.");
     expect(messages[0].content).toContain("Do not narrate the player's unspoken actions");
+    expect(messages[0].content).toContain("Do not skip through travel");
     expect(messages[1].content).toContain("We can help Zaun now.");
   });
 });

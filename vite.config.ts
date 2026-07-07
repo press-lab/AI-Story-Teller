@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 function getCommitHash(): string {
@@ -15,5 +15,8 @@ export default defineConfig({
   base: process.env.VITE_BASE_PATH?.trim() || "/",
   define: {
     __COMMIT_HASH__: JSON.stringify(getCommitHash()),
+  },
+  test: {
+    testTimeout: 10000,
   },
 });

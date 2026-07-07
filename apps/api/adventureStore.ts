@@ -1,4 +1,4 @@
-import type { Adventure, AdventureAction, ComponentEntry, MemoryReconcileRequest, ProviderConfig, StoryCardAIBuilderRequest } from "../../src/types/adventure";
+import type { Adventure, AdventureAction, ChatMessage, ComponentEntry, ContextBuildResult, MemoryReconcileRequest, ProviderConfig, ProviderUsage, StoryCardAIBuilderRequest } from "../../src/types/adventure";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
@@ -6,6 +6,11 @@ import { parseComponentsJson } from "../../src/importers/componentParser";
 import { createDefaultAdventure, makeComponent, normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
 import { adventureReducer } from "../../src/state/adventureReducer";
 import { runTurnPipeline } from "../../src/state/turnPipeline";
+import {
+  buildStoryResponseCorrectionMessages,
+  evaluateStoryResponseGuard,
+  storyResponseWordLimit,
+} from "../../src/state/storyResponseGuard";
 import { importAdventureJson } from "../../src/utils/json";
 import { getAdventureThumbnail } from "../../src/utils/adventureImages";
 import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
@@ -74,6 +79,7 @@ export interface AdventureSnapshotSummary {
 }
 
 const MAX_SNAPSHOTS_PER_ADVENTURE = 100;
+const MAX_STORY_GUARD_CORRECTION_ATTEMPTS = 2;
 
 const allowedPersonalProviderHosts = new Set([
   "api.deepseek.com",
@@ -270,6 +276,56 @@ function assertAiToolProducedWork(actionCount: number, errors: string[], fallbac
   if (actionable) throw new Error(actionable);
   if (errors.length > 0) throw new Error(errors[0]);
   throw new Error(fallback);
+}
+
+function combineProviderUsage(...usages: Array<ProviderUsage | undefined>): ProviderUsage | undefined {
+  const present = usages.filter((usage): usage is ProviderUsage => usage !== undefined);
+  if (present.length === 0) return undefined;
+  const promptTokens = present.reduce((sum, usage) => sum + usage.promptTokens, 0);
+  const completionTokens = present.reduce((sum, usage) => sum + usage.completionTokens, 0);
+  const totalTokens = present.reduce((sum, usage) => sum + (usage.totalTokens || usage.promptTokens + usage.completionTokens), 0);
+  const cacheRead = present.reduce((sum, usage) => sum + (usage.cacheReadTokens ?? 0), 0);
+  const cacheWrite = present.reduce((sum, usage) => sum + (usage.cacheCreationTokens ?? 0), 0);
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens,
+    ...(present.some((usage) => usage.cacheReadTokens !== undefined) ? { cacheReadTokens: cacheRead } : {}),
+    ...(present.some((usage) => usage.cacheCreationTokens !== undefined) ? { cacheCreationTokens: cacheWrite } : {}),
+  };
+}
+
+function applyResponseLengthHint(config: ProviderConfig, hint: number, hiddenReserveTokens = 0): ProviderConfig {
+  const wordTarget = storyResponseWordLimit(hint);
+  const visibleTokenCap = Math.ceil(wordTarget * 1.5) + 80;
+  const hiddenReserve = Math.max(0, Math.min(90, Math.ceil(hiddenReserveTokens * 0.25)));
+  const lengthBoundedCap = visibleTokenCap + hiddenReserve;
+  const configuredCap = Number.isFinite(config.maxOutputTokens) && config.maxOutputTokens > 0
+    ? config.maxOutputTokens
+    : lengthBoundedCap;
+  return { ...config, maxOutputTokens: Math.min(configuredCap, lengthBoundedCap) };
+}
+
+function correctionProviderConfig(config: ProviderConfig, responseLengthHint: number): ProviderConfig {
+  const bounded = applyResponseLengthHint(
+    {
+      ...config,
+      temperature: Math.min(config.temperature, 0.2),
+      presencePenalty: 0,
+      frequencyPenalty: 0,
+    },
+    responseLengthHint,
+    0,
+  );
+  const correctionCap = Math.ceil(storyResponseWordLimit(responseLengthHint) * 1.15) + 35;
+  return { ...bounded, maxOutputTokens: Math.min(bounded.maxOutputTokens, correctionCap) };
+}
+
+function hiddenOutputReserveTokens(context: ContextBuildResult): number {
+  const payloadText = context.messages.map((message) => message.content).join("\n");
+  const thoughtExamples = payloadText.match(/<thought\s+name=/gi)?.length ?? 0;
+  const memoryTaggingReserve = payloadText.includes("[MEMORY TAGGING]") ? 120 : 0;
+  return thoughtExamples * 42 + memoryTaggingReserve;
 }
 
 export async function runBackendStoryCardBuilder(
@@ -523,49 +579,138 @@ export async function runBackendTurn(
         context,
         createdAt: nowIso(),
       });
-      const providerStartedAt = performance.now();
-      let providerResponse: Awaited<ReturnType<typeof sendOpenAICompatibleChatCompletion>>;
-      try {
-        providerResponse = await sendOpenAICompatibleChatCompletion({ messages, config: providerConfig });
-        recordTurnTrace(data, {
-          traceId,
-          source: "ai",
-          phase: "provider_call",
-          route,
-          userId: ownerUserId,
-          adventureId,
-          providerName: providerConfig.name,
-          model: providerConfig.model,
-          status: "ok",
-          durationMs: elapsedMs(providerStartedAt),
-          requestBytes: estimateTextBytes(messages.map((message) => message.content).join("\n\n")),
-          responseBytes: estimateTextBytes(providerResponse.content),
-          promptTokens: providerResponse.usage?.promptTokens,
-          completionTokens: providerResponse.usage?.completionTokens,
-          totalTokens: providerResponse.usage?.totalTokens,
-          cacheReadTokens: providerResponse.usage?.cacheReadTokens,
-          cacheCreationTokens: providerResponse.usage?.cacheCreationTokens,
-          throttleWaitMs: providerResponse.metrics?.throttleWaitMs,
-          retryCount: providerResponse.metrics?.retryCount,
-          statusCode: providerResponse.metrics?.statusCode,
-        });
-      } catch (error) {
-        recordTurnTrace(data, {
-          traceId,
-          source: "ai",
-          phase: "provider_call",
-          route,
-          userId: ownerUserId,
-          adventureId,
-          providerName: providerConfig.name,
-          model: providerConfig.model,
-          status: "error",
-          durationMs: elapsedMs(providerStartedAt),
-          requestBytes: estimateTextBytes(messages.map((message) => message.content).join("\n\n")),
-          error,
-        });
-        throw error;
+
+      const sendProviderWithTrace = async (
+        callMessages: ChatMessage[],
+        callConfig: ProviderConfig,
+        phase: "provider_call" | "provider_call_correction",
+        metadata?: Record<string, string | number | boolean | undefined>,
+      ): Promise<Awaited<ReturnType<typeof sendOpenAICompatibleChatCompletion>>> => {
+        const providerStartedAt = performance.now();
+        try {
+          const response = await sendOpenAICompatibleChatCompletion({ messages: callMessages, config: callConfig });
+          recordTurnTrace(data, {
+            traceId,
+            source: "ai",
+            phase,
+            route,
+            userId: ownerUserId,
+            adventureId,
+            providerName: callConfig.name,
+            model: callConfig.model,
+            status: "ok",
+            durationMs: elapsedMs(providerStartedAt),
+            requestBytes: estimateTextBytes(callMessages.map((message) => message.content).join("\n\n")),
+            responseBytes: estimateTextBytes(response.content),
+            promptTokens: response.usage?.promptTokens,
+            completionTokens: response.usage?.completionTokens,
+            totalTokens: response.usage?.totalTokens,
+            cacheReadTokens: response.usage?.cacheReadTokens,
+            cacheCreationTokens: response.usage?.cacheCreationTokens,
+            throttleWaitMs: response.metrics?.throttleWaitMs,
+            retryCount: response.metrics?.retryCount,
+            statusCode: response.metrics?.statusCode,
+            metadata,
+          });
+          return response;
+        } catch (error) {
+          recordTurnTrace(data, {
+            traceId,
+            source: "ai",
+            phase,
+            route,
+            userId: ownerUserId,
+            adventureId,
+            providerName: callConfig.name,
+            model: callConfig.model,
+            status: "error",
+            durationMs: elapsedMs(providerStartedAt),
+            requestBytes: estimateTextBytes(callMessages.map((message) => message.content).join("\n\n")),
+            metadata,
+            error,
+          });
+          throw error;
+        }
+      };
+
+      const responseLengthHint = snapshot.activeState.responseLengthHint;
+      const storyConfig = applyResponseLengthHint(providerConfig, responseLengthHint, hiddenOutputReserveTokens(context));
+      let providerResponse = await sendProviderWithTrace(messages, storyConfig, "provider_call");
+
+      if ((options.mode ?? "story") !== "comms") {
+        const playerInputForGuard = options.regenerateLastAssistant
+          ? lastUser ?? input
+          : options.providerCue ?? input;
+        let guard = evaluateStoryResponseGuard(providerResponse.content, responseLengthHint, playerInputForGuard);
+        if (guard.needsCorrection) {
+          recordTurnTrace(data, {
+            traceId,
+            source: "server",
+            phase: "story_response_guard",
+            route,
+            userId: ownerUserId,
+            adventureId,
+            status: "ok",
+            durationMs: 0,
+            responseBytes: estimateTextBytes(providerResponse.content),
+            metadata: {
+              visibleWordCount: guard.visibleWordCount,
+              visibleWordLimit: guard.visibleWordLimit,
+              reasonCount: guard.reasons.length,
+              reasons: guard.reasons.join("; ").slice(0, 400),
+            },
+          });
+
+          let accumulatedUsage = providerResponse.usage;
+          let draft = providerResponse.content;
+          let reasons = guard.reasons;
+          for (let attempt = 1; attempt <= MAX_STORY_GUARD_CORRECTION_ATTEMPTS; attempt += 1) {
+            const corrected = await sendProviderWithTrace(
+              buildStoryResponseCorrectionMessages({
+                playerInput: playerInputForGuard,
+                draft,
+                wordLimit: guard.visibleWordLimit,
+                reasons,
+              }),
+              correctionProviderConfig(providerConfig, responseLengthHint),
+              "provider_call_correction",
+              {
+                attempt,
+                reasons: reasons.join("; ").slice(0, 400),
+              },
+            );
+            accumulatedUsage = combineProviderUsage(accumulatedUsage, corrected.usage);
+            providerResponse = { ...corrected, usage: accumulatedUsage };
+            guard = evaluateStoryResponseGuard(providerResponse.content, responseLengthHint, playerInputForGuard);
+            recordTurnTrace(data, {
+              traceId,
+              source: "server",
+              phase: "story_response_guard_correction",
+              route,
+              userId: ownerUserId,
+              adventureId,
+              status: "ok",
+              durationMs: 0,
+              responseBytes: estimateTextBytes(providerResponse.content),
+              metadata: {
+                attempt,
+                needsCorrection: guard.needsCorrection,
+                visibleWordCount: guard.visibleWordCount,
+                visibleWordLimit: guard.visibleWordLimit,
+                reasonCount: guard.reasons.length,
+                reasons: guard.reasons.join("; ").slice(0, 400),
+              },
+            });
+            if (!guard.needsCorrection) break;
+            draft = providerResponse.content;
+            reasons = guard.reasons;
+          }
+          if (guard.needsCorrection) {
+            throw new Error(`Story response guard could not produce a valid response after ${MAX_STORY_GUARD_CORRECTION_ATTEMPTS} correction attempts: ${guard.reasons.join("; ")}`);
+          }
+        }
       }
+
       const outputPolicyStartedAt = performance.now();
       const outputDecision = recordPolicyDecision(data, {
         gate: "output",

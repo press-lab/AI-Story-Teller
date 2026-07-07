@@ -441,6 +441,59 @@ describe("local API policy gates and sharing", () => {
     expect(unsafePersonalProvider.body.error).toMatch(/approved HTTPS provider/i);
   });
 
+  it("corrects backend story responses before saving them", async () => {
+    const realFetch = globalThis.fetch;
+    const providerBodies: string[] = [];
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    api.config.providerConfig.maxOutputTokens = 1000;
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (url.startsWith("https://provider.test")) {
+        const body = String(init?.body ?? "");
+        providerBodies.push(body);
+        const content = providerBodies.length === 1
+          ? "You follow Nyxa. Hours later, you arrive at the harbor prison and accept Azula's mission."
+          : "Nyxa stops at the corridor turn. \"Azula wants proof tonight,\" she says, too lightly.";
+        return new Response(JSON.stringify({
+          choices: [{ message: { content } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
+    const sessionToken = await passwordSession("guarded-turn@example.com");
+    const adventure = createDefaultAdventure("Guarded Turn");
+    adventure.activeState.responseLengthHint = 50;
+    const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    const adventureId = imported.body.adventures[0].id;
+
+    const turn = await requestJson<{
+      adventure: ReturnType<typeof createDefaultAdventure>;
+      responseContent: string;
+    }>(`/adventures/${adventureId}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ input: "I follow Nyxa.", mode: "story" }),
+    });
+
+    expect(turn.status).toBe(200);
+    expect(providerBodies).toHaveLength(2);
+    expect(JSON.parse(providerBodies[0]).max_tokens).toBeLessThan(1000);
+    expect(providerBodies[1]).toContain("strict rewrite pass");
+    expect(providerBodies[1]).toContain("Do not skip through travel");
+    expect(turn.body.responseContent).toBe("Nyxa stops at the corridor turn. \"Azula wants proof tonight,\" she says, too lightly.");
+    expect(turn.body.responseContent).not.toContain("Hours later");
+    expect(turn.body.responseContent).not.toContain("you arrive");
+    expect(turn.body.adventure.messages.at(-1)?.content).toBe(turn.body.responseContent);
+    expect(turn.body.adventure.messages.at(-1)?.usage?.totalTokens).toBe(30);
+  });
+
   it("runs story card and character AI tools through the backend provider", async () => {
     const realFetch = globalThis.fetch;
     const providerCalls: Array<{ authorization?: string; body: string }> = [];
