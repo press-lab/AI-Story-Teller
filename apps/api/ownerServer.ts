@@ -1,9 +1,9 @@
 import { networkInterfaces } from "node:os";
 import { createApiServer } from "./server";
 
-const host = process.env.AIST_API_HOST?.trim() || "127.0.0.1";
+const api = createApiServer({ allowLocalGoogleStub: false });
+const host = api.config.host;
 const publicApiUrl = process.env.AIST_PUBLIC_API_BASE_URL?.trim();
-const api = createApiServer({ host, allowLocalGoogleStub: false });
 
 assertOwnerServerConfig();
 
