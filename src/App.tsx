@@ -59,6 +59,7 @@ import {
   deleteBackendScenario,
   disableBackendInvite,
   forkBackendScenarioRevision,
+  generateBackendAdventureSetup,
   generateBackendBrain,
   importAndOpenBackendAdventure,
   listBackendAdventureSnapshots,
@@ -385,6 +386,10 @@ export default function App() {
     providerPresets.find((p) => p.id === activePresetId) ??
     providerPresets[0] ??
     providerInitial;
+  const backendProviderOverride =
+    backendModelMode === "personal" && activePreset.apiKey?.trim()
+      ? activePreset
+      : undefined;
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
   const adminDeviceOnlyAdventureStore = useMemo<AdventureStore>(() => ({
     async list() {
@@ -475,10 +480,10 @@ export default function App() {
       ? createBackendTurnRunner(
         normalizedRuntimeConfig,
         backendSession.sessionToken,
-        backendModelMode === "personal" ? activePreset : undefined,
+        backendProviderOverride,
       )
       : undefined,
-    [activePreset, backendAdventureDataReady, backendModelMode, backendSession, normalizedRuntimeConfig],
+    [backendAdventureDataReady, backendProviderOverride, backendSession, normalizedRuntimeConfig],
   );
   const backendContextPreview = useMemo(
     () => backendAdventureDataReady && backendSession
@@ -488,24 +493,23 @@ export default function App() {
   );
   const backendAiTools = useMemo(() => {
     if (!backendAdventureDataReady || !backendSession) return undefined;
-    const providerOverride = backendModelMode === "personal" ? activePreset : undefined;
     return {
       buildStoryCardMemory: (adventureId: string, request: Parameters<typeof buildBackendStoryCardMemory>[3]) =>
-        buildBackendStoryCardMemory(normalizedRuntimeConfig, backendSession, adventureId, request, providerOverride),
+        buildBackendStoryCardMemory(normalizedRuntimeConfig, backendSession, adventureId, request, backendProviderOverride),
       suggestStoryCardUpdates: (adventureId: string) =>
-        suggestBackendStoryCardUpdates(normalizedRuntimeConfig, backendSession, adventureId, providerOverride),
+        suggestBackendStoryCardUpdates(normalizedRuntimeConfig, backendSession, adventureId, backendProviderOverride),
       reconcileMemory: (adventureId: string, request: Parameters<typeof reconcileBackendMemory>[3]) =>
-        reconcileBackendMemory(normalizedRuntimeConfig, backendSession, adventureId, request, providerOverride),
+        reconcileBackendMemory(normalizedRuntimeConfig, backendSession, adventureId, request, backendProviderOverride),
       auditStoryCards: async (adventureId: string, nTurns: number, includeAI: boolean) =>
-        (await auditBackendStoryCards(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
+        (await auditBackendStoryCards(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride: backendProviderOverride })).recommendations,
       generateBrain: (adventureId: string, name: string) =>
-        generateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, name, providerOverride),
+        generateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, name, backendProviderOverride),
       updateBrain: (adventureId: string, brainId: string) =>
-        updateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, brainId, providerOverride),
+        updateBackendBrain(normalizedRuntimeConfig, backendSession, adventureId, brainId, backendProviderOverride),
       auditBrains: async (adventureId: string, nTurns: number, includeAI: boolean) =>
-        (await auditBackendBrains(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
+        (await auditBackendBrains(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride: backendProviderOverride })).recommendations,
     };
-  }, [activePreset, backendAdventureDataReady, backendModelMode, backendSession, normalizedRuntimeConfig]);
+  }, [backendAdventureDataReady, backendProviderOverride, backendSession, normalizedRuntimeConfig]);
   const reportLibraryError = useCallback((msg: string) => console.error(msg), []);
 
   // Migrate old default font size (15) to new default (20) for existing users
@@ -1557,6 +1561,13 @@ export default function App() {
         onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
         onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
         providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
+        onGenerateAdventureSetup={backendAdventureDataReady && backendSession
+          ? (premise, preferences) => generateBackendAdventureSetup(normalizedRuntimeConfig, backendSession, {
+            premise,
+            preferences,
+            providerOverride: backendProviderOverride,
+          })
+          : undefined}
         embedded={embedded}
         headingEyebrow="Library"
         headingTitle={embedded ? "Adventure Library" : "Choose an adventure"}

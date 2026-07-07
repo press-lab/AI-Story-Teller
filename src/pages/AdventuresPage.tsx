@@ -17,6 +17,8 @@ import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../s
 import { parseAidStoryCards } from "../importers/aidCardParser";
 import {
   runAdventureGen,
+  type AdventureGenPreferences,
+  type AdventureGenResult,
   type AdventureAdultContentMode,
   type AdventurePlayerControlMode,
   type AdventureProseMode,
@@ -57,6 +59,10 @@ interface AdventuresPageProps {
   onLoadSave?: (slot: GitHubSaveSlot) => void;
   onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
+  onGenerateAdventureSetup?: (
+    premise: string,
+    preferences: Partial<AdventureGenPreferences>,
+  ) => Promise<AdventureGenResult>;
   embedded?: boolean;
   loading?: boolean;
   openingAdventureId?: string;
@@ -254,6 +260,7 @@ export function AdventuresPage({
   onLoadSave,
   onDeleteSave,
   providerConfig,
+  onGenerateAdventureSetup,
   embedded = false,
   loading = false,
   openingAdventureId,
@@ -384,6 +391,7 @@ export function AdventuresPage({
   const starterComponents = componentDrafts.map(componentFromDraft).filter((component): component is ComponentEntry => Boolean(component));
   const manualStoryCards = manualStoryCardDrafts.map(storyCardFromDraft).filter((card): card is StoryCard => Boolean(card));
   const totalStoryCardCount = manualStoryCards.length + jsonStoryCards.length;
+  const canGenerateAdventureSetup = Boolean(onGenerateAdventureSetup || providerConfig);
 
   function updateComponentDraft(id: string, patch: Partial<ComponentDraft>) {
     setComponentDrafts((drafts) =>
@@ -500,17 +508,21 @@ export function AdventuresPage({
   }
 
   async function generateAdventure() {
-    if (!providerConfig || !premise.trim()) return;
+    if (!premise.trim()) return;
+    if (!onGenerateAdventureSetup && !providerConfig) return;
     setGenLoading(true);
     setGenError(undefined);
     try {
-      const result = await runAdventureGen(premise, providerConfig, {
+      const preferences: Partial<AdventureGenPreferences> = {
         storyShape,
         proseMode,
         playerControl,
         adultContent,
         boundaries: adultContent === "off" ? "" : adultBoundaries,
-      });
+      };
+      const result = onGenerateAdventureSetup
+        ? await onGenerateAdventureSetup(premise, preferences)
+        : await runAdventureGen(premise, providerConfig!, preferences);
       if (result.title) setTitle(result.title);
       if (result.openingScene) setOpeningScene(result.openingScene);
       setComponentDrafts((existing) => {
@@ -613,7 +625,7 @@ export function AdventuresPage({
           </div>
           {setupError && <p className="error-box">{setupError}</p>}
 
-          {providerConfig && (
+          {canGenerateAdventureSetup && (
             <details className="setup-panel" open={!title || title === "New Adventure"}>
               <summary>Generate with AI</summary>
               <p className="muted">

@@ -28,6 +28,7 @@ import {
   runBackendBrainAudit,
   runBackendBrainGeneration,
   runBackendBrainUpdate,
+  runBackendAdventureGeneration,
   runBackendMemoryReconcile,
   runBackendStoryCardAudit,
   runBackendStoryCardBuilder,
@@ -311,6 +312,27 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     if (route.segments[0] === "scenario-revisions") {
       const session = await requireSession(request, db);
       await handleScenarioRevisionRoute(request, response, route.segments, session, config, db, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/ai/adventure-generation") {
+      const session = await requireSession(request, db);
+      const { body } = await readJsonBody<{
+        premise?: string;
+        preferences?: NonNullable<Parameters<typeof runBackendAdventureGeneration>[3]>;
+        providerOverride?: NonNullable<Parameters<typeof runBackendAdventureGeneration>[5]>;
+      }>(request);
+      const result = await db.updatePersistingOnError((data) =>
+        runBackendAdventureGeneration(
+          data,
+          session.user.id,
+          body.premise ?? "",
+          body.preferences ?? {},
+          config,
+          body.providerOverride,
+        ),
+      );
+      sendJson(response, 200, result, corsHeaders);
       return;
     }
 

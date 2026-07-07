@@ -1,4 +1,5 @@
 import type { Adventure, AdventureAction, ChatMessage, ComponentEntry, ContextBuildResult, MemoryReconcileRequest, ProviderConfig, ProviderUsage, StoryCardAIBuilderRequest } from "../../src/types/adventure";
+import { runAdventureGen, type AdventureGenPreferences, type AdventureGenResult } from "../../src/ai/adventureGen";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { parseAidStoryCards } from "../../src/importers/aidCardParser";
 import { parseAidStoryText } from "../../src/importers/aidStoryParser";
@@ -454,6 +455,51 @@ export async function runBackendBrainAudit(
   return {
     recommendations: await runBrainAudit(record.adventure, providerConfig, nTurns, { includeAI }),
   };
+}
+
+export async function runBackendAdventureGeneration(
+  data: LocalDbData,
+  ownerUserId: string,
+  premise: string,
+  preferences: Partial<AdventureGenPreferences>,
+  config: ApiConfig,
+  providerOverride?: Partial<ProviderConfig>,
+): Promise<AdventureGenResult> {
+  assertCanGenerate(data, ownerUserId);
+  const normalizedPremise = premise.trim();
+  if (!normalizedPremise) throw new Error("Enter a premise before generating.");
+
+  const inputDecision = recordPolicyDecision(data, {
+    gate: "input",
+    text: normalizedPremise,
+    userId: ownerUserId,
+    subjectType: "adventureGeneration",
+    policyMode: config.policyMode,
+  });
+  assertPolicyAllowed(inputDecision);
+
+  const result = await runAdventureGen(
+    normalizedPremise,
+    backendProviderConfig(data, config, providerOverride),
+    preferences,
+  );
+
+  const outputText = [
+    result.title,
+    result.openingScene,
+    ...result.components.map((component) => component.content),
+    ...result.storyCards.map((card) => card.content),
+  ].join("\n\n");
+  const outputDecision = recordPolicyDecision(data, {
+    gate: "output",
+    text: outputText,
+    userId: ownerUserId,
+    subjectType: "adventureGeneration",
+    policyMode: config.policyMode,
+  });
+  assertPolicyAllowed(outputDecision);
+
+  return result;
 }
 
 export async function runBackendTurn(

@@ -695,6 +695,79 @@ describe("local API policy gates and sharing", () => {
     expect(providerCalls.every((call) => call.authorization === "Bearer server-platform-key")).toBe(true);
   });
 
+  it("generates adventure setup through the backend provider key", async () => {
+    const realFetch = globalThis.fetch;
+    const providerCalls: Array<{ authorization?: string; body: string }> = [];
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    api.config.providerConfig.model = "server-model";
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (url.startsWith("https://provider.test")) {
+        providerCalls.push({
+          authorization: init?.headers instanceof Headers
+            ? init.headers.get("Authorization") ?? undefined
+            : (init?.headers as Record<string, string> | undefined)?.Authorization,
+          body: String(init?.body ?? ""),
+        });
+        return new Response(JSON.stringify({
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                title: "Backend Draft",
+                openingScene: "The backend writes the opening.",
+                components: [{
+                  title: "Plot",
+                  type: "plotEssentials",
+                  content: "The premise is active.",
+                  alwaysOn: true,
+                  pinned: true,
+                  priority: 80,
+                }],
+                storyCards: [{
+                  title: "Backend Ally",
+                  type: "character",
+                  memoryMode: "static",
+                  keys: ["backend ally"],
+                  content: "A server-generated ally.",
+                  priority: 0,
+                }],
+              }),
+            },
+          }],
+          usage: { prompt_tokens: 12, completion_tokens: 8, total_tokens: 20 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
+    const sessionToken = await passwordSession("adventure-gen@example.com");
+    const generated = await requestJson<{
+      title: string;
+      openingScene: string;
+      components: Array<{ type: string; content: string }>;
+      storyCards: Array<{ title: string }>;
+    }>("/ai/adventure-generation", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        premise: "Make a compact test scenario.",
+        preferences: { storyShape: "balanced", proseMode: "cinematic" },
+      }),
+    });
+
+    expect(generated.status).toBe(200);
+    expect(generated.body).toMatchObject({
+      title: "Backend Draft",
+      openingScene: "The backend writes the opening.",
+      components: [{ type: "plotEssentials", content: "The premise is active." }],
+      storyCards: [{ title: "Backend Ally" }],
+    });
+    expect(providerCalls).toHaveLength(1);
+    expect(providerCalls[0].authorization).toBe("Bearer server-platform-key");
+    expect(providerCalls[0].body).toContain("Make a compact test scenario.");
+  });
+
   it("creates account safety events and restrictions for severe reviewed policy hits", async () => {
     const sessionToken = await passwordSession("safety@example.com");
     const adventure = createDefaultAdventure("Safety Test");

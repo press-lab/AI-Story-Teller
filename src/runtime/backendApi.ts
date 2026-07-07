@@ -1,4 +1,5 @@
 import type { AdventureSummary } from "../db/adventureDb";
+import type { AdventureGenPreferences, AdventureGenResult } from "../ai/adventureGen";
 import type { BrainAuditRecommendation } from "../memory/brainAudit";
 import type { AuditRecommendation } from "../memory/storyCardAudit";
 import type { Adventure, AdventureThumbnailImage, MemoryReconcileRequest, ProviderConfig, StoryCardAIBuilderRequest } from "../types/adventure";
@@ -391,6 +392,22 @@ export function loadBackendPublicProfile(config: RuntimeConfig, session: Backend
 export function loadBackendExploreScenarios(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<{ scenarios: BackendExploreScenarioSummary[] }>(config, "/explore/scenarios", {
     headers: authHeaders(session),
+  });
+}
+
+export function generateBackendAdventureSetup(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  input: {
+    premise: string;
+    preferences: Partial<AdventureGenPreferences>;
+    providerOverride?: Partial<ProviderConfig>;
+  },
+) {
+  return apiJson<AdventureGenResult>(config, "/ai/adventure-generation", {
+    method: "POST",
+    headers: authHeaders(session),
+    body: JSON.stringify(input),
   });
 }
 
