@@ -15,6 +15,13 @@ interface DuplicateWarning {
 }
 
 type ContextDisplayFilter = "all" | "duplicates";
+type NavigableContextSource = Extract<ContextItem["sourceType"], "component" | "storyCard">;
+
+interface ContextSourceNavigation {
+  sourceType: NavigableContextSource;
+  id: string;
+  title: string;
+}
 
 function detectDuplicateContent(sections: ContextSection[]): DuplicateWarning[] {
   const items = sections.flatMap((s) =>
@@ -40,6 +47,10 @@ function canCondense(sourceType: ContextItem["sourceType"]): boolean {
 
 function canUnpin(item: ContextItem): boolean {
   return item.pinned && (item.sourceType === "storyCard" || item.sourceType === "component");
+}
+
+function canOpenSource(item: ContextItem): item is ContextItem & { sourceType: NavigableContextSource } {
+  return item.sourceType === "storyCard" || item.sourceType === "component";
 }
 
 function unpinActionLabel(item: ContextItem): string {
@@ -174,9 +185,10 @@ interface ContextPreviewPageProps extends AdventurePageProps {
   contextResult?: ContextBuildResult;
   onBuildContext: () => void;
   providerConfig?: ProviderConfig;
+  onOpenSourceItem?: (source: ContextSourceNavigation) => void;
 }
 
-export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuildContext, providerConfig }: ContextPreviewPageProps) {
+export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuildContext, providerConfig, onOpenSourceItem }: ContextPreviewPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [preferLivePreview, setPreferLivePreview] = useState(false);
   const result = preferLivePreview ? buildContext(adventure) : (contextResult ?? buildContext(adventure));
@@ -536,7 +548,23 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
                         onClick={() => setExpandedId(isExpanded ? undefined : item.id)}
                       >
                         <td className="col-section muted">{sectionShortLabel(section.id)}</td>
-                        <td className="col-title">{item.title}</td>
+                        <td className="col-title">
+                          {canOpenSource(item) && onOpenSourceItem ? (
+                            <button
+                              type="button"
+                              className="context-source-link"
+                              aria-label={`Open source for ${item.title}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                onOpenSourceItem({ sourceType: item.sourceType, id: item.id, title: item.title });
+                              }}
+                            >
+                              {item.title}
+                            </button>
+                          ) : (
+                            item.title
+                          )}
+                        </td>
                         <td className="col-tokens">{item.tokenEstimate}</td>
                         <td className="col-priority">{item.priority > 0 ? item.priority : ""}</td>
                         <td className="col-flags">

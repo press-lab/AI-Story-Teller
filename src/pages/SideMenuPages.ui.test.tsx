@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -67,6 +67,69 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Additional Triggers / Aliases"), "Blazer, Blonde Blazer, Mandy");
     expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
+  });
+
+  it("opens and scrolls focused Story Card and Plot Component sources", async () => {
+    const originalScrollIntoView = Element.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    try {
+      const onFocusedCard = vi.fn();
+      const storyAdventure: Adventure = {
+        ...seedAdventure(),
+        storyCards: [
+          makeStoryCard({
+            id: "card-focus",
+            title: "Focused Card",
+            content: "Focused card context.",
+            active: true,
+          }),
+        ],
+      };
+      render(
+        <StoryCardsPage
+          adventure={storyAdventure}
+          dispatch={() => undefined}
+          focusCard={{ id: "card-focus", requestId: 1 }}
+          onFocusedCard={onFocusedCard}
+        />,
+      );
+
+      await waitFor(() => expect(onFocusedCard).toHaveBeenCalledWith("card-focus"));
+      expect(document.getElementById("story-card-source-card-focus")).toHaveAttribute("open");
+      expect(scrollIntoView).toHaveBeenCalled();
+      cleanup();
+
+      scrollIntoView.mockClear();
+      const onFocusedComponent = vi.fn();
+      const componentAdventure: Adventure = {
+        ...seedAdventure(),
+        components: [
+          makeComponent({
+            id: "component-focus",
+            title: "Focused Component",
+            type: "custom",
+            content: "Focused component context.",
+            active: true,
+          }),
+        ],
+      };
+      render(
+        <ComponentsPage
+          adventure={componentAdventure}
+          dispatch={() => undefined}
+          focusComponent={{ id: "component-focus", requestId: 1 }}
+          onFocusedComponent={onFocusedComponent}
+        />,
+      );
+
+      await waitFor(() => expect(onFocusedComponent).toHaveBeenCalledWith("component-focus"));
+      expect(document.getElementById("component-source-component-focus")).toHaveAttribute("open");
+      expect(scrollIntoView).toHaveBeenCalled();
+    } finally {
+      Element.prototype.scrollIntoView = originalScrollIntoView;
+    }
   });
 
   it("renders the Arc Director on a Current Arc component and the AI generators", async () => {

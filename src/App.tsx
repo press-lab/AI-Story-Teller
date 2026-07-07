@@ -121,6 +121,12 @@ type EditorTabId =
   | "cloudSaves"
   | "importExport";
 
+type EditorFocusTarget = {
+  sourceType: "component" | "storyCard";
+  id: string;
+  requestId: number;
+};
+
 type BackendModelMode = "platform" | "personal";
 
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
@@ -303,6 +309,7 @@ export default function App() {
   const { confirmAction, notify } = useActionFeedback();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
+  const [editorFocusTarget, setEditorFocusTarget] = useState<EditorFocusTarget | undefined>();
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
   const [navForceVisible, setNavForceVisible] = useState(false);
@@ -647,6 +654,23 @@ export default function App() {
     setEditorTab(tabId);
     navigateTo("edit");
   }
+
+  function openEditorSourceItem(source: { sourceType: "component" | "storyCard"; id: string }) {
+    setEditorFocusTarget({ ...source, requestId: Date.now() });
+    openEditor(source.sourceType === "storyCard" ? "storyCards" : "components");
+  }
+
+  const clearFocusedStoryCard = useCallback((cardId: string) => {
+    setEditorFocusTarget((current) =>
+      current?.sourceType === "storyCard" && current.id === cardId ? undefined : current,
+    );
+  }, []);
+
+  const clearFocusedComponent = useCallback((componentId: string) => {
+    setEditorFocusTarget((current) =>
+      current?.sourceType === "component" && current.id === componentId ? undefined : current,
+    );
+  }, []);
 
   function openTab(tabId: TabId) {
     if (tabId !== "play") setPlayPanelTab(undefined);
@@ -1379,11 +1403,11 @@ export default function App() {
       case "chronicle":
         return <ChroniclePage {...common} />;
       case "context":
-        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig} />;
+        return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig} onOpenSourceItem={openEditorSourceItem} />;
       case "components":
-        return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onBuildPlotMemory={runtime.buildPlotMemory} onAuditComponents={runtime.auditComponents} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} onGenerateComponent={runtime.generateComponent} onGenerateArc={runtime.generateArc} onProposeArcFromHistory={runtime.proposeArcFromHistory} />;
+        return <ComponentsPage {...common} loading={runtime.loading} onSuggestPlotUpdates={runtime.suggestPlotUpdates} onBuildPlotMemory={runtime.buildPlotMemory} onAuditComponents={runtime.auditComponents} onRegeneratePlotEssentials={runtime.regeneratePlotEssentials} onUpdatePEComponentNow={runtime.updatePEComponentNow} onGenerateComponent={runtime.generateComponent} onGenerateArc={runtime.generateArc} onProposeArcFromHistory={runtime.proposeArcFromHistory} focusComponent={editorFocusTarget?.sourceType === "component" ? editorFocusTarget : undefined} onFocusedComponent={clearFocusedComponent} />;
       case "storyCards":
-        return <StoryCardsPage {...common} loading={runtime.loading} onBuildStoryCardMemory={runtime.buildStoryCardMemory} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} />;
+        return <StoryCardsPage {...common} loading={runtime.loading} onBuildStoryCardMemory={runtime.buildStoryCardMemory} onSuggestCardUpdates={runtime.suggestCardUpdates} onAuditStoryCards={runtime.auditStoryCards} focusCard={editorFocusTarget?.sourceType === "storyCard" ? editorFocusTarget : undefined} onFocusedCard={clearFocusedStoryCard} />;
       case "brains":
         return <BrainsPage {...common} loading={runtime.loading} onUpdateBrainNow={runtime.updateBrainNow} onAuditBrains={runtime.auditBrains} onGenerateBrain={runtime.generateBrainFromName} />;
       case "triggers":

@@ -4971,6 +4971,22 @@ summary {
 .context-table .col-flags   { width: 48px; text-align: center; }
 .context-table .col-policy  { width: 90px; }
 .context-table .col-actions { width: 86px; }
+.context-source-link {
+  min-height: 0;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--button-text);
+  padding: 0;
+  font-weight: 600;
+  text-align: left;
+  white-space: normal;
+}
+.context-source-link:hover {
+  background: transparent;
+  color: var(--active-bg);
+  text-decoration: underline;
+}
 .context-expanded-row td {
   padding: 0 0 0.75rem;
   background: var(--surface);

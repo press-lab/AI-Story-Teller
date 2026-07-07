@@ -179,6 +179,8 @@ interface StoryCardsPageProps extends AdventurePageProps {
   onBuildStoryCardMemory?: (request: StoryCardAIBuilderRequest) => Promise<void>;
   onSuggestCardUpdates?: () => Promise<void>;
   onAuditStoryCards?: (nTurns: number, includeAI: boolean) => Promise<AuditRecommendation[]>;
+  focusCard?: { id: string; requestId: number };
+  onFocusedCard?: (cardId: string) => void;
 }
 
 type AuditState = {
@@ -194,6 +196,8 @@ export function StoryCardsPage({
   onBuildStoryCardMemory,
   onSuggestCardUpdates,
   onAuditStoryCards,
+  focusCard,
+  onFocusedCard,
 }: StoryCardsPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [importText, setImportText] = useState("");
@@ -304,6 +308,25 @@ export function StoryCardsPage({
     newCardRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
     setNewCardId(undefined);
   }, [newCardId, adventure.storyCards.length]);
+
+  useEffect(() => {
+    if (!focusCard) return;
+    const target = adventure.storyCards.find((card) => card.id === focusCard.id);
+    if (!target) {
+      onFocusedCard?.(focusCard.id);
+      return;
+    }
+    setSearch("");
+    setStatusFilter("all");
+    setMemoryFilter("all");
+    setFlagFilter("all");
+    setOpenCardId(focusCard.id);
+    const timeout = window.setTimeout(() => {
+      document.getElementById(`story-card-source-${focusCard.id}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      onFocusedCard?.(focusCard.id);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [focusCard, adventure.storyCards, onFocusedCard]);
 
   function importCards() {
     try {
@@ -849,6 +872,7 @@ export function StoryCardsPage({
             {cards.map((card) => (
               <details
                 key={card.id}
+                id={`story-card-source-${card.id}`}
                 ref={card.id === newCardId ? newCardRef : null}
                 className="card story-card-item split-editor-item story-card-editor-item"
                 open={openCardId === card.id}

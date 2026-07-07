@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
 import type { ComponentAuditRecommendation } from "../memory/componentAudit";
 import { makeComponent } from "../state/defaults";
@@ -331,6 +331,8 @@ interface ComponentsPageProps extends AdventurePageProps {
   onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
   /** Draft an arc from recent play and drop it in the Memory Inbox for approval. */
   onProposeArcFromHistory?: (componentId: string) => Promise<void>;
+  focusComponent?: { id: string; requestId: number };
+  onFocusedComponent?: (componentId: string) => void;
 }
 
 type ComponentAuditState = {
@@ -362,7 +364,7 @@ const PLOT_GROUP_DEFINITIONS: Array<{
   },
 ];
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory, focusComponent, onFocusedComponent }: ComponentsPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [search, setSearch] = useState("");
   const [plotBuilderDescription, setPlotBuilderDescription] = useState("");
@@ -544,6 +546,22 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   }
   const plotBuilderTargetComponents = adventure.components.filter((component) => component.type === plotBuilderTarget);
   const selectedPlotBuilderComponentId = plotBuilderTargetComponentId || plotBuilderTargetComponents[0]?.id;
+
+  useEffect(() => {
+    if (!focusComponent) return;
+    const target = adventure.components.find((component) => component.id === focusComponent.id);
+    if (!target) {
+      onFocusedComponent?.(focusComponent.id);
+      return;
+    }
+    setSearch("");
+    setOpenComponentId(focusComponent.id);
+    const timeout = window.setTimeout(() => {
+      document.getElementById(`component-source-${focusComponent.id}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      onFocusedComponent?.(focusComponent.id);
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [focusComponent, adventure.components, onFocusedComponent]);
 
   async function handleBuildPlotMemory() {
     if (!onBuildPlotMemory || !plotBuilderDescription.trim()) return;
@@ -741,6 +759,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         {group.components.map((component) => (
           <details
             key={component.id}
+            id={`component-source-${component.id}`}
             className="card story-card-item split-editor-item component-editor-item"
             open={openComponentId === component.id}
           >

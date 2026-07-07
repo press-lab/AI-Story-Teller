@@ -200,6 +200,56 @@ describe("ContextPreviewPage condense", () => {
     expect(within(screen.getByRole("table")).getByText("Independent Signal")).toBeInTheDocument();
   });
 
+  it("opens Story Card and Plot Component sources from context item titles", async () => {
+    const user = userEvent.setup();
+    const onOpenSourceItem = vi.fn();
+    const adventure = {
+      ...createDefaultAdventure("Context Source Test"),
+      components: [
+        makeComponent({
+          id: "component-ward-key",
+          title: "Ward Key Plot",
+          type: "plotEssentials",
+          content: "The red ward key is the immediate pressure point in the east tower archive.",
+          alwaysOn: true,
+          active: true,
+        }),
+      ],
+      storyCards: [
+        makeStoryCard({
+          id: "card-ward-key",
+          title: "Red Ward Key",
+          content: "The red ward key opens the archive and must stay away from Red Ring scouts.",
+          active: true,
+          inclusionPolicy: "always",
+        }),
+      ],
+    };
+
+    renderWithAdventure((current, dispatch) => (
+      <ContextPreviewPage
+        adventure={current}
+        dispatch={dispatch}
+        onBuildContext={() => undefined}
+        onOpenSourceItem={onOpenSourceItem}
+      />
+    ), adventure);
+
+    await user.click(screen.getByRole("button", { name: "Open source for Ward Key Plot" }));
+    expect(onOpenSourceItem).toHaveBeenLastCalledWith({
+      sourceType: "component",
+      id: "component-ward-key",
+      title: "Ward Key Plot",
+    });
+
+    await user.click(screen.getByRole("button", { name: "Open source for Red Ward Key" }));
+    expect(onOpenSourceItem).toHaveBeenLastCalledWith({
+      sourceType: "storyCard",
+      id: "card-ward-key",
+      title: "Red Ward Key",
+    });
+  });
+
   it("unpins Story Cards and Plot Components from context preview actions", async () => {
     const user = userEvent.setup();
     const adventure = {
