@@ -152,6 +152,8 @@ describe("ProfilePage", () => {
     const onPublishAdventure = vi.fn(async () => undefined);
     const onPublishScenarioRevision = vi.fn(async () => undefined);
     const onUnpublishScenarioRevision = vi.fn(async () => undefined);
+    const onStartScenario = vi.fn(async () => undefined);
+    const onDeleteScenario = vi.fn(async () => undefined);
     const onLogout = vi.fn();
 
     render(
@@ -165,6 +167,8 @@ describe("ProfilePage", () => {
         onPublishAdventure={onPublishAdventure}
         onPublishScenarioRevision={onPublishScenarioRevision}
         onUnpublishScenarioRevision={onUnpublishScenarioRevision}
+        onStartScenario={onStartScenario}
+        onDeleteScenario={onDeleteScenario}
         onLogout={onLogout}
       />,
     );
@@ -176,11 +180,17 @@ describe("ProfilePage", () => {
     expect(screen.getByAltText("Draft scenario cover")).toBeInTheDocument();
     expect(screen.getByAltText("Private adventure cover")).toBeInTheDocument();
 
+    await user.click(screen.getByRole("button", { name: "Start adventure from Draft Scenario" }));
+    expect(onStartScenario).toHaveBeenCalledWith("revision-1");
+
     await user.click(screen.getByRole("button", { name: "Publish Latest" }));
     expect(onPublishScenarioRevision).toHaveBeenCalledWith("revision-1");
 
     await user.click(screen.getByRole("button", { name: "Unpublish" }));
     expect(onUnpublishScenarioRevision).toHaveBeenCalledWith("revision-2");
+
+    await user.click(screen.getByRole("button", { name: "Delete scenario Draft Scenario" }));
+    expect(onDeleteScenario).toHaveBeenCalledWith("scenario-1");
 
     await user.click(screen.getByRole("button", { name: "Open" }));
     expect(onOpenAdventure).toHaveBeenCalledWith("adventure-1");

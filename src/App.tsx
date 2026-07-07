@@ -55,6 +55,7 @@ import {
   createBackendScenario,
   createBackendScenarioRevision,
   createBackendAdminRestriction,
+  deleteBackendScenario,
   disableBackendInvite,
   forkBackendScenarioRevision,
   generateBackendBrain,
@@ -992,10 +993,38 @@ export default function App() {
     }
   }
 
+  async function deleteScenarioFromProfile(scenarioId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before deleting a scenario.");
+    const scenario = backendProfile?.scenarios.find((entry) => entry.id === scenarioId);
+    const confirmed = await confirmAction({
+      title: "Delete scenario?",
+      message: `Delete "${scenario?.title ?? "this scenario"}" from your profile? Published revisions are removed from Explore. Private adventures already started from it are not deleted.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return undefined;
+    setBackendProfileStatus("Deleting scenario...");
+    notify("Deleting scenario...", { type: "info" });
+    try {
+      const deleted = await deleteBackendScenario(normalizedRuntimeConfig, backendSession, scenarioId);
+      await refreshBackendProfile();
+      await refreshBackendExploreScenarios();
+      setBackendProfileStatus("Deleted scenario.");
+      notify("Deleted scenario.", { type: "success" });
+      return deleted;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scenario delete failed.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+      throw error;
+    }
+  }
+
   async function startBackendExploreScenario(revisionId: string) {
     if (!backendSession) throw new Error("Sign in to the local backend before starting a shared scenario.");
     setBackendExploreStatus("Starting scenario...");
-    notify("Starting shared scenario...", { type: "info" });
+    setBackendProfileStatus("Starting scenario...");
+    notify("Starting scenario...", { type: "info" });
     try {
       const next = await forkBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
       setAdventure(next);
@@ -1258,6 +1287,9 @@ export default function App() {
             await unpublishScenarioRevisionFromProfile(revisionId);
           } : undefined}
           onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
+          onDeleteScenario={backendAdventureDataReady ? async (scenarioId) => {
+            await deleteScenarioFromProfile(scenarioId);
+          } : undefined}
           onViewOwnProfile={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);

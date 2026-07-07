@@ -131,13 +131,45 @@ export function unpublishScenarioRevision(
   return { revision, disabledShareLinkCount };
 }
 
+export function deleteScenarioDraft(
+  data: LocalDbData,
+  userId: string,
+  scenarioId: string,
+): { scenarioId: string; deletedRevisionCount: number; deletedShareLinkCount: number } {
+  const draftIndex = data.scenarioDrafts.findIndex((entry) => entry.id === scenarioId && entry.ownerUserId === userId);
+  if (draftIndex < 0) throw new Error("Scenario draft not found.");
+
+  const revisionIds = new Set(
+    data.scenarioRevisions
+      .filter((entry) => entry.scenarioId === scenarioId && entry.ownerUserId === userId)
+      .map((entry) => entry.id),
+  );
+  data.scenarioDrafts.splice(draftIndex, 1);
+  data.scenarioRevisions = data.scenarioRevisions.filter(
+    (entry) => !(entry.scenarioId === scenarioId && entry.ownerUserId === userId),
+  );
+
+  const shareLinkCountBefore = data.shareLinks.length;
+  data.shareLinks = data.shareLinks.filter(
+    (link) => !(link.ownerUserId === userId && link.targetType === "scenarioRevision" && revisionIds.has(link.targetId)),
+  );
+
+  return {
+    scenarioId,
+    deletedRevisionCount: revisionIds.size,
+    deletedShareLinkCount: shareLinkCountBefore - data.shareLinks.length,
+  };
+}
+
 export function createAdventureFromScenarioRevision(
   data: LocalDbData,
   userId: string,
   revisionId: string,
 ): Adventure {
-  const revision = data.scenarioRevisions.find((entry) => entry.id === revisionId && entry.status === "published");
-  if (!revision) throw new Error("Published scenario revision not found.");
+  const revision = data.scenarioRevisions.find((entry) => entry.id === revisionId);
+  if (!revision || (revision.status !== "published" && revision.ownerUserId !== userId)) {
+    throw new Error("Published scenario revision not found.");
+  }
 
   const content = asScenarioContent(revision.content);
   const base = createDefaultAdventure(revision.title);
@@ -153,7 +185,8 @@ export function createAdventureFromScenarioRevision(
     sourceScenarioOwnerUserId: revision.ownerUserId,
     sourceScenarioVersion: revision.version,
     sourceScenarioTitle: revision.title,
-    startedFromExplore: true,
+    startedFromExplore: revision.status === "published",
+    startedFromProfileScenario: revision.ownerUserId === userId,
     userVariablesSupported: false,
     playerEditsRecommended: true,
     startedByUserId: userId,

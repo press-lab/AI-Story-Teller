@@ -624,6 +624,17 @@ export function createBackendScenarioRevision(
   });
 }
 
+export function deleteBackendScenario(config: RuntimeConfig, session: BackendSessionState, scenarioId: string) {
+  return apiJson<{ scenarioId: string; deletedRevisionCount: number; deletedShareLinkCount: number }>(
+    config,
+    `/scenarios/${encodeURIComponent(scenarioId)}`,
+    {
+      method: "DELETE",
+      headers: authHeaders(session),
+    },
+  );
+}
+
 export function publishBackendScenarioRevision(config: RuntimeConfig, session: BackendSessionState, revisionId: string) {
   return apiJson<{ token: string; revision: { status: string } }>(config, `/scenario-revisions/${encodeURIComponent(revisionId)}/publish`, {
     method: "POST",

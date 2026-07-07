@@ -797,12 +797,52 @@ describe("local API policy gates and sharing", () => {
       latestRevision: { status: "draft" },
     });
 
+    const ownerFork = await requestJson<{
+      id: string;
+      title: string;
+      openingScene: string;
+      metadata: {
+        sourceScenarioRevisionId?: string;
+        startedFromExplore?: boolean;
+        startedFromProfileScenario?: boolean;
+      };
+    }>(`/scenario-revisions/${revision.body.id}/fork`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(ownerFork.status).toBe(201);
+    expect(ownerFork.body.title).toBe("Library Scenario");
+    expect(ownerFork.body.openingScene).toBe("The lights come up.");
+    expect(ownerFork.body.metadata.sourceScenarioRevisionId).toBe(revision.body.id);
+    expect(ownerFork.body.metadata.startedFromExplore).toBe(false);
+    expect(ownerFork.body.metadata.startedFromProfileScenario).toBe(true);
+
     const blockedFork = await requestJson<{ error: string }>(`/scenario-revisions/${revision.body.id}/fork`, {
       method: "POST",
       headers: { Authorization: `Bearer ${testerSession}` },
     });
     expect(blockedFork.status).toBe(404);
     expect(blockedFork.body.error).toMatch(/published scenario revision not found/i);
+
+    const deleted = await requestJson<{
+      scenarioId: string;
+      deletedRevisionCount: number;
+      deletedShareLinkCount: number;
+    }>(`/scenarios/${draft.body.id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(deleted.status).toBe(200);
+    expect(deleted.body).toMatchObject({
+      scenarioId: draft.body.id,
+      deletedRevisionCount: 1,
+      deletedShareLinkCount: 1,
+    });
+
+    const profileAfterDelete = await requestJson<{ scenarios: unknown[] }>("/profile/me", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(profileAfterDelete.body.scenarios).toEqual([]);
   });
 
   it("returns profile adventure/scenario summaries and explore scenario listings", async () => {

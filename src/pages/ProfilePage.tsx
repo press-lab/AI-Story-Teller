@@ -24,6 +24,7 @@ interface ProfilePageProps {
   onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onUnpublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onStartScenario?: (revisionId: string) => Promise<void>;
+  onDeleteScenario?: (scenarioId: string) => Promise<void>;
   onViewOwnProfile?: () => void;
   onOpenAdmin?: () => void;
   onLogout?: () => void;
@@ -53,6 +54,7 @@ export function ProfilePage({
   onPublishScenarioRevision,
   onUnpublishScenarioRevision,
   onStartScenario,
+  onDeleteScenario,
   onViewOwnProfile,
   onOpenAdmin,
   onLogout,
@@ -185,7 +187,7 @@ export function ProfilePage({
             <p className="muted">
               {isPublicProfile
                 ? "Published scenarios from this creator. Starting one copies the setup, not their private transcripts."
-                : "Published scenarios appear in Explore. They copy setup, not private transcripts."}
+                : "Scenarios are reusable setups. Start one to create a private adventure; publish one to list it in Explore."}
             </p>
           </div>
         </div>
@@ -229,36 +231,58 @@ export function ProfilePage({
                       )}
                     </div>
                   </div>
-                  {scenario.latestRevision && (
-                    <div className="library-card-actions">
-                      {scenario.latestRevision.status === "draft" && (
+                  <div className="library-card-actions">
+                    {scenario.latestRevision ? (
+                      <>
                         <button
                           type="button"
                           className="primary-action"
-                          onClick={() => void onPublishScenarioRevision?.(scenario.latestRevision!.id)}
-                          disabled={!onPublishScenarioRevision}
+                          aria-label={`Start adventure from ${scenario.title}`}
+                          onClick={() => void onStartScenario?.(scenario.latestRevision!.id)}
+                          disabled={!onStartScenario}
                         >
-                          Publish Latest
+                          Start Adventure
                         </button>
-                      )}
-                      {scenario.latestRevision.status === "published" && (
-                        <>
-                          <span className="status-pill">Published in Explore</span>
+                        {scenario.latestRevision.status === "draft" && (
                           <button
                             type="button"
-                            className="danger"
-                            onClick={() => void onUnpublishScenarioRevision?.(scenario.latestRevision!.id)}
-                            disabled={!onUnpublishScenarioRevision}
+                            className="primary-action"
+                            onClick={() => void onPublishScenarioRevision?.(scenario.latestRevision!.id)}
+                            disabled={!onPublishScenarioRevision}
                           >
-                            Unpublish
+                            Publish Latest
                           </button>
-                        </>
-                      )}
-                      {scenario.latestRevision.status === "quarantined" && (
-                        <span className="status-pill">Needs review</span>
-                      )}
-                    </div>
-                  )}
+                        )}
+                        {scenario.latestRevision.status === "published" && (
+                          <>
+                            <span className="status-pill">Published in Explore</span>
+                            <button
+                              type="button"
+                              className="danger"
+                              onClick={() => void onUnpublishScenarioRevision?.(scenario.latestRevision!.id)}
+                              disabled={!onUnpublishScenarioRevision}
+                            >
+                              Unpublish
+                            </button>
+                          </>
+                        )}
+                        {scenario.latestRevision.status === "quarantined" && (
+                          <span className="status-pill">Needs review</span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="status-pill">No revision</span>
+                    )}
+                    <button
+                      type="button"
+                      className="danger"
+                      aria-label={`Delete scenario ${scenario.title}`}
+                      onClick={() => void onDeleteScenario?.(scenario.id)}
+                      disabled={!onDeleteScenario}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}

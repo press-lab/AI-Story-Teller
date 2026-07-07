@@ -12,6 +12,22 @@ adventureReducer(state: Adventure, action: AdventureAction): Adventure
 
 Do not directly mutate adventure objects in components, trigger engines, importers, or provider code. UI controls dispatch typed actions. Runtime flows may call the reducer repeatedly to produce the next immutable adventure state.
 
+## Profile Scenarios vs Adventures
+
+A profile Scenario is a reusable template, not a playable save. A playable save is an Adventure.
+
+For backend profile-only scenario requests, prefer the API path:
+
+1. `POST /scenarios` creates the profile scenario draft metadata.
+2. `POST /scenarios/:scenarioId/revisions` stores the playable scenario setup payload.
+3. `POST /scenario-revisions/:revisionId/fork` starts a private Adventure from that revision.
+4. `POST /scenario-revisions/:revisionId/publish` publishes the revision to Explore.
+5. `DELETE /scenarios/:scenarioId` removes the profile scenario, its revisions, and related share links.
+
+Do not satisfy a profile-only scenario request by adding a premade under `src/dev` unless the user explicitly asks for a built-in premade. Do not insert only a `scenarioDrafts` row; Profile may list it, but there is no playable setup without a matching `scenarioRevisions` row.
+
+If a direct Postgres repair is unavoidable, `aist_records` must use collection `scenarioDrafts` with `data.ownerUserId` and collection `scenarioRevisions` with matching `data.ownerUserId` and `data.scenarioId`. The revision `data.content` is the template copied into an Adventure and should contain reusable setup surfaces such as `openingScene`, `metadata`, `components`, `storyCards`, `brains`, `triggerRules`, and optional `thumbnailImage`. Do not use ad hoc fields like `ownerId` or `scenarioDraftId`.
+
 ## Important Folders
 
 - `src/types`: strong shared TypeScript types for adventure data, context, providers, triggers, legacy quest fields, and reducer actions.

@@ -41,6 +41,7 @@ import {
   createAdventureFromScenarioRevision,
   createScenarioDraft,
   createScenarioRevision,
+  deleteScenarioDraft,
   publishScenarioRevision,
   unpublishScenarioRevision,
 } from "./scenarioSharing";
@@ -805,6 +806,13 @@ async function handleScenarioRoute(
       return createScenarioRevision(data, session.user.id, segments[1], body, config);
     });
     sendJson(response, 201, revision, corsHeaders);
+    return;
+  }
+  if (request.method === "DELETE" && segments.length === 2) {
+    const result = await db.updatePersistingOnError((data) =>
+      deleteScenarioDraft(data, session.user.id, segments[1]),
+    );
+    sendJson(response, 200, result, corsHeaders);
     return;
   }
   throw new Error("Scenario route not found.");
