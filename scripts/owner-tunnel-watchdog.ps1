@@ -3,7 +3,8 @@ param(
   [string]$Branch = "backend-local-implementation",
   [int]$CheckSeconds = 60,
   [switch]$Once,
-  [switch]$ForceDeploy
+  [switch]$ForceDeploy,
+  [switch]$Detached
 )
 
 $ErrorActionPreference = "Stop"
@@ -22,13 +23,41 @@ $TunnelErrLog = Join-Path $LocalDir "cloudflared.err.log"
 $TunnelResetLog = Join-Path $LocalDir "cloudflare-reset-events.log"
 $TunnelPidFile = Join-Path $LocalDir "cloudflared.pid"
 $WatchdogPidFile = Join-Path $LocalDir "owner-watchdog.pid"
+$WatchdogOutLog = Join-Path $LocalDir "owner-watch.out.log"
+$WatchdogErrLog = Join-Path $LocalDir "owner-watch.err.log"
 $StateFile = Join-Path $LocalDir "pages-api-url.txt"
 $CloudflaredDownloadUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 $forceDeployRequested = [bool]$ForceDeploy
 
 function Write-OwnerLog([string]$Message) {
   $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-  Write-Host "[$timestamp] $Message"
+  $line = "[$timestamp] $Message"
+  try {
+    New-Item -ItemType Directory -Force $LocalDir | Out-Null
+    Add-SharedLogLine $WatchdogOutLog $line
+  } catch {
+    # Keep the watchdog running even if logging fails.
+  }
+  if (-not $Detached) { Write-Host $line }
+}
+
+function Write-OwnerErrorLog([string]$Message) {
+  try {
+    New-Item -ItemType Directory -Force $LocalDir | Out-Null
+    Add-SharedLogLine $WatchdogErrLog $Message
+  } catch {
+    # Keep the original failure as the important one.
+  }
+}
+
+function Add-SharedLogLine([string]$Path, [string]$Line) {
+  $bytes = [System.Text.Encoding]::UTF8.GetBytes($Line + [Environment]::NewLine)
+  $stream = [System.IO.File]::Open($Path, [System.IO.FileMode]::Append, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
+  try {
+    $stream.Write($bytes, 0, $bytes.Length)
+  } finally {
+    $stream.Dispose()
+  }
 }
 
 function Write-TunnelResetLog([string]$Event, [hashtable]$Fields = @{}) {
@@ -217,6 +246,7 @@ function Get-TunnelUrl {
   foreach ($path in @($TunnelErrLog, $TunnelOutLog)) {
     if (-not (Test-Path $path)) { continue }
     $text = Get-Content $path -Raw
+    if ([string]::IsNullOrWhiteSpace($text)) { continue }
     $matches = [regex]::Matches($text, "https://[a-z0-9-]+\.trycloudflare\.com")
     if ($matches.Count -gt 0) {
       return $matches[$matches.Count - 1].Value
@@ -229,7 +259,9 @@ function Test-PublicApi([string]$PublicUrl) {
   if (-not $PublicUrl) { return $false }
   try {
     Add-Type -AssemblyName System.Net.Http
-    $client = [System.Net.Http.HttpClient]::new()
+    $handler = [System.Net.Http.HttpClientHandler]::new()
+    $handler.UseProxy = $false
+    $client = [System.Net.Http.HttpClient]::new($handler)
     $client.Timeout = [TimeSpan]::FromSeconds(15)
     $response = $client.GetAsync("$PublicUrl/version").GetAwaiter().GetResult()
     if (-not $response.IsSuccessStatusCode) { return $false }
@@ -332,12 +364,19 @@ function Ensure-Tunnel {
 }
 
 function Get-PublishedPagesUrl {
+  if (Test-Path $StateFile) {
+    $stateUrl = (Get-Content $StateFile -Raw).Trim()
+    if ($stateUrl) { return $stateUrl }
+  }
   $gh = Get-Command gh -ErrorAction SilentlyContinue
   if ($gh) {
-    $value = (& gh variable get AIST_PUBLIC_API_BASE_URL 2>$null)
-    if ($LASTEXITCODE -eq 0 -and $value) { return $value.Trim() }
+    try {
+      $value = (& gh variable get AIST_PUBLIC_API_BASE_URL 2>$null)
+      if ($LASTEXITCODE -eq 0 -and $value) { return $value.Trim() }
+    } catch {
+      Write-OwnerLog "GitHub Pages API URL lookup failed; using local state only."
+    }
   }
-  if (Test-Path $StateFile) { return (Get-Content $StateFile -Raw).Trim() }
   return ""
 }
 
@@ -354,21 +393,31 @@ function Publish-TunnelUrl([string]$Url) {
   Write-TunnelResetLog "cloudflare_pages_url_publish_completed" @{ url = $Url; branch = $Branch }
 }
 
-Ensure-LocalFiles
-Ensure-Cloudflared
-Set-Content -Path $WatchdogPidFile -Value $PID -Encoding ASCII
+try {
+  Ensure-LocalFiles
+  Ensure-Cloudflared
+  Set-Content -Path $WatchdogPidFile -Value $PID -Encoding ASCII
+  Write-OwnerLog "Owner watchdog started as PID $PID."
 
-do {
-  Ensure-PostgresIfConfigured
-  Ensure-Api
-  $url = Ensure-Tunnel
-  $published = Get-PublishedPagesUrl
-  if ($forceDeployRequested -or $published -ne $url) {
-    Publish-TunnelUrl $url
-    $forceDeployRequested = $false
-  } else {
-    Write-OwnerLog "Pages already points at $url."
-  }
-  if ($Once) { break }
-  Start-Sleep -Seconds $CheckSeconds
-} while ($true)
+  do {
+    Write-OwnerLog "Checking owner backend dependencies."
+    Ensure-PostgresIfConfigured
+    Write-OwnerLog "Checking owner API."
+    Ensure-Api
+    Write-OwnerLog "Checking Cloudflare tunnel."
+    $url = Ensure-Tunnel
+    Write-OwnerLog "Checking published Pages API URL."
+    $published = Get-PublishedPagesUrl
+    if ($forceDeployRequested -or $published -ne $url) {
+      Publish-TunnelUrl $url
+      $forceDeployRequested = $false
+    } else {
+      Write-OwnerLog "Pages already points at $url."
+    }
+    if ($Once) { break }
+    Start-Sleep -Seconds $CheckSeconds
+  } while ($true)
+} catch {
+  Write-OwnerErrorLog ($_ | Out-String)
+  throw
+}
