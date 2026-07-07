@@ -239,7 +239,7 @@ function Test-PublicApi([string]$PublicUrl) {
     Write-OwnerLog "Direct public tunnel check failed: $($_.Exception.Message)"
   }
   if (Test-Path $TunnelErrLog) {
-    $log = Get-Content $TunnelErrLog -Tail 120 -Raw
+    $log = (Get-Content $TunnelErrLog -Tail 120) -join "`n"
     $hasRegisteredConnection = $log -match "Registered tunnel connection"
     $hasRecentDisconnect = $log -match "Unregistered tunnel connection|failed to serve quick Tunnel|connection.*closed"
     if ($hasRegisteredConnection -and -not $hasRecentDisconnect) {
