@@ -46,6 +46,16 @@ function formatDuration(ms?: number): string {
   return `${Math.round(ms ?? 0)}ms`;
 }
 
+function formatCount(value: number): string {
+  return value.toLocaleString();
+}
+
+function formatTokenCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 10_000) return `${Math.round(value / 1_000).toLocaleString()}k`;
+  return value.toLocaleString();
+}
+
 function userDisplayName(user?: AdminUserSummary): string {
   return user?.profileDisplayName?.trim() || user?.displayName?.trim() || user?.email || "";
 }
@@ -120,6 +130,15 @@ export function AdminConsolePage({
         publishedScenarioCount: 0,
         safetyEventCount: 0,
         openSafetyEventCount: 0,
+        usageStats: {
+          usageLogCount: 0,
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          cacheReadTokens: 0,
+          cacheCreationTokens: 0,
+          totalDurationMs: 0,
+        },
         currentRestriction: {
           id: `session-${backendSession.user.id}`,
           userId: backendSession.user.id,
@@ -583,6 +602,7 @@ export function AdminConsolePage({
                     <th>Role</th>
                     <th>Status</th>
                     <th>Restriction</th>
+                    <th>Usage</th>
                     <th>Assets</th>
                     <th>Safety</th>
                   </tr>
@@ -597,6 +617,14 @@ export function AdminConsolePage({
                       <td>{user.role}</td>
                       <td>{user.status}</td>
                       <td>{user.currentRestriction.level}</td>
+                      <td>
+                        <strong>{formatCount(user.usageStats.usageLogCount)} calls</strong>
+                        <div className="muted">
+                          {formatTokenCount(user.usageStats.totalTokens)} tokens
+                          {user.usageStats.totalDurationMs ? ` / ${formatDuration(user.usageStats.totalDurationMs)}` : ""}
+                        </div>
+                        {user.usageStats.lastUsedAt && <div className="muted">Last {formatDate(user.usageStats.lastUsedAt)}</div>}
+                      </td>
                       <td>{user.adventureCount} adv / {user.scenarioCount} scen</td>
                       <td>{user.openSafetyEventCount} open / {user.safetyEventCount} total</td>
                     </tr>

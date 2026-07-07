@@ -737,6 +737,20 @@ describe("local API policy gates and sharing", () => {
   });
 
   it("exposes an admin console only to backend-marked admin accounts", async () => {
+    const realFetch = globalThis.fetch;
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (url.startsWith("https://provider.test")) {
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: "The archive door opens without incident." } }],
+          usage: { prompt_tokens: 11, completion_tokens: 7, total_tokens: 18 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
     const memberSession = await passwordSession("member-console@example.com");
     const adventure = createDefaultAdventure("Admin Console Target");
     await requestJson("/adventures/import", {
@@ -747,6 +761,12 @@ describe("local API policy gates and sharing", () => {
     const list = await requestJson<Array<{ id: string }>>("/adventures", {
       headers: { Authorization: `Bearer ${memberSession}` },
     });
+    const normalTurn = await requestJson<{ responseContent: string }>(`/adventures/${list.body[0].id}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${memberSession}` },
+      body: JSON.stringify({ input: "I open the archive door.", mode: "story" }),
+    });
+    expect(normalTurn.status).toBe(200);
     await requestJson<{ error: string }>(`/adventures/${list.body[0].id}/turn`, {
       method: "POST",
       headers: { Authorization: `Bearer ${memberSession}` },
@@ -779,7 +799,14 @@ describe("local API policy gates and sharing", () => {
 
     const consoleData = await requestJson<{
       totals: { users: number; openSafetyEvents: number };
-      users: Array<{ id: string; email: string; role: string; status: string; currentRestriction: { level: string } }>;
+      users: Array<{
+        id: string;
+        email: string;
+        role: string;
+        status: string;
+        usageStats: { usageLogCount: number; promptTokens: number; completionTokens: number; totalTokens: number };
+        currentRestriction: { level: string };
+      }>;
       safetyEvents: Array<{ id: string; status: string }>;
       adminActions: Array<{ action: string }>;
     }>("/admin/console", {
@@ -790,6 +817,12 @@ describe("local API policy gates and sharing", () => {
     expect(consoleData.body.totals.openSafetyEvents).toBeGreaterThan(0);
     const member = consoleData.body.users.find((user) => user.email === "member-console@example.com");
     expect(member?.role).toBe("user");
+    expect(member?.usageStats).toMatchObject({
+      usageLogCount: 1,
+      promptTokens: 11,
+      completionTokens: 7,
+      totalTokens: 18,
+    });
 
     const statusUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/status`, {
       method: "PATCH",

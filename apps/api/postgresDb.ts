@@ -1,5 +1,12 @@
 import pg from "pg";
-import { buildAdminConsole, buildAdminConsoleDetails, type AdminConsoleData, type AdminConsoleDetailsData } from "./adminConsole";
+import {
+  buildAdminConsole,
+  buildAdminConsoleDetails,
+  emptyUserUsageStats,
+  type AdminConsoleData,
+  type AdminConsoleDetailsData,
+  type AdminUserUsageStats,
+} from "./adminConsole";
 import type { AdventureSnapshotSummary } from "./adventureStore";
 import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import type { BackendDb, BackendReadOptions } from "./backendDb";
@@ -57,6 +64,18 @@ interface ContextBuildSummaryRow {
   totalEstimatedTokens: number | string | null;
   excludedItemCount: number | string | null;
   decisionCount: number | string | null;
+}
+
+interface UserUsageStatsRow {
+  userId: string;
+  usageLogCount: number | string | null;
+  promptTokens: number | string | null;
+  completionTokens: number | string | null;
+  totalTokens: number | string | null;
+  cacheReadTokens: number | string | null;
+  cacheCreationTokens: number | string | null;
+  totalDurationMs: number | string | null;
+  lastUsedAt: string | null;
 }
 
 export class PostgresDb implements BackendDb {
@@ -283,6 +302,11 @@ export class PostgresDb implements BackendDb {
       consoleData.totals.policyDecisions = await this.countRows(client, "policyDecisions");
       consoleData.totals.usageLogs = await this.countRows(client, "usageLogs");
       consoleData.totals.performanceTraces = await this.countRows(client, "performanceTraces");
+      const usageStatsByUser = await this.readUsageStatsByUser(client);
+      consoleData.users = consoleData.users.map((user) => ({
+        ...user,
+        usageStats: { ...emptyUserUsageStats(), ...usageStatsByUser.get(user.id) },
+      }));
       return consoleData;
     } finally {
       client.release();
@@ -497,7 +521,41 @@ export class PostgresDb implements BackendDb {
       totalEstimatedTokens: toInt(row.totalEstimatedTokens),
       excludedItemCount: toInt(row.excludedItemCount),
       decisionCount: toInt(row.decisionCount),
-    }));
+      }));
+  }
+
+  private async readUsageStatsByUser(client: pg.PoolClient): Promise<Map<string, AdminUserUsageStats>> {
+    const result = await client.query<UserUsageStatsRow>(
+      `
+      SELECT
+        data->>'userId' AS "userId",
+        count(*)::text AS "usageLogCount",
+        COALESCE(sum(NULLIF(data #>> '{usage,promptTokens}', '')::numeric), 0)::text AS "promptTokens",
+        COALESCE(sum(NULLIF(data #>> '{usage,completionTokens}', '')::numeric), 0)::text AS "completionTokens",
+        COALESCE(sum(COALESCE(
+          NULLIF(data #>> '{usage,totalTokens}', '')::numeric,
+          (NULLIF(data #>> '{usage,promptTokens}', '')::numeric + NULLIF(data #>> '{usage,completionTokens}', '')::numeric),
+          0
+        )), 0)::text AS "totalTokens",
+        COALESCE(sum(NULLIF(data #>> '{usage,cacheReadTokens}', '')::numeric), 0)::text AS "cacheReadTokens",
+        COALESCE(sum(NULLIF(data #>> '{usage,cacheCreationTokens}', '')::numeric), 0)::text AS "cacheCreationTokens",
+        COALESCE(sum(NULLIF(data->>'durationMs', '')::numeric), 0)::text AS "totalDurationMs",
+        max(data->>'createdAt') AS "lastUsedAt"
+      FROM aist_records
+      WHERE collection = 'usageLogs'
+      GROUP BY data->>'userId';
+      `,
+    );
+    return new Map(result.rows.map((row) => [row.userId, {
+      usageLogCount: toInt(row.usageLogCount),
+      promptTokens: toInt(row.promptTokens),
+      completionTokens: toInt(row.completionTokens),
+      totalTokens: toInt(row.totalTokens),
+      cacheReadTokens: toInt(row.cacheReadTokens),
+      cacheCreationTokens: toInt(row.cacheCreationTokens),
+      totalDurationMs: toInt(row.totalDurationMs),
+      lastUsedAt: row.lastUsedAt ?? undefined,
+    }]));
   }
 }
 

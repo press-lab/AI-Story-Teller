@@ -11,6 +11,17 @@ import { summarizeAdventure } from "./adventureStore";
 import { getPlatformSettings } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 
+export interface AdminUserUsageStats {
+  usageLogCount: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
+  totalDurationMs: number;
+  lastUsedAt?: string;
+}
+
 export interface AdminConsoleData {
   detailsLoaded?: boolean;
   totals: {
@@ -39,6 +50,7 @@ export interface AdminConsoleData {
     publishedScenarioCount: number;
     safetyEventCount: number;
     openSafetyEventCount: number;
+    usageStats: AdminUserUsageStats;
     currentRestriction: AccountRestriction;
   }>;
   invites: Array<{
@@ -110,6 +122,7 @@ export function buildAdminConsole(
 ): AdminConsoleData {
   const includeDetails = options.includeDetails ?? true;
   const details = includeDetails ? buildAdminConsoleDetails(data) : emptyAdminConsoleDetails();
+  const usageStatsByUser = summarizeUsageByUser(data.usageLogs);
   return {
     totals: {
       users: data.users.length,
@@ -144,6 +157,7 @@ export function buildAdminConsole(
           publishedScenarioCount: data.scenarioRevisions.filter((revision) => userScenarioIds.has(revision.scenarioId) && revision.status === "published").length,
           safetyEventCount: safetyEvents.length,
           openSafetyEventCount: safetyEvents.filter((event) => event.status === "open").length,
+          usageStats: usageStatsForUser(usageStatsByUser, user.id),
           currentRestriction: currentRestriction(data, user.id),
         };
       })
@@ -195,6 +209,41 @@ export function buildAdminConsole(
     detailsLoaded: includeDetails,
     platformSettings: getPlatformSettings(data, config),
   };
+}
+
+export function emptyUserUsageStats(): AdminUserUsageStats {
+  return {
+    usageLogCount: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    totalTokens: 0,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
+    totalDurationMs: 0,
+  };
+}
+
+export function summarizeUsageByUser(usageLogs: LocalDbData["usageLogs"]): Map<string, AdminUserUsageStats> {
+  const statsByUser = new Map<string, AdminUserUsageStats>();
+  for (const log of usageLogs) {
+    const stats = statsByUser.get(log.userId) ?? emptyUserUsageStats();
+    const promptTokens = log.usage?.promptTokens ?? 0;
+    const completionTokens = log.usage?.completionTokens ?? 0;
+    stats.usageLogCount += 1;
+    stats.promptTokens += promptTokens;
+    stats.completionTokens += completionTokens;
+    stats.totalTokens += log.usage?.totalTokens ?? promptTokens + completionTokens;
+    stats.cacheReadTokens += log.usage?.cacheReadTokens ?? 0;
+    stats.cacheCreationTokens += log.usage?.cacheCreationTokens ?? 0;
+    stats.totalDurationMs += log.durationMs ?? 0;
+    if (!stats.lastUsedAt || log.createdAt.localeCompare(stats.lastUsedAt) > 0) stats.lastUsedAt = log.createdAt;
+    statsByUser.set(log.userId, stats);
+  }
+  return statsByUser;
+}
+
+export function usageStatsForUser(statsByUser: Map<string, AdminUserUsageStats>, userId: string): AdminUserUsageStats {
+  return { ...emptyUserUsageStats(), ...statsByUser.get(userId) };
 }
 
 export function buildAdminConsoleDetails(data: LocalDbData): AdminConsoleDetailsData {

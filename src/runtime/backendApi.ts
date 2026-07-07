@@ -191,6 +191,16 @@ export interface BackendAdminConsoleData {
     publishedScenarioCount: number;
     safetyEventCount: number;
     openSafetyEventCount: number;
+    usageStats: {
+      usageLogCount: number;
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+      cacheReadTokens: number;
+      cacheCreationTokens: number;
+      totalDurationMs: number;
+      lastUsedAt?: string;
+    };
     currentRestriction: BackendRestriction & { contextTokenCap?: number };
   }>;
   invites: Array<{

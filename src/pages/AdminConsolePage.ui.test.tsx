@@ -61,6 +61,16 @@ function adminData(): BackendAdminConsoleData {
       publishedScenarioCount: 1,
       safetyEventCount: 1,
       openSafetyEventCount: 1,
+      usageStats: {
+        usageLogCount: 3,
+        promptTokens: 1200,
+        completionTokens: 450,
+        totalTokens: 1650,
+        cacheReadTokens: 100,
+        cacheCreationTokens: 25,
+        totalDurationMs: 3200,
+        lastUsedAt: createdAt,
+      },
       currentRestriction: {
         id: "restriction-current",
         userId: "user-target",
@@ -316,6 +326,8 @@ describe("AdminConsolePage", () => {
     expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Open Safety Events" })).toBeInTheDocument();
     expect(screen.getByText(/Admin role is read-only here/)).toBeInTheDocument();
+    expect(screen.getByText("3 calls")).toBeInTheDocument();
+    expect(screen.getByText(/1,650 tokens/)).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Invite note"));
     await user.type(screen.getByLabelText("Invite note"), "UAT tester");
