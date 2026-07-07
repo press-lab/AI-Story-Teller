@@ -24,6 +24,7 @@ interface ProfilePageProps {
   onPublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onUnpublishScenarioRevision?: (revisionId: string) => Promise<void>;
   onStartScenario?: (revisionId: string) => Promise<void>;
+  onEditScenario?: (revisionId: string) => Promise<void>;
   onDeleteScenario?: (scenarioId: string) => Promise<void>;
   onViewOwnProfile?: () => void;
   onOpenAdmin?: () => void;
@@ -54,6 +55,7 @@ export function ProfilePage({
   onPublishScenarioRevision,
   onUnpublishScenarioRevision,
   onStartScenario,
+  onEditScenario,
   onDeleteScenario,
   onViewOwnProfile,
   onOpenAdmin,
@@ -243,6 +245,14 @@ export function ProfilePage({
                         >
                           Start Adventure
                         </button>
+                        <button
+                          type="button"
+                          aria-label={`Edit scenario ${scenario.title}`}
+                          onClick={() => void onEditScenario?.(scenario.latestRevision!.id)}
+                          disabled={!onEditScenario}
+                        >
+                          Edit Scenario
+                        </button>
                         {scenario.latestRevision.status === "draft" && (
                           <button
                             type="button"
@@ -392,7 +402,8 @@ function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
           <h3>Publish scenarios</h3>
           <p className="muted">
             Adventures are private playthroughs. Publishing creates a reusable scenario setup for Explore without sharing
-            your private transcript. Shared scenarios do not substitute user variables yet.
+            your private transcript. Edit Scenario opens a setup copy; Save Scenario Revision writes a new draft before
+            you publish. Shared scenarios do not substitute user variables yet.
           </p>
         </article>
       </div>

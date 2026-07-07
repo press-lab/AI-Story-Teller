@@ -164,6 +164,47 @@ const providerInitial: RuntimeProviderSettings = {
   apiKey: "",
 };
 
+const scenarioRuntimeMetadataKeys = [
+  "sourceScenarioId",
+  "sourceScenarioRevisionId",
+  "sourceScenarioOwnerUserId",
+  "sourceScenarioVersion",
+  "sourceScenarioTitle",
+  "startedFromExplore",
+  "startedFromProfileScenario",
+  "startedByUserId",
+  "userVariablesSupported",
+  "playerEditsRecommended",
+];
+
+function scenarioContentFromAdventure(source: Adventure): Record<string, unknown> {
+  const metadata = { ...source.metadata };
+  for (const key of scenarioRuntimeMetadataKeys) {
+    delete metadata[key];
+  }
+  return {
+    schemaVersion: 1,
+    title: source.title,
+    openingScene: source.openingScene,
+    metadata,
+    components: source.components,
+    storyCards: source.storyCards,
+    brains: source.brains,
+    triggerRules: source.triggerRules,
+    thumbnailImage: getAdventureThumbnail(source),
+  };
+}
+
+function sourceScenarioIdFromAdventure(source?: Adventure): string | undefined {
+  const scenarioId = source?.metadata.sourceScenarioId;
+  return typeof scenarioId === "string" ? scenarioId : undefined;
+}
+
+function sourceScenarioOwnerIdFromAdventure(source?: Adventure): string | undefined {
+  const ownerUserId = source?.metadata.sourceScenarioOwnerUserId;
+  return typeof ownerUserId === "string" ? ownerUserId : undefined;
+}
+
 function withAdventureId(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids : [...ids, id];
 }
@@ -917,16 +958,7 @@ export default function App() {
       const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenario.id, {
         title: source.title,
         description: "Reusable scenario setup created from an adventure. Transcript and private runtime state are excluded.",
-        content: {
-          schemaVersion: 1,
-          title: source.title,
-          openingScene: source.openingScene,
-          components: source.components,
-          storyCards: source.storyCards,
-          brains: source.brains,
-          triggerRules: source.triggerRules,
-          thumbnailImage: getAdventureThumbnail(source),
-        },
+        content: scenarioContentFromAdventure(source),
       });
       const published = await publishBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revision.id);
       await refreshBackendProfile();
@@ -936,6 +968,76 @@ export default function App() {
       return published;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Scenario publish failed.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+      throw error;
+    }
+  }
+
+  async function editScenarioFromProfile(revisionId: string) {
+    if (!backendSession) throw new Error("Sign in to the local backend before editing a scenario.");
+    setBackendProfileStatus("Opening scenario editor...");
+    notify("Opening scenario editor...", { type: "info" });
+    try {
+      const next = await forkBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
+      setAdventure(next);
+      setContextResult(undefined);
+      setModalTab(undefined);
+      openEditor();
+      await library.refreshAdventures();
+      await refreshBackendProfile();
+      setBackendProfileStatus("Scenario opened for editing. Save a new revision when finished.");
+      notify("Scenario opened for editing. Save a new revision when finished.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not open scenario for editing.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+      throw error;
+    }
+  }
+
+  async function saveScenarioRevisionFromAdventure(source: Adventure) {
+    if (!backendSession) throw new Error("Sign in to the local backend before saving a scenario revision.");
+    const scenarioId = sourceScenarioIdFromAdventure(source);
+    const ownerUserId = sourceScenarioOwnerIdFromAdventure(source);
+    if (!scenarioId || ownerUserId !== backendSession.user.id) {
+      throw new Error("Only adventures opened from one of your profile scenarios can save scenario revisions.");
+    }
+    const scenario = backendProfile?.scenarios.find((entry) => entry.id === scenarioId);
+    const confirmed = await confirmAction({
+      title: "Save scenario revision?",
+      message: `Save the current setup as a new draft revision for "${scenario?.title ?? source.title}"? Published Explore copies stay unchanged until you publish the latest revision from Profile.`,
+      confirmLabel: "Save Revision",
+    });
+    if (!confirmed) return undefined;
+    setBackendProfileStatus("Saving scenario revision...");
+    notify("Saving scenario revision...", { type: "info" });
+    try {
+      await adventureStore.save(source);
+      const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenarioId, {
+        title: source.title,
+        description: scenario?.description ?? "Reusable scenario setup edited from an adventure.",
+        content: scenarioContentFromAdventure(source),
+      });
+      if (adventure?.id === source.id) {
+        dispatch({
+          type: "UPDATE_METADATA",
+          metadata: {
+            sourceScenarioRevisionId: revision.id,
+            sourceScenarioVersion: revision.version,
+            sourceScenarioTitle: source.title,
+          },
+        });
+      }
+      setSaveStatus("saved");
+      await library.refreshAdventures();
+      await refreshBackendProfile();
+      await refreshBackendExploreScenarios();
+      setBackendProfileStatus(`Saved scenario revision v${revision.version}.`);
+      notify(`Saved scenario revision v${revision.version}.`, { type: "success" });
+      return revision;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Scenario revision save failed.";
       setBackendProfileStatus(message);
       notify(message, { type: "error" });
       throw error;
@@ -1196,6 +1298,13 @@ export default function App() {
   const currentAdventureSummary = adventure ? library.adventures.find((entry) => entry.id === adventure.id) : undefined;
   const currentAdventureHasSyncConflict =
     currentAdventureSummary?.syncStatus === "conflict" || /local backup conflict/i.test(saveStatus);
+  const canSaveOpenAdventureAsScenarioRevision = Boolean(
+    backendAdventureDataReady
+    && backendSession
+    && adventure
+    && sourceScenarioIdFromAdventure(adventure)
+    && sourceScenarioOwnerIdFromAdventure(adventure) === backendSession.user.id,
+  );
 
   function renderAdventureLibrary(embedded = false) {
     return (
@@ -1287,6 +1396,9 @@ export default function App() {
             await unpublishScenarioRevisionFromProfile(revisionId);
           } : undefined}
           onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
+          onEditScenario={backendAdventureDataReady ? async (revisionId) => {
+            await editScenarioFromProfile(revisionId);
+          } : undefined}
           onDeleteScenario={backendAdventureDataReady ? async (scenarioId) => {
             await deleteScenarioFromProfile(scenarioId);
           } : undefined}
@@ -1587,6 +1699,15 @@ export default function App() {
                     Edit
                     {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
                   </button>
+                  {canSaveOpenAdventureAsScenarioRevision && (
+                    <button
+                      type="button"
+                      className="primary-action"
+                      onClick={() => void saveScenarioRevisionFromAdventure(adventure)}
+                    >
+                      Save Scenario Revision
+                    </button>
+                  )}
                 </>
               )}
             </span>

@@ -898,6 +898,43 @@ describe("local API policy gates and sharing", () => {
     expect(profileAfterDelete.body.scenarios).toEqual([]);
   });
 
+  it("updates profile scenario metadata from titled revisions", async () => {
+    const sessionToken = await passwordSession("scenario-edit@example.com");
+    const draft = await requestJson<{ id: string }>("/scenarios", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ title: "Old Scenario", description: "Old description." }),
+    });
+    expect(draft.status).toBe(201);
+
+    const revision = await requestJson<{ id: string; version: number }>(`/scenarios/${draft.body.id}/revisions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        title: "Edited Scenario",
+        description: "Edited description.",
+        content: { openingScene: "A revised opening." },
+      }),
+    });
+    expect(revision.status).toBe(201);
+    expect(revision.body.version).toBe(1);
+
+    const profile = await requestJson<{
+      scenarios: Array<{ title: string; description: string; revisionCount: number; latestRevision?: { id: string } }>;
+    }>("/profile/me", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(profile.status).toBe(200);
+    expect(profile.body.scenarios).toEqual([
+      expect.objectContaining({
+        title: "Edited Scenario",
+        description: "Edited description.",
+        revisionCount: 1,
+        latestRevision: expect.objectContaining({ id: revision.body.id }),
+      }),
+    ]);
+  });
+
   it("returns profile adventure/scenario summaries and explore scenario listings", async () => {
     const sessionToken = await passwordSession("profile@example.com");
     const adventure = createDefaultAdventure("Profile Adventure");

@@ -57,19 +57,23 @@ export function createScenarioRevision(
     policyMode: config.policyMode,
   });
   assertPolicyAllowed(decision);
+  const revisionTitle = input.title?.trim() || scenario.title;
+  const revisionDescription = input.description !== undefined ? input.description.trim() : scenario.description;
   const version = data.scenarioRevisions.filter((entry) => entry.scenarioId === scenarioId).length + 1;
   const revision: ScenarioRevision = {
     id: createId("scenario_rev"),
     scenarioId,
     ownerUserId: userId,
     version,
-    title: input.title?.trim() || scenario.title,
-    description: input.description?.trim() ?? scenario.description,
+    title: revisionTitle,
+    description: revisionDescription,
     content: input.content,
     status: "draft",
     createdAt: nowIso(),
   };
   data.scenarioRevisions.push(revision);
+  scenario.title = revisionTitle;
+  scenario.description = revisionDescription;
   scenario.updatedAt = nowIso();
   return revision;
 }
