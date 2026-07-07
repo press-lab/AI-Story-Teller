@@ -239,7 +239,6 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByRole("button", { name: "Local Google Stub" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Execution mode")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Keep adventure data on this device only")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Import source")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Backend import JSON")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
@@ -366,63 +365,8 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Backend import JSON")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
     expect(screen.getByText("Model Source")).toBeInTheDocument();
-    expect(screen.getByLabelText("Keep adventure data on this device only")).not.toBeChecked();
     expect(screen.queryByRole("heading", { name: "Platform Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
-  });
-
-  it("lets backend admins keep adventure data on-device without showing cloud sync", async () => {
-    const user = userEvent.setup();
-    const onAdminDeviceOnlyDataModeChange = vi.fn();
-
-    render(
-      <SettingsPage
-        adventure={createDefaultAdventure("Admin Device Data")}
-        dispatch={vi.fn()}
-        providerPresets={[makePreset()]}
-        activePresetId="preset-test"
-        onProviderPresetsChange={vi.fn()}
-        onSelectPreset={vi.fn()}
-        uiPreferences={{ ...defaultUiPreferences, showAdvancedSettings: true }}
-        onUiPreferencesChange={vi.fn()}
-        globalAdventureSettings={defaultGlobalAdventureSettings}
-        onGlobalAdventureSettingsChange={vi.fn()}
-        runtimeConfig={{ mode: "backendLocal", apiBaseUrl: "http://127.0.0.1:8787" }}
-        backendSession={{
-          sessionToken: "session-admin",
-          user: {
-            id: "user-admin",
-            email: "admin@example.com",
-            displayName: "Admin",
-            role: "admin",
-            status: "active",
-            emailVerified: true,
-            createdAt: "2026-07-04T00:00:00.000Z",
-            updatedAt: "2026-07-04T00:00:00.000Z",
-          },
-          profile: {
-            userId: "user-admin",
-            displayName: "Admin",
-            bio: "",
-            createdAt: "2026-07-04T00:00:00.000Z",
-            updatedAt: "2026-07-04T00:00:00.000Z",
-          },
-        }}
-        adminDeviceOnlyDataMode
-        onAdminDeviceOnlyDataModeChange={onAdminDeviceOnlyDataModeChange}
-      />,
-    );
-
-    const deviceOnlyToggle = screen.getByLabelText("Keep adventure data on this device only");
-    expect(deviceOnlyToggle).toBeChecked();
-    expect(screen.getByRole("heading", { name: "Models" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Background Cost" })).toBeInTheDocument();
-    expect(screen.queryByText("Model Source")).not.toBeInTheDocument();
-    expect(screen.queryByText("Personal Cloud Sync")).not.toBeInTheDocument();
-    expect(screen.getByText(/adventure content is not written to the backend database/i)).toBeInTheDocument();
-
-    await user.click(deviceOnlyToggle);
-    expect(onAdminDeviceOnlyDataModeChange).toHaveBeenCalledWith(false);
   });
 });

@@ -49,20 +49,21 @@ The next production-shaped move should be:
 
 This keeps tester access public while the source repo can become private. It also removes the owner's device from the serving path, gives HTTPS and certificate renewal to the hosting layer, and makes database backups/observability a platform responsibility instead of a local-machine problem.
 
-## Admin Device-Only Adventure Data Mode
+## Admin Per-Adventure Device-Only Data Mode
 
-Admins may need a browser-local privacy/testing mode even while signed into backend mode. That mode is intentionally narrower than "offline mode."
+Admins may need a browser-local privacy/testing mode for a specific adventure even while signed into backend mode. That mode is intentionally narrower than "offline mode."
 
-When enabled for an admin account:
+When enabled for an individual adventure from Import / Export:
 
 - Adventure saves use IndexedDB through the local adventure store.
-- Local imports and built-in scenarios save only to the device.
+- The device-only marker is stored in local browser settings keyed by adventure id, not in the adventure JSON.
+- Local imports and built-in scenarios started while this storage route is active save only to the device.
 - Context Preview and turn execution use browser-side context/generation paths instead of backend adventure endpoints.
 - Backend adventure write features are disabled, including backend imports, publish-from-adventure, backups/restore, sync-conflict uploads, shared-scenario forks, and backend AI helper endpoints.
 - Account, profile, Explore reads, and Admin screens may still call the backend because they are account/platform surfaces, not private adventure persistence.
 - Model generation can still send prompt context to the selected provider unless the admin chooses a local provider endpoint. Device-only adventure data mode prevents backend database writes; it is not a network-off guarantee.
 
-This feature must not become a hidden second production persistence system. Production truth for normal users remains server-side. Device-only mode is an admin/testing escape hatch with visible UI state and explicit feature gating.
+This feature must not become a hidden second production persistence system. Production truth for normal users remains server-side. Device-only mode is an admin/testing escape hatch with visible per-adventure UI state and explicit feature gating.
 
 ## Production North Star
 

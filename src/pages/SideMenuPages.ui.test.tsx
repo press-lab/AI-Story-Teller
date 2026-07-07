@@ -581,4 +581,44 @@ describe("side menu page smoke coverage", () => {
     renderWithAdventure((adventure, dispatch) => <ChroniclePage adventure={adventure} dispatch={dispatch} />);
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
   });
+
+  it("shows per-adventure device-only storage controls to admins in Import / Export", async () => {
+    const user = userEvent.setup();
+    const onDeviceOnlyDataModeChange = vi.fn(async () => undefined);
+
+    renderWithAdventure((adventure, dispatch) => (
+      <ImportExportPage
+        adventure={adventure}
+        dispatch={dispatch}
+        onImportAdventure={vi.fn(async () => undefined)}
+        onCreateAdventureFromImport={vi.fn(async () => undefined)}
+        onOpenImportedAdventure={vi.fn()}
+        onDeviceOnlyDataModeChange={onDeviceOnlyDataModeChange}
+      />
+    ));
+    expect(screen.queryByLabelText("Keep this adventure on this device only")).not.toBeInTheDocument();
+    cleanup();
+
+    renderWithAdventure((adventure, dispatch) => (
+      <ImportExportPage
+        adventure={adventure}
+        dispatch={dispatch}
+        onImportAdventure={vi.fn(async () => undefined)}
+        onCreateAdventureFromImport={vi.fn(async () => undefined)}
+        onOpenImportedAdventure={vi.fn()}
+        isBackendAdmin
+        deviceOnlyDataMode
+        onDeviceOnlyDataModeChange={onDeviceOnlyDataModeChange}
+      />
+    ));
+
+    expect(screen.getByRole("heading", { name: "Adventure storage" })).toBeInTheDocument();
+    const deviceOnlyToggle = screen.getByLabelText("Keep this adventure on this device only");
+    expect(deviceOnlyToggle).toBeChecked();
+    expect(screen.getByText(/Controls only this adventure/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save to Cloud" })).not.toBeInTheDocument();
+
+    await user.click(deviceOnlyToggle);
+    expect(onDeviceOnlyDataModeChange).toHaveBeenCalledWith(false);
+  });
 });

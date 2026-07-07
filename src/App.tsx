@@ -45,6 +45,7 @@ import {
   createBackendTurnRunner,
   createLocalAdventureStore,
   createUnavailableAdventureStore,
+  type AdventureStore,
 } from "./runtime/adventureStore";
 import {
   auditBackendBrains,
@@ -162,6 +163,14 @@ const providerInitial: RuntimeProviderSettings = {
   apiKey: "",
 };
 
+function withAdventureId(ids: string[], id: string): string[] {
+  return ids.includes(id) ? ids : [...ids, id];
+}
+
+function withoutAdventureId(ids: string[], id: string): string[] {
+  return ids.filter((entry) => entry !== id);
+}
+
 export default function App() {
   const { confirmAction, notify } = useActionFeedback();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
@@ -209,9 +218,9 @@ export default function App() {
     "ai-story-teller-backend-model-mode",
     "platform",
   );
-  const [adminDeviceOnlyDataMode, setAdminDeviceOnlyDataMode] = useLocalStorage<boolean>(
-    "ai-story-teller-admin-device-only-data",
-    false,
+  const [adminDeviceOnlyAdventureIds, setAdminDeviceOnlyAdventureIds] = useLocalStorage<string[]>(
+    "ai-story-teller-admin-device-only-adventures",
+    [],
   );
   const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
   const [backendPublicProfile, setBackendPublicProfile] = useState<BackendPublicProfileSummary | undefined>();
@@ -227,7 +236,13 @@ export default function App() {
   const accountReady = Boolean(backendSession?.sessionToken);
   const backendReady = backendMode && accountReady;
   const isBackendAdmin = backendMode && backendSession?.user.role === "admin";
-  const adminDeviceOnlyDataActive = Boolean(isBackendAdmin && adminDeviceOnlyDataMode);
+  const adminDeviceOnlyAdventureIdSet = useMemo(
+    () => new Set(adminDeviceOnlyAdventureIds),
+    [adminDeviceOnlyAdventureIds],
+  );
+  const adminDeviceOnlyDataActive = Boolean(
+    isBackendAdmin && adventure && adminDeviceOnlyAdventureIdSet.has(adventure.id),
+  );
   const backendAdventureDataReady = backendReady && !adminDeviceOnlyDataActive;
   const hideBackendUserDeveloperControls = backendMode && !isBackendAdmin;
   const activePreset: RuntimeProviderSettings =
@@ -235,6 +250,33 @@ export default function App() {
     providerPresets[0] ??
     providerInitial;
   const localAdventureStore = useMemo(() => createLocalAdventureStore(), []);
+  const adminDeviceOnlyAdventureStore = useMemo<AdventureStore>(() => ({
+    async list() {
+      const allLocal = await localAdventureStore.list();
+      return allLocal.filter((summary) => adminDeviceOnlyAdventureIdSet.has(summary.id));
+    },
+    async get(id) {
+      if (!adminDeviceOnlyAdventureIdSet.has(id)) return undefined;
+      return localAdventureStore.get(id);
+    },
+    async save(nextAdventure) {
+      if (!adminDeviceOnlyAdventureIdSet.has(nextAdventure.id)) {
+        setAdminDeviceOnlyAdventureIds(withAdventureId(adminDeviceOnlyAdventureIds, nextAdventure.id));
+      }
+      await localAdventureStore.save(nextAdventure);
+    },
+    async delete(id) {
+      await localAdventureStore.delete(id);
+      if (adminDeviceOnlyAdventureIdSet.has(id)) {
+        setAdminDeviceOnlyAdventureIds(withoutAdventureId(adminDeviceOnlyAdventureIds, id));
+      }
+    },
+  }), [
+    adminDeviceOnlyAdventureIds,
+    adminDeviceOnlyAdventureIdSet,
+    localAdventureStore,
+    setAdminDeviceOnlyAdventureIds,
+  ]);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
     [],
@@ -248,7 +290,7 @@ export default function App() {
   const adventureStore = !accountReady
     ? unavailableBackendStore
     : adminDeviceOnlyDataActive
-      ? localAdventureStore
+      ? adminDeviceOnlyAdventureStore
       : backendMode
       ? (backendAdventureStore ?? unavailableBackendStore)
       : localAdventureStore;
@@ -495,6 +537,30 @@ export default function App() {
     backendContextPreview,
     backendAiTools,
   );
+
+  const setCurrentAdventureDeviceOnlyDataMode = useCallback(async (enabled: boolean) => {
+    if (!isBackendAdmin || !adventure) {
+      throw new Error("Admin access and an open adventure are required.");
+    }
+    if (enabled) {
+      setAdminDeviceOnlyAdventureIds(withAdventureId(adminDeviceOnlyAdventureIds, adventure.id));
+      await localAdventureStore.save(adventure);
+      setSaveStatus("saved to this device");
+      notify("This adventure now saves only to this device.", { type: "success" });
+      return;
+    }
+
+    setAdminDeviceOnlyAdventureIds(withoutAdventureId(adminDeviceOnlyAdventureIds, adventure.id));
+    setSaveStatus("backend saves enabled");
+    notify("Backend saves enabled for this adventure.", { type: "success" });
+  }, [
+    adminDeviceOnlyAdventureIds,
+    adventure,
+    isBackendAdmin,
+    localAdventureStore,
+    notify,
+    setAdminDeviceOnlyAdventureIds,
+  ]);
 
   useEffect(() => {
     runtime.clearError();
@@ -1049,8 +1115,7 @@ export default function App() {
             backendSession={backendSession}
             backendModelMode={backendModelMode}
             onBackendModelModeChange={setBackendModelMode}
-            adminDeviceOnlyDataMode={adminDeviceOnlyDataMode}
-            onAdminDeviceOnlyDataModeChange={setAdminDeviceOnlyDataMode}
+            deviceOnlyDataMode={adminDeviceOnlyDataActive}
             onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
             onVerifyBackendEmail={async (token) => {
               const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
@@ -1085,7 +1150,10 @@ export default function App() {
               setModalTab(undefined);
               navigateTo("play");
             }}
-            onSaveToCloud={saveCurrentAdventureToCloud}
+            isBackendAdmin={isBackendAdmin}
+            deviceOnlyDataMode={adminDeviceOnlyDataActive}
+            onDeviceOnlyDataModeChange={setCurrentAdventureDeviceOnlyDataMode}
+            onSaveToCloud={adminDeviceOnlyDataActive ? undefined : saveCurrentAdventureToCloud}
             cloudSaveStatus={backendMode ? saveStatus : cloudSyncStatus}
           />
         );
@@ -1248,8 +1316,7 @@ export default function App() {
           backendSession={backendSession}
           backendModelMode={backendModelMode}
           onBackendModelModeChange={setBackendModelMode}
-          adminDeviceOnlyDataMode={adminDeviceOnlyDataMode}
-          onAdminDeviceOnlyDataModeChange={setAdminDeviceOnlyDataMode}
+          deviceOnlyDataMode={adminDeviceOnlyDataActive}
           onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
           onVerifyBackendEmail={async (token) => {
             const session = await verifyBackendEmail(normalizedRuntimeConfig, token);

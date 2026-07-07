@@ -2,7 +2,7 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import { exportAdventureJson } from "../utils/json";
 import type { Adventure } from "../types/adventure";
 import type { AdventurePageProps } from "./pageTypes";
-import { Field } from "./shared";
+import { CheckboxField, Field } from "./shared";
 import { AidImportWizard } from "../components/AidImportWizard";
 import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 import { useActionFeedback } from "../components/ActionFeedback";
@@ -11,6 +11,9 @@ interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
   onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
   onOpenImportedAdventure: () => void;
+  isBackendAdmin?: boolean;
+  deviceOnlyDataMode?: boolean;
+  onDeviceOnlyDataModeChange?: (enabled: boolean) => Promise<void>;
   onSaveToCloud?: () => Promise<void>;
   cloudSaveStatus?: string;
 }
@@ -39,6 +42,9 @@ export function ImportExportPage({
   onImportAdventure,
   onCreateAdventureFromImport,
   onOpenImportedAdventure,
+  isBackendAdmin = false,
+  deviceOnlyDataMode = false,
+  onDeviceOnlyDataModeChange,
   onSaveToCloud,
   cloudSaveStatus,
 }: ImportExportPageProps) {
@@ -48,6 +54,7 @@ export function ImportExportPage({
   const [importFilename, setImportFilename] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [cloudSaving, setCloudSaving] = useState(false);
+  const [storageModeSaving, setStorageModeSaving] = useState(false);
 
   async function importAdventure() {
     if (importPreview.status !== "ready") {
@@ -114,6 +121,24 @@ export function ImportExportPage({
       notify(message, { type: "error" });
     } finally {
       setCloudSaving(false);
+    }
+  }
+
+  async function handleDeviceOnlyDataModeChange(enabled: boolean) {
+    if (!onDeviceOnlyDataModeChange) return;
+    setStorageModeSaving(true);
+    setStatusMessage(enabled ? "Saving this adventure to this device..." : "Re-enabling backend saves...");
+    try {
+      await onDeviceOnlyDataModeChange(enabled);
+      setStatusMessage(
+        enabled
+          ? "This adventure now saves only to this device."
+          : "Backend saves are enabled for this adventure.",
+      );
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Storage mode update failed.");
+    } finally {
+      setStorageModeSaving(false);
     }
   }
 
@@ -190,6 +215,27 @@ export function ImportExportPage({
         <div className="import-export-status" role="status">
           {statusMessage}
         </div>
+      )}
+
+      {isBackendAdmin && onDeviceOnlyDataModeChange && (
+        <article className="panel import-export-card">
+          <div className="import-export-card-copy">
+            <p className="eyebrow">Admin storage</p>
+            <h3>Adventure storage</h3>
+            <p className="muted">
+              Controls only this adventure. Device-only mode keeps this adventure in IndexedDB and disables backend
+              adventure writes for it, including publish, backups, shared-scenario forks, and server AI helpers.
+              Account, profile, Explore reads, and Admin screens still use the backend. Generation still sends prompt
+              context to the selected model provider unless that provider is local.
+            </p>
+          </div>
+          <CheckboxField
+            label="Keep this adventure on this device only"
+            checked={deviceOnlyDataMode}
+            onChange={(enabled) => void handleDeviceOnlyDataModeChange(enabled)}
+          />
+          {storageModeSaving && <p className="muted">Updating storage mode...</p>}
+        </article>
       )}
 
       <div className="import-export-workspace">
