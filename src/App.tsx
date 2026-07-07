@@ -1885,18 +1885,18 @@ export default function App() {
                     Edit
                     {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
                   </button>
-                  {canSaveOpenAdventureAsScenarioRevision && (
-                    <button
-                      type="button"
-                      className="primary-action"
-                      onClick={() => void saveScenarioRevisionFromAdventure(adventure)}
-                    >
-                      Save Scenario Revision
-                    </button>
-                  )}
                 </>
               )}
             </span>
+          )}
+          {adventure && !openAdventureNavCollapsed && canSaveOpenAdventureAsScenarioRevision && (
+            <button
+              type="button"
+              className="primary-action nav-scenario-save"
+              onClick={() => void saveScenarioRevisionFromAdventure(adventure)}
+            >
+              Save Scenario Revision
+            </button>
           )}
           <button
             type="button"
