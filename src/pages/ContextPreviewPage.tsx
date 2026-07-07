@@ -36,6 +36,16 @@ function canCondense(sourceType: ContextItem["sourceType"]): boolean {
   return sourceType === "storyCard" || sourceType === "component" || sourceType === "summary";
 }
 
+function canUnpin(item: ContextItem): boolean {
+  return item.pinned && (item.sourceType === "storyCard" || item.sourceType === "component");
+}
+
+function unpinActionLabel(item: ContextItem): string {
+  return item.sourceType === "storyCard"
+    ? `Unpin Story Card ${item.title}`
+    : `Unpin Plot Component ${item.title}`;
+}
+
 function contextItemKeepScore(item: ContextItem): number {
   return item.priority +
     (item.protected ? 100 : 0) +
@@ -200,6 +210,18 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   function deleteItemNow(item: ContextItem) {
     if (item.sourceType === "component") dispatch({ type: "DELETE_COMPONENT", componentId: item.id });
     else if (item.sourceType === "storyCard") dispatch({ type: "DELETE_STORY_CARD", storyCardId: item.id });
+  }
+
+  function unpinItem(item: ContextItem) {
+    if (item.sourceType === "component") {
+      dispatch({ type: "UNPIN_COMPONENT", componentId: item.id });
+    } else if (item.sourceType === "storyCard") {
+      dispatch({ type: "UNPIN_STORY_CARD", storyCardId: item.id });
+    } else {
+      return;
+    }
+    setPreferLivePreview(true);
+    notify(`${item.title} unpinned.`, { type: "success" });
   }
 
   async function deleteItem(item: ContextItem) {
@@ -455,6 +477,16 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
                         </td>
                         <td className="col-policy">{item.inclusionPolicy !== "always" ? item.inclusionPolicy : ""}</td>
                         <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                          {canUnpin(item) && (
+                            <button
+                              type="button"
+                              className="context-action-btn"
+                              aria-label={unpinActionLabel(item)}
+                              onClick={() => unpinItem(item)}
+                            >
+                              Unpin
+                            </button>
+                          )}
                           {providerConfig && canCondense(item.sourceType) && (
                             <button
                               type="button"

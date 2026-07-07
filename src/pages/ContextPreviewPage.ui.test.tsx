@@ -136,4 +136,52 @@ describe("ContextPreviewPage condense", () => {
     expect(await screen.findByText("DETECTED")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Delete Duplicate" })).toBeInTheDocument();
   });
+
+  it("unpins Story Cards and Plot Components from context preview actions", async () => {
+    const user = userEvent.setup();
+    const adventure = {
+      ...createDefaultAdventure("Unpin Test"),
+      components: [
+        makeComponent({
+          id: "component-mission-loop",
+          title: "Mission Loop",
+          type: "custom",
+          content: "The team rotates through missions, training, and pressure scenes.",
+          active: true,
+          alwaysOn: true,
+          pinned: true,
+        }),
+      ],
+      storyCards: [
+        makeStoryCard({
+          id: "card-nyxa",
+          title: "Nyxa Tension",
+          content: "Nyxa confides doubts while keeping royal distance.",
+          active: true,
+          inclusionPolicy: "always",
+          pinned: true,
+        }),
+      ],
+    };
+
+    renderWithAdventure((current, dispatch) => (
+      <ContextPreviewPage
+        adventure={current}
+        dispatch={dispatch}
+        onBuildContext={() => undefined}
+        providerConfig={providerConfig}
+      />
+    ), adventure);
+
+    const cardRow = screen.getByText("Nyxa Tension").closest("tr");
+    const componentRow = screen.getByText("Mission Loop").closest("tr");
+    expect(cardRow).not.toBeNull();
+    expect(componentRow).not.toBeNull();
+
+    await user.click(within(cardRow!).getByRole("button", { name: "Unpin Story Card Nyxa Tension" }));
+    await user.click(within(componentRow!).getByRole("button", { name: "Unpin Plot Component Mission Loop" }));
+
+    expect(within(screen.getByText("Nyxa Tension").closest("tr")!).queryByRole("button", { name: "Unpin Story Card Nyxa Tension" })).not.toBeInTheDocument();
+    expect(within(screen.getByText("Mission Loop").closest("tr")!).queryByRole("button", { name: "Unpin Plot Component Mission Loop" })).not.toBeInTheDocument();
+  });
 });
