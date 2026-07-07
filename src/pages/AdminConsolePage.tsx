@@ -8,6 +8,8 @@ type AdminConsoleView = "overview" | "safetyArchive" | "operations";
 type OperationsRecordType = "all" | "policy" | "usage" | "context" | "latency" | "audit";
 type OperationsFocus = "all" | "attention";
 type AdminUserSummary = BackendAdminConsoleData["users"][number];
+type AdminUsageStats = AdminUserSummary["usageStats"];
+type AdminTotals = BackendAdminConsoleData["totals"];
 type UserLookup = Map<string, AdminUserSummary>;
 
 interface AdminConsolePageProps {
@@ -75,6 +77,14 @@ function numericValue(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
+function numberOrZero(value: unknown): number {
+  return numericValue(value) ?? 0;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
 function usageTokens(usage: unknown): number | undefined {
   if (!usage || typeof usage !== "object") return undefined;
   const record = usage as { promptTokens?: unknown; completionTokens?: unknown; totalTokens?: unknown };
@@ -85,20 +95,66 @@ function usageTokens(usage: unknown): number | undefined {
   return prompt + completion || undefined;
 }
 
+function policyCategories(decision: BackendAdminConsoleData["policyDecisions"][number]): string[] {
+  return stringArray((decision as { categories?: unknown }).categories);
+}
+
+function policyMatchedRuleIds(decision: BackendAdminConsoleData["policyDecisions"][number]): string[] {
+  return stringArray((decision as { matchedRuleIds?: unknown }).matchedRuleIds);
+}
+
+function policySeverity(decision: BackendAdminConsoleData["policyDecisions"][number]): number {
+  return numberOrZero((decision as { severity?: unknown }).severity);
+}
+
+function userUsageStats(user: AdminUserSummary): AdminUsageStats {
+  const stats = (user as { usageStats?: Partial<AdminUsageStats> }).usageStats ?? {};
+  return {
+    usageLogCount: numberOrZero(stats.usageLogCount),
+    promptTokens: numberOrZero(stats.promptTokens),
+    completionTokens: numberOrZero(stats.completionTokens),
+    totalTokens: numberOrZero(stats.totalTokens),
+    cacheReadTokens: numberOrZero(stats.cacheReadTokens),
+    cacheCreationTokens: numberOrZero(stats.cacheCreationTokens),
+    totalDurationMs: numberOrZero(stats.totalDurationMs),
+    lastUsedAt: typeof stats.lastUsedAt === "string" ? stats.lastUsedAt : undefined,
+  };
+}
+
+function userRestrictionLevel(user: AdminUserSummary): string {
+  return (user as { currentRestriction?: { level?: string } }).currentRestriction?.level ?? "none";
+}
+
+function adminTotals(data?: BackendAdminConsoleData): AdminTotals {
+  const totals = (data as { totals?: Partial<AdminTotals> } | undefined)?.totals ?? {};
+  return {
+    users: numberOrZero(totals.users),
+    activeUsers: numberOrZero(totals.activeUsers),
+    adventures: numberOrZero(totals.adventures),
+    scenarioDrafts: numberOrZero(totals.scenarioDrafts),
+    publishedScenarioRevisions: numberOrZero(totals.publishedScenarioRevisions),
+    openSafetyEvents: numberOrZero(totals.openSafetyEvents),
+    policyDecisions: numberOrZero(totals.policyDecisions),
+    usageLogs: numberOrZero(totals.usageLogs),
+    performanceTraces: numberOrZero(totals.performanceTraces),
+  };
+}
+
 function policyNeedsAttention(decision: BackendAdminConsoleData["policyDecisions"][number]): boolean {
-  return decision.action !== "allow" || decision.manualReviewRequired === true || decision.severity >= 4;
+  return decision.action !== "allow" || decision.manualReviewRequired === true || policySeverity(decision) >= 4;
 }
 
 function usageNeedsAttention(usage: BackendAdminConsoleData["usageLogs"][number]): boolean {
-  return (usage.durationMs ?? 0) >= 1000 || (usageTokens(usage.usage) ?? 0) >= 4000;
+  return numberOrZero(usage.durationMs) >= 1000 || (usageTokens(usage.usage) ?? 0) >= 4000;
 }
 
 function contextNeedsAttention(build: BackendAdminConsoleData["contextBuilds"][number]): boolean {
-  return build.excludedItemCount > 0 || build.totalEstimatedTokens >= 4000;
+  return numberOrZero(build.excludedItemCount) > 0 || numberOrZero(build.totalEstimatedTokens) >= 4000;
 }
 
 function traceNeedsAttention(trace: BackendAdminConsoleData["performanceTraces"][number]): boolean {
-  return trace.status === "error" || trace.statusCode !== undefined && trace.statusCode >= 400 || trace.durationMs >= 1000 || (trace.retryCount ?? 0) > 0;
+  const statusCode = numericValue(trace.statusCode);
+  return trace.status === "error" || statusCode !== undefined && statusCode >= 400 || numberOrZero(trace.durationMs) >= 1000 || numberOrZero(trace.retryCount) > 0;
 }
 
 function auditNeedsAttention(action: BackendAdminConsoleData["adminActions"][number]): boolean {
@@ -133,6 +189,7 @@ export function AdminConsolePage({
   onSavePlatformSettings,
 }: AdminConsolePageProps) {
   const { confirmAction, notify } = useActionFeedback();
+  const totals = adminTotals(data);
   const [targetUserId, setTargetUserId] = useState("");
   const [restrictionLevel, setRestrictionLevel] = useState<RestrictionLevel>("watched");
   const [restrictionReason, setRestrictionReason] = useState("Manual admin review.");
@@ -222,10 +279,10 @@ export function AdminConsolePage({
         decision.id,
         decision.action,
         decision.gate,
-        decision.severity,
-        decision.categories.join(" "),
+        policySeverity(decision),
+        policyCategories(decision).join(" "),
         decision.rationale,
-        decision.matchedRuleIds?.join(" "),
+        policyMatchedRuleIds(decision).join(" "),
         decision.userId ? formatUserReference(decision.userId, usersById) : "system",
       ])
     )),
@@ -242,7 +299,7 @@ export function AdminConsolePage({
         usage.model,
         usage.adventureId,
         formatUserReference(usage.userId, usersById),
-        usage.durationMs,
+        numberOrZero(usage.durationMs),
         usageTokens(usage.usage),
       ])
     )),
@@ -257,10 +314,10 @@ export function AdminConsolePage({
         build.gate,
         build.adventureId,
         formatUserReference(build.userId, usersById),
-        build.totalEstimatedTokens,
-        build.messageCount,
-        build.sectionCount,
-        build.excludedItemCount,
+        numberOrZero(build.totalEstimatedTokens),
+        numberOrZero(build.messageCount),
+        numberOrZero(build.sectionCount),
+        numberOrZero(build.excludedItemCount),
       ])
     )),
     [data?.contextBuilds, normalizedOperationsSearch, operationsFocus, operationsUserId, usersById],
@@ -275,7 +332,7 @@ export function AdminConsolePage({
         trace.source,
         trace.phase,
         trace.status,
-        trace.statusCode,
+        numericValue(trace.statusCode),
         trace.route,
         trace.method,
         trace.providerName,
@@ -309,26 +366,26 @@ export function AdminConsolePage({
   const policyStats = useMemo(() => ({
     blocked: filteredPolicyDecisions.filter((decision) => decision.action === "block").length,
     manualReview: filteredPolicyDecisions.filter((decision) => decision.manualReviewRequired === true).length,
-    highSeverity: filteredPolicyDecisions.filter((decision) => decision.severity >= 4).length,
+    highSeverity: filteredPolicyDecisions.filter((decision) => policySeverity(decision) >= 4).length,
   }), [filteredPolicyDecisions]);
   const usageStats = useMemo(() => ({
     calls: filteredUsageLogs.length,
     tokens: filteredUsageLogs.reduce((sum, usage) => sum + (usageTokens(usage.usage) ?? 0), 0),
-    durationMs: filteredUsageLogs.reduce((sum, usage) => sum + (usage.durationMs ?? 0), 0),
+    durationMs: filteredUsageLogs.reduce((sum, usage) => sum + numberOrZero(usage.durationMs), 0),
     slowCalls: filteredUsageLogs.filter(usageNeedsAttention).length,
   }), [filteredUsageLogs]);
   const contextStats = useMemo(() => ({
     builds: filteredContextBuilds.length,
     averageTokens: filteredContextBuilds.length
-      ? Math.round(filteredContextBuilds.reduce((sum, build) => sum + build.totalEstimatedTokens, 0) / filteredContextBuilds.length)
+      ? Math.round(filteredContextBuilds.reduce((sum, build) => sum + numberOrZero(build.totalEstimatedTokens), 0) / filteredContextBuilds.length)
       : 0,
-    excludedBuilds: filteredContextBuilds.filter((build) => build.excludedItemCount > 0).length,
+    excludedBuilds: filteredContextBuilds.filter((build) => numberOrZero(build.excludedItemCount) > 0).length,
   }), [filteredContextBuilds]);
   const traceStats = useMemo(() => ({
     traces: filteredPerformanceTraces.length,
-    errors: filteredPerformanceTraces.filter((trace) => trace.status === "error" || (trace.statusCode ?? 0) >= 400).length,
-    slow: filteredPerformanceTraces.filter((trace) => trace.durationMs >= 1000).length,
-    worstMs: filteredPerformanceTraces.reduce((max, trace) => Math.max(max, trace.durationMs), 0),
+    errors: filteredPerformanceTraces.filter((trace) => trace.status === "error" || numberOrZero(trace.statusCode) >= 400).length,
+    slow: filteredPerformanceTraces.filter((trace) => numberOrZero(trace.durationMs) >= 1000).length,
+    worstMs: filteredPerformanceTraces.reduce((max, trace) => Math.max(max, numberOrZero(trace.durationMs)), 0),
   }), [filteredPerformanceTraces]);
   const showPolicyOperations = operationsRecordType === "all" || operationsRecordType === "policy";
   const showUsageOperations = operationsRecordType === "all" || operationsRecordType === "usage";
@@ -530,13 +587,13 @@ export function AdminConsolePage({
       {data ? (
         <>
           <div className="admin-metric-grid">
-            <Metric label="Users" value={data.totals.users} detail={`${data.totals.activeUsers} active`} />
-            <Metric label="Adventures" value={data.totals.adventures} />
-            <Metric label="Scenarios" value={data.totals.scenarioDrafts} detail={`${data.totals.publishedScenarioRevisions} published revisions`} />
-            <Metric label="Safety" value={data.totals.openSafetyEvents} detail="open events" />
-            <Metric label="Policy" value={data.totals.policyDecisions} detail="decisions" />
-            <Metric label="Usage" value={data.totals.usageLogs} detail="model calls" />
-            <Metric label="Latency" value={data.totals.performanceTraces} detail="trace events" />
+            <Metric label="Users" value={totals.users} detail={`${totals.activeUsers} active`} />
+            <Metric label="Adventures" value={totals.adventures} />
+            <Metric label="Scenarios" value={totals.scenarioDrafts} detail={`${totals.publishedScenarioRevisions} published revisions`} />
+            <Metric label="Safety" value={totals.openSafetyEvents} detail="open events" />
+            <Metric label="Policy" value={totals.policyDecisions} detail="decisions" />
+            <Metric label="Usage" value={totals.usageLogs} detail="model calls" />
+            <Metric label="Latency" value={totals.performanceTraces} detail="trace events" />
           </div>
 
           {adminActionStatus && <p className="notice">{adminActionStatus}</p>}
@@ -720,7 +777,7 @@ export function AdminConsolePage({
             <div className="grid three">
               <Field label="Target user">
                 <select value={targetUserId} onChange={(event) => setTargetUserId(event.target.value)}>
-                  {data.users.map((user) => (
+                  {(data.users ?? []).map((user) => (
                     <option key={user.id} value={user.id}>
                       {userDisplayName(user)} ({user.role})
                     </option>
@@ -783,27 +840,30 @@ export function AdminConsolePage({
                   </tr>
                 </thead>
                 <tbody>
-                  {data.users.map((user) => (
-                    <tr key={user.id}>
-                      <td>
-                        <strong>{userDisplayName(user)}</strong>
-                        <div className="muted">{user.email}</div>
-                      </td>
-                      <td>{user.role}</td>
-                      <td>{user.status}</td>
-                      <td>{user.currentRestriction.level}</td>
-                      <td>
-                        <strong>{formatCount(user.usageStats.usageLogCount)} calls</strong>
-                        <div className="muted">
-                          {formatTokenCount(user.usageStats.totalTokens)} tokens
-                          {user.usageStats.totalDurationMs ? ` / ${formatDuration(user.usageStats.totalDurationMs)}` : ""}
-                        </div>
-                        {user.usageStats.lastUsedAt && <div className="muted">Last {formatDate(user.usageStats.lastUsedAt)}</div>}
-                      </td>
-                      <td>{user.adventureCount} adv / {user.scenarioCount} scen</td>
-                      <td>{user.openSafetyEventCount} open / {user.safetyEventCount} total</td>
-                    </tr>
-                  ))}
+                  {(data.users ?? []).map((user) => {
+                    const stats = userUsageStats(user);
+                    return (
+                      <tr key={user.id}>
+                        <td>
+                          <strong>{userDisplayName(user)}</strong>
+                          <div className="muted">{user.email}</div>
+                        </td>
+                        <td>{user.role}</td>
+                        <td>{user.status}</td>
+                        <td>{userRestrictionLevel(user)}</td>
+                        <td>
+                          <strong>{formatCount(stats.usageLogCount)} calls</strong>
+                          <div className="muted">
+                            {formatTokenCount(stats.totalTokens)} tokens
+                            {stats.totalDurationMs ? ` / ${formatDuration(stats.totalDurationMs)}` : ""}
+                          </div>
+                          {stats.lastUsedAt && <div className="muted">Last {formatDate(stats.lastUsedAt)}</div>}
+                        </td>
+                        <td>{numberOrZero(user.adventureCount)} adv / {numberOrZero(user.scenarioCount)} scen</td>
+                        <td>{numberOrZero(user.openSafetyEventCount)} open / {numberOrZero(user.safetyEventCount)} total</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -833,7 +893,7 @@ export function AdminConsolePage({
 
           <Section title="Restrictions">
             <CompactList
-              items={data.restrictions.slice(0, 30).map((restriction) => ({
+              items={(data.restrictions ?? []).slice(0, 30).map((restriction) => ({
                 id: restriction.id,
                 title: `${restriction.level} - ${formatUserReference(restriction.userId, usersById)}`,
                 detail: `${restriction.reason || "No reason"} | sharing ${restriction.sharingDisabled ? "off" : "on"} | generation ${restriction.generationDisabled ? "off" : "on"}`,
@@ -858,7 +918,7 @@ export function AdminConsolePage({
               <Field label="User filter">
                 <select value={operationsUserId} onChange={(event) => setOperationsUserId(event.target.value)}>
                   <option value="">All users</option>
-                  {data.users.map((user) => (
+                  {(data.users ?? []).map((user) => (
                     <option key={user.id} value={user.id}>{userDisplayName(user)}</option>
                   ))}
                 </select>
@@ -885,9 +945,9 @@ export function AdminConsolePage({
           {operationsRecordType === "all" && (
             <>
           <Section title="Invites">
-            {data.invites.length ? (
+            {(data.invites ?? []).length ? (
               <div className="admin-compact-list">
-                {data.invites.slice(0, 30).map((invite) => {
+                {(data.invites ?? []).slice(0, 30).map((invite) => {
                   const disabled = Boolean(invite.disabledAt);
                   const usedUp = invite.useCount >= invite.maxUses;
                   return (
@@ -927,7 +987,7 @@ export function AdminConsolePage({
 
           <Section title="Adventures">
             <CompactList
-              items={data.adventures.slice(0, 30).map((adventure) => ({
+              items={(data.adventures ?? []).slice(0, 30).map((adventure) => ({
                 id: adventure.id,
                 title: adventure.title,
                 detail: `${adventure.turnCount} turns, ${adventure.storyEntryCount} entries, owner ${formatUserReference(adventure.ownerUserId, usersById)}`,
@@ -938,7 +998,7 @@ export function AdminConsolePage({
 
           <Section title="Scenarios">
             <CompactList
-              items={data.scenarios.slice(0, 30).map((scenario) => ({
+              items={(data.scenarios ?? []).slice(0, 30).map((scenario) => ({
                 id: scenario.id,
                 title: scenario.title,
                 detail: `${scenario.revisionCount} revisions, ${scenario.publishedRevisionCount} published, owner ${formatUserReference(scenario.ownerUserId, usersById)}`,
@@ -953,7 +1013,7 @@ export function AdminConsolePage({
           <Section title="Policy Decisions" description="Content-gate decisions. Blocks, manual review, and severity 4+ are the rows to inspect first.">
             <InsightStrip
               items={[
-                { label: "shown", value: formatCount(filteredPolicyDecisions.length), detail: `${formatCount(data.policyDecisions.length)} loaded` },
+                { label: "shown", value: formatCount(filteredPolicyDecisions.length), detail: `${formatCount((data.policyDecisions ?? []).length)} loaded` },
                 { label: "blocked", value: formatCount(policyStats.blocked) },
                 { label: "manual review", value: formatCount(policyStats.manualReview) },
                 { label: "severity 4+", value: formatCount(policyStats.highSeverity) },
@@ -962,10 +1022,10 @@ export function AdminConsolePage({
             <CompactList
               items={filteredPolicyDecisions.slice(0, 40).map((decision) => ({
                 id: decision.id,
-                title: `${decision.action} / ${decision.gate} / severity ${decision.severity}`,
+                title: `${decision.action} / ${decision.gate} / severity ${policySeverity(decision)}`,
                 detail: [
                   decision.userId ? `user ${formatUserReference(decision.userId, usersById)}` : undefined,
-                  decision.categories.join(", ") || "No categories",
+                  policyCategories(decision).join(", ") || "No categories",
                   decision.manualReviewRequired ? "manual review" : undefined,
                   decision.rationale,
                 ].filter(Boolean).join(" / "),
@@ -983,7 +1043,7 @@ export function AdminConsolePage({
                   <h3>Usage Logs</h3>
                   <InsightStrip
                     items={[
-                      { label: "shown", value: formatCount(usageStats.calls), detail: `${formatCount(data.usageLogs.length)} loaded` },
+                      { label: "shown", value: formatCount(usageStats.calls), detail: `${formatCount((data.usageLogs ?? []).length)} loaded` },
                       { label: "tokens", value: formatTokenCount(usageStats.tokens) },
                       { label: "duration", value: formatDuration(usageStats.durationMs) },
                       { label: "attention", value: formatCount(usageStats.slowCalls) },
@@ -996,7 +1056,7 @@ export function AdminConsolePage({
                       detail: [
                         `user ${formatUserReference(usage.userId, usersById)}`,
                         `adventure ${shortId(usage.adventureId)}`,
-                        usage.durationMs !== undefined ? formatDuration(usage.durationMs) : undefined,
+                        numericValue(usage.durationMs) !== undefined ? formatDuration(usage.durationMs) : undefined,
                         usageTokens(usage.usage) !== undefined ? `${formatTokenCount(usageTokens(usage.usage) ?? 0)} tokens` : undefined,
                       ].filter(Boolean).join(" / "),
                       meta: formatDate(usage.createdAt),
@@ -1009,7 +1069,7 @@ export function AdminConsolePage({
                   <h3>Context Builds</h3>
                   <InsightStrip
                     items={[
-                      { label: "shown", value: formatCount(contextStats.builds), detail: `${formatCount(data.contextBuilds.length)} loaded` },
+                      { label: "shown", value: formatCount(contextStats.builds), detail: `${formatCount((data.contextBuilds ?? []).length)} loaded` },
                       { label: "avg tokens", value: formatTokenCount(contextStats.averageTokens) },
                       { label: "excluded", value: formatCount(contextStats.excludedBuilds) },
                     ]}
@@ -1017,8 +1077,8 @@ export function AdminConsolePage({
                   <CompactList
                     items={filteredContextBuilds.slice(0, 20).map((build) => ({
                       id: build.id,
-                      title: `${build.gate} / ${build.totalEstimatedTokens} tokens`,
-                      detail: `user ${formatUserReference(build.userId, usersById)} / ${build.messageCount} messages, ${build.sectionCount} sections, ${build.excludedItemCount} excluded`,
+                      title: `${build.gate} / ${numberOrZero(build.totalEstimatedTokens)} tokens`,
+                      detail: `user ${formatUserReference(build.userId, usersById)} / ${numberOrZero(build.messageCount)} messages, ${numberOrZero(build.sectionCount)} sections, ${numberOrZero(build.excludedItemCount)} excluded`,
                       meta: formatDate(build.createdAt),
                     }))}
                   />
@@ -1032,7 +1092,7 @@ export function AdminConsolePage({
           <Section title="Latency Traces" description="Backend/client timing rows. Errors, HTTP 4xx/5xx, retries, and 1s+ traces are the first rows to investigate.">
             <InsightStrip
               items={[
-                { label: "shown", value: formatCount(traceStats.traces), detail: `${formatCount(data.performanceTraces.length)} loaded` },
+                { label: "shown", value: formatCount(traceStats.traces), detail: `${formatCount((data.performanceTraces ?? []).length)} loaded` },
                 { label: "errors", value: formatCount(traceStats.errors) },
                 { label: "slow", value: formatCount(traceStats.slow) },
                 { label: "worst", value: formatDuration(traceStats.worstMs) },
@@ -1041,7 +1101,7 @@ export function AdminConsolePage({
             <CompactList
               items={filteredPerformanceTraces.slice(0, 50).map((trace) => ({
                 id: trace.id,
-                title: `${trace.source} / ${trace.phase} / ${trace.status} / ${formatDuration(trace.durationMs)}`,
+                title: `${trace.source} / ${trace.phase} / ${trace.status} / ${formatDuration(numberOrZero(trace.durationMs))}`,
                 detail: [
                   trace.method,
                   trace.route,
@@ -1061,7 +1121,7 @@ export function AdminConsolePage({
           <Section title="Admin Audit Log" description="Admin-side mutations and review actions. Use this with the user filter to reconstruct account changes.">
             <InsightStrip
               items={[
-                { label: "shown", value: formatCount(filteredAdminActions.length), detail: `${formatCount(data.adminActions.length)} loaded` },
+                { label: "shown", value: formatCount(filteredAdminActions.length), detail: `${formatCount((data.adminActions ?? []).length)} loaded` },
                 { label: "attention", value: formatCount(filteredAdminActions.filter(auditNeedsAttention).length) },
               ]}
             />

@@ -458,7 +458,7 @@ function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
           <h3>Publish scenarios</h3>
           <p className="muted">
             Adventures are private playthroughs. Publishing creates a reusable scenario setup for Explore without sharing
-            your private transcript. Edit Scenario opens a setup copy; Save Scenario Revision writes a new draft before
+            your private transcript. Edit Scenario opens the reusable setup without starting a playable adventure; Save Scenario Revision writes a new draft before
             you publish. Shared scenarios do not substitute user variables yet.
           </p>
         </article>

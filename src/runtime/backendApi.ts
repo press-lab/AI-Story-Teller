@@ -670,6 +670,12 @@ export function forkBackendScenarioRevision(config: RuntimeConfig, session: Back
   });
 }
 
+export function loadBackendScenarioRevisionEditorCopy(config: RuntimeConfig, session: BackendSessionState, revisionId: string) {
+  return apiJson<Adventure>(config, `/scenario-revisions/${encodeURIComponent(revisionId)}/editor-copy`, {
+    headers: authHeaders(session),
+  });
+}
+
 export function loadBackendSafetyAudit(config: RuntimeConfig, session?: BackendSessionState) {
   return apiJson<{
     events: BackendSafetyEvent[];

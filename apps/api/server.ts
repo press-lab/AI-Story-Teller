@@ -39,6 +39,7 @@ import {
 import { currentRestriction } from "./accountSafety";
 import {
   createAdventureFromScenarioRevision,
+  createScenarioRevisionEditorCopy,
   createScenarioDraft,
   createScenarioRevision,
   deleteScenarioDraft,
@@ -827,6 +828,12 @@ async function handleScenarioRevisionRoute(
   db: BackendDb,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
+  if (request.method === "GET" && segments[2] === "editor-copy") {
+    const data = await db.read();
+    const adventure = createScenarioRevisionEditorCopy(data, session.user.id, segments[1]);
+    sendJson(response, 200, adventure, corsHeaders);
+    return;
+  }
   if (request.method === "POST" && segments[2] === "publish") {
     const result = await db.updatePersistingOnError((data) => {
       assertScenarioPublishingEnabled(data, config);

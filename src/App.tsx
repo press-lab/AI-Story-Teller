@@ -67,6 +67,7 @@ import {
   loadBackendExploreScenarios,
   loadBackendProfile,
   loadBackendPublicProfile,
+  loadBackendScenarioRevisionEditorCopy,
   loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
@@ -1135,13 +1136,12 @@ export default function App() {
     setBackendProfileStatus("Opening scenario editor...");
     notify("Opening scenario editor...", { type: "info" });
     try {
-      const next = await forkBackendScenarioRevision(normalizedRuntimeConfig, backendSession, revisionId);
+      const next = await loadBackendScenarioRevisionEditorCopy(normalizedRuntimeConfig, backendSession, revisionId);
       setAdventure(next);
       setContextResult(undefined);
       setModalTab(undefined);
       openEditor();
-      await library.refreshAdventures();
-      await refreshBackendProfile();
+      setSaveStatus("editing scenario draft");
       setBackendProfileStatus("Scenario opened for editing. Save a new revision when finished.");
       notify("Scenario opened for editing. Save a new revision when finished.", { type: "success" });
     } catch (error) {
@@ -1169,7 +1169,6 @@ export default function App() {
     setBackendProfileStatus("Saving scenario revision...");
     notify("Saving scenario revision...", { type: "info" });
     try {
-      await adventureStore.save(source);
       const revision = await createBackendScenarioRevision(normalizedRuntimeConfig, backendSession, scenarioId, {
         title: source.title,
         description: scenario?.description ?? "Reusable scenario setup edited from an adventure.",
@@ -1185,8 +1184,7 @@ export default function App() {
           },
         });
       }
-      setSaveStatus("saved");
-      await library.refreshAdventures();
+      setSaveStatus(`scenario revision v${revision.version} saved`);
       await refreshBackendProfile();
       await refreshBackendExploreScenarios();
       setBackendProfileStatus(`Saved scenario revision v${revision.version}.`);

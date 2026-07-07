@@ -208,6 +208,16 @@ export function createAdventureFromScenarioRevision(
   });
 }
 
+export function createScenarioRevisionEditorCopy(
+  data: LocalDbData,
+  userId: string,
+  revisionId: string,
+): Adventure {
+  const revision = data.scenarioRevisions.find((entry) => entry.id === revisionId && entry.ownerUserId === userId);
+  if (!revision) throw new Error("Scenario revision not found.");
+  return createAdventureFromScenarioRevision(data, userId, revisionId);
+}
+
 function asScenarioContent(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }

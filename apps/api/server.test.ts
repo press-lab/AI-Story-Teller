@@ -912,6 +912,34 @@ describe("local API policy gates and sharing", () => {
       expect.objectContaining({ id: forked.body.id, title: "Library Scenario" }),
     ]);
 
+    const blockedEditorCopy = await requestJson<{ error: string }>(`/scenario-revisions/${revision.body.id}/editor-copy`, {
+      headers: { Authorization: `Bearer ${testerSession}` },
+    });
+    expect(blockedEditorCopy.status).toBe(404);
+    expect(blockedEditorCopy.body.error).toMatch(/scenario revision not found/i);
+
+    const editorCopy = await requestJson<{
+      id: string;
+      title: string;
+      openingScene: string;
+      metadata: {
+        sourceScenarioRevisionId?: string;
+        startedFromProfileScenario?: boolean;
+      };
+    }>(`/scenario-revisions/${revision.body.id}/editor-copy`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(editorCopy.status).toBe(200);
+    expect(editorCopy.body.title).toBe("Library Scenario");
+    expect(editorCopy.body.openingScene).toBe("The lights come up.");
+    expect(editorCopy.body.metadata.sourceScenarioRevisionId).toBe(revision.body.id);
+    expect(editorCopy.body.metadata.startedFromProfileScenario).toBe(true);
+
+    const ownerAdventuresBeforeFork = await requestJson<Array<{ id: string; title: string }>>("/adventures", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(ownerAdventuresBeforeFork.body).toEqual([]);
+
     const unpublished = await requestJson<{ revision: { status: string; publishedAt?: string }; disabledShareLinkCount: number }>(
       `/scenario-revisions/${revision.body.id}/unpublish`,
       {

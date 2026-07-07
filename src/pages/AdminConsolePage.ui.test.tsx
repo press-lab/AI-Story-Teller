@@ -472,4 +472,41 @@ describe("AdminConsolePage", () => {
     expect(screen.getByText(/quick_read/)).toBeInTheDocument();
     expect(screen.queryByText(/provider_call/)).not.toBeInTheDocument();
   });
+
+  it("renders legacy partial admin activity rows without blanking the console", async () => {
+    const user = userEvent.setup();
+    const data = adminData();
+    (data.users[0] as unknown as { usageStats?: unknown; currentRestriction?: unknown }).usageStats = undefined;
+    (data.users[0] as unknown as { usageStats?: unknown; currentRestriction?: unknown }).currentRestriction = undefined;
+    (data.policyDecisions[0] as unknown as { categories?: unknown; matchedRuleIds?: unknown; severity?: unknown }).categories = undefined;
+    (data.policyDecisions[0] as unknown as { categories?: unknown; matchedRuleIds?: unknown; severity?: unknown }).matchedRuleIds = undefined;
+    (data.policyDecisions[0] as unknown as { categories?: unknown; matchedRuleIds?: unknown; severity?: unknown }).severity = undefined;
+    (data.performanceTraces[0] as unknown as { durationMs?: unknown; statusCode?: unknown }).durationMs = undefined;
+    (data.performanceTraces[0] as unknown as { durationMs?: unknown; statusCode?: unknown }).statusCode = undefined;
+
+    render(
+      <AdminConsolePage
+        backendMode
+        backendSession={session("admin")}
+        data={data}
+        onSetUserStatus={vi.fn()}
+        onCreateRestriction={vi.fn()}
+        onUpdateSafetyEvent={vi.fn()}
+        onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Admin Console" })).toBeInTheDocument();
+    expect(screen.getAllByText("none").length).toBeGreaterThan(0);
+    expect(screen.getByText("0 calls")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Operations" }));
+
+    expect(screen.getByRole("heading", { name: "Policy Decisions" })).toBeInTheDocument();
+    expect(screen.getByText(/severity 0/)).toBeInTheDocument();
+    expect(screen.getByText(/No categories/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Latency Traces" })).toBeInTheDocument();
+  });
 });
