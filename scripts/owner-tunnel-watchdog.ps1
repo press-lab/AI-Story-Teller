@@ -150,9 +150,34 @@ function Start-HiddenCommand([string]$FilePath, [string]$Arguments, [string]$Out
   return [System.Diagnostics.Process]::Start($psi)
 }
 
+function Write-FileTailToOwnerLog([string]$Path, [int]$Lines = 40) {
+  if (-not (Test-Path $Path)) { return }
+  foreach ($line in (Get-Content $Path -Tail $Lines -ErrorAction SilentlyContinue)) {
+    Write-OwnerLog $line
+  }
+}
+
+function Invoke-NoProxyJson([string]$Url, [int]$TimeoutSeconds = 8) {
+  Add-Type -AssemblyName System.Net.Http
+  $handler = [System.Net.Http.HttpClientHandler]::new()
+  $handler.UseProxy = $false
+  $client = [System.Net.Http.HttpClient]::new($handler)
+  try {
+    $client.Timeout = [TimeSpan]::FromSeconds($TimeoutSeconds)
+    $response = $client.GetAsync($Url).GetAwaiter().GetResult()
+    if (-not $response.IsSuccessStatusCode) { return $null }
+    $text = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+    return $text | ConvertFrom-Json
+  } finally {
+    $client.Dispose()
+    $handler.Dispose()
+  }
+}
+
 function Test-LocalApi {
   try {
-    $response = Invoke-RestMethod -Uri "$(Get-LocalApiUrl)/version" -TimeoutSec 8
+    $response = Invoke-NoProxyJson "$(Get-LocalApiUrl)/version" 5
+    if (-not $response) { return $false }
     if ($response.app -ne "ai-story-teller-api") { return $false }
     if ($response.database -ne (Get-ExpectedDatabaseMode)) { return $false }
     return $true
@@ -230,9 +255,9 @@ function Ensure-Api {
     }
   }
   Write-OwnerLog "API stdout:"
-  if (Test-Path $ApiOutLog) { Get-Content $ApiOutLog -Tail 40 }
+  Write-FileTailToOwnerLog $ApiOutLog 40
   Write-OwnerLog "API stderr:"
-  if (Test-Path $ApiErrLog) { Get-Content $ApiErrLog -Tail 40 }
+  Write-FileTailToOwnerLog $ApiErrLog 40
   throw "Owner API did not become healthy."
 }
 
@@ -269,6 +294,10 @@ function Test-PublicApi([string]$PublicUrl) {
     if ($text -match '"app"\s*:\s*"ai-story-teller-api"') { return $true }
   } catch {
     Write-OwnerLog "Direct public tunnel check failed: $($_.Exception.Message)"
+  }
+  if (-not (Test-LocalApi)) {
+    Write-OwnerLog "Skipping cloudflared log fallback because local API is not healthy."
+    return $false
   }
   if (Test-Path $TunnelErrLog) {
     $log = (Get-Content $TunnelErrLog -Tail 120) -join "`n"
@@ -400,19 +429,25 @@ try {
   Write-OwnerLog "Owner watchdog started as PID $PID."
 
   do {
-    Write-OwnerLog "Checking owner backend dependencies."
-    Ensure-PostgresIfConfigured
-    Write-OwnerLog "Checking owner API."
-    Ensure-Api
-    Write-OwnerLog "Checking Cloudflare tunnel."
-    $url = Ensure-Tunnel
-    Write-OwnerLog "Checking published Pages API URL."
-    $published = Get-PublishedPagesUrl
-    if ($forceDeployRequested -or $published -ne $url) {
-      Publish-TunnelUrl $url
-      $forceDeployRequested = $false
-    } else {
-      Write-OwnerLog "Pages already points at $url."
+    try {
+      Write-OwnerLog "Checking owner backend dependencies."
+      Ensure-PostgresIfConfigured
+      Write-OwnerLog "Checking owner API."
+      Ensure-Api
+      Write-OwnerLog "Checking Cloudflare tunnel."
+      $url = Ensure-Tunnel
+      Write-OwnerLog "Checking published Pages API URL."
+      $published = Get-PublishedPagesUrl
+      if ($forceDeployRequested -or $published -ne $url) {
+        Publish-TunnelUrl $url
+        $forceDeployRequested = $false
+      } else {
+        Write-OwnerLog "Pages already points at $url."
+      }
+    } catch {
+      Write-OwnerErrorLog ($_ | Out-String)
+      Write-OwnerLog "Watchdog cycle failed: $($_.Exception.Message)"
+      if ($Once) { throw }
     }
     if ($Once) { break }
     Start-Sleep -Seconds $CheckSeconds
