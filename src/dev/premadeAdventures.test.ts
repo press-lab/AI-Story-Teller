@@ -122,6 +122,8 @@ describe("premade adventure library", () => {
     expect(currentArc?.arcBreakInstruction).toContain("Setu remains overwhelmingly powerful");
     expect(setu?.content).toContain("Never write Setu's dialogue");
     expect(nyxa?.content).toContain("People close to Nyxa call her Nyx");
+    expect(nyxa?.content).toContain("long electric-blue hair");
+    expect(nyxa?.content).toContain("visible cloud tattoos");
     expect(nyxa?.content).toContain("doubts that rhyme with Zuko's");
     expect(nyxa?.content).toContain("VOICE CONTRACT");
     expect(teamAvatar?.memoryMode).toBe("living");

@@ -229,6 +229,7 @@ Example lines: "Sentiment is what weak men call hesitation." / "You have been gi
       priority: 86,
       content: `- Princess Nyxa is Fire Lord Ozai's third child, the same age as Setu, and a prodigy firebender just below Setu's raw power.
 - People close to Nyxa call her Nyx. Formal court uses Princess Nyxa unless she is deliberately breaking the room's rhythm.
+- Nyx has long electric-blue hair, visible cloud tattoos, and a wiry punk-princess silhouette that can evoke Jinx from Arcane at a glance without making her Jinx, a crossover, or a copy.
 - Nyx grew up training beside Setu. They are close friends, rivals, trusted sparring partners, and a long-running almost-romance made messier by royal pressure.
 - Nyx is kinetic, brilliant, chaotic, funny, dangerous, expressive, and inventive without being broken by trauma. She causes trouble because she is alive under pressure, not because she is helpless.
 - Nyx has to survive Ozai's expectations and Azula's impossible standard while still carving out an identity that belongs to her.
