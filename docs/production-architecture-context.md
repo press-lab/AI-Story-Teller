@@ -26,6 +26,44 @@ AI Story Teller is currently a browser-only React + TypeScript + Vite app.
 
 The production goal is not to rewrite the engine. The production goal is to make the existing engine authoritative, governable, observable, billable, and safe to operate.
 
+## Current Implementation Snapshot
+
+The `backend-local-implementation` branch now has an owner-testable backend slice. Treat the older browser-only description above as the legacy baseline this architecture grew from, not as the complete current implementation.
+
+- The React/Vite web app still supports Browser Local mode with IndexedDB adventure saves and browser-owned provider settings.
+- Backend mode signs users into the local API, stores account adventures in the backend database, and routes turn generation, Context Preview, AI helpers, imports, backups, profiles, scenario publishing, and admin tools through the API.
+- The temporary UAT setup is static web hosting plus an owner-hosted API URL. That is useful for a handful of testers, but it is not the production target.
+- GitHub Pages and a tunnel are acceptable temporary UAT plumbing only. Do not treat public GitHub source, the owner's workstation, or a Cloudflare tunnel as the proper hosting architecture.
+
+## Proper Hosting Target
+
+The next production-shaped move should be:
+
+- Source control: private GitHub repository.
+- Web: Cloudflare Pages serving the Vite build for `story.storymodeai.com`.
+- API: managed Node.js web service, with Render as the simple default target unless a later constraint justifies another host.
+- Database: managed Postgres attached to the API service.
+- Public endpoints: `story.storymodeai.com` for the app and `api.storymodeai.com` for the backend.
+- Secrets: provider keys, database URLs, auth secrets, OAuth credentials, and billing credentials live in the hosting provider's secret store, not in the frontend bundle or repo.
+- Deployment: private repo integration builds and deploys web/API changes. GitHub Pages is retired as the production web host.
+
+This keeps tester access public while the source repo can become private. It also removes the owner's device from the serving path, gives HTTPS and certificate renewal to the hosting layer, and makes database backups/observability a platform responsibility instead of a local-machine problem.
+
+## Admin Device-Only Adventure Data Mode
+
+Admins may need a browser-local privacy/testing mode even while signed into backend mode. That mode is intentionally narrower than "offline mode."
+
+When enabled for an admin account:
+
+- Adventure saves use IndexedDB through the local adventure store.
+- Local imports and built-in scenarios save only to the device.
+- Context Preview and turn execution use browser-side context/generation paths instead of backend adventure endpoints.
+- Backend adventure write features are disabled, including backend imports, publish-from-adventure, backups/restore, sync-conflict uploads, shared-scenario forks, and backend AI helper endpoints.
+- Account, profile, Explore reads, and Admin screens may still call the backend because they are account/platform surfaces, not private adventure persistence.
+- Model generation can still send prompt context to the selected provider unless the admin chooses a local provider endpoint. Device-only adventure data mode prevents backend database writes; it is not a network-off guarantee.
+
+This feature must not become a hidden second production persistence system. Production truth for normal users remains server-side. Device-only mode is an admin/testing escape hatch with visible UI state and explicit feature gating.
+
 ## Production North Star
 
 Production AI Story Teller should be:

@@ -79,6 +79,8 @@ interface SettingsPageProps {
   backendSession?: BackendSessionState | null;
   backendModelMode?: BackendModelMode;
   onBackendModelModeChange?: (mode: BackendModelMode) => void;
+  adminDeviceOnlyDataMode?: boolean;
+  onAdminDeviceOnlyDataModeChange?: (enabled: boolean) => void;
   hideDeveloperControls?: boolean;
   onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
   onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
@@ -111,6 +113,8 @@ export function SettingsPage({
   backendSession,
   backendModelMode = "platform",
   onBackendModelModeChange,
+  adminDeviceOnlyDataMode = false,
+  onAdminDeviceOnlyDataModeChange,
   hideDeveloperControls = false,
   onSignupBackendPassword,
   onVerifyBackendEmail,
@@ -128,7 +132,9 @@ export function SettingsPage({
 }: SettingsPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const isBackendMode = runtimeConfig ? runtimeConfig.mode !== "local" : false;
-  const showLocalDeveloperControls = !isBackendMode && !hideDeveloperControls;
+  const canUseAdminDeviceOnlyDataMode = isBackendMode && backendSession?.user.role === "admin";
+  const adminDeviceOnlyDataActive = canUseAdminDeviceOnlyDataMode && adminDeviceOnlyDataMode;
+  const showLocalDeveloperControls = (!isBackendMode || adminDeviceOnlyDataActive) && !hideDeveloperControls;
   const advanced = uiPreferences.showAdvancedSettings && showLocalDeveloperControls;
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState("");
@@ -143,9 +149,10 @@ export function SettingsPage({
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
   const showRuntimeTechnicalControls = showLocalDeveloperControls;
-  const showBackendModelSource = isBackendMode && Boolean(backendSession);
+  const showBackendModelSource = isBackendMode && Boolean(backendSession) && !adminDeviceOnlyDataActive;
   const showBackendAuthControls = isBackendMode && !backendSession;
   const showBackendImportControls = false;
+  const showCloudSyncControls = showLocalDeveloperControls && !adminDeviceOnlyDataActive;
 
   function updateUi(patch: Partial<UiPreferences>) {
     onUiPreferencesChange({ ...uiPreferences, ...patch });
@@ -363,7 +370,9 @@ export function SettingsPage({
         <p className="muted">
           {hideDeveloperControls
             ? "App-wide controls for reading comfort and personal account preferences."
-            : isBackendMode
+            : adminDeviceOnlyDataActive
+              ? "App-wide controls for reading comfort, browser model routing, background cost, memory detection, and device-only adventure saves."
+              : isBackendMode
               ? "App-wide controls for reading comfort and your optional personal model override. Platform controls live in Admin."
               : "App-wide controls for reading comfort, local model routing, background cost, memory detection, and sync."}
           The common controls stay first; platform-wide controls stay out of user settings.
@@ -373,6 +382,7 @@ export function SettingsPage({
           <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
           {showLocalDeveloperControls && <span>{activeModelLabel}</span>}
           {showLocalDeveloperControls && <span>background {backgroundStatus}</span>}
+          {adminDeviceOnlyDataActive && <span>device-only data</span>}
           {isBackendMode && showBackendModelSource && <span>{backendModelMode === "personal" ? "personal model" : "platform model"}</span>}
           {advanced && <span>advanced</span>}
         </div>
@@ -470,6 +480,22 @@ export function SettingsPage({
             <span>{backendSession ? backendSession.user.email : "not signed in"}</span>
             <span>{backendSession ? backendSession.user.status : "local only"}</span>
           </div>
+          {canUseAdminDeviceOnlyDataMode && (
+            <div className="setup-panel">
+              <CheckboxField
+                label="Keep adventure data on this device only"
+                checked={adminDeviceOnlyDataMode}
+                onChange={(enabled) => onAdminDeviceOnlyDataModeChange?.(enabled)}
+              />
+              <p className="muted">
+                Admin-only. When enabled, adventure saves, imports, built-in scenarios, Context Preview, and turns use
+                IndexedDB and browser provider settings. Backend publishing, backups, shared-scenario forks, and server
+                AI helpers are disabled so adventure content is not written to the backend database from this browser.
+                Account, profile, and Admin screens still use the backend. Generation still sends prompt context to the
+                selected model provider unless that provider is a local endpoint.
+              </p>
+            </div>
+          )}
           {backendStatus && <p className="notice">{backendStatus}</p>}
 
           {showBackendAuthControls && (
@@ -1094,7 +1120,7 @@ export function SettingsPage({
         )}
 
         {/* ── Cloud Sync ────────────────────────────── */}
-        {showLocalDeveloperControls && cloudSyncSettings && onCloudSyncSettingsChange && (
+        {showCloudSyncControls && cloudSyncSettings && onCloudSyncSettingsChange && (
           <article className="panel settings-card settings-section-full cloud-sync-panel" style={{ gridColumn: "1 / -1" }}>
             <div className="panel-heading">
               <div>

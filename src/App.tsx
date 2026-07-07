@@ -209,6 +209,10 @@ export default function App() {
     "ai-story-teller-backend-model-mode",
     "platform",
   );
+  const [adminDeviceOnlyDataMode, setAdminDeviceOnlyDataMode] = useLocalStorage<boolean>(
+    "ai-story-teller-admin-device-only-data",
+    false,
+  );
   const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
   const [backendPublicProfile, setBackendPublicProfile] = useState<BackendPublicProfileSummary | undefined>();
   const [backendPublicProfileUserId, setBackendPublicProfileUserId] = useState<string | null>(null);
@@ -223,6 +227,8 @@ export default function App() {
   const accountReady = Boolean(backendSession?.sessionToken);
   const backendReady = backendMode && accountReady;
   const isBackendAdmin = backendMode && backendSession?.user.role === "admin";
+  const adminDeviceOnlyDataActive = Boolean(isBackendAdmin && adminDeviceOnlyDataMode);
+  const backendAdventureDataReady = backendReady && !adminDeviceOnlyDataActive;
   const hideBackendUserDeveloperControls = backendMode && !isBackendAdmin;
   const activePreset: RuntimeProviderSettings =
     providerPresets.find((p) => p.id === activePresetId) ??
@@ -234,35 +240,43 @@ export default function App() {
     [],
   );
   const backendAdventureStore = useMemo(
-    () => backendReady && backendSession
+    () => backendAdventureDataReady && backendSession
       ? createCachedBackendAdventureStore(normalizedRuntimeConfig, backendSession.sessionToken, backendSession.user.id)
       : undefined,
-    [backendReady, backendSession, normalizedRuntimeConfig],
+    [backendAdventureDataReady, backendSession, normalizedRuntimeConfig],
   );
   const adventureStore = !accountReady
     ? unavailableBackendStore
-    : backendMode
+    : adminDeviceOnlyDataActive
+      ? localAdventureStore
+      : backendMode
       ? (backendAdventureStore ?? unavailableBackendStore)
       : localAdventureStore;
-  const storageLabel = !accountReady ? "your signed-in account" : backendMode ? "the local backend" : "IndexedDB";
+  const storageLabel = !accountReady
+    ? "your signed-in account"
+    : adminDeviceOnlyDataActive
+      ? "this device"
+      : backendMode
+        ? "the local backend"
+        : "IndexedDB";
   const backendTurnRunner = useMemo(
-    () => backendReady && backendSession
+    () => backendAdventureDataReady && backendSession
       ? createBackendTurnRunner(
         normalizedRuntimeConfig,
         backendSession.sessionToken,
         backendModelMode === "personal" ? activePreset : undefined,
       )
       : undefined,
-    [activePreset, backendModelMode, backendReady, backendSession, normalizedRuntimeConfig],
+    [activePreset, backendAdventureDataReady, backendModelMode, backendSession, normalizedRuntimeConfig],
   );
   const backendContextPreview = useMemo(
-    () => backendReady && backendSession
+    () => backendAdventureDataReady && backendSession
       ? createBackendContextPreviewSource(normalizedRuntimeConfig, backendSession.sessionToken)
       : undefined,
-    [backendReady, backendSession, normalizedRuntimeConfig],
+    [backendAdventureDataReady, backendSession, normalizedRuntimeConfig],
   );
   const backendAiTools = useMemo(() => {
-    if (!backendReady || !backendSession) return undefined;
+    if (!backendAdventureDataReady || !backendSession) return undefined;
     const providerOverride = backendModelMode === "personal" ? activePreset : undefined;
     return {
       buildStoryCardMemory: (adventureId: string, request: Parameters<typeof buildBackendStoryCardMemory>[3]) =>
@@ -280,7 +294,7 @@ export default function App() {
       auditBrains: async (adventureId: string, nTurns: number, includeAI: boolean) =>
         (await auditBackendBrains(normalizedRuntimeConfig, backendSession, adventureId, { nTurns, includeAI, providerOverride })).recommendations,
     };
-  }, [activePreset, backendModelMode, backendReady, backendSession, normalizedRuntimeConfig]);
+  }, [activePreset, backendAdventureDataReady, backendModelMode, backendSession, normalizedRuntimeConfig]);
   const reportLibraryError = useCallback((msg: string) => console.error(msg), []);
 
   // Migrate old default font size (15) to new default (20) for existing users
@@ -457,13 +471,14 @@ export default function App() {
     (tab) => navigateTo(tab as TabId),
     () => setModalTab(undefined),
     reportLibraryError,
-    backendReady && backendSession
+    backendAdventureDataReady && backendSession
       ? (text) => importAndOpenBackendAdventure(normalizedRuntimeConfig, backendSession, { sourceType: "aist", text })
       : undefined,
     () => setSaveStatus("saved"),
   );
 
-  const activeStoreHasAdventure = !adventure || library.adventures.some((entry) => entry.id === adventure.id);
+  const activeStoreHasAdventure =
+    !adventure || adminDeviceOnlyDataActive || library.adventures.some((entry) => entry.id === adventure.id);
   useAdventureAutosave(activeStoreHasAdventure ? adventure : undefined, adventureStore, setSaveStatus, () => void library.refreshAdventures());
 
   const runtime = useAdventureRuntime(
@@ -939,7 +954,7 @@ export default function App() {
     notify("Starting built-in scenario...", { type: "info" });
     try {
       await library.loadPremadeAdventure(id);
-      if (backendReady) await refreshBackendProfile();
+      if (backendAdventureDataReady) await refreshBackendProfile();
       setBackendExploreStatus("");
       notify("Built-in scenario started.", { type: "success" });
     } catch (error) {
@@ -1034,6 +1049,8 @@ export default function App() {
             backendSession={backendSession}
             backendModelMode={backendModelMode}
             onBackendModelModeChange={setBackendModelMode}
+            adminDeviceOnlyDataMode={adminDeviceOnlyDataMode}
+            onAdminDeviceOnlyDataModeChange={setAdminDeviceOnlyDataMode}
             onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
             onVerifyBackendEmail={async (token) => {
               const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
@@ -1097,10 +1114,10 @@ export default function App() {
         onImportAdventure={library.importAdventure}
         onDuplicate={library.duplicateAdventure}
         onDelete={(id) => library.removeAdventure(id, adventure?.id)}
-        onPublish={backendReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
-        onListBackups={backendReady ? listBackendBackups : undefined}
-        onRestoreBackup={backendReady ? restoreBackendBackup : undefined}
-        onResolveSyncConflict={backendReady ? library.resolveSyncConflict : undefined}
+        onPublish={backendAdventureDataReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
+        onListBackups={backendAdventureDataReady ? listBackendBackups : undefined}
+        onRestoreBackup={backendAdventureDataReady ? restoreBackendBackup : undefined}
+        onResolveSyncConflict={backendAdventureDataReady ? library.resolveSyncConflict : undefined}
         saveSlots={backendMode ? undefined : gitHubSaves.saveSlots}
         savesStatus={backendMode ? undefined : gitHubSaves.savesStatus}
         loadingSlotId={backendMode ? undefined : gitHubSaveLoad.loadingSlotId}
@@ -1131,7 +1148,7 @@ export default function App() {
           scenarios={backendExploreScenarios}
           premadeAdventures={premadeAdventures}
           status={backendExploreStatus}
-          onStartScenario={backendReady ? startBackendExploreScenario : undefined}
+          onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
           onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
         />
@@ -1163,16 +1180,16 @@ export default function App() {
             await library.removeAdventure(id, adventure?.id);
             await refreshBackendProfile();
           }}
-          onPublishAdventure={async (id) => {
+          onPublishAdventure={backendAdventureDataReady ? async (id) => {
             await publishAdventureScenario(id);
-          }}
-          onPublishScenarioRevision={async (revisionId) => {
+          } : undefined}
+          onPublishScenarioRevision={backendAdventureDataReady ? async (revisionId) => {
             await publishScenarioRevisionFromProfile(revisionId);
-          }}
-          onUnpublishScenarioRevision={async (revisionId) => {
+          } : undefined}
+          onUnpublishScenarioRevision={backendAdventureDataReady ? async (revisionId) => {
             await unpublishScenarioRevisionFromProfile(revisionId);
-          }}
-          onStartScenario={backendReady ? startBackendExploreScenario : undefined}
+          } : undefined}
+          onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
           onViewOwnProfile={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
@@ -1231,6 +1248,8 @@ export default function App() {
           backendSession={backendSession}
           backendModelMode={backendModelMode}
           onBackendModelModeChange={setBackendModelMode}
+          adminDeviceOnlyDataMode={adminDeviceOnlyDataMode}
+          onAdminDeviceOnlyDataModeChange={setAdminDeviceOnlyDataMode}
           onSignupBackendPassword={(input) => signupBackendPassword(normalizedRuntimeConfig, input)}
           onVerifyBackendEmail={async (token) => {
             const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
@@ -1313,7 +1332,7 @@ export default function App() {
             onOpenTab={(tabId) => openTab(tabId as TabId)}
             hasSyncConflict={currentAdventureHasSyncConflict}
             syncConflictSummary={currentAdventureSummary}
-            onResolveSyncConflict={backendReady ? (resolution) => library.resolveSyncConflict(adventure.id, resolution) : undefined}
+            onResolveSyncConflict={backendAdventureDataReady ? (resolution) => library.resolveSyncConflict(adventure.id, resolution) : undefined}
           />
         );
       case "edit":
