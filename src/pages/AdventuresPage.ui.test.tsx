@@ -18,7 +18,7 @@ vi.mock("../ai/adventureGen", () => ({
 }));
 
 function renderAdventuresPage(
-  onCreate = vi.fn(async (_setup: NewAdventureSetup) => undefined),
+  onCreate = vi.fn(async (_setup: NewAdventureSetup, _options?: { deviceOnly?: boolean }) => undefined),
   syncProps: Partial<ComponentProps<typeof AdventuresPage>> = {},
 ) {
   render(
@@ -82,6 +82,20 @@ describe("AdventuresPage new adventure setup", () => {
       keys: ["Margo", "hedge prince"],
       content: "Margo calls Avery hedge prince as a private joke.",
     });
+  });
+
+  it("passes admin device-only choice during new adventure creation", async () => {
+    const user = userEvent.setup();
+    const { onCreate } = renderAdventuresPage(undefined, {
+      allowDeviceOnlyScenarioCreation: true,
+    });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByLabelText("Keep this adventure on this device only"));
+    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+    expect(onCreate.mock.calls[0][1]).toEqual({ deviceOnly: true });
   });
 
   it("imports Story Cards from an uploaded JSON file before creating the adventure", async () => {

@@ -240,6 +240,21 @@ export function useAdventureLibrary(
   };
 }
 
+export function adventureFromSetup(setup: NewAdventureSetup): Adventure {
+  const baseline = createDefaultAdventure(setup.title);
+  const setupTypes = new Set(setup.components.map((component) => component.type));
+  return {
+    ...baseline,
+    openingScene: setup.openingScene,
+    metadata: setup.thumbnailImage ? thumbnailMetadataPatch(setup.thumbnailImage) : baseline.metadata,
+    components: [
+      ...baseline.components.filter((component) => !setupTypes.has(component.type)),
+      ...setup.components,
+    ],
+    storyCards: setup.storyCards,
+  };
+}
+
 async function hydrateMissingThumbnails(
   store: AdventureStore,
   summaries: AdventureSummary[],

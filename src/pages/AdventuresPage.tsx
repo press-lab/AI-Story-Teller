@@ -35,7 +35,7 @@ import type { AdventureSyncConflictResolution } from "../runtime/adventureStore"
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
   currentAdventure?: Adventure;
-  onCreate: (setup: NewAdventureSetup) => Promise<void>;
+  onCreate: (setup: NewAdventureSetup, options?: { deviceOnly?: boolean }) => Promise<void>;
   onOpen: (id: string) => Promise<void>;
   onOpenEdit?: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
@@ -269,10 +269,15 @@ export function AdventuresPage({
   const [backupStatus, setBackupStatus] = useState("");
   const [backupLoading, setBackupLoading] = useState(false);
   const [deviceOnlyScenarioAdventureIds, setDeviceOnlyScenarioAdventureIds] = useState<string[]>([]);
+  const [createDeviceOnlyAdventure, setCreateDeviceOnlyAdventure] = useState(false);
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
   function isDeviceOnlyScenarioCreationEnabled(id: string): boolean {
     return forceDeviceOnlyScenarioCreation || deviceOnlyScenarioAdventureIds.includes(id);
+  }
+
+  function isCreateDeviceOnlyAdventureEnabled(): boolean {
+    return forceDeviceOnlyScenarioCreation || createDeviceOnlyAdventure;
   }
 
   function setDeviceOnlyScenarioCreation(id: string, enabled: boolean): void {
@@ -481,13 +486,17 @@ export function AdventuresPage({
       return;
     }
     setSetupError(undefined);
-    await onCreate({
-      title: title.trim() || "New Adventure",
-      openingScene: openingScene.trim(),
-      components: starterComponents,
-      storyCards: [...manualStoryCards, ...jsonStoryCards],
-      thumbnailImage,
-    });
+    const createOptions = isCreateDeviceOnlyAdventureEnabled() ? { deviceOnly: true } : undefined;
+    await onCreate(
+      {
+        title: title.trim() || "New Adventure",
+        openingScene: openingScene.trim(),
+        components: starterComponents,
+        storyCards: [...manualStoryCards, ...jsonStoryCards],
+        thumbnailImage,
+      },
+      createOptions,
+    );
   }
 
   async function generateAdventure() {
@@ -589,6 +598,14 @@ export function AdventuresPage({
               <button type="button" onClick={() => setView("aidImport")}>
                 Import from AI Dungeon
               </button>
+              {allowDeviceOnlyScenarioCreation && (
+                <CheckboxField
+                  label="Keep this adventure on this device only"
+                  checked={isCreateDeviceOnlyAdventureEnabled()}
+                  onChange={setCreateDeviceOnlyAdventure}
+                  disabled={forceDeviceOnlyScenarioCreation}
+                />
+              )}
               <button type="button" className="primary-action" onClick={createAdventure}>
                 Create Adventure
               </button>

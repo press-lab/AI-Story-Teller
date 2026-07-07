@@ -9,10 +9,10 @@ import { GitHubSaveConflictDialog } from "./components/GitHubSaveConflictDialog"
 import { createDefaultAdventure, defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
-import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
+import { adventureFromSetup, useAdventureLibrary } from "./hooks/useAdventureLibrary";
 import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
-import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings } from "./types/adventure";
+import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings, NewAdventureSetup } from "./types/adventure";
 import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
 import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pageTypes";
 import { AdventuresPage } from "./pages/AdventuresPage";
@@ -1056,6 +1056,25 @@ export default function App() {
     return next;
   }
 
+  async function createAdventureFromSetup(setup: NewAdventureSetup, options: { deviceOnly?: boolean } = {}) {
+    if (!options.deviceOnly) {
+      await library.createAdventure(setup);
+      return;
+    }
+    if (!isBackendAdmin) throw new Error("Only admins can create device-only adventures.");
+    const next = adventureFromSetup(setup);
+    const nextDeviceOnlyIds = withAdventureId(adminDeviceOnlyAdventureIds, next.id);
+    setAdminDeviceOnlyAdventureIds(nextDeviceOnlyIds);
+    await localAdventureStore.save(next);
+    setAdventure(next);
+    setContextResult(undefined);
+    setModalTab(undefined);
+    navigateTo("dashboard");
+    setSaveStatus("saved to this device");
+    await refreshAdminDeviceOnlyScenarios(nextDeviceOnlyIds);
+    notify(`Created local-only adventure "${next.title}".`, { type: "success" });
+  }
+
   async function publishAdventureScenario(adventureId: string, options: { deviceOnly?: boolean } = {}) {
     try {
       const source = adventure?.id === adventureId ? adventure : await adventureStore.get(adventureId);
@@ -1492,7 +1511,7 @@ export default function App() {
         currentAdventure={adventure}
         loading={library.refreshing}
         openingAdventureId={library.openingAdventureId}
-        onCreate={library.createAdventure}
+        onCreate={createAdventureFromSetup}
         onOpen={async (id) => { await library.openAdventure(id); }}
         onOpenEdit={async (id) => { const opened = await library.openAdventure(id); if (opened) openEditor(); }}
         onCreateAdventureFromImport={library.createAdventureFromImport}
