@@ -26,6 +26,9 @@ interface ProfilePageProps {
   onStartScenario?: (revisionId: string) => Promise<void>;
   onEditScenario?: (revisionId: string) => Promise<void>;
   onDeleteScenario?: (scenarioId: string) => Promise<void>;
+  localScenarios?: LocalProfileScenarioSummary[];
+  onStartLocalScenario?: (scenarioId: string) => Promise<void>;
+  onDeleteLocalScenario?: (scenarioId: string) => Promise<void>;
   onViewOwnProfile?: () => void;
   onOpenAdmin?: () => void;
   onLogout?: () => void;
@@ -34,6 +37,15 @@ interface ProfilePageProps {
 }
 
 const publicScenarioStartWarning = "This scenario will start exactly as published. AI Story Teller does not substitute user variables yet. If you do not want to play the premade player character, edit the new adventure after it opens before continuing play.";
+
+export interface LocalProfileScenarioSummary {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  thumbnailImage?: AdventureThumbnailImage;
+}
 
 function formatDate(iso?: string): string {
   if (!iso) return "Not yet";
@@ -57,6 +69,9 @@ export function ProfilePage({
   onStartScenario,
   onEditScenario,
   onDeleteScenario,
+  localScenarios = [],
+  onStartLocalScenario,
+  onDeleteLocalScenario,
   onViewOwnProfile,
   onOpenAdmin,
   onLogout,
@@ -118,6 +133,7 @@ export function ProfilePage({
   const ownEmail = profile?.user.email || backendSession.user.email;
   const bio = isPublicProfile ? publicProfile!.profile.bio : profile?.profile.bio;
   const liveAdventureThumbnail = liveAdventure ? getAdventureThumbnail(liveAdventure) : undefined;
+  const ownScenarioCount = (profile?.scenarios.length ?? 0) + localScenarios.length;
 
   function sourceAdventureThumbnail(sourceAdventureId?: string): AdventureThumbnailImage | undefined {
     return liveAdventure?.id === sourceAdventureId ? liveAdventureThumbnail : undefined;
@@ -169,7 +185,7 @@ export function ProfilePage({
         ) : (
           <>
             <span>{profile?.adventures.length ?? 0} adventures</span>
-            <span>{profile?.scenarios.length ?? 0} scenarios</span>
+            <span>{ownScenarioCount} scenarios</span>
             <span>{backendSession.user.status}</span>
           </>
         )}
@@ -210,9 +226,49 @@ export function ProfilePage({
               <p className="muted">No published scenarios yet.</p>
             )}
           </>
-        ) : profile?.scenarios.length ? (
+        ) : (profile?.scenarios.length || localScenarios.length) ? (
           <div className="library-grid">
-            {profile.scenarios.map((scenario) => (
+            {localScenarios.map((scenario) => (
+              <article key={scenario.id} className="library-card">
+                <AdventureThumbnailFrame
+                  thumbnail={scenario.thumbnailImage}
+                  title={scenario.title}
+                  className="library-card-cover"
+                />
+                <div className="library-card-body">
+                  <div>
+                    <h3>{scenario.title}</h3>
+                    {scenario.description && <p className="muted">{scenario.description}</p>}
+                    <div className="editor-stat-row">
+                      <span>local device</span>
+                      <span>not published</span>
+                      <span>Updated {formatDate(scenario.updatedAt)}</span>
+                    </div>
+                  </div>
+                  <div className="library-card-actions">
+                    <button
+                      type="button"
+                      className="primary-action"
+                      aria-label={`Start adventure from local scenario ${scenario.title}`}
+                      onClick={() => void onStartLocalScenario?.(scenario.id)}
+                      disabled={!onStartLocalScenario}
+                    >
+                      Start Adventure
+                    </button>
+                    <button
+                      type="button"
+                      className="danger"
+                      aria-label={`Delete local scenario ${scenario.title}`}
+                      onClick={() => void onDeleteLocalScenario?.(scenario.id)}
+                      disabled={!onDeleteLocalScenario}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </article>
+            ))}
+            {profile?.scenarios.map((scenario) => (
               <article key={scenario.id} className="library-card">
                 <AdventureThumbnailFrame
                   thumbnail={scenario.thumbnailImage ?? sourceAdventureThumbnail(scenario.sourceAdventureId)}

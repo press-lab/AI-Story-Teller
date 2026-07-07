@@ -40,7 +40,9 @@ interface AdventuresPageProps {
   onOpenEdit?: (id: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onPublish?: (id: string) => Promise<void>;
+  onPublish?: (id: string, options?: { deviceOnly?: boolean }) => Promise<void>;
+  allowDeviceOnlyScenarioCreation?: boolean;
+  forceDeviceOnlyScenarioCreation?: boolean;
   onListBackups?: (id: string) => Promise<BackendAdventureSnapshotSummary[]>;
   onRestoreBackup?: (id: string, snapshotId: string) => Promise<void>;
   onResolveSyncConflict?: (id: string, resolution: AdventureSyncConflictResolution) => Promise<void>;
@@ -236,6 +238,8 @@ export function AdventuresPage({
   onDuplicate,
   onDelete,
   onPublish,
+  allowDeviceOnlyScenarioCreation = false,
+  forceDeviceOnlyScenarioCreation = false,
   onListBackups,
   onRestoreBackup,
   onResolveSyncConflict,
@@ -264,7 +268,19 @@ export function AdventuresPage({
   const [backupSnapshots, setBackupSnapshots] = useState<BackendAdventureSnapshotSummary[]>([]);
   const [backupStatus, setBackupStatus] = useState("");
   const [backupLoading, setBackupLoading] = useState(false);
+  const [deviceOnlyScenarioAdventureIds, setDeviceOnlyScenarioAdventureIds] = useState<string[]>([]);
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
+
+  function isDeviceOnlyScenarioCreationEnabled(id: string): boolean {
+    return forceDeviceOnlyScenarioCreation || deviceOnlyScenarioAdventureIds.includes(id);
+  }
+
+  function setDeviceOnlyScenarioCreation(id: string, enabled: boolean): void {
+    setDeviceOnlyScenarioAdventureIds((current) => {
+      if (enabled) return current.includes(id) ? current : [...current, id];
+      return current.filter((entry) => entry !== id);
+    });
+  }
 
   useEffect(() => {
     if (view === "github") onListSaves?.();
@@ -1238,9 +1254,23 @@ export function AdventuresPage({
                 </>
               )}
               {onPublish && (
-                <button type="button" className="primary-action" onClick={() => void onPublish(adventure.id)}>
-                  Publish Scenario
-                </button>
+                <>
+                  {allowDeviceOnlyScenarioCreation && (
+                    <CheckboxField
+                      label="Keep this adventure on this device only"
+                      checked={isDeviceOnlyScenarioCreationEnabled(adventure.id)}
+                      onChange={(enabled) => setDeviceOnlyScenarioCreation(adventure.id, enabled)}
+                      disabled={forceDeviceOnlyScenarioCreation}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    className="primary-action"
+                    onClick={() => void onPublish(adventure.id, { deviceOnly: isDeviceOnlyScenarioCreationEnabled(adventure.id) })}
+                  >
+                    Publish Scenario
+                  </button>
+                </>
               )}
             </div>
             </div>

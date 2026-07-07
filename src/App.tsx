@@ -6,7 +6,7 @@ import { defaultGitHubSaveSettings } from "./sync/githubSaves";
 import { useGitHubSaves } from "./hooks/useGitHubSaves";
 import { useGitHubSaveLoad } from "./hooks/useGitHubSaveLoad";
 import { GitHubSaveConflictDialog } from "./components/GitHubSaveConflictDialog";
-import { defaultModelConfig } from "./state/defaults";
+import { createDefaultAdventure, defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
 import { useAdventureLibrary } from "./hooks/useAdventureLibrary";
@@ -30,7 +30,7 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { ImportExportPage } from "./pages/ImportExportPage";
 import { HelpPage } from "./pages/HelpPage";
 import { CloudSavesPage } from "./pages/CloudSavesPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { ProfilePage, type LocalProfileScenarioSummary } from "./pages/ProfilePage";
 import { ExplorePage } from "./pages/ExplorePage";
 import { AdminConsolePage } from "./pages/AdminConsolePage";
 import { WelcomePage } from "./pages/WelcomePage";
@@ -38,6 +38,7 @@ import { useActionFeedback } from "./components/ActionFeedback";
 import { premadeAdventures, type PremadeAdventureId } from "./dev/premadeAdventures";
 import { AdventureThumbnailPicker } from "./components/AdventureThumbnail";
 import { getAdventureThumbnail, thumbnailMetadataPatch } from "./utils/adventureImages";
+import { createId } from "./utils/id";
 import { applyConfiguredBackendDefault, defaultRuntimeConfig, normalizeRuntimeConfig, type RuntimeConfig } from "./runtime/runtimeConfig";
 import {
   createCachedBackendAdventureStore,
@@ -170,11 +171,18 @@ const scenarioRuntimeMetadataKeys = [
   "sourceScenarioOwnerUserId",
   "sourceScenarioVersion",
   "sourceScenarioTitle",
+  "sourceLocalScenarioId",
+  "sourceLocalScenarioTitle",
   "startedFromExplore",
   "startedFromProfileScenario",
+  "startedFromDeviceOnlyScenario",
   "startedByUserId",
   "userVariablesSupported",
   "playerEditsRecommended",
+  "localDeviceOnlyScenario",
+  "localScenarioDescription",
+  "localScenarioSourceAdventureId",
+  "localScenarioVersion",
 ];
 
 function scenarioContentFromAdventure(source: Adventure): Record<string, unknown> {
@@ -203,6 +211,83 @@ function sourceScenarioIdFromAdventure(source?: Adventure): string | undefined {
 function sourceScenarioOwnerIdFromAdventure(source?: Adventure): string | undefined {
   const ownerUserId = source?.metadata.sourceScenarioOwnerUserId;
   return typeof ownerUserId === "string" ? ownerUserId : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isDeviceOnlyScenarioAdventure(source?: Adventure): source is Adventure {
+  return source?.metadata.localDeviceOnlyScenario === true;
+}
+
+function localScenarioDescription(source: Adventure): string {
+  const description = source.metadata.localScenarioDescription;
+  return typeof description === "string" ? description : "Local scenario setup kept on this device only.";
+}
+
+function summarizeLocalScenario(source: Adventure): LocalProfileScenarioSummary {
+  return {
+    id: source.id,
+    title: source.title,
+    description: localScenarioDescription(source),
+    createdAt: source.createdAt,
+    updatedAt: source.updatedAt,
+    thumbnailImage: getAdventureThumbnail(source),
+  };
+}
+
+function createDeviceOnlyScenarioFromAdventure(source: Adventure): Adventure {
+  const content = scenarioContentFromAdventure(source);
+  const base = createDefaultAdventure(source.title);
+  const metadata = isRecord(content.metadata) ? { ...content.metadata } : {};
+  const thumbnailImage = getAdventureThumbnail(source);
+  if (thumbnailImage) Object.assign(metadata, thumbnailMetadataPatch(thumbnailImage));
+  const timestamp = new Date().toISOString();
+  return {
+    ...base,
+    id: createId("local_scenario"),
+    title: source.title,
+    openingScene: typeof content.openingScene === "string" ? content.openingScene : base.openingScene,
+    metadata: {
+      ...metadata,
+      localDeviceOnlyScenario: true,
+      localScenarioDescription: "Local scenario setup created from an adventure. Transcript and private runtime state are excluded.",
+      localScenarioSourceAdventureId: source.id,
+      localScenarioVersion: 1,
+    },
+    components: Array.isArray(content.components) ? structuredClone(content.components) as Adventure["components"] : base.components,
+    storyCards: Array.isArray(content.storyCards) ? structuredClone(content.storyCards) as Adventure["storyCards"] : base.storyCards,
+    brains: Array.isArray(content.brains) ? structuredClone(content.brains) as Adventure["brains"] : base.brains,
+    triggerRules: Array.isArray(content.triggerRules) ? structuredClone(content.triggerRules) as Adventure["triggerRules"] : base.triggerRules,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+function startAdventureFromDeviceOnlyScenario(source: Adventure): Adventure {
+  const base = createDefaultAdventure(source.title);
+  const thumbnailImage = getAdventureThumbnail(source);
+  const metadata = { ...source.metadata };
+  for (const key of scenarioRuntimeMetadataKeys) delete metadata[key];
+  if (thumbnailImage) Object.assign(metadata, thumbnailMetadataPatch(thumbnailImage));
+  return {
+    ...base,
+    title: source.title,
+    openingScene: source.openingScene,
+    metadata: {
+      ...metadata,
+      sourceLocalScenarioId: source.id,
+      sourceLocalScenarioTitle: source.title,
+      startedFromDeviceOnlyScenario: true,
+      userVariablesSupported: false,
+      playerEditsRecommended: true,
+    },
+    components: structuredClone(source.components),
+    storyCards: structuredClone(source.storyCards),
+    brains: structuredClone(source.brains),
+    triggerRules: structuredClone(source.triggerRules),
+  };
 }
 
 function withAdventureId(ids: string[], id: string): string[] {
@@ -264,6 +349,7 @@ export default function App() {
     "ai-story-teller-admin-device-only-adventures",
     [],
   );
+  const [adminDeviceOnlyScenarios, setAdminDeviceOnlyScenarios] = useState<LocalProfileScenarioSummary[]>([]);
   const [backendProfile, setBackendProfile] = useState<BackendProfileSummary | undefined>();
   const [backendPublicProfile, setBackendPublicProfile] = useState<BackendPublicProfileSummary | undefined>();
   const [backendPublicProfileUserId, setBackendPublicProfileUserId] = useState<string | null>(null);
@@ -295,7 +381,14 @@ export default function App() {
   const adminDeviceOnlyAdventureStore = useMemo<AdventureStore>(() => ({
     async list() {
       const allLocal = await localAdventureStore.list();
-      return allLocal.filter((summary) => adminDeviceOnlyAdventureIdSet.has(summary.id));
+      const deviceOnly = allLocal.filter((summary) => adminDeviceOnlyAdventureIdSet.has(summary.id));
+      const withSources = await Promise.all(deviceOnly.map(async (summary) => ({
+        summary,
+        source: await localAdventureStore.get(summary.id),
+      })));
+      return withSources
+        .filter((entry) => !isDeviceOnlyScenarioAdventure(entry.source))
+        .map((entry) => entry.summary);
     },
     async get(id) {
       if (!adminDeviceOnlyAdventureIdSet.has(id)) return undefined;
@@ -319,6 +412,32 @@ export default function App() {
     localAdventureStore,
     setAdminDeviceOnlyAdventureIds,
   ]);
+  const refreshAdminDeviceOnlyScenarios = useCallback(async (ids = adminDeviceOnlyAdventureIds) => {
+    if (!isBackendAdmin) {
+      setAdminDeviceOnlyScenarios([]);
+      return;
+    }
+    const idSet = new Set(ids);
+    const localSummaries = await localAdventureStore.list();
+    const scenarioSources = await Promise.all(
+      localSummaries
+        .filter((summary) => idSet.has(summary.id))
+        .map((summary) => localAdventureStore.get(summary.id)),
+    );
+    setAdminDeviceOnlyScenarios(
+      scenarioSources
+        .filter(isDeviceOnlyScenarioAdventure)
+        .map(summarizeLocalScenario)
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  }, [
+    adminDeviceOnlyAdventureIds,
+    isBackendAdmin,
+    localAdventureStore,
+  ]);
+  useEffect(() => {
+    void refreshAdminDeviceOnlyScenarios();
+  }, [refreshAdminDeviceOnlyScenarios]);
   const unavailableBackendStore = useMemo(
     () => createUnavailableAdventureStore("Sign in to the local backend before using backend adventures."),
     [],
@@ -937,11 +1056,29 @@ export default function App() {
     return next;
   }
 
-  async function publishAdventureScenario(adventureId: string) {
-    if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
+  async function publishAdventureScenario(adventureId: string, options: { deviceOnly?: boolean } = {}) {
     try {
       const source = adventure?.id === adventureId ? adventure : await adventureStore.get(adventureId);
       if (!source) throw new Error("Adventure could not be loaded for publishing.");
+      if (options.deviceOnly) {
+        if (!isBackendAdmin) throw new Error("Only admins can create device-only scenarios.");
+        const confirmed = await confirmAction({
+          title: "Create local scenario?",
+          message: `Create a reusable setup from "${source.title}" on this device only? This will not create a backend scenario, publish to Explore, or upload the scenario setup.`,
+          confirmLabel: "Create Local Scenario",
+        });
+        if (!confirmed) return undefined;
+        const localScenario = createDeviceOnlyScenarioFromAdventure(source);
+        const nextDeviceOnlyIds = withAdventureId(adminDeviceOnlyAdventureIds, localScenario.id);
+        setAdminDeviceOnlyAdventureIds(nextDeviceOnlyIds);
+        await localAdventureStore.save(localScenario);
+        await refreshAdminDeviceOnlyScenarios(nextDeviceOnlyIds);
+        await library.refreshAdventures();
+        setBackendProfileStatus(`Created local-only scenario "${source.title}".`);
+        notify(`Created local-only scenario "${source.title}".`, { type: "success" });
+        return undefined;
+      }
+      if (!backendSession) throw new Error("Sign in to the local backend before publishing.");
       const confirmed = await confirmAction({
         title: "Publish scenario?",
         message: `Publish "${source.title}" to Explore? This shares the reusable setup, not the private transcript or runtime state.`,
@@ -1120,6 +1257,48 @@ export default function App() {
       notify(message, { type: "error" });
       throw error;
     }
+  }
+
+  async function startAdminDeviceOnlyScenario(scenarioId: string) {
+    if (!isBackendAdmin) throw new Error("Only admins can start device-only scenarios.");
+    const source = await localAdventureStore.get(scenarioId);
+    if (!isDeviceOnlyScenarioAdventure(source)) throw new Error("Local scenario could not be opened.");
+    try {
+      const next = startAdventureFromDeviceOnlyScenario(source);
+      const nextDeviceOnlyIds = withAdventureId(adminDeviceOnlyAdventureIds, next.id);
+      setAdminDeviceOnlyAdventureIds(nextDeviceOnlyIds);
+      await localAdventureStore.save(next);
+      setAdventure(next);
+      setContextResult(undefined);
+      setModalTab(undefined);
+      navigateTo("dashboard");
+      await library.refreshAdventures();
+      await refreshAdminDeviceOnlyScenarios(nextDeviceOnlyIds);
+      notify("Local scenario started.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Local scenario could not be started.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+      throw error;
+    }
+  }
+
+  async function deleteAdminDeviceOnlyScenario(scenarioId: string) {
+    if (!isBackendAdmin) throw new Error("Only admins can delete device-only scenarios.");
+    const source = await localAdventureStore.get(scenarioId);
+    const confirmed = await confirmAction({
+      title: "Delete local scenario?",
+      message: `Delete "${source?.title ?? "this local scenario"}" from this device? Adventures already started from it stay intact.`,
+      confirmLabel: "Delete",
+      danger: true,
+    });
+    if (!confirmed) return;
+    const nextDeviceOnlyIds = withoutAdventureId(adminDeviceOnlyAdventureIds, scenarioId);
+    await localAdventureStore.delete(scenarioId);
+    setAdminDeviceOnlyAdventureIds(nextDeviceOnlyIds);
+    await refreshAdminDeviceOnlyScenarios(nextDeviceOnlyIds);
+    await library.refreshAdventures();
+    notify("Local scenario deleted.", { type: "success" });
   }
 
   async function startBackendExploreScenario(revisionId: string) {
@@ -1320,7 +1499,11 @@ export default function App() {
         onImportAdventure={library.importAdventure}
         onDuplicate={library.duplicateAdventure}
         onDelete={(id) => library.removeAdventure(id, adventure?.id)}
-        onPublish={backendAdventureDataReady ? async (id) => { await publishAdventureScenario(id); } : undefined}
+        onPublish={(backendAdventureDataReady || isBackendAdmin)
+          ? async (id, options) => { await publishAdventureScenario(id, options); }
+          : undefined}
+        allowDeviceOnlyScenarioCreation={isBackendAdmin}
+        forceDeviceOnlyScenarioCreation={isBackendAdmin && !backendAdventureDataReady}
         onListBackups={backendAdventureDataReady ? listBackendBackups : undefined}
         onRestoreBackup={backendAdventureDataReady ? restoreBackendBackup : undefined}
         onResolveSyncConflict={backendAdventureDataReady ? library.resolveSyncConflict : undefined}
@@ -1386,7 +1569,7 @@ export default function App() {
             await library.removeAdventure(id, adventure?.id);
             await refreshBackendProfile();
           }}
-          onPublishAdventure={backendAdventureDataReady ? async (id) => {
+          onPublishAdventure={(backendAdventureDataReady || isBackendAdmin) ? async (id) => {
             await publishAdventureScenario(id);
           } : undefined}
           onPublishScenarioRevision={backendAdventureDataReady ? async (revisionId) => {
@@ -1402,6 +1585,9 @@ export default function App() {
           onDeleteScenario={backendAdventureDataReady ? async (scenarioId) => {
             await deleteScenarioFromProfile(scenarioId);
           } : undefined}
+          localScenarios={isBackendAdmin ? adminDeviceOnlyScenarios : []}
+          onStartLocalScenario={isBackendAdmin ? startAdminDeviceOnlyScenario : undefined}
+          onDeleteLocalScenario={isBackendAdmin ? deleteAdminDeviceOnlyScenario : undefined}
           onViewOwnProfile={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);

@@ -213,6 +213,42 @@ describe("ProfilePage", () => {
     expect(onLogout).toHaveBeenCalledOnce();
   });
 
+  it("shows admin local-only scenarios on the profile", async () => {
+    const user = userEvent.setup();
+    const onStartLocalScenario = vi.fn(async () => undefined);
+    const onDeleteLocalScenario = vi.fn(async () => undefined);
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        profile={{ ...profile(), scenarios: [] }}
+        localScenarios={[
+          {
+            id: "local-scenario-1",
+            title: "Device Scenario",
+            description: "Local setup only.",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            thumbnailImage: scenarioThumbnail,
+          },
+        ]}
+        onStartLocalScenario={onStartLocalScenario}
+        onDeleteLocalScenario={onDeleteLocalScenario}
+      />,
+    );
+
+    expect(screen.getByText("Device Scenario")).toBeInTheDocument();
+    expect(screen.getByText("local device")).toBeInTheDocument();
+    expect(screen.getByText("not published")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Start adventure from local scenario Device Scenario" }));
+    expect(onStartLocalScenario).toHaveBeenCalledWith("local-scenario-1");
+
+    await user.click(screen.getByRole("button", { name: "Delete local scenario Device Scenario" }));
+    expect(onDeleteLocalScenario).toHaveBeenCalledWith("local-scenario-1");
+  });
+
   it("uses the live adventure thumbnail when profile summaries are stale", () => {
     const staleProfile = profile();
     staleProfile.adventures[0].thumbnailImage = undefined;

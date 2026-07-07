@@ -160,6 +160,32 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.queryByText("No adventures saved yet.")).not.toBeInTheDocument();
   });
 
+  it("passes admin device-only scenario creation choice to publish", async () => {
+    const user = userEvent.setup();
+    const adventure = createDefaultAdventure("Local Template Candidate");
+    adventure.id = "adv-local-source";
+    const summary = {
+      id: adventure.id,
+      title: adventure.title,
+      createdAt: adventure.createdAt,
+      updatedAt: adventure.updatedAt,
+      turnCount: 0,
+      storyEntryCount: 0,
+    };
+    const onPublish = vi.fn(async () => undefined);
+
+    renderAdventuresPage(undefined, {
+      adventures: [summary],
+      onPublish,
+      allowDeviceOnlyScenarioCreation: true,
+    });
+
+    await user.click(screen.getByLabelText("Keep this adventure on this device only"));
+    await user.click(screen.getByRole("button", { name: "Publish Scenario" }));
+
+    expect(onPublish).toHaveBeenCalledWith("adv-local-source", { deviceOnly: true });
+  });
+
   it("imports a full AIST backup from the New Adventure menu", async () => {
     const user = userEvent.setup();
     const onImportAdventure = vi.fn(async (_text: string) => undefined);
