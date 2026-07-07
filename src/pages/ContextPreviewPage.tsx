@@ -14,6 +14,8 @@ interface DuplicateWarning {
   overlap: number;
 }
 
+type ContextDisplayFilter = "all" | "duplicates";
+
 function detectDuplicateContent(sections: ContextSection[]): DuplicateWarning[] {
   const items = sections.flatMap((s) =>
     s.items.filter((entry) => entry.content.trim().length > 80 && entry.sourceType !== "system"),
@@ -109,6 +111,23 @@ function deterministicDedupProposals(warnings: DuplicateWarning[]): DedupProposa
   return proposals;
 }
 
+function formatDuplicateCount(count: number): string {
+  return `${count.toLocaleString()} duplicate${count === 1 ? "" : "s"}`;
+}
+
+function filterSectionsToItems(sections: ContextSection[], itemIds: Set<string>): ContextSection[] {
+  return sections
+    .map((section) => {
+      const items = section.items.filter((item) => itemIds.has(item.id));
+      return {
+        ...section,
+        items,
+        tokenEstimate: items.reduce((sum, item) => sum + item.tokenEstimate, 0),
+      };
+    })
+    .filter((section) => section.items.length > 0);
+}
+
 function storyCardCondensePatch(card: StoryCard | undefined, content: string): Partial<StoryCard> {
   const patch: Partial<StoryCard> = { content };
   const hasStructuredContext =
@@ -169,6 +188,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
   const [dedupLoading, setDedupLoading] = useState(false);
   const [dedupError, setDedupError] = useState<string | undefined>();
   const [dedupIncludeAI, setDedupIncludeAI] = useState(false);
+  const [contextDisplayFilter, setContextDisplayFilter] = useState<ContextDisplayFilter>("all");
 
   const messagesWithUsage = adventure.messages.filter((m) => m.usage != null);
   const totalActualIn = messagesWithUsage.reduce((sum, m) => sum + (m.usage?.promptTokens ?? 0), 0);
@@ -186,10 +206,26 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
 
   const nonEmptySections = result.sections.filter((s) => s.items.length > 0);
   const allItems = result.sections.flatMap((s) => s.items);
+  const duplicateItemIds = new Set<string>();
+  duplicates.forEach(({ a, b }) => {
+    duplicateItemIds.add(a.id);
+    duplicateItemIds.add(b.id);
+  });
+  const duplicateFilterActive = contextDisplayFilter === "duplicates" && duplicateItemIds.size > 0;
+  const displayedSections = duplicateFilterActive
+    ? filterSectionsToItems(nonEmptySections, duplicateItemIds)
+    : nonEmptySections;
+  const displayedItemCount = displayedSections.reduce((sum, section) => sum + section.items.length, 0);
 
   useEffect(() => {
     setPreferLivePreview(false);
   }, [adventure.id]);
+
+  useEffect(() => {
+    if (duplicates.length === 0 && contextDisplayFilter === "duplicates") {
+      setContextDisplayFilter("all");
+    }
+  }, [contextDisplayFilter, duplicates.length]);
 
   function patchCondense(itemId: string, patch: Partial<CondenseEntry>) {
     setCondenseMap((m) => ({ ...m, [itemId]: { ...{ phase: "idle" as const }, ...m[itemId], ...patch } }));
@@ -316,6 +352,16 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
     setDedupProposals((prev) => prev.filter((p) => p.id !== proposalId));
   }
 
+  function showAllContextItems() {
+    setExpandedId(undefined);
+    setContextDisplayFilter("all");
+  }
+
+  function toggleDuplicateFilter() {
+    setExpandedId(undefined);
+    setContextDisplayFilter((current) => current === "duplicates" ? "all" : "duplicates");
+  }
+
   return (
     <section className="page editor-surface context-preview-page">
       <div className="editor-page-summary">
@@ -326,7 +372,29 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           <span>{result.totalEstimatedTokens.toLocaleString()} est tokens</span>
           <span>{nonEmptySections.length} sections</span>
           <span>{allItems.length} items</span>
-          {duplicates.length > 0 && <span>{duplicates.length} duplicates</span>}
+          {duplicates.length > 0 && (
+            <button
+              type="button"
+              className="editor-stat-filter"
+              aria-pressed={duplicateFilterActive}
+              aria-label={duplicateFilterActive ? "Show all context items" : "Show duplicate context items only"}
+              onClick={toggleDuplicateFilter}
+            >
+              {formatDuplicateCount(duplicates.length)}
+            </button>
+          )}
+          {duplicateFilterActive && (
+            <>
+              <span>{displayedItemCount.toLocaleString()} shown</span>
+              <button
+                type="button"
+                className="editor-stat-filter"
+                onClick={showAllContextItems}
+              >
+                Clear filter
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -449,7 +517,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
             </tr>
           </thead>
           <tbody>
-            {nonEmptySections.map((section) => (
+            {displayedSections.map((section) => (
               <Fragment key={section.id}>
                 <tr className="context-section-row">
                   <td colSpan={7}>

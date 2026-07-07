@@ -647,7 +647,8 @@ pre {
   flex: 0 0 auto;
 }
 
-.editor-stat-row span {
+.editor-stat-row span,
+.editor-stat-row .editor-stat-filter {
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--label);
@@ -656,6 +657,19 @@ pre {
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.editor-stat-row .editor-stat-filter {
+  min-height: 0;
+  border-color: var(--border-strong);
+  cursor: pointer;
+}
+
+.editor-stat-row .editor-stat-filter:hover:not(:disabled),
+.editor-stat-row .editor-stat-filter[aria-pressed="true"] {
+  border-color: var(--active-bg);
+  background: var(--active-bg);
+  color: var(--active-text);
 }
 
 .editor-legacy-help {

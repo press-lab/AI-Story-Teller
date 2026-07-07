@@ -137,6 +137,69 @@ describe("ContextPreviewPage condense", () => {
     expect(screen.getByRole("button", { name: "Delete Duplicate" })).toBeInTheDocument();
   });
 
+  it("filters the displayed context table to duplicate items from the duplicate count", async () => {
+    const user = userEvent.setup();
+    const duplicateText = [
+      "The red ward key opens the sealed archive under the east tower.",
+      "Margo hid the red ward key inside the brass lamp before the gala.",
+      "Avery must keep the red ward key away from the Red Ring scouts.",
+      "The archive door answers only to the red ward key and Margo's voice.",
+    ].join("\n");
+    const adventure = {
+      ...createDefaultAdventure("Duplicate Filter Test"),
+      components: [
+        makeComponent({
+          id: "component-ward-key",
+          title: "Ward Key Plot",
+          type: "plotEssentials",
+          content: duplicateText,
+          alwaysOn: true,
+          active: true,
+        }),
+      ],
+      storyCards: [
+        makeStoryCard({
+          id: "card-ward-key",
+          title: "Red Ward Key",
+          content: duplicateText,
+          active: true,
+          inclusionPolicy: "always",
+          priority: 20,
+        }),
+        makeStoryCard({
+          id: "card-independent-signal",
+          title: "Independent Signal",
+          content: "Avery carries a clean radio crystal that only hums near unmapped conduits.",
+          active: true,
+          inclusionPolicy: "always",
+        }),
+      ],
+    };
+
+    renderWithAdventure((current, dispatch) => (
+      <ContextPreviewPage
+        adventure={current}
+        dispatch={dispatch}
+        onBuildContext={() => undefined}
+        providerConfig={providerConfig}
+      />
+    ), adventure);
+
+    expect(within(screen.getByRole("table")).getByText("Independent Signal")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show duplicate context items only" }));
+
+    const filteredTable = within(screen.getByRole("table"));
+    expect(filteredTable.getByText("Ward Key Plot")).toBeInTheDocument();
+    expect(filteredTable.getByText("Red Ward Key")).toBeInTheDocument();
+    expect(filteredTable.queryByText("Independent Signal")).not.toBeInTheDocument();
+    expect(screen.getByText("2 shown")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear filter" }));
+
+    expect(within(screen.getByRole("table")).getByText("Independent Signal")).toBeInTheDocument();
+  });
+
   it("unpins Story Cards and Plot Components from context preview actions", async () => {
     const user = userEvent.setup();
     const adventure = {
