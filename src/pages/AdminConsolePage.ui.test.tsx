@@ -314,7 +314,7 @@ describe("AdminConsolePage", () => {
     expect(screen.getByRole("heading", { name: "Invite Links" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Platform Settings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Safety Events" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Open Safety Events" })).toBeInTheDocument();
     expect(screen.getByText(/Admin role is read-only here/)).toBeInTheDocument();
 
     await user.clear(screen.getByLabelText("Invite note"));
@@ -324,9 +324,11 @@ describe("AdminConsolePage", () => {
     expect(await screen.findByDisplayValue("invite-token-test")).toBeInTheDocument();
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
+    await user.click(screen.getByRole("tab", { name: "Operations" }));
     await user.click(screen.getByRole("button", { name: "Deactivate" }));
     expect(onDisableInvite).toHaveBeenCalledWith("invite-1");
 
+    await user.click(screen.getByRole("tab", { name: "Overview" }));
     await user.clear(screen.getByLabelText("Provider model"));
     await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");
     await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "latency");
@@ -356,5 +358,51 @@ describe("AdminConsolePage", () => {
 
     await user.click(screen.getByRole("button", { name: "Review" }));
     expect(onUpdateSafetyEvent).toHaveBeenCalledWith("event-1", "reviewed");
+
+    await user.click(screen.getByRole("tab", { name: "Operations" }));
+    expect(screen.getByRole("heading", { name: "Adventures" })).toBeInTheDocument();
+    expect(screen.getAllByText(/owner Target/).length).toBeGreaterThan(0);
+  });
+
+  it("archives resolved safety events behind the safety archive view", async () => {
+    const user = userEvent.setup();
+    const onUpdateSafetyEvent = vi.fn(async () => undefined);
+    const data = adminData();
+    data.users[0].safetyEventCount = 2;
+    data.safetyEvents.push({
+      id: "event-archived",
+      userId: "user-target",
+      category: "prompt_injection_or_policy_evasion",
+      severity: 3,
+      gate: "input",
+      status: "reviewed",
+      createdAt,
+    });
+
+    render(
+      <AdminConsolePage
+        backendMode
+        backendSession={session("admin")}
+        data={data}
+        onSetUserStatus={vi.fn()}
+        onCreateRestriction={vi.fn()}
+        onUpdateSafetyEvent={onUpdateSafetyEvent}
+        onCreateInvite={vi.fn()}
+        onDisableInvite={vi.fn()}
+        onSavePlatformSettings={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Open Safety Events" })).toBeInTheDocument();
+    expect(screen.queryByText("event-archived")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /Safety Archive/ }));
+
+    expect(screen.getByRole("heading", { name: "Resolved Safety Events" })).toBeInTheDocument();
+    expect(screen.getByText("event-archived")).toBeInTheDocument();
+    expect(screen.getAllByText("Target").length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "Reopen" }));
+    expect(onUpdateSafetyEvent).toHaveBeenCalledWith("event-archived", "open");
   });
 });

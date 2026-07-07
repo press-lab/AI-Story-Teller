@@ -4,6 +4,9 @@ import type { BackendAdminConsoleData, BackendPlatformSettings, BackendSessionSt
 import { CheckboxField, Field, NumberInput } from "./shared";
 
 type RestrictionLevel = "none" | "watched" | "restricted" | "generation_hold" | "banned";
+type AdminConsoleView = "overview" | "safetyArchive" | "operations";
+type AdminUserSummary = BackendAdminConsoleData["users"][number];
+type UserLookup = Map<string, AdminUserSummary>;
 
 interface AdminConsolePageProps {
   backendMode: boolean;
@@ -43,6 +46,20 @@ function formatDuration(ms?: number): string {
   return `${Math.round(ms ?? 0)}ms`;
 }
 
+function userDisplayName(user?: AdminUserSummary): string {
+  return user?.profileDisplayName?.trim() || user?.displayName?.trim() || user?.email || "";
+}
+
+function formatUserReference(userId: string | undefined, usersById: UserLookup): string {
+  if (!userId) return "System";
+  const user = usersById.get(userId);
+  return user ? userDisplayName(user) : `Unknown user ${shortId(userId)}`;
+}
+
+function formatAdminTarget(targetType: string, targetId: string, usersById: UserLookup): string {
+  return targetType === "user" ? formatUserReference(targetId, usersById) : `${targetType} ${shortId(targetId)}`;
+}
+
 export function AdminConsolePage({
   backendMode,
   backendSession,
@@ -71,6 +88,7 @@ export function AdminConsolePage({
   const [safetyEventActionId, setSafetyEventActionId] = useState("");
   const [inviteActionId, setInviteActionId] = useState("");
   const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
+  const [activeView, setActiveView] = useState<AdminConsoleView>("overview");
 
   useEffect(() => {
     if (!targetUserId && data?.users[0]) setTargetUserId(data.users[0].id);
@@ -83,6 +101,45 @@ export function AdminConsolePage({
   const targetUser = useMemo(
     () => data?.users.find((user) => user.id === targetUserId),
     [data?.users, targetUserId],
+  );
+  const usersById = useMemo(() => {
+    const next = new Map((data?.users ?? []).map((user) => [user.id, user]));
+    if (backendSession?.user && !next.has(backendSession.user.id)) {
+      next.set(backendSession.user.id, {
+        id: backendSession.user.id,
+        email: backendSession.user.email,
+        displayName: backendSession.user.displayName,
+        profileDisplayName: backendSession.profile.displayName,
+        role: backendSession.user.role === "admin" ? "admin" : "user",
+        status: backendSession.user.status,
+        emailVerified: backendSession.user.emailVerified,
+        createdAt: backendSession.user.createdAt,
+        updatedAt: backendSession.user.updatedAt,
+        adventureCount: 0,
+        scenarioCount: 0,
+        publishedScenarioCount: 0,
+        safetyEventCount: 0,
+        openSafetyEventCount: 0,
+        currentRestriction: {
+          id: `session-${backendSession.user.id}`,
+          userId: backendSession.user.id,
+          level: "none",
+          reason: "Current admin session.",
+          sharingDisabled: false,
+          generationDisabled: false,
+          createdAt: backendSession.user.createdAt,
+        },
+      });
+    }
+    return next;
+  }, [backendSession, data?.users]);
+  const openSafetyEvents = useMemo(
+    () => (data?.safetyEvents ?? []).filter((event) => event.status === "open"),
+    [data?.safetyEvents],
+  );
+  const resolvedSafetyEvents = useMemo(
+    () => (data?.safetyEvents ?? []).filter((event) => event.status !== "open"),
+    [data?.safetyEvents],
   );
 
   function updatePlatformProvider(patch: Partial<BackendPlatformSettings["provider"]>) {
@@ -159,7 +216,7 @@ export function AdminConsolePage({
   }
 
   async function updateUserStatus(userId: string, nextStatus: "pending_verification" | "active" | "disabled") {
-    const userLabel = data?.users.find((user) => user.id === userId)?.email ?? shortId(userId);
+    const userLabel = formatUserReference(userId, usersById);
     const confirmed = await confirmAction({
       title: "Change account status?",
       message: `Set ${userLabel} to ${nextStatus}? This changes their account access.`,
@@ -182,14 +239,15 @@ export function AdminConsolePage({
 
   async function applyRestriction() {
     if (!targetUser) return;
+    const targetUserLabel = userDisplayName(targetUser);
     const confirmed = await confirmAction({
       title: "Apply restriction?",
-      message: `Apply ${restrictionLevel} restriction to ${targetUser.email}? This can limit sharing or generation for the account.`,
+      message: `Apply ${restrictionLevel} restriction to ${targetUserLabel}? This can limit sharing or generation for the account.`,
       confirmLabel: "Apply Restriction",
       danger: restrictionLevel === "banned" || restrictionLevel === "generation_hold" || generationDisabled || sharingDisabled,
     });
     if (!confirmed) return;
-    setAdminActionStatus(`Applying restriction to ${targetUser.email}...`);
+    setAdminActionStatus(`Applying restriction to ${targetUserLabel}...`);
     notify("Applying account restriction...", { type: "info" });
     try {
       await onCreateRestriction(targetUser.id, {
@@ -199,7 +257,7 @@ export function AdminConsolePage({
         generationDisabled,
         contextTokenCap: contextTokenCap || undefined,
       });
-      setAdminActionStatus(`Restriction applied to ${targetUser.email}.`);
+      setAdminActionStatus(`Restriction applied to ${targetUserLabel}.`);
       notify("Restriction applied.", { type: "success" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Restriction update failed.";
@@ -269,7 +327,7 @@ export function AdminConsolePage({
         <div>
           <p className="eyebrow">Admin</p>
           <h2>Admin Console</h2>
-          <p className="muted">Signed in as {backendSession.user.email}</p>
+          <p className="muted">Signed in as {formatUserReference(backendSession.user.id, usersById)}</p>
         </div>
       </header>
 
@@ -289,6 +347,39 @@ export function AdminConsolePage({
 
           {adminActionStatus && <p className="notice">{adminActionStatus}</p>}
 
+          <div className="admin-view-tabs" role="tablist" aria-label="Admin console sections">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "overview"}
+              className={activeView === "overview" ? "active" : ""}
+              onClick={() => setActiveView("overview")}
+            >
+              Overview
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "safetyArchive"}
+              className={activeView === "safetyArchive" ? "active" : ""}
+              onClick={() => setActiveView("safetyArchive")}
+            >
+              Safety Archive
+              {resolvedSafetyEvents.length ? <span>{resolvedSafetyEvents.length}</span> : null}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeView === "operations"}
+              className={activeView === "operations" ? "active" : ""}
+              onClick={() => setActiveView("operations")}
+            >
+              Operations
+            </button>
+          </div>
+
+          {activeView === "overview" && (
+            <>
           <article className="panel settings-card settings-section-full">
             <div className="panel-heading">
               <div>
@@ -437,7 +528,7 @@ export function AdminConsolePage({
                 <select value={targetUserId} onChange={(event) => setTargetUserId(event.target.value)}>
                   {data.users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.email} ({user.role})
+                      {userDisplayName(user)} ({user.role})
                     </option>
                   ))}
                 </select>
@@ -488,7 +579,7 @@ export function AdminConsolePage({
               <table className="context-table admin-table">
                 <thead>
                   <tr>
-                    <th>Email</th>
+                    <th>User</th>
                     <th>Role</th>
                     <th>Status</th>
                     <th>Restriction</th>
@@ -500,8 +591,8 @@ export function AdminConsolePage({
                   {data.users.map((user) => (
                     <tr key={user.id}>
                       <td>
-                        <strong>{user.email}</strong>
-                        <div className="muted">{user.profileDisplayName} - {shortId(user.id)}</div>
+                        <strong>{userDisplayName(user)}</strong>
+                        <div className="muted">{user.email}</div>
                       </td>
                       <td>{user.role}</td>
                       <td>{user.status}</td>
@@ -515,68 +606,43 @@ export function AdminConsolePage({
             </div>
           </Section>
 
-          <Section title="Safety Events">
-            <div className="context-table-wrap">
-              <table className="context-table admin-table">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>User</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.safetyEvents.slice(0, 50).map((event) => (
-                    <tr key={event.id}>
-                      <td>{shortId(event.id)}<div className="muted">{formatDate(event.createdAt)}</div></td>
-                      <td>{shortId(event.userId)}</td>
-                      <td>{event.category} / severity {event.severity}</td>
-                      <td>{event.status}</td>
-                      <td>
-                        <div className="toolbar">
-                          <button
-                            type="button"
-                            disabled={safetyEventActionId === event.id || event.status === "reviewed"}
-                            onClick={() => void updateSafetyEvent(event.id, "reviewed")}
-                          >
-                            {safetyEventActionId === event.id ? "Saving..." : "Review"}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={safetyEventActionId === event.id || event.status === "dismissed"}
-                            onClick={() => void updateSafetyEvent(event.id, "dismissed")}
-                          >
-                            Dismiss
-                          </button>
-                          <button
-                            type="button"
-                            disabled={safetyEventActionId === event.id || event.status === "open"}
-                            onClick={() => void updateSafetyEvent(event.id, "open")}
-                          >
-                            Reopen
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <Section title="Open Safety Events" description="Reviewed or dismissed events leave this view and move to Safety Archive.">
+            <SafetyEventsTable
+              events={openSafetyEvents.slice(0, 50)}
+              usersById={usersById}
+              safetyEventActionId={safetyEventActionId}
+              onUpdateSafetyEvent={updateSafetyEvent}
+            />
+          </Section>
+            </>
+          )}
+
+          {activeView === "safetyArchive" && (
+            <>
+          <Section title="Resolved Safety Events" description="Reviewed and dismissed events are archived here. Reopen an event if it needs active follow-up again.">
+            <SafetyEventsTable
+              events={resolvedSafetyEvents.slice(0, 50)}
+              usersById={usersById}
+              safetyEventActionId={safetyEventActionId}
+              onUpdateSafetyEvent={updateSafetyEvent}
+            />
           </Section>
 
           <Section title="Restrictions">
             <CompactList
               items={data.restrictions.slice(0, 30).map((restriction) => ({
                 id: restriction.id,
-                title: `${restriction.level} - ${shortId(restriction.userId)}`,
+                title: `${restriction.level} - ${formatUserReference(restriction.userId, usersById)}`,
                 detail: `${restriction.reason || "No reason"} | sharing ${restriction.sharingDisabled ? "off" : "on"} | generation ${restriction.generationDisabled ? "off" : "on"}`,
                 meta: formatDate(restriction.createdAt),
               }))}
             />
           </Section>
+            </>
+          )}
 
+          {activeView === "operations" && (
+            <>
           <Section title="Invites">
             {data.invites.length ? (
               <div className="admin-compact-list">
@@ -589,6 +655,7 @@ export function AdminConsolePage({
                         <strong>{invite.useCount}/{invite.maxUses} used - {invite.tokenHashPrefix}</strong>
                         <div className="muted">
                           {invite.note || "No note"} / expires {formatDate(invite.expiresAt)}
+                          {invite.createdByUserId ? ` / created by ${formatUserReference(invite.createdByUserId, usersById)}` : ""}
                           {disabled ? ` / disabled ${formatDate(invite.disabledAt)}` : ""}
                         </div>
                       </div>
@@ -622,7 +689,7 @@ export function AdminConsolePage({
               items={data.adventures.slice(0, 30).map((adventure) => ({
                 id: adventure.id,
                 title: adventure.title,
-                detail: `${adventure.turnCount} turns, ${adventure.storyEntryCount} entries, owner ${shortId(adventure.ownerUserId)}`,
+                detail: `${adventure.turnCount} turns, ${adventure.storyEntryCount} entries, owner ${formatUserReference(adventure.ownerUserId, usersById)}`,
                 meta: formatDate(adventure.updatedAt),
               }))}
             />
@@ -633,7 +700,7 @@ export function AdminConsolePage({
               items={data.scenarios.slice(0, 30).map((scenario) => ({
                 id: scenario.id,
                 title: scenario.title,
-                detail: `${scenario.revisionCount} revisions, ${scenario.publishedRevisionCount} published, owner ${shortId(scenario.ownerUserId)}`,
+                detail: `${scenario.revisionCount} revisions, ${scenario.publishedRevisionCount} published, owner ${formatUserReference(scenario.ownerUserId, usersById)}`,
                 meta: formatDate(scenario.updatedAt),
               }))}
             />
@@ -644,7 +711,10 @@ export function AdminConsolePage({
               items={data.policyDecisions.slice(0, 40).map((decision) => ({
                 id: decision.id,
                 title: `${decision.action} / ${decision.gate} / severity ${decision.severity}`,
-                detail: decision.categories.join(", ") || decision.rationale || "No rationale",
+                detail: [
+                  decision.userId ? `user ${formatUserReference(decision.userId, usersById)}` : undefined,
+                  decision.categories.join(", ") || decision.rationale || "No rationale",
+                ].filter(Boolean).join(" / "),
                 meta: formatDate(decision.createdAt),
               }))}
             />
@@ -659,7 +729,7 @@ export function AdminConsolePage({
                     items={data.usageLogs.slice(0, 12).map((usage) => ({
                       id: usage.id,
                       title: `${usage.providerName} / ${usage.model}`,
-                      detail: `user ${shortId(usage.userId)} / adventure ${shortId(usage.adventureId)}${usage.durationMs !== undefined ? ` / ${formatDuration(usage.durationMs)}` : ""}`,
+                      detail: `user ${formatUserReference(usage.userId, usersById)} / adventure ${shortId(usage.adventureId)}${usage.durationMs !== undefined ? ` / ${formatDuration(usage.durationMs)}` : ""}`,
                       meta: formatDate(usage.createdAt),
                     }))}
                   />
@@ -672,7 +742,7 @@ export function AdminConsolePage({
                     items={data.contextBuilds.slice(0, 12).map((build) => ({
                       id: build.id,
                       title: `${build.gate} / ${build.totalEstimatedTokens} tokens`,
-                      detail: `${build.messageCount} messages, ${build.sectionCount} sections, ${build.excludedItemCount} excluded`,
+                      detail: `user ${formatUserReference(build.userId, usersById)} / ${build.messageCount} messages, ${build.sectionCount} sections, ${build.excludedItemCount} excluded`,
                       meta: formatDate(build.createdAt),
                     }))}
                   />
@@ -689,6 +759,7 @@ export function AdminConsolePage({
                 detail: [
                   trace.method,
                   trace.route,
+                  trace.userId ? `user ${formatUserReference(trace.userId, usersById)}` : undefined,
                   trace.statusCode ? `HTTP ${trace.statusCode}` : undefined,
                   trace.providerName ? `${trace.providerName} ${trace.model ?? ""}`.trim() : undefined,
                   trace.totalTokens !== undefined ? `${trace.totalTokens} tokens` : undefined,
@@ -703,12 +774,14 @@ export function AdminConsolePage({
             <CompactList
               items={data.adminActions.slice(0, 40).map((action) => ({
                 id: action.id,
-                title: `${action.action} / ${action.targetType}`,
-                detail: `${action.reason || "No reason"} / target ${shortId(action.targetId)}`,
+                title: `${action.action} / ${formatAdminTarget(action.targetType, action.targetId, usersById)}`,
+                detail: `${action.reason || "No reason"} / by ${formatUserReference(action.adminUserId, usersById)}`,
                 meta: formatDate(action.createdAt),
               }))}
             />
           </Section>
+            </>
+          )}
         </>
       ) : isLoading ? (
         <AdminConsoleLoading status={status || "Loading admin console..."} />
@@ -771,12 +844,88 @@ function Metric({ label, value, detail }: { label: string; value: number; detail
   );
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
     <article className="panel settings-card settings-section-full admin-section">
       <h3>{title}</h3>
+      {description && <p className="muted">{description}</p>}
       {children}
     </article>
+  );
+}
+
+function UserReference({ userId, usersById }: { userId: string; usersById: UserLookup }) {
+  const user = usersById.get(userId);
+  if (!user) return <span>{formatUserReference(userId, usersById)}</span>;
+  return (
+    <span className="admin-user-reference">
+      <strong>{userDisplayName(user)}</strong>
+      <span className="muted">{user.email}</span>
+    </span>
+  );
+}
+
+function SafetyEventsTable({
+  events,
+  usersById,
+  safetyEventActionId,
+  onUpdateSafetyEvent,
+}: {
+  events: BackendAdminConsoleData["safetyEvents"];
+  usersById: UserLookup;
+  safetyEventActionId: string;
+  onUpdateSafetyEvent: (eventId: string, nextStatus: "open" | "reviewed" | "dismissed") => Promise<void>;
+}) {
+  if (events.length === 0) return <p className="muted">No records.</p>;
+  return (
+    <div className="context-table-wrap">
+      <table className="context-table admin-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>User</th>
+            <th>Category</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((event) => (
+            <tr key={event.id}>
+              <td>{shortId(event.id)}<div className="muted">{formatDate(event.createdAt)}</div></td>
+              <td><UserReference userId={event.userId} usersById={usersById} /></td>
+              <td>{event.category} / severity {event.severity}</td>
+              <td>{event.status}</td>
+              <td>
+                <div className="toolbar">
+                  <button
+                    type="button"
+                    disabled={safetyEventActionId === event.id || event.status === "reviewed"}
+                    onClick={() => void onUpdateSafetyEvent(event.id, "reviewed")}
+                  >
+                    {safetyEventActionId === event.id ? "Saving..." : "Review"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={safetyEventActionId === event.id || event.status === "dismissed"}
+                    onClick={() => void onUpdateSafetyEvent(event.id, "dismissed")}
+                  >
+                    Dismiss
+                  </button>
+                  <button
+                    type="button"
+                    disabled={safetyEventActionId === event.id || event.status === "open"}
+                    onClick={() => void onUpdateSafetyEvent(event.id, "open")}
+                  >
+                    Reopen
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

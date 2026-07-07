@@ -1680,6 +1680,29 @@ details.story-card-item:not([open]) > :not(summary) {
   line-height: 1;
 }
 
+.admin-view-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.admin-view-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-view-tabs button span {
+  min-width: 22px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  padding: 2px 7px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
 .admin-loading {
   display: grid;
   gap: 16px;
@@ -1768,6 +1791,11 @@ details.story-card-item:not([open]) > :not(summary) {
 .admin-table th,
 .admin-table td {
   vertical-align: top;
+}
+
+.admin-user-reference {
+  display: grid;
+  gap: 2px;
 }
 
 .admin-compact-list {
