@@ -46,13 +46,29 @@ export type AdventureProseMode =
 
 export type AdventurePlayerControlMode = "strict" | "minorActions" | "cinematicFlow";
 export type AdventureAdultContentMode = "off" | "romanceOnly" | "explicitAdult";
+export type AdventureStorytellerProfile = "custom" | "linda" | "bob" | "sam" | "lune";
 
 export interface AdventureGenPreferences {
+  storytellerProfile: AdventureStorytellerProfile;
   storyShape: AdventureStoryShape;
   proseMode: AdventureProseMode;
   playerControl: AdventurePlayerControlMode;
   adultContent: AdventureAdultContentMode;
   boundaries?: string;
+}
+
+export interface StorytellerProfileDefinition {
+  id: AdventureStorytellerProfile;
+  name: string;
+  role: string;
+  avatarLabel: string;
+  description: string;
+  defaultPreferences: Partial<Pick<
+    AdventureGenPreferences,
+    "storyShape" | "proseMode" | "playerControl" | "adultContent"
+  >>;
+  promptLabel: string;
+  promptGuidance: string;
 }
 
 const generatedComponentTypes = new Set<ComponentType>([
@@ -66,12 +82,94 @@ const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", 
 const storyCardMemoryModes = new Set<StoryCardMemoryMode>(["static", "living", "historical"]);
 
 const defaultPreferences: AdventureGenPreferences = {
+  storytellerProfile: "custom",
   storyShape: "balanced",
   proseMode: "balanced",
   playerControl: "strict",
   adultContent: "off",
   boundaries: "",
 };
+
+export const STORYTELLER_PROFILES: StorytellerProfileDefinition[] = [
+  {
+    id: "custom",
+    name: "Custom",
+    role: "No preset guide",
+    avatarLabel: "C",
+    description: "Start from the visible controls and your own prompt.",
+    defaultPreferences: {},
+    promptLabel: "custom setup guide",
+    promptGuidance: "Follow the user's premise and the explicit setup controls without adding a genre-specific preset layer.",
+  },
+  {
+    id: "linda",
+    name: "Linda",
+    role: "Romance drama",
+    avatarLabel: "L",
+    description: "Relationship tension, chemistry, banter, and choices that matter.",
+    defaultPreferences: {
+      storyShape: "romanceDrama",
+      proseMode: "dialogueHeavy",
+      playerControl: "strict",
+      adultContent: "romanceOnly",
+    },
+    promptLabel: "romance and relationship-drama guide",
+    promptGuidance:
+      "Prioritize mutual pressure, chemistry, flirtation, emotional leverage, and competing agendas. Keep romance choice-driven; do not force commitment, attraction, jealousy, or intimacy.",
+  },
+  {
+    id: "bob",
+    name: "Bob",
+    role: "Historical drama",
+    avatarLabel: "B",
+    description: "Grounded politics, status, institutions, and period texture.",
+    defaultPreferences: {
+      storyShape: "factionPolitics",
+      proseMode: "novelistic",
+      playerControl: "strict",
+      adultContent: "off",
+    },
+    promptLabel: "historical-drama guide",
+    promptGuidance:
+      "Prioritize material constraints, public reputation, hierarchy, custom, law, money, kinship, class, faith, and institutions. Avoid modern slang unless the premise explicitly asks for it.",
+  },
+  {
+    id: "sam",
+    name: "Sam",
+    role: "Fantasy adventure",
+    avatarLabel: "S",
+    description: "Quest pressure, party dynamics, magic rules, and places to explore.",
+    defaultPreferences: {
+      storyShape: "sandbox",
+      proseMode: "cinematic",
+      playerControl: "strict",
+      adultContent: "off",
+    },
+    promptLabel: "fantasy role-playing guide",
+    promptGuidance:
+      "Prioritize playable hooks, party friction, discoverable locations, concrete magic rules, factions, treasures, costs, and room for player problem-solving over predetermined quest resolution.",
+  },
+  {
+    id: "lune",
+    name: "Lune",
+    role: "Adult romance",
+    avatarLabel: "Lu",
+    description: "Explicit opt-in tension with consent, boundaries, and adult framing.",
+    defaultPreferences: {
+      storyShape: "romanceDrama",
+      proseMode: "dialogueHeavy",
+      playerControl: "strict",
+      adultContent: "explicitAdult",
+    },
+    promptLabel: "explicit adult romance guide",
+    promptGuidance:
+      "Prioritize adult characters, explicit consent, boundaries, pursuit, temptation, and interpersonal stakes. Keep sexual material opt-in, consequence-aware, and separated into the AI Instructions adult-content section.",
+  },
+];
+
+export function getStorytellerProfile(id: AdventureStorytellerProfile): StorytellerProfileDefinition {
+  return STORYTELLER_PROFILES.find((profile) => profile.id === id) ?? STORYTELLER_PROFILES[0];
+}
 
 function parseJsonFenced<T>(text: string): T {
   const trimmed = text.trim();
@@ -132,6 +230,11 @@ Output ONLY valid JSON — no explanation, no preamble, no markdown prose outsid
 Authoring contract:
 ${ADVENTURE_GENERATION_BEST_PRACTICES}
 
+Source isolation and name discipline:
+- Use only the user's premise and selected setup preferences. Do not import names, characters, relationships, lore, or examples from documentation, tests, other premade scenarios, or prior adventures.
+- Preserve user-provided proper-noun spelling exactly. Do not normalize, stylize, or replace names with similar fantasy spellings.
+- Storyteller profile names are UI labels only. Never introduce the selected guide as a narrator, NPC, author, speaker, patron, deity, or in-world character.
+
 Component guidelines:
 - Always include one "plotEssentials" component containing the current operating truth: current situation, active tensions, obligations, and constraints that must shape every scene. Use 4-7 tight bullets and keep it under 140 words. Do not turn it into a full backstory or lore encyclopedia.
 - Include one "activePressure" component for the immediate external threat, obligation, deadline, or unresolved problem driving the opening. Keep it to exactly one concise sentence.
@@ -166,6 +269,7 @@ HOW THEY ENGAGE THE PLAYER
 The example lines carry the most weight. Write them as the character would actually say them in the story. The HOW THEY ENGAGE section is what separates a card that controls behavior from one that only describes it.`;
 
 function setupPreferenceGuidance(preferences: AdventureGenPreferences): string {
+  const storytellerProfile = getStorytellerProfile(preferences.storytellerProfile);
   const storyShapeGuidance: Record<AdventureStoryShape, string> = {
     balanced: "Balanced adventure: use a tight premise, a small recurring cast, one active pressure, and a few Story Cards. Keep PE compact and broadly useful.",
     sandbox: "Sandbox: prioritize a reactive world, player agency, faction/location cards, and loose hooks. Keep AI Instructions light; do not over-plan the plot in PE.",
@@ -199,6 +303,7 @@ function setupPreferenceGuidance(preferences: AdventureGenPreferences): string {
   const boundaries = preferences.adultContent === "off" ? "" : preferences.boundaries?.trim();
 
   return `Setup preferences:
+- Storyteller guide: ${storytellerProfile.promptLabel}. ${storytellerProfile.promptGuidance}
 - Story shape: ${storyShapeGuidance[preferences.storyShape]}
 - Prose mode: ${proseGuidance[preferences.proseMode]}
 - ${playerGuidance[preferences.playerControl]}

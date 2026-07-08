@@ -13,9 +13,13 @@ import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import { exportAdventureJson } from "../utils/json";
 import { AdventuresPage } from "./AdventuresPage";
 
-vi.mock("../ai/adventureGen", () => ({
-  runAdventureGen: vi.fn(),
-}));
+vi.mock("../ai/adventureGen", async () => {
+  const actual = await vi.importActual<typeof import("../ai/adventureGen")>("../ai/adventureGen");
+  return {
+    ...actual,
+    runAdventureGen: vi.fn(),
+  };
+});
 
 function renderAdventuresPage(
   onCreate = vi.fn(async (_setup: NewAdventureSetup, _options?: { deviceOnly?: boolean }) => undefined),
@@ -384,6 +388,50 @@ describe("AdventuresPage new adventure setup", () => {
     expect(vi.mocked(runAdventureGen)).not.toHaveBeenCalled();
     expect(screen.getByDisplayValue("Server-side canon.")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Server Ally")).toBeInTheDocument();
+  });
+
+  it("applies Storyteller profile defaults and passes the selected profile to generation", async () => {
+    const user = userEvent.setup();
+    renderAdventuresPage(undefined, {
+      providerConfig: {
+        name: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        apiKey: "test-key",
+        model: "deepseek-v4-flash",
+        temperature: 1,
+        maxOutputTokens: 1200,
+      },
+    });
+    vi.mocked(runAdventureGen).mockResolvedValueOnce({
+      title: "Lune Draft",
+      openingScene: "The lounge waits.",
+      components: [],
+      storyCards: [],
+    });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("radio", { name: /Lune/ }));
+
+    expect(screen.getByLabelText("Story setup")).toHaveValue("romanceDrama");
+    expect(screen.getByLabelText("Prose mode")).toHaveValue("dialogueHeavy");
+    expect(screen.getByLabelText("Player control")).toHaveValue("strict");
+    expect(screen.getByLabelText("Adult content / NSFW")).toHaveValue("explicitAdult");
+
+    await user.type(screen.getByLabelText("Premise"), "A dangerous courtship in a haunted lounge.");
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+
+    await waitFor(() => expect(screen.getByDisplayValue("Lune Draft")).toBeInTheDocument());
+    expect(vi.mocked(runAdventureGen)).toHaveBeenCalledWith(
+      "A dangerous courtship in a haunted lounge.",
+      expect.objectContaining({ model: "deepseek-v4-flash" }),
+      expect.objectContaining({
+        storytellerProfile: "lune",
+        storyShape: "romanceDrama",
+        proseMode: "dialogueHeavy",
+        playerControl: "strict",
+        adultContent: "explicitAdult",
+      }),
+    );
   });
 
   it("shows adventure thumbnail images in the Library", () => {

@@ -115,4 +115,25 @@ describe("runAdventureGen", () => {
     expect(userPrompt).toContain("explicit opt-in adult layer");
     expect(userPrompt).toContain("Boundaries and limits to respect: No fade to black.");
   });
+
+  it("routes storyteller profile guidance without leaking the UI profile name", async () => {
+    vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
+      content: JSON.stringify({ title: "Profiled", openingScene: "", components: [], storyCards: [] }),
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      raw: {},
+    });
+
+    await runAdventureGen("A Rookery job where Nix Calder tests a dangerous lockpick.", config, {
+      storytellerProfile: "lune",
+    });
+
+    const request = vi.mocked(sendOpenAICompatibleChatCompletion).mock.calls[0][0];
+    const systemPrompt = request.messages[0].content;
+    const userPrompt = request.messages[1].content;
+    expect(systemPrompt).toContain("Preserve user-provided proper-noun spelling exactly");
+    expect(systemPrompt).toContain("Do not import names, characters, relationships, lore, or examples");
+    expect(userPrompt).toContain("Storyteller guide: explicit adult romance guide");
+    expect(userPrompt).not.toContain("Lune");
+    expect(userPrompt).toContain("Nix Calder");
+  });
 });

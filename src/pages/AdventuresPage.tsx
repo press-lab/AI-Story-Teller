@@ -17,12 +17,14 @@ import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../s
 import { parseAidStoryCards } from "../importers/aidCardParser";
 import {
   runAdventureGen,
+  STORYTELLER_PROFILES,
   type AdventureGenPreferences,
   type AdventureGenResult,
   type AdventureAdultContentMode,
   type AdventurePlayerControlMode,
   type AdventureProseMode,
   type AdventureStoryShape,
+  type AdventureStorytellerProfile,
 } from "../ai/adventureGen";
 import { createId } from "../utils/id";
 import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
@@ -378,6 +380,7 @@ export function AdventuresPage({
   const [aistImportFilename, setAistImportFilename] = useState("");
   const [aistImportStatus, setAistImportStatus] = useState("");
   const [premise, setPremise] = useState("");
+  const [storytellerProfile, setStorytellerProfile] = useState<AdventureStorytellerProfile>("custom");
   const [storyShape, setStoryShape] = useState<AdventureStoryShape>("balanced");
   const [proseMode, setProseMode] = useState<AdventureProseMode>("balanced");
   const [playerControl, setPlayerControl] = useState<AdventurePlayerControlMode>("strict");
@@ -412,6 +415,16 @@ export function AdventuresPage({
 
   function updateStoryCardDraft(id: string, patch: Partial<StoryCardDraft>) {
     setManualStoryCardDrafts((drafts) => drafts.map((draft) => (draft.id === id ? { ...draft, ...patch } : draft)));
+  }
+
+  function selectStorytellerProfile(id: AdventureStorytellerProfile) {
+    const profile = STORYTELLER_PROFILES.find((entry) => entry.id === id);
+    setStorytellerProfile(id);
+    if (!profile || id === "custom") return;
+    if (profile.defaultPreferences.storyShape) setStoryShape(profile.defaultPreferences.storyShape);
+    if (profile.defaultPreferences.proseMode) setProseMode(profile.defaultPreferences.proseMode);
+    if (profile.defaultPreferences.playerControl) setPlayerControl(profile.defaultPreferences.playerControl);
+    if (profile.defaultPreferences.adultContent) setAdultContent(profile.defaultPreferences.adultContent);
   }
 
   function parseStoryCardJson(text = storyCardJsonText) {
@@ -514,6 +527,7 @@ export function AdventuresPage({
     setGenError(undefined);
     try {
       const preferences: Partial<AdventureGenPreferences> = {
+        storytellerProfile,
         storyShape,
         proseMode,
         playerControl,
@@ -629,8 +643,33 @@ export function AdventuresPage({
             <details className="setup-panel" open={!title || title === "New Adventure"}>
               <summary>Generate with AI</summary>
               <p className="muted">
-                Describe your adventure idea and the AI will draft a title, opening scene, components, and story cards for you to review.
+                Pick a setup guide or stay custom, then describe your adventure idea. The AI drafts a title, opening scene, components, and story cards for review.
               </p>
+              <Field label="Storyteller">
+                <div className="storyteller-profile-grid" role="radiogroup" aria-label="Storyteller">
+                  {STORYTELLER_PROFILES.map((profile) => {
+                    const active = storytellerProfile === profile.id;
+                    return (
+                      <button
+                        key={profile.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        className={`storyteller-profile-button${active ? " active" : ""}`}
+                        onClick={() => selectStorytellerProfile(profile.id)}
+                      >
+                        <span className="storyteller-avatar" aria-hidden="true">{profile.avatarLabel}</span>
+                        <span className="storyteller-copy">
+                          <strong>{profile.name}</strong>
+                          <span>{profile.role}</span>
+                          <small>{profile.description}</small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="muted">Storyteller names are setup labels only. They are not added as characters or narrators.</p>
+              </Field>
               <Field label="Premise">
                 <textarea
                   rows={4}

@@ -49,6 +49,11 @@ describe("premade adventure library", () => {
     expect(pe).not.toContain("electricity, light, radiation");
     expect(adventure.storyCards.find((card) => card.title === "Hollis Pike")?.keys).not.toContain("bartender");
     expect(adventure.storyCards.find((card) => card.title === "Powered Mercenary Network")?.keys).not.toContain("contract work");
+    const serialized = JSON.stringify(adventure);
+    expect(serialized).toContain("Nix Calder");
+    expect(adventure.openingScene).toContain("Nix handles locks and hardware");
+    expect(serialized).not.toContain("Nyx");
+    expect(serialized).not.toContain("Nyxa");
   });
 
   it("loads Arcane After the Rocket with tight Plot Essentials and character cards", () => {
