@@ -141,13 +141,14 @@ function Start-HiddenCommand([string]$FilePath, [string]$Arguments, [string]$Out
     $command = Get-Command $resolvedFilePath -ErrorAction SilentlyContinue
     if ($command) { $resolvedFilePath = $command.Source }
   }
-  $psi = [System.Diagnostics.ProcessStartInfo]::new()
-  $psi.FileName = $env:ComSpec
-  $psi.Arguments = "/d /c `"`"$resolvedFilePath`" $Arguments > `"$OutLog`" 2> `"$ErrLog`"`""
-  $psi.WorkingDirectory = $RepoRoot
-  $psi.UseShellExecute = $false
-  $psi.CreateNoWindow = $true
-  return [System.Diagnostics.Process]::Start($psi)
+  return Start-Process `
+    -FilePath $resolvedFilePath `
+    -ArgumentList $Arguments `
+    -WorkingDirectory $RepoRoot `
+    -WindowStyle Hidden `
+    -RedirectStandardOutput $OutLog `
+    -RedirectStandardError $ErrLog `
+    -PassThru
 }
 
 function Write-FileTailToOwnerLog([string]$Path, [int]$Lines = 40) {
