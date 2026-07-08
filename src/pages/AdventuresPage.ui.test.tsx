@@ -403,14 +403,14 @@ describe("AdventuresPage new adventure setup", () => {
       },
     });
     vi.mocked(runAdventureGen).mockResolvedValueOnce({
-      title: "Lune Draft",
+      title: "Mara Draft",
       openingScene: "The lounge waits.",
       components: [],
       storyCards: [],
     });
 
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
-    await user.click(screen.getByRole("radio", { name: /Lune/ }));
+    await user.click(screen.getByRole("radio", { name: /Mara/ }));
 
     expect(screen.getByLabelText("Story setup")).toHaveValue("romanceDrama");
     expect(screen.getByLabelText("Prose mode")).toHaveValue("dialogueHeavy");
@@ -420,12 +420,12 @@ describe("AdventuresPage new adventure setup", () => {
     await user.type(screen.getByLabelText("Premise"), "A dangerous courtship in a haunted lounge.");
     await user.click(screen.getByRole("button", { name: "Generate" }));
 
-    await waitFor(() => expect(screen.getByDisplayValue("Lune Draft")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByDisplayValue("Mara Draft")).toBeInTheDocument());
     expect(vi.mocked(runAdventureGen)).toHaveBeenCalledWith(
       "A dangerous courtship in a haunted lounge.",
       expect.objectContaining({ model: "deepseek-v4-flash" }),
       expect.objectContaining({
-        storytellerProfile: "lune",
+        storytellerProfile: "mara",
         storyShape: "romanceDrama",
         proseMode: "dialogueHeavy",
         playerControl: "strict",

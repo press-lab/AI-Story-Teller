@@ -46,7 +46,7 @@ export type AdventureProseMode =
 
 export type AdventurePlayerControlMode = "strict" | "minorActions" | "cinematicFlow";
 export type AdventureAdultContentMode = "off" | "romanceOnly" | "explicitAdult";
-export type AdventureStorytellerProfile = "custom" | "linda" | "bob" | "sam" | "lune";
+export type AdventureStorytellerProfile = "custom" | "linda" | "bob" | "sam" | "mara";
 
 export interface AdventureGenPreferences {
   storytellerProfile: AdventureStorytellerProfile;
@@ -150,10 +150,10 @@ export const STORYTELLER_PROFILES: StorytellerProfileDefinition[] = [
       "Prioritize playable hooks, party friction, discoverable locations, concrete magic rules, factions, treasures, costs, and room for player problem-solving over predetermined quest resolution.",
   },
   {
-    id: "lune",
-    name: "Lune",
+    id: "mara",
+    name: "Mara",
     role: "Adult romance",
-    avatarLabel: "Lu",
+    avatarLabel: "M",
     description: "Explicit opt-in tension with consent, boundaries, and adult framing.",
     defaultPreferences: {
       storyShape: "romanceDrama",

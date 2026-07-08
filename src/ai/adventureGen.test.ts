@@ -124,7 +124,7 @@ describe("runAdventureGen", () => {
     });
 
     await runAdventureGen("A Rookery job where Nix Calder tests a dangerous lockpick.", config, {
-      storytellerProfile: "lune",
+      storytellerProfile: "mara",
     });
 
     const request = vi.mocked(sendOpenAICompatibleChatCompletion).mock.calls[0][0];
@@ -133,7 +133,7 @@ describe("runAdventureGen", () => {
     expect(systemPrompt).toContain("Preserve user-provided proper-noun spelling exactly");
     expect(systemPrompt).toContain("Do not import names, characters, relationships, lore, or examples");
     expect(userPrompt).toContain("Storyteller guide: explicit adult romance guide");
-    expect(userPrompt).not.toContain("Lune");
+    expect(userPrompt).not.toContain("Mara");
     expect(userPrompt).toContain("Nix Calder");
   });
 });
