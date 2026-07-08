@@ -12,6 +12,13 @@ adventureReducer(state: Adventure, action: AdventureAction): Adventure
 
 Do not directly mutate adventure objects in components, trigger engines, importers, or provider code. UI controls dispatch typed actions. Runtime flows may call the reducer repeatedly to produce the next immutable adventure state.
 
+## Owner Backend And Cloudflare Quick Tunnel
+
+For owner-hosted backend, Cloudflare Quick Tunnel, GitHub Pages API URL,
+`NetworkError when attempting to fetch resource`, Admin Console load failures,
+or backend API key incidents, read
+`docs/agent-cloudflare-owner-backend-context.md` first.
+
 ## Profile Scenarios vs Adventures
 
 For backend profile-only scenario requests, read `docs/profile-only-scenario-context.md` first.
