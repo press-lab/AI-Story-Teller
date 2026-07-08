@@ -1602,6 +1602,11 @@ details.story-card-item:not([open]) > :not(summary) {
   margin: 10px 0;
 }
 
+.component-assist-preview-list {
+  display: grid;
+  gap: 10px;
+}
+
 /* ── Play page ──────────────────────────────────────── */
 
 /* Dashboard */

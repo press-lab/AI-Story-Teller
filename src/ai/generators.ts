@@ -8,7 +8,7 @@ import type {
   ComponentType,
   ProviderConfig,
 } from "../types/adventure";
-import { sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
+import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { makeBrain } from "../state/defaults";
 import {
   AI_INSTRUCTIONS_BEST_PRACTICES,
@@ -16,6 +16,22 @@ import {
   STORY_CARD_BEST_PRACTICES,
   TRIGGER_BEST_PRACTICES,
 } from "./authoringBestPractices";
+
+export interface ComponentAIBuilderRequest {
+  description: string;
+  targets: ComponentType[];
+  includeRecentStory?: boolean;
+}
+
+export interface GeneratedComponentDraft {
+  title: string;
+  type: ComponentType;
+  content: string;
+  priority?: number;
+  alwaysOn?: boolean;
+  pinned?: boolean;
+  protected?: boolean;
+}
 
 /** Compact snapshot of the adventure, fed to every generator so output is grounded in this world. */
 function adventureContext(adventure: Adventure): string {
@@ -53,6 +69,21 @@ function parseJsonObject(raw: string): Record<string, unknown> | undefined {
   }
 }
 
+const COMPONENT_AI_TARGETS = new Set<ComponentType>([
+  "narrationRules",
+  "aiInstructions",
+  "plotEssentials",
+  "activePressure",
+  "authorNote",
+  "custom",
+]);
+
+function parseJsonArrayField(raw: string, field: string): unknown[] {
+  const parsed = parseJsonObject(raw);
+  const value = parsed?.[field];
+  return Array.isArray(value) ? value : [];
+}
+
 const COMPONENT_GEN_PROMPTS: Partial<Record<ComponentType, string>> = {
   narrationRules:
     "Write a Narration Rules block — the per-adventure behavior contract. Cover POV and tense, prose format, player agency (never decide the player's actions, words, or feelings), continuity discipline, tone, and a few hard \"never\" rules. Make it behavioral and specific to THIS adventure, not generic boilerplate.",
@@ -66,6 +97,125 @@ function componentBestPractices(type: ComponentType): string {
   if (type === "aiInstructions") return AI_INSTRUCTIONS_BEST_PRACTICES;
   if (type === "plotEssentials") return PLOT_ESSENTIALS_BEST_PRACTICES;
   return "";
+}
+
+function componentTargetGuidance(type: ComponentType): string {
+  switch (type) {
+    case "narrationRules":
+      return "Narration Rules: per-adventure behavior contract for POV, tense, formatting, player agency, continuity, and hard never-rules. Do not store scenario facts here.";
+    case "aiInstructions":
+      return `AI Instructions: scenario-specific genre, drift-prevention, scene-loop, and prose behavior rules. Do not store character facts, lore facts, current mission state, backstory, or card-like memory here.\n${AI_INSTRUCTIONS_BEST_PRACTICES}`;
+    case "plotEssentials":
+      return `Plot Essentials: compact current operating truth only. Write 4-7 tight bullets or short labeled lines. No full backstory, character biography, relationship tracker, or quest log.\n${PLOT_ESSENTIALS_BEST_PRACTICES}`;
+    case "activePressure":
+      return "Active Pressure: exactly one sentence naming the current external threat, obligation, deadline, pursuit, debt, or force pressing on the player character. Do not describe internal emotion.";
+    case "authorNote":
+      return "Author's Note: concise tone, mood, pacing, or prose influence near recent context. One or two sentences. No lore dump, rules catalog, or current-state ledger.";
+    case "custom":
+      return "Custom Component: broad always-on world, scene-loop, or mode context that truly matters every turn. If it only matters when a person, place, faction, object, or secret appears, use Story Cards instead.";
+    default:
+      return "";
+  }
+}
+
+function defaultGeneratedComponentDraft(type: ComponentType, content: string, title?: string): GeneratedComponentDraft {
+  const fixed = type === "narrationRules" || type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
+  const priority =
+    type === "narrationRules" ? 100 :
+      type === "aiInstructions" ? 90 :
+        type === "plotEssentials" ? 80 :
+          type === "activePressure" ? 245 :
+            type === "authorNote" ? 70 :
+              0;
+  return {
+    title: title?.trim() || (
+      type === "narrationRules" ? "Narration Rules" :
+        type === "aiInstructions" ? "AI Instructions" :
+          type === "plotEssentials" ? "Plot Essentials" :
+            type === "activePressure" ? "Active Pressure" :
+              type === "authorNote" ? "Author's Note" :
+                "Custom Block"
+    ),
+    type,
+    content,
+    priority,
+    alwaysOn: true,
+    pinned: fixed,
+    protected: fixed,
+  };
+}
+
+export async function generateComponentDrafts(
+  adventure: Adventure,
+  providerConfig: ProviderConfig,
+  request: ComponentAIBuilderRequest,
+): Promise<GeneratedComponentDraft[]> {
+  const description = request.description.trim();
+  if (!description) throw new Error("Describe what components to generate.");
+  const targets = request.targets.filter((target, index, all) =>
+    COMPONENT_AI_TARGETS.has(target) && all.indexOf(target) === index,
+  );
+  if (targets.length === 0) throw new Error("Choose at least one component to generate.");
+
+  const recent = request.includeRecentStory
+    ? adventure.messages.slice(-12).map((message) => `${message.role}: ${message.content}`).join("\n").slice(0, 3500)
+    : "";
+  const systemPrompt = `You are an expert interactive-fiction scenario editor. Draft only the requested Plot Components from the user's prompt.
+
+${adventureContext(adventure)}
+
+Targets requested: ${targets.join(", ")}
+
+Target rules:
+${targets.map(componentTargetGuidance).filter(Boolean).join("\n\n")}
+
+General rules:
+- Use only the adventure context, recent story if provided, and the user's component prompt.
+- Preserve user-provided names and spellings exactly.
+- Do not create Story Cards, Brains, trigger rules, summaries, or Current Arc fields here.
+- Each returned component must match one requested type exactly.
+- Return full replacement content for each requested component, not an append-only note.
+- Keep every generated block inspectable and concise enough to edit.
+
+Respond ONLY with valid JSON:
+{"components":[{"type":"plotEssentials","title":"Plot Essentials","content":"- ...","priority":80,"alwaysOn":true,"pinned":true,"protected":true}]}`;
+
+  const userPrompt = `Component prompt:
+${description}
+
+Recent story:
+${request.includeRecentStory ? (recent || "(none available)") : "(not included by user choice)"}`;
+  const response = await sendOpenAICompatibleChatCompletion({
+    config: providerConfig,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
+    ...(isNativeDeepSeekProvider(providerConfig)
+      ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
+      : {}),
+  });
+  const targetSet = new Set(targets);
+  const seen = new Set<ComponentType>();
+  const rawComponents = parseJsonArrayField(response.content, "components");
+  const drafts: GeneratedComponentDraft[] = [];
+  for (const raw of rawComponents) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Record<string, unknown>;
+    const type = item.type as ComponentType;
+    const content = typeof item.content === "string" ? item.content.trim() : "";
+    if (!targetSet.has(type) || seen.has(type) || !content) continue;
+    seen.add(type);
+    const base = defaultGeneratedComponentDraft(type, content, typeof item.title === "string" ? item.title : undefined);
+    drafts.push({
+      ...base,
+      priority: typeof item.priority === "number" ? item.priority : base.priority,
+      alwaysOn: typeof item.alwaysOn === "boolean" ? item.alwaysOn : base.alwaysOn,
+      pinned: typeof item.pinned === "boolean" ? item.pinned : base.pinned,
+      protected: typeof item.protected === "boolean" ? item.protected : base.protected,
+    });
+  }
+  return drafts;
 }
 
 /** Generate fresh content for a Narration Rules / AI Instructions / Author's Note component. Returns a string for review. */

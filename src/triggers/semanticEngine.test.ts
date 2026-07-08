@@ -883,6 +883,39 @@ describe("AI memory builders", () => {
     expect(proposalAction.proposal.sourceText).toContain("assistant: Jinx's hideout smells of ozone, paint, and hot oil.");
   });
 
+  it("honors the requested Story Card draft count", async () => {
+    mockProvider.mockResolvedValueOnce({
+      content: JSON.stringify({
+        proposals: [
+          { action: "create", title: "Margo", storyCardType: "character", memoryMode: "static", content: "Margo is a ward engineer.", keys: ["Margo"] },
+          { action: "create", title: "Ward Room", storyCardType: "location", memoryMode: "static", content: "The ward room hums under pressure.", keys: ["ward room"] },
+          { action: "create", title: "Extra", storyCardType: "lore", memoryMode: "static", content: "This should be capped out.", keys: ["extra"] },
+        ],
+        rationale: "The brief asks for a small card set.",
+      }),
+      raw: {},
+    });
+
+    const result = await runStoryCardAIBuilder(
+      baseAdventure(),
+      providerConfig,
+      {
+        description: "Create a character card and a location card for the ward scene.",
+        intent: "auto",
+        recentMessageCount: 0,
+        cardCount: 2,
+        autoUpdate: false,
+      },
+    );
+
+    const prompt = mockProvider.mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("Cards requested: 2");
+    expect(prompt).toContain("Return up to 2 proposals");
+    const proposalActions = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL");
+    expect(proposalActions).toHaveLength(2);
+    expect(proposalActions.map((action) => action.type === "ADD_MEMORY_PROPOSAL" ? action.proposal.title : "")).toEqual(["Margo", "Ward Room"]);
+  });
+
   it("drafts a Plot Essentials proposal from a guided plot request", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({

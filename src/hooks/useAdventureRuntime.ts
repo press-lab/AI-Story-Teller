@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { buildContext } from "../contextBuilder/contextBuilder";
 import { regenerateProposalContent } from "../memory/memoryDetection";
-import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, pickConvergentContinuation } from "../ai/generators";
+import { generateArcContinuations, generateArcDirector, generateArcFromHistory, generateBrainFromName as generateBrainEntry, generateComponentContent, generateComponentDrafts, pickConvergentContinuation, type ComponentAIBuilderRequest, type GeneratedComponentDraft } from "../ai/generators";
 import { PLOT_ESSENTIALS_BEST_PRACTICES } from "../ai/authoringBestPractices";
 import { runStoryCardAudit, type AuditRecommendation } from "../memory/storyCardAudit";
 import { runComponentAudit, type ComponentAuditRecommendation } from "../memory/componentAudit";
@@ -935,6 +935,11 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     return generateComponentContent(adventure, activeProviderConfig, component);
   }
 
+  async function generateComponents(request: ComponentAIBuilderRequest): Promise<GeneratedComponentDraft[]> {
+    if (!adventure) throw new Error("No adventure loaded.");
+    return generateComponentDrafts(adventure, activeProviderConfig, request);
+  }
+
   /** Generate an Arc Director setup from a concept and apply it to the Current Arc component. */
   async function generateArc(componentId: string, concept: string): Promise<void> {
     if (!adventure || loading) return;
@@ -1046,6 +1051,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     regenerateMemoryProposal,
     regeneratePlotEssentials,
     generateComponent,
+    generateComponents,
     generateArc,
     proposeArcFromHistory,
     generateBrainFromName,

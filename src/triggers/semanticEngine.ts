@@ -861,6 +861,7 @@ export async function runManualStoryCardsUpdate(
 }
 
 const STORY_CARD_TYPES = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
+const MAX_STORY_CARD_AI_BUILDER_CARD_COUNT = 12;
 
 function validMemoryMode(value: unknown): StoryCardMemoryMode | undefined {
   return value === "static" || value === "living" || value === "historical" ? value : undefined;
@@ -903,6 +904,11 @@ function storyCardIntentGuidance(intent: StoryCardAIBuilderRequest["intent"]): s
   }
 }
 
+function sanitizeStoryCardBuilderCount(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(MAX_STORY_CARD_AI_BUILDER_CARD_COUNT, Math.round(value)));
+}
+
 export async function runStoryCardAIBuilder(
   adventure: Adventure,
   config: ProviderConfig,
@@ -928,6 +934,7 @@ export async function runStoryCardAIBuilder(
   const selectedCard = request.targetCardId ? adventure.storyCards.find((card) => card.id === request.targetCardId) : undefined;
   const requestedMode = request.memoryMode ?? (request.intent === "relationship" || request.intent === "subplot" ? "living" : undefined);
   const requestedType = defaultStoryCardType(request.intent);
+  const requestedCardCount = sanitizeStoryCardBuilderCount(request.cardCount);
   const recentMessageCount = sanitizeMessageCount(
     request.recentMessageCount,
     DEFAULT_STORY_CARD_BUILDER_RECENT_MESSAGES,
@@ -954,6 +961,7 @@ Builder focus:
 - Intent: ${request.intent}
 - Requested memory mode: ${requestedMode ?? "infer from subject"}
 - Requested card type: ${requestedType ?? "infer from subject"}
+- Cards requested: ${requestedCardCount}
 - Selected existing card: ${selectedCard ? `"${selectedCard.title}" [ID: ${selectedCard.id}]` : "none"}
 - Recent messages included: ${recentMessageCount > 0 ? recentMessageCount : "none"}
 - Auto-update requested: ${request.autoUpdate === undefined ? "infer" : request.autoUpdate ? "yes" : "no"}
@@ -972,7 +980,7 @@ Rules:
 - Use the user brief to choose the card subject, then use the recent story messages as source evidence for concrete details.
 - Keep only durable facts that should matter when the card triggers later. Do not store generic movement, temporary room position, or one-scene mood.
 - Do not invent details that are absent from both the brief and provided adventure context.
-- Prefer one proposal. Return multiple proposals only when the brief clearly contains separate durable subjects.
+- Return up to ${requestedCardCount} proposal${requestedCardCount === 1 ? "" : "s"}. If one card is requested, return only the best single card. If several cards are requested, split the brief into distinct durable subjects instead of making duplicates.
 
 Respond ONLY with valid JSON:
 {
@@ -1046,6 +1054,7 @@ Intent: ${request.intent}
 Requested mode: ${requestedMode ?? "infer"}
 Selected card: ${selectedCard?.title ?? "none"}
 Recent messages included: ${recentMessageCount > 0 ? recentMessageCount : "none"}
+Cards requested: ${requestedCardCount}
 
 User brief:
 ${description}
@@ -1053,7 +1062,7 @@ ${description}
 Recent story messages:
 ${recentBlock}`;
 
-    for (const p of parsed.proposals.slice(0, 3)) {
+    for (const p of parsed.proposals.slice(0, requestedCardCount)) {
       const memoryMode = validMemoryMode(p.memoryMode) ?? requestedMode ?? "static";
       const storyCardType = validStoryCardType(p.storyCardType ?? p.type) ?? requestedType ?? "custom";
       const targetId = p.action === "update" ? (p.cardId ?? selectedCard?.id) : undefined;

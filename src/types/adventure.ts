@@ -482,6 +482,7 @@ export interface StoryCardAIBuilderRequest {
   intent: StoryCardAIBuilderIntent;
   memoryMode?: StoryCardMemoryMode;
   recentMessageCount?: number;
+  cardCount?: number;
   targetCardId?: string;
   autoUpdate?: boolean;
   autoUpdateCooldownTurns?: number;

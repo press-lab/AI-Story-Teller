@@ -39,6 +39,7 @@ type StoryCardModeChoice = "auto" | StoryCardMemoryMode;
 
 const DEFAULT_AI_RECENT_MESSAGE_COUNT = 8;
 const MAX_AI_RECENT_MESSAGE_COUNT = 50;
+const MAX_AI_CARD_COUNT = 12;
 
 const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: string }> = [
   { value: "relationship", label: "Relationship / dynamic" },
@@ -56,6 +57,11 @@ const CARD_BUILDER_INTENTS: Array<{ value: StoryCardAIBuilderIntent; label: stri
 function clampAiRecentMessageCount(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(MAX_AI_RECENT_MESSAGE_COUNT, Math.round(value)));
+}
+
+function clampAiCardCount(value: number): number {
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(1, Math.min(MAX_AI_CARD_COUNT, Math.round(value)));
 }
 
 /** A card the memory engine manages in place (auto-appends new facts, archives old ones). */
@@ -205,6 +211,7 @@ export function StoryCardsPage({
   const [aiIntent, setAiIntent] = useState<StoryCardAIBuilderIntent>("relationship");
   const [aiMemoryMode, setAiMemoryMode] = useState<StoryCardModeChoice>("living");
   const [aiRecentMessageCount, setAiRecentMessageCount] = useState(DEFAULT_AI_RECENT_MESSAGE_COUNT);
+  const [aiCardCount, setAiCardCount] = useState(1);
   const [aiTargetCardId, setAiTargetCardId] = useState("");
   const [aiAutoUpdate, setAiAutoUpdate] = useState(true);
   const [aiAutoUpdateCooldown, setAiAutoUpdateCooldown] = useState(3);
@@ -390,6 +397,7 @@ export function StoryCardsPage({
       intent: aiIntent,
       memoryMode: aiMemoryMode === "auto" ? undefined : aiMemoryMode,
       recentMessageCount: aiRecentMessageCount,
+      cardCount: aiCardCount,
       targetCardId: aiTargetCardId || undefined,
       autoUpdate: aiAutoUpdate,
       autoUpdateCooldownTurns: aiAutoUpdate ? aiAutoUpdateCooldown : undefined,
@@ -422,7 +430,7 @@ export function StoryCardsPage({
         <details className="panel">
           <summary>Draft a Story Card with AI</summary>
           <p className="muted">
-            Describe what you want generated, choose how many recent messages should ground it, and the AI will draft a pending Memory Suggestion using Story Card best practices.
+            Describe one card or a full card set, choose how many recent messages should ground it, and the AI will draft pending Memory Suggestions using Story Card best practices.
           </p>
           <div className="grid three">
             <Field label="Card focus">
@@ -469,6 +477,14 @@ export function StoryCardsPage({
                 onChange={(recentMessageCount) => setAiRecentMessageCount(clampAiRecentMessageCount(recentMessageCount))}
               />
             </Field>
+            <Field label="Cards to draft">
+              <NumberInput
+                value={aiCardCount}
+                min={1}
+                max={MAX_AI_CARD_COUNT}
+                onChange={(cardCount) => setAiCardCount(clampAiCardCount(cardCount))}
+              />
+            </Field>
             <CheckboxField
               label="Let AI keep this card updated after relevant scenes"
               checked={aiAutoUpdate}
@@ -499,7 +515,7 @@ export function StoryCardsPage({
               disabled={loading || !aiDescription.trim()}
               onClick={() => void handleBuildStoryCardMemory()}
             >
-              {loading ? "Drafting..." : "Draft Card Suggestion"}
+              {loading ? "Drafting..." : "Draft Card Suggestions"}
             </button>
             <span className="muted">Nothing is added to active memory until you approve it.</span>
           </div>

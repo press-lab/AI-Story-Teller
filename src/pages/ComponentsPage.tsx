@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, ComponentEntry, ComponentType, ContextInclusionPolicy, PlotAIBuilderRequest } from "../types/adventure";
+import type { ComponentAIBuilderRequest, GeneratedComponentDraft } from "../ai/generators";
 import type { ComponentAuditRecommendation } from "../memory/componentAudit";
 import { makeComponent } from "../state/defaults";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
 import { useActionFeedback } from "../components/ActionFeedback";
+import { createId } from "../utils/id";
 
 const ARC_PACE_LABELS: Record<ArcPace, string> = {
   short: "Short — breaks quickly",
@@ -246,10 +248,12 @@ function ArcDirector({
   );
 }
 
-const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "authorNote"]);
+const SINGLETON_TYPES = new Set<ComponentType>(["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "activePressure", "authorNote"]);
 
-const activeComponentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "authorNote", "custom"];
+const activeComponentTypes: ComponentType[] = ["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "activePressure", "authorNote", "custom"];
 const inclusionPolicies: ContextInclusionPolicy[] = ["always", "triggered", "manual", "systemSuggested"];
+const COMPONENT_ASSIST_TARGETS: ComponentType[] = ["plotEssentials", "aiInstructions", "authorNote", "activePressure", "narrationRules", "custom"];
+const COMPONENT_ASSIST_ALL_TARGETS: ComponentType[] = ["plotEssentials", "aiInstructions", "authorNote", "activePressure", "narrationRules"];
 
 const TYPE_LABELS: Record<ComponentType, string> = {
   narrationRules: "Narration Rules",
@@ -274,6 +278,17 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   memory: "Legacy lore block. Move content to a Story Card with type Lore for triggered inclusion.",
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
+
+type ComponentAssistPreview = GeneratedComponentDraft & { id: string };
+
+function defaultComponentPriority(type: ComponentType): number {
+  if (type === "narrationRules") return 100;
+  if (type === "aiInstructions") return 90;
+  if (type === "plotEssentials") return 80;
+  if (type === "activePressure") return 245;
+  if (type === "authorNote") return 70;
+  return 0;
+}
 
 function componentContextText(component: ComponentEntry): string {
   if (component.type !== "currentArc") return component.content;
@@ -327,6 +342,8 @@ interface ComponentsPageProps extends AdventurePageProps {
   onUpdatePEComponentNow?: (componentId: string) => Promise<void>;
   /** Generate fresh content for Narration Rules / AI Instructions / Author's Note. Returns a string for review. */
   onGenerateComponent?: (componentId: string) => Promise<string>;
+  /** Generate one or more component drafts from a user prompt. Returns drafts for review. */
+  onGenerateComponents?: (request: ComponentAIBuilderRequest) => Promise<GeneratedComponentDraft[]>;
   /** Generate an Arc Director setup from a concept and apply it to the Current Arc component. */
   onGenerateArc?: (componentId: string, concept: string) => Promise<void>;
   /** Draft an arc from recent play and drop it in the Memory Inbox for approval. */
@@ -364,9 +381,14 @@ const PLOT_GROUP_DEFINITIONS: Array<{
   },
 ];
 
-export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateArc, onProposeArcFromHistory, focusComponent, onFocusedComponent }: ComponentsPageProps) {
+export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpdates, onBuildPlotMemory, onAuditComponents, onRegeneratePlotEssentials, onUpdatePEComponentNow, onGenerateComponent, onGenerateComponents, onGenerateArc, onProposeArcFromHistory, focusComponent, onFocusedComponent }: ComponentsPageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [search, setSearch] = useState("");
+  const [componentAssistDescription, setComponentAssistDescription] = useState("");
+  const [componentAssistTargets, setComponentAssistTargets] = useState<ComponentType[]>(["plotEssentials"]);
+  const [componentAssistUseRecentStory, setComponentAssistUseRecentStory] = useState(true);
+  const [componentAssistPreviews, setComponentAssistPreviews] = useState<ComponentAssistPreview[]>([]);
+  const [componentAssistRunning, setComponentAssistRunning] = useState(false);
   const [plotBuilderDescription, setPlotBuilderDescription] = useState("");
   const [plotBuilderTarget, setPlotBuilderTarget] = useState<PlotAIBuilderRequest["target"]>("plotEssentials");
   const [plotBuilderTargetComponentId, setPlotBuilderTargetComponentId] = useState("");
@@ -511,6 +533,63 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       setPeRegenerating(null);
     }
   }
+
+  function toggleComponentAssistTarget(type: ComponentType, enabled: boolean) {
+    setComponentAssistTargets((current) => {
+      if (enabled) return current.includes(type) ? current : [...current, type];
+      return current.filter((entry) => entry !== type);
+    });
+  }
+
+  async function handleGenerateComponentAssist() {
+    if (!onGenerateComponents || !componentAssistDescription.trim() || componentAssistTargets.length === 0 || componentAssistRunning) return;
+    setComponentAssistRunning(true);
+    notify("Generating component drafts...", { type: "info" });
+    try {
+      const drafts = await onGenerateComponents({
+        description: componentAssistDescription.trim(),
+        targets: componentAssistTargets,
+        includeRecentStory: componentAssistUseRecentStory,
+      });
+      setComponentAssistPreviews(drafts.map((draft) => ({ ...draft, id: createId("componentPreview") })));
+      notify(drafts.length > 0 ? `Generated ${drafts.length} component draft${drafts.length === 1 ? "" : "s"}.` : "No component drafts returned.", { type: drafts.length > 0 ? "success" : "info" });
+    } catch (error) {
+      notify(error instanceof Error ? error.message : "Component generation failed.", { type: "error" });
+    } finally {
+      setComponentAssistRunning(false);
+    }
+  }
+
+  function applyComponentAssistPreview(preview: ComponentAssistPreview) {
+    const type = preview.type;
+    const fixed = type === "narrationRules" || type === "aiInstructions" || type === "plotEssentials" || type === "authorNote";
+    const patch = {
+      title: preview.title.trim() || TYPE_LABELS[type],
+      type,
+      content: preview.content.trim(),
+      priority: preview.priority ?? defaultComponentPriority(type),
+      alwaysOn: preview.alwaysOn ?? true,
+      active: true,
+      pinned: preview.pinned ?? fixed,
+      protected: preview.protected ?? fixed,
+      inclusionPolicy: (preview.alwaysOn ?? true) ? "always" as const : "manual" as const,
+    };
+    const existing = SINGLETON_TYPES.has(type)
+      ? adventure.components.find((component) => component.type === type)
+      : undefined;
+    if (existing) {
+      dispatch({ type: "UPDATE_COMPONENT", componentId: existing.id, patch });
+    } else {
+      dispatch({ type: "UPSERT_COMPONENT", component: makeComponent(patch) });
+    }
+    setComponentAssistPreviews((current) => current.filter((entry) => entry.id !== preview.id));
+    notify(existing ? `${TYPE_LABELS[type]} updated.` : `${TYPE_LABELS[type]} created.`, { type: "success" });
+  }
+
+  function applyAllComponentAssistPreviews() {
+    componentAssistPreviews.forEach(applyComponentAssistPreview);
+  }
+
   const existingTypes = new Set(adventure.components.map((c) => c.type));
   const hasActivePlotEssentials = adventure.components.some((c) => c.type === "plotEssentials" && c.active);
 
@@ -595,6 +674,103 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons.
         AI Instructions are optional; Narration Rules can hold the complete stable behavior contract by themselves.
       </p>
+
+      {onGenerateComponents && (
+        <details className="panel" open>
+          <summary>Create components with AI</summary>
+          <p className="muted">
+            Choose one block, several blocks, or the common setup set. The AI drafts editable component previews from your prompt before anything is applied.
+          </p>
+          <div className="toolbar">
+            <button type="button" onClick={() => setComponentAssistTargets(COMPONENT_ASSIST_ALL_TARGETS)}>
+              Select common setup
+            </button>
+            <button type="button" onClick={() => setComponentAssistTargets(["plotEssentials"])}>
+              Plot Essentials only
+            </button>
+            <button type="button" onClick={() => setComponentAssistTargets([])}>
+              Clear targets
+            </button>
+          </div>
+          <div className="grid three">
+            {COMPONENT_ASSIST_TARGETS.map((type) => (
+              <CheckboxField
+                key={type}
+                label={TYPE_LABELS[type]}
+                checked={componentAssistTargets.includes(type)}
+                onChange={(enabled) => toggleComponentAssistTarget(type, enabled)}
+              />
+            ))}
+          </div>
+          <Field label="Component prompt">
+            <textarea
+              rows={5}
+              value={componentAssistDescription}
+              onChange={(event) => setComponentAssistDescription(event.target.value)}
+              placeholder="Example: Build PE, AI Instructions, and Author's Note for a tense Rookery downtime arc where Nix's experiment pulls a debt collector into the bar."
+            />
+          </Field>
+          <div className="toolbar">
+            <CheckboxField
+              label="Use recent story"
+              checked={componentAssistUseRecentStory}
+              onChange={setComponentAssistUseRecentStory}
+            />
+            <button
+              type="button"
+              className="primary-action"
+              disabled={loading || componentAssistRunning || !componentAssistDescription.trim() || componentAssistTargets.length === 0}
+              onClick={() => void handleGenerateComponentAssist()}
+            >
+              {componentAssistRunning ? "Generating..." : "Generate Component Drafts"}
+            </button>
+          </div>
+          {componentAssistPreviews.length > 0 && (
+            <section className="component-assist-preview-list">
+              <div className="panel-heading">
+                <div>
+                  <p className="eyebrow">review</p>
+                  <h3>Generated component drafts</h3>
+                </div>
+                <button type="button" onClick={applyAllComponentAssistPreviews}>
+                  Apply All
+                </button>
+              </div>
+              <div className="list">
+                {componentAssistPreviews.map((preview) => (
+                  <article key={preview.id} className="card editor-card">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">{TYPE_LABELS[preview.type]}</p>
+                        <h3>{preview.title || TYPE_LABELS[preview.type]}</h3>
+                      </div>
+                      <div className="toolbar">
+                        <button type="button" onClick={() => applyComponentAssistPreview(preview)}>
+                          Apply
+                        </button>
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => setComponentAssistPreviews((current) => current.filter((entry) => entry.id !== preview.id))}
+                        >
+                          Discard
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      rows={preview.type === "activePressure" || preview.type === "authorNote" ? 3 : 8}
+                      value={preview.content}
+                      onChange={(event) => setComponentAssistPreviews((current) =>
+                        current.map((entry) => entry.id === preview.id ? { ...entry, content: event.target.value } : entry)
+                      )}
+                    />
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+        </details>
+      )}
 
       {onBuildPlotMemory && (
         <details className="panel">

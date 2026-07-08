@@ -268,17 +268,55 @@ describe("side menu page smoke coverage", () => {
 
     const description = "Margo is a ward engineer who hides fear behind dry teasing.";
     await user.type(screen.getByLabelText("Describe what to generate"), description);
-    await user.click(screen.getByRole("button", { name: "Draft Card Suggestion" }));
+    await user.click(screen.getByRole("button", { name: "Draft Card Suggestions" }));
 
     expect(onBuildStoryCardMemory).toHaveBeenCalledWith({
       description,
       intent: "relationship",
       memoryMode: "living",
       recentMessageCount: 8,
+      cardCount: 1,
       targetCardId: undefined,
       autoUpdate: true,
       autoUpdateCooldownTurns: 3,
     });
+  });
+
+  it("generates selected Plot Components from a prompt and applies the draft", async () => {
+    const user = userEvent.setup();
+    const onGenerateComponents = vi.fn(async () => [
+      {
+        title: "Plot Essentials",
+        type: "plotEssentials" as const,
+        content: "Fresh Plot Essentials",
+        priority: 80,
+        alwaysOn: true,
+        pinned: true,
+        protected: true,
+      },
+    ]);
+    renderWithAdventure((adventure, dispatch) => (
+      <ComponentsPage
+        adventure={adventure}
+        dispatch={dispatch}
+        loading={false}
+        onGenerateComponents={onGenerateComponents}
+      />
+    ));
+
+    const description = "Help with PE for a tense Rookery downtime scene.";
+    await user.type(screen.getByLabelText("Component prompt"), description);
+    await user.click(screen.getByRole("button", { name: "Generate Component Drafts" }));
+
+    await waitFor(() => expect(screen.getByDisplayValue("Fresh Plot Essentials")).toBeInTheDocument());
+    expect(onGenerateComponents).toHaveBeenCalledWith({
+      description,
+      targets: ["plotEssentials"],
+      includeRecentStory: true,
+    });
+
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByDisplayValue("Fresh Plot Essentials")).toBeInTheDocument();
   });
 
   it("surfaces Story Card cleanup as a maintenance action", async () => {
