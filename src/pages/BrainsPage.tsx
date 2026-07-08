@@ -352,7 +352,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
     <section className="page editor-surface brains-page">
       <div className="editor-page-summary">
         <p className="muted">
-          Character-internal state for major recurring characters. Keep durable public facts in Cards.
+          Character-internal state for major recurring characters. Keep durable public facts in Reference Cards.
         </p>
         <div className="editor-stat-row" aria-label="Character counts">
           <span>{adventure.brains.length} total</span>
@@ -363,7 +363,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
       <p className="muted editor-legacy-help" style={{ margin: 0 }}>
         Character Brains are private internal monologue — thoughts only. The AI records one new thought per update.
         Old thoughts are archived rather than deleted. If a thought reveals a stable character truth, the brain can propose
-        an update to a linked story card via the Memory Inbox.
+        an update to a linked reference card via the Memory Inbox.
       </p>
 
       <div className="editor-command-bar">
@@ -415,7 +415,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
               <div className="brain-tool-copy">
                 <h3>Clean up existing brains</h3>
                 <p className="muted">
-                  Find duplicate character brains, repeated or wrong-perspective thoughts, broad aliases, empty stubs, and public facts that should live on Story Cards instead.
+                  Find duplicate character brains, repeated or wrong-perspective thoughts, broad aliases, empty stubs, and public facts that should live on Reference Cards instead.
                 </p>
               </div>
               <div className="brain-tool-controls">
@@ -574,7 +574,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { notes: event.target.value } })}
               />
             </Field>
-            <Field label="Linked Story Card (for trait proposals)">
+            <Field label="Linked Reference Card (for trait proposals)">
               <select
                 value={brain.linkedStoryCardId ?? ""}
                 onChange={(event) => dispatch({ type: "UPDATE_BRAIN", brainId: brain.id, patch: { linkedStoryCardId: event.target.value || undefined } })}

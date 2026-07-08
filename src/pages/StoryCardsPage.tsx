@@ -237,7 +237,7 @@ export function StoryCardsPage({
   async function approveRec(rec: AuditRecommendation) {
     if (rec.action === "delete" || rec.action === "edit") {
       const confirmed = await confirmAction({
-        title: rec.action === "delete" ? "Delete story card?" : "Apply story card edit?",
+        title: rec.action === "delete" ? "Delete reference card?" : "Apply reference card edit?",
         message: rec.action === "delete"
           ? `Delete "${rec.title}"? ${rec.rationale}`
           : `Apply the proposed edits to "${rec.title}"? ${rec.rationale}`,
@@ -285,11 +285,11 @@ export function StoryCardsPage({
   async function runAudit() {
     if (!onAuditStoryCards) return;
     setAudit({ status: "running", recommendations: [] });
-    notify("Reviewing story cards...", { type: "info" });
+    notify("Reviewing reference cards...", { type: "info" });
     try {
       const recs = await onAuditStoryCards(auditTurns, auditIncludeAI);
       setAudit({ status: "done", recommendations: recs });
-      notify(recs.length > 0 ? `Found ${recs.length} story card cleanup suggestions.` : "No story card cleanup suggestions.", { type: "success" });
+      notify(recs.length > 0 ? `Found ${recs.length} reference card cleanup suggestions.` : "No reference card cleanup suggestions.", { type: "success" });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Audit failed.";
       setAudit({ status: "error", recommendations: [], errorMessage: message });
@@ -299,8 +299,8 @@ export function StoryCardsPage({
 
   async function deleteStoryCard(card: StoryCard) {
     const confirmed = await confirmAction({
-      title: "Delete story card?",
-      message: `Delete "${card.title || "Untitled Card"}" from this adventure?`,
+      title: "Delete reference card?",
+      message: `Delete "${card.title || "Untitled Reference Card"}" from this adventure?`,
       confirmLabel: "Delete",
       danger: true,
     });
@@ -338,12 +338,12 @@ export function StoryCardsPage({
   function importCards() {
     try {
       const parsed = JSON.parse(importText) as StoryCard[];
-      if (!Array.isArray(parsed)) throw new Error("Expected an array of story cards.");
+      if (!Array.isArray(parsed)) throw new Error("Expected an array of reference cards.");
       parsed.forEach((card) => dispatch({ type: "UPSERT_STORY_CARD", storyCard: card }));
       setImportText("");
       notify("Story cards imported.", { type: "success" });
     } catch (error) {
-      notify(error instanceof Error ? error.message : "Could not import story cards.", { type: "error" });
+      notify(error instanceof Error ? error.message : "Could not import reference cards.", { type: "error" });
     }
   }
 
@@ -420,20 +420,20 @@ export function StoryCardsPage({
         </div>
       </div>
       <p className="muted editor-legacy-help" style={{ margin: 0 }}>
-        Story Cards are <strong>triggered memory</strong> — they enter the model context when their title or trigger keys match
+        Reference Cards are <strong>triggered memory</strong> — they enter the model context when their title or trigger keys match
         the current input or recent story. Use them for characters, places, relationships, secrets, rules, and recurring facts
         that are only relevant some of the time. Keep triggers specific; broad keys cause card bleed.
-        For always-on world lore that should load every turn regardless, use a <strong>Plot Component</strong>.
+        For always-on world lore that should load every turn regardless, use a <strong>World Block</strong>.
       </p>
 
       {onBuildStoryCardMemory && (
         <details className="panel">
-          <summary>Draft a Story Card with AI</summary>
+          <summary>Draft a Reference Card with AI</summary>
           <p className="muted">
-            Describe one card or a full card set, choose how many recent messages should ground it, and the AI will draft pending Memory Suggestions using Story Card best practices.
+            Describe one card or a full card set, choose how many recent messages should ground it, and the AI will draft pending Memory Suggestions using Reference Card best practices.
           </p>
           <div className="grid three">
-            <Field label="Card focus">
+            <Field label="Reference Card focus">
               <select
                 value={aiIntent}
                 onChange={(event) => setAiIntent(event.target.value as StoryCardAIBuilderIntent)}
@@ -477,7 +477,7 @@ export function StoryCardsPage({
                 onChange={(recentMessageCount) => setAiRecentMessageCount(clampAiRecentMessageCount(recentMessageCount))}
               />
             </Field>
-            <Field label="Cards to draft">
+            <Field label="Reference Cards to draft">
               <NumberInput
                 value={aiCardCount}
                 min={1}
@@ -515,7 +515,7 @@ export function StoryCardsPage({
               disabled={loading || !aiDescription.trim()}
               onClick={() => void handleBuildStoryCardMemory()}
             >
-              {loading ? "Drafting..." : "Draft Card Suggestions"}
+              {loading ? "Drafting..." : "Draft Reference Card Suggestions"}
             </button>
             <span className="muted">Nothing is added to active memory until you approve it.</span>
           </div>
@@ -613,12 +613,12 @@ export function StoryCardsPage({
           type="button"
           className="primary-action"
           onClick={() => {
-            const card = makeStoryCard({ title: "New Story Card", content: "" });
+            const card = makeStoryCard({ title: "New Reference Card", content: "" });
             dispatch({ type: "UPSERT_STORY_CARD", storyCard: card });
             setNewCardId(card.id);
           }}
         >
-          Create Story Card
+          Create Reference Card
         </button>
         <div className="sort-toggle">
           <button
@@ -640,14 +640,14 @@ export function StoryCardsPage({
 
       {(onAuditStoryCards || onSuggestCardUpdates) && (
         <details className="panel editor-tools-panel story-card-maintenance-panel" open>
-          <summary>Review and Maintain Cards</summary>
+          <summary>Review and Maintain Reference Cards</summary>
           <div className="story-card-maintenance-grid">
             {onAuditStoryCards && (
               <section className="story-card-tool-card story-card-tool-card-primary">
                 <div className="story-card-tool-copy">
-                  <h3>Clean up existing cards</h3>
+                  <h3>Clean up Reference Cards</h3>
                   <p className="muted">
-                    Find broad triggers, stale current facts, misplaced history, duplicate cards, and profile details that should be split into living or historical cards.
+                    Find broad triggers, stale current facts, misplaced history, duplicate cards, and profile details that should be split into living or historical Reference Cards.
                   </p>
                 </div>
                 <div className="story-card-tool-controls">
@@ -656,9 +656,9 @@ export function StoryCardsPage({
                     className="primary-action"
                     disabled={loading || audit?.status === "running"}
                     onClick={runAudit}
-                    title="Review existing cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
+                    title="Review existing Reference Cards and get cleanup suggestions: trigger fixes, profile splits, mode changes, edits, deletes, and new child cards."
                   >
-                    {audit?.status === "running" ? "Reviewing..." : "Clean Up Cards"}
+                    {audit?.status === "running" ? "Reviewing..." : "Clean Up Reference Cards"}
                   </button>
                   <label className="turn-window-field">
                     <span>Review last</span>
@@ -694,9 +694,9 @@ export function StoryCardsPage({
                     type="button"
                     disabled={loading || activeCards.length === 0}
                     onClick={onSuggestCardUpdates}
-                    title="Ask the AI to review recent story turns and suggest updates to all active Story Cards. Results appear in Memory Suggestions."
+                    title="Ask the AI to review recent story turns and suggest updates to all active Reference Cards. Results appear in Memory Suggestions."
                   >
-                    {loading ? "Generating..." : "Suggest Card Updates"}
+                    {loading ? "Generating..." : "Suggest Reference Card Updates"}
                   </button>
                 </div>
               </section>
@@ -706,7 +706,7 @@ export function StoryCardsPage({
       )}
 
       <details className="panel editor-tools-panel story-card-automation-panel">
-        <summary>Automatic Card Updates</summary>
+        <summary>Automatic Reference Card Updates</summary>
         <div className="story-card-settings-grid">
           <Field label="System-wide auto-update cooldown">
             <span className="turn-window-field">
@@ -735,7 +735,7 @@ export function StoryCardsPage({
               }
             }}
           />
-          <Field label="Card to auto-update">
+          <Field label="Reference Card to auto-update">
             <select
               value={autoCard?.id ?? ""}
               disabled={!autoCard}
@@ -756,7 +756,7 @@ export function StoryCardsPage({
             </select>
           </Field>
           {autoCard && (
-            <Field label="Selected card cooldown">
+            <Field label="Selected Reference Card cooldown">
               <NumberInput
                 value={autoCard.autoUpdateCooldownTurns ?? 3}
                 min={0}
@@ -770,24 +770,24 @@ export function StoryCardsPage({
       </details>
 
       <details className="panel editor-tools-panel story-card-json-panel">
-        <summary>Story Card JSON</summary>
+        <summary>Reference Card JSON</summary>
         <div className="story-card-json-actions">
           <button type="button" onClick={() => navigator.clipboard.writeText(JSON.stringify(adventure.storyCards, null, 2))}>
-            Copy Story Cards JSON
+            Copy Reference Cards JSON
           </button>
           <span className="muted">Advanced import/export for backups and reusable card packs.</span>
         </div>
-        <Field label="Import Story Cards JSON">
+        <Field label="Import Reference Cards JSON">
           <textarea rows={6} value={importText} onChange={(event) => setImportText(event.target.value)} />
         </Field>
         <button type="button" onClick={importCards}>
-          Import Story Cards
+          Import Reference Cards
         </button>
       </details>
 
       {groups.length === 0 && (
         <p className="muted">
-          {totalCards === 0 ? "No story cards yet." : "No story cards match the current search and filters."}
+          {totalCards === 0 ? "No reference cards yet." : "No reference cards match the current search and filters."}
         </p>
       )}
 
@@ -795,7 +795,7 @@ export function StoryCardsPage({
         <div className="audit-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setAudit(null); }}>
           <div className="audit-modal">
             <div className="audit-modal-header">
-              <h3>Story Card Cleanup</h3>
+              <h3>Reference Card Cleanup</h3>
               <button type="button" className="audit-modal-close" onClick={() => setAudit(null)}>✕</button>
             </div>
 
@@ -804,7 +804,7 @@ export function StoryCardsPage({
             )}
 
             {audit.status === "done" && audit.recommendations.length === 0 && (
-              <p className="muted">No changes recommended — your story cards look good.</p>
+              <p className="muted">No changes recommended — your reference cards look good.</p>
             )}
 
             {audit.recommendations.map((rec) => (
@@ -908,7 +908,7 @@ export function StoryCardsPage({
                       <p className="eyebrow">
                         {card.active ? "active" : "inactive"} · {TYPE_LABELS[card.type]} · {card.memoryMode ?? "static"}
                       </p>
-                      <h3>{card.title || "Untitled Card"}</h3>
+                      <h3>{card.title || "Untitled Reference Card"}</h3>
                       <div className="item-tag-row" aria-label="Story card triggers">
                         {card.keys.length === 0 && <span className="item-tag muted">Title trigger only</span>}
                         {card.keys.map((key) => (
@@ -1057,7 +1057,7 @@ export function StoryCardsPage({
                     <div className="item-section-heading">
                       <div>
                         <p className="eyebrow">live memory</p>
-                        <h4>Card text sent when triggered</h4>
+                        <h4>Reference Card text sent when triggered</h4>
                       </div>
                       <span className="muted">{cardFactLines(card.content).length} line{cardFactLines(card.content).length === 1 ? "" : "s"}</span>
                     </div>

@@ -706,7 +706,7 @@ export function useAdventureRuntime(
       const result = await runRememberThis(adventure, activeProviderConfig, fact);
       const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
       if (proposalCount === 0) {
-        throw new Error(result.logEntry.errors[0] ?? "The AI did not produce a Story Card suggestion.");
+        throw new Error(result.logEntry.errors[0] ?? "The AI did not produce a Reference Card suggestion.");
       }
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
@@ -808,7 +808,7 @@ export function useAdventureRuntime(
       applyActionsAndPersist(result.actions);
       openTab("memoryInbox");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Story Card builder failed.");
+      setError(err instanceof Error ? err.message : "Reference Card builder failed.");
     } finally {
       setLoading(false);
     }

@@ -25,7 +25,7 @@ const topics: DocTopic[] = [
         <p>
           Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
           are private playthroughs you can open, edit, or publish as a scenario. Publishing copies setup surfaces such
-          as the opening scene, Plot Components, Story Cards, Characters, automations, and thumbnail, not your transcript.
+          as the opening scene, World Blocks, Reference Cards, Characters, automations, and thumbnail, not your transcript.
         </p>
         <p>
           Explore lists built-in and community scenarios. Starting one creates a new adventure in your account. User
@@ -53,10 +53,10 @@ const topics: DocTopic[] = [
           existing adventure, publish a reusable scenario, or delete a private playthrough.
         </p>
         <p>
-          New Adventure includes optional setup before play: an opening scene, starter Plot Components, manual
-          Story Cards, and Story Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
+          New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
+          Reference Cards, and Reference Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
           opening scene, tight Plot Essentials, one-sentence Active Pressure, optional scenario-specific
-          AI Instructions or Author's Note, and recurring Story Cards for review. Native DeepSeek generation uses
+          AI Instructions or Author's Note, and recurring Reference Cards for review. Native DeepSeek generation uses
           structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
         <p>
@@ -140,7 +140,7 @@ const topics: DocTopic[] = [
           text, proposed type, rationale, confidence, and suggested triggers.
         </p>
         <p>
-          Pending proposals are not active context. Approving a proposal routes it to a Story Card, Brain
+          Pending proposals are not active context. Approving a proposal routes it to a Reference Card, Brain
           update, Plot Essentials update, Active Pressure update, or legacy Rolling Summary update through reducer-backed paths.
         </p>
       </>
@@ -148,18 +148,18 @@ const topics: DocTopic[] = [
   },
   {
     id: "side-menu-story-cards",
-    title: "Story Cards",
+    title: "Reference Cards",
     category: "Side Menu",
     summary: "Durable triggered facts that enter context only when relevant or pinned.",
-    tags: ["story cards", "memory", "triggers", "durable facts"],
+    tags: ["reference cards", "memory", "triggers", "durable facts"],
     body: (
       <>
         <p>
-          Story Cards store durable facts: names, promises, secrets, recurring places, rules, relationships,
+          Reference Cards store durable facts: names, promises, secrets, recurring places, rules, relationships,
           and important objects.
         </p>
         <p>
-          Use <strong>Draft a Story Card with AI</strong> to choose a card focus, memory mode, optional living
+          Use <strong>Draft a Reference Card with AI</strong> to choose a card focus, memory mode, optional living
           auto-updates, and the thing that should be remembered. The AI compares the brief with existing cards
           and creates a pending Memory Suggestion. It does not change active memory until you approve the proposal.
         </p>
@@ -174,8 +174,8 @@ const topics: DocTopic[] = [
     id: "best-practices-character-cards",
     title: "Character Cards — Voice Contract",
     category: "Best Practices",
-    summary: "How to write character story cards that actually control voice, not just describe traits.",
-    tags: ["character cards", "voice", "voice contract", "npc", "story cards", "best practices"],
+    summary: "How to write character reference cards that actually control voice, not just describe traits.",
+    tags: ["character cards", "voice", "voice contract", "npc", "reference cards", "best practices"],
     body: (
       <>
         <p>
@@ -230,7 +230,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          <strong>Current Story Arc</strong> is a Plot Component type that maintains a
+          <strong>Current Story Arc</strong> is a World Block type that maintains a
           running log of meaningful events in the active arc. Unlike Plot Essentials — which holds static world
           constants — Current Story Arc grows as the story unfolds and gets retired when the arc resolves.
         </p>
@@ -262,7 +262,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           </li>
           <li>
             <strong>Graduate when the arc resolves.</strong> When the arc has run its course, click
-            "Complete Arc → Story Card." This creates a permanent Story Card (type: plot) from the arc log
+            "Complete Arc → Reference Card." This creates a permanent Reference Card (type: plot) from the arc log
             and clears the component for the next arc. The graduated card stays in context when triggered
             by relevant keywords — keeping the resolved arc as referenced backstory.
           </li>
@@ -277,14 +277,14 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "side-menu-plot-components",
-    title: "Plot Components",
+    title: "World Blocks",
     category: "Side Menu",
     summary: "Manage AI Instructions, Plot Essentials, Current Story Arc, Author's Note, and custom components.",
-    tags: ["Plot Components", "components", "plot essentials", "current arc", "author note", "ai instructions"],
+    tags: ["World Blocks", "components", "plot essentials", "current arc", "author note", "ai instructions"],
     body: (
       <>
         <p>
-          Plot Components are always-on or explicitly configured context entries. Narration Rules are the primary per-adventure behavior contract.
+          World Blocks are always-on or explicitly configured context entries. Narration Rules are the primary per-adventure behavior contract.
           AI Instructions are optional: use them only when you deliberately want scenario-specific rules separated
           from Narration Rules. Both load every turn, so duplicating the same rules wastes context and can create
           competing wording. AI Instructions, Plot Essentials, and Author's Note are protected by default.
@@ -346,13 +346,13 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "side-menu-import-export",
     title: "Import / Export",
     category: "Side Menu",
-    summary: "Move adventure JSON and AI Dungeon exports in or out of the browser.",
-    tags: ["import", "export", "ai dungeon", "backup"],
+    summary: "Move adventure JSON in or out of the browser.",
+    tags: ["import", "export", "backup"],
     body: (
       <>
         <p>
-          Import / Export handles full adventure JSON and AI Dungeon import flows. AI Dungeon story text
-          can become transcript messages; Story Card JSON can become Story Cards or Brain candidates.
+          Import / Export handles full adventure JSON backup and restore flows. Reference Card JSON can be reused
+          when setting up a new adventure or editing Reference Cards.
         </p>
         <p>
           Invalid or ambiguous imported data should be preserved as raw text instead of silently discarded.
@@ -444,7 +444,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>AI Instructions</li>
           <li>Plot Essentials</li>
           <li>Components</li>
-          <li>Story Cards</li>
+          <li>Reference Cards</li>
           <li>Brains</li>
           <li>Author's Note</li>
           <li>Next Turn Note</li>
@@ -493,8 +493,8 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "memory-surfaces",
     title: "Memory Surfaces",
     category: "Memory",
-    summary: "Chronicle, legacy Rolling Summary, Next Turn Note, Story Cards, Brains, Plot Essentials, and Memory Suggestions roles.",
-    tags: ["memory", "chronicle", "summary", "next turn note", "story cards", "brains"],
+    summary: "Chronicle, legacy Rolling Summary, Next Turn Note, Reference Cards, Brains, Plot Essentials, and Memory Suggestions roles.",
+    tags: ["memory", "chronicle", "summary", "next turn note", "reference cards", "brains"],
     body: (
       <>
         <dl>
@@ -504,7 +504,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <dd>Legacy save-compatible continuity data. Retained in adventures, but not emitted as a default context section.</dd>
           <dt>Next Turn Note</dt>
           <dd>Short-term user-written steering for the next generation. It is visible, token-counted, and expires after use by default.</dd>
-          <dt>Story Cards</dt>
+          <dt>Reference Cards</dt>
           <dd>Approved durable facts triggered by keywords, phrases, or regex configuration.</dd>
           <dt>Brains</dt>
           <dd>Opt-in state for major characters only. AI may update a Brain only if it already exists.</dd>
@@ -526,7 +526,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
       <>
         <p>Default routing rules:</p>
         <ul>
-          <li>Durable recurring facts go to Story Cards.</li>
+          <li>Durable recurring facts go to Reference Cards.</li>
           <li>Character-specific evolving internal state goes to Brains only for existing BrainEntries.</li>
           <li>Tiny always-on current constraints go to Plot Essentials.</li>
           <li>Current external pressure goes to Active Pressure; active arc history goes to Current Arc.</li>
@@ -544,13 +544,13 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "authoring-best-practices",
     title: "Authoring Best Practices",
     category: "Best Practices",
-    summary: "Where AI Instructions, Plot Essentials, and Story Cards belong, based on the BetterRepository guide.",
-    tags: ["betterrepository", "ai instructions", "plot essentials", "story cards", "triggers", "best practices"],
+    summary: "Where AI Instructions, Plot Essentials, and Reference Cards belong.",
+    tags: ["ai instructions", "plot essentials", "reference cards", "triggers", "best practices"],
     body: (
       <>
         <p>
-          These defaults follow the BetterRepository authoring guide: use AI Instructions for behavior, Plot Essentials
-          for the current operating truth, and Story Cards for durable triggered memory. The executable copy of these
+          Use AI Instructions for behavior, Plot Essentials
+          for the current operating truth, and Reference Cards for durable triggered memory. The executable copy of these
           rules lives in <code>src/ai/authoringBestPractices.ts</code> so generators and docs stay aligned.
         </p>
         <dl>
@@ -564,9 +564,9 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <dd>
             The compact always-on current operating truth: what is happening now, open tensions, obligations, and major
             constraints that should shape every scene. PE updates replace the full block. When old PE facts leave the
-            block, AIST turns them into pending historical Story Card proposals for review.
+            block, AIST turns them into pending historical Reference Card proposals for review.
           </dd>
-          <dt>Story Cards</dt>
+          <dt>Reference Cards</dt>
           <dd>
             Durable triggered records for one subject: character, location, faction, object, relationship, secret, rule,
             or completed event. Static cards use present tense for always-true facts, living cards track current evolving
@@ -589,7 +589,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <p>
           Generate with AI asks what kind of story you want, then routes the setup into the right surfaces. You choose
           outcomes; the app decides whether the result belongs in AI Instructions, Plot Essentials, Active Pressure,
-          Author's Note, Story Cards, or Brains.
+          Author's Note, Reference Cards, or Brains.
         </p>
         <dl>
           <dt>Sandbox</dt>
@@ -597,18 +597,18 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <dt>Mission loop</dt>
           <dd>A repeatable custom loop component, current assignment pressure, team cards, handler/enemy cards, and fallout hooks.</dd>
           <dt>Mystery</dt>
-          <dd>The current known question goes in Plot Essentials. Clues, suspects, secrets, and locations go on Story Cards.</dd>
+          <dd>The current known question goes in Plot Essentials. Clues, suspects, secrets, and locations go on Reference Cards.</dd>
           <dt>Faction politics</dt>
           <dd>Plot Essentials names the current public pressure. Factions, leaders, alliances, leverage, and secrets go on cards.</dd>
           <dt>Romance drama</dt>
           <dd>Relationship pressure stays choice-driven. Living relationship cards and Brains carry evolving state instead of bloating PE.</dd>
           <dt>Survival / horror</dt>
-          <dd>Plot Essentials tracks the current threat and constraints. Story Cards hold threat rules, safe places, recurring dangers, and costs.</dd>
+          <dd>Plot Essentials tracks the current threat and constraints. Reference Cards hold threat rules, safe places, recurring dangers, and costs.</dd>
         </dl>
         <p><strong>Prose mode is separate.</strong> Minimalist is fast and lean; novelistic is richer and slower; cinematic focuses on visible behavior and blocking; dialogue-heavy prioritizes distinct voices and social pressure.</p>
         <p><strong>Player control is separate.</strong> Strict mode never writes your character. Minor-actions mode may bridge tiny implied motions. Cinematic flow may write small player-character beats, but major choices stay yours.</p>
         <p><strong>Adult content / NSFW is explicit opt-in.</strong> Romance-only creates attraction and intimacy without explicit adult content. Explicit adult mode adds a separate adult-content section, consenting-adult framing, and your boundary notes. Keep adult preferences visible and separate from generic prose rules.</p>
-        <p><strong>Plot Essentials stays small.</strong> Do not let setup templates turn PE into a quest log, relationship tracker, inventory, or character voice guide. Those usually belong in Story Cards or Brains.</p>
+        <p><strong>Plot Essentials stays small.</strong> Do not let setup templates turn PE into a quest log, relationship tracker, inventory, or character voice guide. Those usually belong in Reference Cards or Brains.</p>
       </>
     ),
   },
@@ -634,7 +634,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <ul>
           <li>Generic emotional states: "feeling anxious", "excited", "uneasy". These give the model nothing actionable.</li>
           <li>Scene descriptions or location tracking — keep that in Recent Messages unless it becomes durable.</li>
-          <li>Permanent character traits — those belong in a Story Card.</li>
+          <li>Permanent character traits — those belong in a Reference Card.</li>
           <li>Things the character has already said or done openly — that's in the transcript.</li>
         </ul>
         <p><strong>Good:</strong> <code>margo_on_setu_ward_question: "She asked about the ward the same way she asked about the knife last winter. She already knows. I need to decide before the delegation arrives whether to tell her or redirect."</code></p>
@@ -647,16 +647,16 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "best-practices-story-cards",
-    title: "Story Cards — Best Practices",
+    title: "Reference Cards — Best Practices",
     category: "Best Practices",
-    summary: "What Story Cards are for, how to write them, and what to exclude.",
-    tags: ["story cards", "memory", "durable facts", "best practices"],
+    summary: "What Reference Cards are for, how to write them, and what to exclude.",
+    tags: ["reference cards", "memory", "durable facts", "best practices"],
     body: (
       <>
         <p>
-          Story Cards store durable, recurring facts. They enter context only when their trigger keys appear — so they stay dormant and cost no tokens when off-topic.
+          Reference Cards store durable, recurring facts. They enter context only when their trigger keys appear — so they stay dormant and cost no tokens when off-topic.
         </p>
-        <p><strong>What belongs in a Story Card:</strong></p>
+        <p><strong>What belongs in a Reference Card:</strong></p>
         <ul>
           <li>A character's permanent traits, history, relationships, and rules of behavior.</li>
           <li>A location's sensory details, layout, and significance.</li>
@@ -686,7 +686,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     title: "Plot Essentials — Best Practices",
     category: "Best Practices",
     summary: "How to use Plot Essentials effectively without cluttering it with scene state.",
-    tags: ["plot essentials", "Plot Components", "canon", "best practices"],
+    tags: ["plot essentials", "World Blocks", "canon", "best practices"],
     body: (
       <>
         <p>
@@ -703,9 +703,9 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li>Current scene position or who is present — keep that in Recent Messages unless it becomes a durable constraint.</li>
           <li>Character emotional states or internal goals.</li>
           <li>Temporary mission status that changes every few turns, unless it is the main current operating truth.</li>
-          <li>Lore that only matters when a specific character or place comes up — use a Story Card instead.</li>
+          <li>Lore that only matters when a specific character or place comes up — use a Reference Card instead.</li>
         </ul>
-        <p><strong>Format:</strong> 4-7 tight bullets or short labeled lines. PE updates replace the full block. When outgoing PE facts disappear from a replacement, AIST creates pending historical Story Card proposals so you can keep true history without bloating PE.</p>
+        <p><strong>Format:</strong> 4-7 tight bullets or short labeled lines. PE updates replace the full block. When outgoing PE facts disappear from a replacement, AIST creates pending historical Reference Card proposals so you can keep true history without bloating PE.</p>
         <p><strong>Good PE entry:</strong> <code>• The warded threshold is open, House Vale is exploiting it tonight, and Avery must contain the breach before dawn.</code></p>
         <p><strong>Bad PE entry:</strong> <code>• Avery and Margo are currently standing near the threshold discussing the ward.</code> (scene state, not a permanent truth)</p>
       </>
@@ -720,7 +720,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          Rolling Summary is a legacy save-compatible field. It is retained on the adventure object for old saves, but it is not emitted as a default model context section. Use Current Arc, Plot Essentials, Active Pressure, Story Cards, Brains, and Recent Messages for active continuity.
+          Rolling Summary is a legacy save-compatible field. It is retained on the adventure object for old saves, but it is not emitted as a default model context section. Use Current Arc, Plot Essentials, Active Pressure, Reference Cards, Brains, and Recent Messages for active continuity.
         </p>
         <p><strong>What belongs:</strong></p>
         <ul>
@@ -734,7 +734,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         <ul>
           <li>Scene descriptions or current location.</li>
           <li>Character inner thoughts — those belong in Brains.</li>
-          <li>Permanent world facts that belong in Story Cards or Plot Essentials.</li>
+          <li>Permanent world facts that belong in Reference Cards or Plot Essentials.</li>
         </ul>
         <p>For current adventures, keep external stakes visible through Active Pressure and Current Arc instead of relying on auto-summary settings.</p>
       </>
@@ -827,7 +827,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           <li><strong>PREMISE-SPECIFIC RULES</strong> — bending systems, technology rules, faction logic, anything that would otherwise drift by turn 10.</li>
         </ul>
         <p><strong>The option-menu problem.</strong> Models trained on human approval data (e.g. DeepSeek) interpret "leave choices for the player" as "present explicit options." Every character ends with "Want to X, or Y?" The default Narration Rules already prevent this — don't restate it in AI Instructions.</p>
-        <p><strong>Character voice anchoring.</strong> Per-character voice belongs on the character's Story Card using a Voice Contract, not in AI Instructions. AI Instructions apply globally — putting one character's rules here dilutes them and creates two sources of truth.</p>
+        <p><strong>Character voice anchoring.</strong> Per-character voice belongs on the character's Reference Card using a Voice Contract, not in AI Instructions. AI Instructions apply globally — putting one character's rules here dilutes them and creates two sources of truth.</p>
         <p><strong>Don't duplicate Narration Rules.</strong> Perspective, continuity, language matching, and option-menu prevention are already in the default Narration Rules every turn. Restating them wastes tokens.</p>
         <p><strong>The word "choices" is a trigger.</strong> "Leave X's choices for the player" → model presents menus. Rewrite as: "leave X's exact words and reactions unwritten — end at a natural beat."</p>
       </>
@@ -873,7 +873,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           trigger logs are visible in Automations.
         </p>
         <p>
-          Generated content actions include Story Card updates and Plot Essentials updates. Brain updates
+          Generated content actions include Reference Card updates and Plot Essentials updates. Brain updates
           are handled inline during story generation at zero extra API cost.
         </p>
       </>
@@ -883,18 +883,17 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "import-export",
     title: "Import and Export",
     category: "Data",
-    summary: "Adventure JSON, AI Dungeon story imports, and raw fallback behavior.",
-    tags: ["import", "export", "ai dungeon", "json"],
+    summary: "Adventure JSON backup/restore and reusable JSON behavior.",
+    tags: ["import", "export", "json"],
     body: (
       <>
         <p>
-          Adventure JSON should round-trip through the Import / Export page. AI Dungeon imports accept
-          story text, Story Card JSON, or both. Invalid or ambiguous data should be preserved as raw text
-          rather than silently discarded.
+          Adventure JSON should round-trip through the Import / Export page. Reference Card JSON can be reused
+          from New Adventure setup or the Reference Cards editor.
         </p>
         <p>
-          AI Dungeon story text is parsed into messages. Story cards map title, keys, entry/value/content,
-          and type fields into internal StoryCard or Brain candidate shapes.
+          Reference Card JSON maps title, keys, entry/value/content,
+          and type fields into internal Reference Card shapes.
         </p>
       </>
     ),
@@ -965,13 +964,13 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     body: (
       <>
         <p>
-          Every item in context — Story Cards, Plot Components, Brains, Current Arc, Author's Note, Next Turn Note, and Recent Messages — has an estimated token cost.
+          Every item in context — Reference Cards, World Blocks, Brains, Current Arc, Author's Note, Next Turn Note, and Recent Messages — has an estimated token cost.
           The total is shown in Context Preview and in the header of the Play page.
         </p>
         <dl>
           <dt>Item token budget</dt>
           <dd>
-            An optional cap per Story Card or Plot Component. If an item's content exceeds its budget, it is truncated or
+            An optional cap per Reference Card or World Block. If an item's content exceeds its budget, it is truncated or
             excluded when the overall context is tight. Set to 0 (the default) for no per-item cap.
           </dd>
           <dt>Protected items</dt>
@@ -987,35 +986,35 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </dl>
         <p>
           Watch the token count in the play header. If you see it climbing above ~6,000–8,000 tokens with a smaller model,
-          consider reducing always-on Plot Components, trimming long Story Cards, or lowering the Recent Messages window.
+          consider reducing always-on World Blocks, trimming long Reference Cards, or lowering the Recent Messages window.
         </p>
       </>
     ),
   },
   {
     id: "story-cards-vs-plot-components",
-    title: "Story Cards vs Plot Components",
+    title: "Reference Cards vs World Blocks",
     category: "Memory",
-    summary: "When to use a Story Card vs a Plot Component (Component).",
-    tags: ["story cards", "Plot Components", "components", "memory routing"],
+    summary: "When to use a Reference Card vs a World Block (Component).",
+    tags: ["reference cards", "World Blocks", "components", "memory routing"],
     body: (
       <>
         <dl>
-          <dt>Story Cards</dt>
+          <dt>Reference Cards</dt>
           <dd>
             Use for facts that are only relevant part of the time — characters, places, secrets, relationships, rules.
             They stay dormant until their trigger keys appear in the input or output, so they don't waste token budget
             when off-topic.
           </dd>
-          <dt>Plot Components</dt>
+          <dt>World Blocks</dt>
           <dd>
             Use for context that is relevant every turn — your AI Instructions, Plot Essentials, Author's Note, and
             broad world lore that shapes every scene. These load unconditionally and cost tokens every turn.
           </dd>
         </dl>
         <p>
-          A good rule of thumb: if you'd only need to know it when the character or place comes up, it's a Story Card.
-          If it should always shape how the AI writes, it's a Plot Component.
+          A good rule of thumb: if you'd only need to know it when the character or place comes up, it's a Reference Card.
+          If it should always shape how the AI writes, it's a World Block.
         </p>
       </>
     ),

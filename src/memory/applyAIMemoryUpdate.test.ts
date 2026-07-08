@@ -44,7 +44,7 @@ describe("applyAIMemoryUpdate", () => {
     expect(next.components[0].lastMemoryUpdatedAt).toEqual(expect.any(String));
   });
 
-  it("allows brain and story card memory updates through typed reducer actions", () => {
+  it("allows brain and reference card memory updates through typed reducer actions", () => {
     const brain = makeBrain({ id: "brain-margo", characterName: "Margo", currentState: "old" });
     const storyCard = makeStoryCard({ id: "card-joke", title: "Joke", content: "old", keys: ["old"] });
     const adventure = { ...createDefaultAdventure("AI Bounds"), brains: [brain], storyCards: [storyCard] };
@@ -69,7 +69,7 @@ describe("applyAIMemoryUpdate", () => {
     });
   });
 
-  it("stamps story cards when AI memory updates only card metadata", () => {
+  it("stamps reference cards when AI memory updates only card metadata", () => {
     const storyCard = makeStoryCard({ id: "card-joke", title: "Joke", content: "old", keys: ["old"] });
     const adventure = { ...createDefaultAdventure("AI Bounds"), storyCards: [storyCard] };
 

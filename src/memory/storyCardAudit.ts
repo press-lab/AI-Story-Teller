@@ -221,7 +221,7 @@ function buildPrompt(cards: StoryCard[], rollingSummary: string, recentStory: st
     .map((c) => `[${c.id}] "${c.title}" (${c.type}, ${c.memoryMode}) keys: ${c.keys.join(", ") || "(title trigger only)"}\n${storyCardContextContent(c).slice(0, 2200)}`)
     .join("\n\n---\n\n");
 
-  return `You are cleaning up story cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged - focus on semantic accuracy, consolidation, trigger bleed, living-card updates, profile bloat, and missing historical/living child cards.
+  return `You are cleaning up reference cards for an interactive fiction game. Structural issues (redundancy, missing keys, stale entries) have already been flagged - focus on semantic accuracy, consolidation, trigger bleed, living-card updates, profile bloat, and missing historical/living child cards.
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}
 
@@ -362,14 +362,14 @@ export async function runStoryCardAudit(
         config,
         messages: [
           { role: "system", content: prompt },
-          { role: "user", content: "Clean up these story cards and return your recommendations as a JSON array." },
+          { role: "user", content: "Clean up these reference cards and return your recommendations as a JSON array." },
         ],
       });
       llmRecs = parseLLMResponse(response.content);
     } catch (err) {
       const issue = backgroundProviderConfigIssue(adventure);
       const cause = err instanceof Error ? err.message : String(err);
-      throw new Error([issue, `Story Card cleanup AI pass failed: ${cause}`].filter(Boolean).join(" "));
+      throw new Error([issue, `Reference Card cleanup AI pass failed: ${cause}`].filter(Boolean).join(" "));
     }
 
     // Drop LLM recs for cards already handled deterministically

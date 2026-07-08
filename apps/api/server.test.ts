@@ -305,6 +305,21 @@ describe("local API adventure persistence", () => {
     expect(imported.body.adventures[0].id).not.toBe(adventure.id);
   });
 
+  it("rejects discontinued third-party backup imports", async () => {
+    const sessionToken = await passwordSession("unsupported-import@example.com");
+    const imported = await requestJson<{ error: string }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        sourceType: "aid",
+        text: JSON.stringify({ actions: [] }),
+      }),
+    });
+
+    expect(imported.status).toBe(400);
+    expect(imported.body.error).toBe("This backup import format is no longer supported.");
+  });
+
   it("lists and restores server-side adventure backup snapshots", async () => {
     const sessionToken = await passwordSession("backups@example.com");
     const original = createDefaultAdventure("Snapshot Original");
@@ -553,7 +568,7 @@ describe("local API policy gates and sharing", () => {
     });
   });
 
-  it("runs story card and character AI tools through the backend provider", async () => {
+  it("runs reference card and character AI tools through the backend provider", async () => {
     const realFetch = globalThis.fetch;
     const providerCalls: Array<{ authorization?: string; body: string }> = [];
     api.config.providerConfig.baseUrl = "https://provider.test";
@@ -578,7 +593,7 @@ describe("local API policy gates and sharing", () => {
               content: "Mira promised to watch the north gate.",
               keys: ["Mira", "north gate"],
             }],
-            rationale: "A durable promise should become a Story Card.",
+            rationale: "A durable promise should become a Reference Card.",
           })
           : body.includes("reconciling inspectable memory")
             ? JSON.stringify({
@@ -682,7 +697,7 @@ describe("local API policy gates and sharing", () => {
       headers: { Authorization: `Bearer ${sessionToken}` },
       body: JSON.stringify({
         request: {
-          directive: "Update Plot and Story Cards from the recent OOC planning conversation.",
+          directive: "Update Plot and Reference Cards from the recent OOC planning conversation.",
           entryCount: 5,
           includeBrains: false,
           targetScope: "plotAndStoryCards",

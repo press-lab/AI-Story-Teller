@@ -44,7 +44,7 @@ The AI should only assist with semantic judgment and prose:
 
 ## Implemented Solution
 
-The implementation adds deterministic compact Story Card policy for compact-style memory: pacts, deals, promises, oaths, truce terms, secret alliances, official cover stories, political shields, debts, obligations, accomplice/fugitive arrangements, and similar ongoing constraints.
+The implementation adds deterministic compact Reference Card policy for compact-style memory: pacts, deals, promises, oaths, truce terms, secret alliances, official cover stories, political shields, debts, obligations, accomplice/fugitive arrangements, and similar ongoing constraints.
 
 Compact cards now get these protections when created or updated through memory automation:
 
@@ -67,7 +67,7 @@ The reducer still allows ordinary living cards to behave like bounded event feed
 - `src/memory/resolveMemoryTarget.ts`: exact-title compact routing even when the AI drifts on memory mode.
 - `src/state/adventureReducer.ts`: compact append/replace behavior and memory proposal application.
 - `src/state/defaults.ts`: old-save normalization and one-time compact field migration.
-- `src/contextBuilder/contextBuilder.ts`: compact Story Card context rendering.
+- `src/contextBuilder/contextBuilder.ts`: compact Reference Card context rendering.
 - `src/pages/StoryCardsPage.tsx`: visible compact kind/status/core/current/recent/source fields.
 - `src/state/adventureReducer.test.ts`: reducer coverage for compact cards and ordinary living-card pruning.
 - `src/memory/resolveMemoryTarget.test.ts`: routing coverage for exact-title compact updates.

@@ -115,7 +115,7 @@ export function createArcaneAfterRocketAdventure(): Adventure {
 
 The player is Avery, a proven Piltover mage and surviving Councilor. Never write Avery's dialogue, thoughts, feelings, choices, final reactions, or consequential actions.
 
-This scenario starts immediately after Jinx's rocket hits the Council chamber. Do not replay Season 1. Treat Season 1 as loaded history on Story Cards and in relationships.
+This scenario starts immediately after Jinx's rocket hits the Council chamber. Do not replay Season 1. Treat Season 1 as loaded history on Reference Cards and in relationships.
 
 Respect the Season 2 opening facts: Jayce and Mel survive the blast and are not the critical injuries; Viktor is the near-death emergency; Cassandra Kiramman, Irius Bolbok, and Torman Hoskel die; Shoola and Salo survive, with Salo crippled.
 
@@ -125,7 +125,7 @@ Avery is powerful and action-capable. His always-on physical wards, body reinfor
 
 Piltover distrusts mages except those who have proven discipline, control, and usefulness. Avery proved himself independently before Hextech, then helped Jayce and Viktor stabilize Hextech. Public respect for Avery is conditional and politically fragile.
 
-Honor Story Cards and Brains. Major characters have distinct motives, appearances, personalities, and voice contracts. Do not flatten them into helpful allies, generic grief, or exposition delivery.
+Honor Reference Cards and Brains. Major characters have distinct motives, appearances, personalities, and voice contracts. Do not flatten them into helpful allies, generic grief, or exposition delivery.
 
 Mel and Avery have a close professional relationship with no romance. Caitlyn is curious about Avery and Avery likes/respects her, but Caitlyn's grief and bond with Vi remain central. Any attraction elsewhere must emerge through pressure, not instant softness.
 

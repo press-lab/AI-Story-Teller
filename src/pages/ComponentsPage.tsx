@@ -49,7 +49,7 @@ function ArcDirector({
     ? "Break armed for next output. Press Continue or take a turn."
     : arc.phase === "aftermath"
       ? canCompleteArc
-        ? "Arc is in aftermath. Complete it to a Story Card or choose the next direction."
+    ? "Arc is in aftermath. Complete it to a Reference Card or choose the next direction."
         : "No arc premise or log to save yet."
       : "";
 
@@ -65,7 +65,7 @@ function ArcDirector({
       simmer: "Arc reset to simmer. Engagement counters are cleared.",
       escalate: "Arc moved to escalate. It will keep building until the break gate opens.",
       break: "Break armed for next output. Press Continue or take a turn to let the model see the cost instruction.",
-      aftermath: "Arc moved to aftermath. Complete it into a Story Card or choose the next direction.",
+      aftermath: "Arc moved to aftermath. Complete it into a Reference Card or choose the next direction.",
     };
     setArcActionStatus(statusByPhase[phase]);
     dispatch({ type: "SET_ARC_PHASE", componentId: component.id, phase, turn });
@@ -73,7 +73,7 @@ function ArcDirector({
   const completeArcToStoryCard = () => {
     const title = component.arcPremise?.trim() || component.title;
     dispatch({ type: "COMPLETE_ARC_TO_STORY_CARD", componentId: component.id });
-    setArcActionStatus(`Completed arc saved as Story Card: ${title}. Current Arc is clear and simmering.`);
+    setArcActionStatus(`Completed arc saved as Reference Card: ${title}. Current Arc is clear and simmering.`);
   };
   const toggleThread = (id: string, on: boolean) =>
     patch({ arcThreadKeys: on ? [...threadKeys, id] : threadKeys.filter((key) => key !== id) });
@@ -143,7 +143,7 @@ function ArcDirector({
         <div className="editor-card" style={{ borderLeft: "3px solid #2e7d32", margin: "0.5rem 0" }}>
           <strong>This arc resolved — where does it go next?</strong>
           <p className="muted" style={{ fontSize: "0.85em", margin: "0.25rem 0" }}>
-            Picking one banks the finished arc as a Story Card and starts the next arc fresh (simmering). Or write your own below.
+            Picking one banks the finished arc as a Reference Card and starts the next arc fresh (simmering). Or write your own below.
           </p>
           {component.arcContinuationOptions!.map((opt, index) => (
             <div key={index} style={{ marginTop: "0.4rem" }}>
@@ -160,9 +160,9 @@ function ArcDirector({
         </div>
       )}
 
-      <Field label="The Baddie — which Story Cards / Brains is this arc about?">
+      <Field label="The Baddie — which Reference Cards / Brains is this arc about?">
         <div style={{ maxHeight: "9rem", overflowY: "auto", border: "1px solid #444", borderRadius: "4px", padding: "0.4rem" }}>
-          {candidates.length === 0 && <p className="muted" style={{ margin: 0 }}>Create Story Cards or Brains first.</p>}
+          {candidates.length === 0 && <p className="muted" style={{ margin: 0 }}>Create Reference Cards or Brains first.</p>}
           {candidates.map((candidate) => (
             <label key={candidate.id} className="arc-thread-option">
               <input type="checkbox" checked={threadSet.has(candidate.id)} onChange={(event) => toggleThread(candidate.id, event.target.checked)} />
@@ -232,9 +232,9 @@ function ArcDirector({
             type="button"
             disabled={!canCompleteArc}
             onClick={completeArcToStoryCard}
-            title="Create a historical plot Story Card from this arc log, then clear Current Arc for the next arc."
+            title="Create a historical plot Reference Card from this arc log, then clear Current Arc for the next arc."
           >
-            {"Complete Arc -> Story Card"}
+            {"Complete Arc -> Reference Card"}
           </button>
           <button type="button" disabled={!configured} onClick={() => setPhase("simmer")} title="Reset pacing and start a fresh climb.">Reset to simmer</button>
           {(arcActionStatus || phaseStatus) && (
@@ -270,12 +270,12 @@ const TYPE_LABELS: Record<ComponentType, string> = {
 const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   narrationRules: "The primary per-adventure behavior contract — POV, format, player agency, continuity, tone, and hard writing rules. Loaded first with the system shell. It is valid to keep all stable generation rules here and use no AI Instructions block.",
   aiInstructions: "Optional scenario-specific rules separated for organization. Use this only when you want a distinct drift-prevention or genre contract outside Narration Rules. Do not duplicate rules already present in Narration Rules; both blocks load every turn.",
-  plotEssentials: "Current operating truth — what is happening now, open tensions, obligations, and major constraints that should shape every scene. Keep it compact and replace it when it drifts. Outgoing facts become reviewable historical Story Card proposals.",
-  currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Story Card and start fresh.",
+  plotEssentials: "Current operating truth — what is happening now, open tensions, obligations, and major constraints that should shape every scene. Keep it compact and replace it when it drifts. Outgoing facts become reviewable historical Reference Card proposals.",
+  currentArc: "A running log of the active story arc — auto-updated as arc-relevant events occur. Seed it with a one-line Arc Premise that defines what this arc is about. The AI only appends entries when something genuinely advances or complicates that premise. When the arc is complete, graduate it to a Reference Card and start fresh.",
   activePressure: "One sentence naming the external threat, obligation, or force currently bearing on the player character. Auto-generated, approved via Memory Inbox. Must stay anchored to external stakes — a danger, a deadline, a pursuit, a debt. If this drifts to describing an emotional state or internal need, regenerate it.",
   immediateMomentum: "Disabled legacy component. Immediate next-beat direction now belongs in Recent Messages or the one-turn Next Output Bias.",
   authorNote: "Near-context narrative direction — inserted just before Recent Messages for maximum influence on the next response. One per adventure. Most powerful mid-session correction tool: if a character is drifting too passive, too emotional, or too reactive, add a directive here before the next turn. 'Nix should have a project she is actively working on right now' resets the register immediately.",
-  memory: "Legacy lore block. Move content to a Story Card with type Lore for triggered inclusion.",
+  memory: "Legacy lore block. Move content to a Reference Card with type Lore for triggered inclusion.",
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
 
@@ -412,7 +412,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   async function approveComponentAuditRec(rec: ComponentAuditRecommendation) {
     if (rec.action === "delete" || rec.action === "edit") {
       const confirmed = await confirmAction({
-        title: rec.action === "delete" ? "Delete plot component?" : "Apply plot component edit?",
+        title: rec.action === "delete" ? "Delete World Block?" : "Apply World Block edit?",
         message: rec.action === "delete"
           ? `Delete "${rec.title}"? ${rec.rationale}`
           : `Apply the proposed edits to "${rec.title}"? ${rec.rationale}`,
@@ -454,7 +454,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     }
     updateComponentAuditRec(rec.id, { decision: "approved" });
     notify(
-      rec.action === "delete" ? "Plot component deleted." : rec.action === "edit" ? "Plot component updated." : "Plot component created.",
+      rec.action === "delete" ? "World Block deleted." : rec.action === "edit" ? "World Block updated." : "World Block created.",
       { type: "success" },
     );
   }
@@ -462,11 +462,11 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   async function runComponentAudit() {
     if (!onAuditComponents) return;
     setComponentAudit({ status: "running", recommendations: [] });
-    notify("Reviewing plot components...", { type: "info" });
+    notify("Reviewing World Blocks...", { type: "info" });
     try {
       const recommendations = await onAuditComponents(componentAuditTurns, componentAuditIncludeAI);
       setComponentAudit({ status: "done", recommendations });
-      notify(recommendations.length > 0 ? `Found ${recommendations.length} plot component cleanup suggestions.` : "No plot component cleanup suggestions.", { type: "success" });
+      notify(recommendations.length > 0 ? `Found ${recommendations.length} World Block cleanup suggestions.` : "No World Block cleanup suggestions.", { type: "success" });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Component cleanup failed.";
       setComponentAudit({
@@ -480,14 +480,14 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
 
   async function deleteComponent(component: ComponentEntry) {
     const confirmed = await confirmAction({
-      title: "Delete plot component?",
+      title: "Delete World Block?",
       message: `Delete "${component.title || TYPE_LABELS[component.type]}" from this adventure?`,
       confirmLabel: "Delete",
       danger: true,
     });
     if (!confirmed) return;
     dispatch({ type: "DELETE_COMPONENT", componentId: component.id });
-    notify("Plot component deleted.", { type: "success" });
+    notify("World Block deleted.", { type: "success" });
   }
 
   function handleGraduateArc(component: ComponentEntry) {
@@ -501,17 +501,17 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     const title = component.arcPremise?.trim() || component.title;
     dispatch({ type: "COMPLETE_ARC_TO_STORY_CARD", componentId: component.id });
     setGraduateConfirm(null);
-    setGraduateStatus({ componentId: component.id, message: `Completed arc saved as Story Card: ${title}.` });
+    setGraduateStatus({ componentId: component.id, message: `Completed arc saved as Reference Card: ${title}.` });
   }
 
   async function handleRegeneratePE(componentId: string) {
     if (!onRegeneratePlotEssentials || peRegenerating) return;
     setPeRegenerating(componentId);
-    notify("Generating plot component preview...", { type: "info" });
+    notify("Generating World Block preview...", { type: "info" });
     try {
       const result = await onRegeneratePlotEssentials(componentId);
       setPePreview((prev) => ({ ...prev, [componentId]: result }));
-      notify("Plot component preview ready.", { type: "success" });
+      notify("World Block preview ready.", { type: "success" });
     } catch (error) {
       notify(error instanceof Error ? error.message : "Generation failed.", { type: "error" });
     } finally {
@@ -522,11 +522,11 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   async function handleGenerateComponent(componentId: string) {
     if (!onGenerateComponent || peRegenerating) return;
     setPeRegenerating(componentId);
-    notify("Generating plot component preview...", { type: "info" });
+    notify("Generating World Block preview...", { type: "info" });
     try {
       const result = await onGenerateComponent(componentId);
       setPePreview((prev) => ({ ...prev, [componentId]: result }));
-      notify("Plot component preview ready.", { type: "success" });
+      notify("World Block preview ready.", { type: "success" });
     } catch (error) {
       notify(error instanceof Error ? error.message : "Generation failed.", { type: "error" });
     } finally {
@@ -617,7 +617,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   if (extraComponents.length > 0) {
     componentGroups.push({
       id: "extras",
-      title: "Extra Plot Components",
+      title: "Extra World Blocks",
       description: "Optional always-on or custom context.",
       types: [],
       components: extraComponents,
@@ -658,9 +658,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       <div className="editor-page-summary">
         <p className="muted">
           Always-on plot truth, narration rules, author direction, and custom context blocks.
-          Use Cards for facts that should only load when relevant.
+          Use Reference Cards for facts that should only load when relevant.
         </p>
-        <div className="editor-stat-row" aria-label="Plot Component counts">
+        <div className="editor-stat-row" aria-label="World Block counts">
           <span>{adventure.components.length} total</span>
           <span>{activeCount} active</span>
           {searchLower && <span>{visibleComponents.length} shown</span>}
@@ -668,18 +668,18 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </div>
 
       <p className="muted editor-legacy-help" style={{ margin: 0 }}>
-        Plot Components are <strong>always-on context</strong> — they load every turn regardless of the story.
+        World Blocks are <strong>always-on context</strong> — they load every turn regardless of the story.
         Use them for narration rules, plot state, and author direction.
-        For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Story Cards</strong> — they're more token-efficient.
+        For characters, places, and lore that should only load <em>when relevant</em>, use <strong>Reference Cards</strong> — they're more token-efficient.
         <strong> Narration Rules, AI Instructions, Plot Essentials,</strong> and <strong>Author's Note</strong> are singletons.
         AI Instructions are optional; Narration Rules can hold the complete stable behavior contract by themselves.
       </p>
 
       {onGenerateComponents && (
         <details className="panel" open>
-          <summary>Create components with AI</summary>
+          <summary>Create World Blocks with AI</summary>
           <p className="muted">
-            Choose one block, several blocks, or the common setup set. The AI drafts editable component previews from your prompt before anything is applied.
+            Choose one block, several blocks, or the common setup set. The AI drafts editable World Block previews from your prompt before anything is applied.
           </p>
           <div className="toolbar">
             <button type="button" onClick={() => setComponentAssistTargets(COMPONENT_ASSIST_ALL_TARGETS)}>
@@ -702,7 +702,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
               />
             ))}
           </div>
-          <Field label="Component prompt">
+          <Field label="World Block prompt">
             <textarea
               rows={5}
               value={componentAssistDescription}
@@ -722,7 +722,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
               disabled={loading || componentAssistRunning || !componentAssistDescription.trim() || componentAssistTargets.length === 0}
               onClick={() => void handleGenerateComponentAssist()}
             >
-              {componentAssistRunning ? "Generating..." : "Generate Component Drafts"}
+              {componentAssistRunning ? "Generating..." : "Generate World Block Drafts"}
             </button>
           </div>
           {componentAssistPreviews.length > 0 && (
@@ -730,7 +730,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
               <div className="panel-heading">
                 <div>
                   <p className="eyebrow">review</p>
-                  <h3>Generated component drafts</h3>
+                  <h3>Generated World Block drafts</h3>
                 </div>
                 <button type="button" onClick={applyAllComponentAssistPreviews}>
                   Apply All
@@ -856,12 +856,12 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
 
       {(onAuditComponents || onSuggestPlotUpdates) && (
         <details className="panel editor-tools-panel component-maintenance-panel" open>
-          <summary>Review and Maintain Components</summary>
+          <summary>Review and Maintain World Blocks</summary>
           <div className="component-maintenance-grid">
             {onAuditComponents && (
               <section className="component-tool-card component-tool-card-primary">
                 <div className="component-tool-copy">
-                  <h3>Clean up plot components</h3>
+                  <h3>Clean up World Blocks</h3>
                   <p className="muted">
                     Find bloated Plot Essentials, stale active pressure, disabled legacy blocks, duplicate always-on facts, and current-state/history drift.
                   </p>
@@ -872,9 +872,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     className="primary-action"
                     disabled={loading || componentAudit?.status === "running"}
                     onClick={runComponentAudit}
-                    title="Review existing plot components and get cleanup suggestions."
+                    title="Review existing World Blocks and get cleanup suggestions."
                   >
-                    {componentAudit?.status === "running" ? "Reviewing..." : "Clean Up Components"}
+                    {componentAudit?.status === "running" ? "Reviewing..." : "Clean Up World Blocks"}
                   </button>
                   <label className="turn-window-field">
                     <span>Review last</span>
@@ -1175,10 +1175,10 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                     type="button"
                     className={graduateConfirm === component.id ? "danger" : ""}
                     disabled={!component.arcPremise?.trim() && !component.content.trim()}
-                    title="Graduate the completed arc to a permanent Story Card and reset the arc log."
+                    title="Graduate the completed arc to a permanent Reference Card and reset the arc log."
                     onClick={() => handleGraduateArc(component)}
                   >
-                    {graduateConfirm === component.id ? "Confirm — Graduate Arc" : "Complete Arc → Story Card"}
+                    {graduateConfirm === component.id ? "Confirm — Graduate Arc" : "Complete Arc → Reference Card"}
                   </button>
                 )}
                 {graduateConfirm === component.id && (
@@ -1243,7 +1243,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
         <div className="audit-modal-overlay" onClick={(event) => { if (event.target === event.currentTarget) setComponentAudit(null); }}>
           <div className="audit-modal">
             <div className="audit-modal-header">
-              <h3>Plot Component Cleanup</h3>
+              <h3>World Block Cleanup</h3>
               <button type="button" className="audit-modal-close" onClick={() => setComponentAudit(null)}>x</button>
             </div>
 
@@ -1252,7 +1252,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
             )}
 
             {componentAudit.status === "done" && componentAudit.recommendations.length === 0 && (
-              <p className="muted">No changes recommended - your plot components look good.</p>
+              <p className="muted">No changes recommended - your World Blocks look good.</p>
             )}
 
             {componentAudit.recommendations.map((rec) => (

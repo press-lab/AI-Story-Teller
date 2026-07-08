@@ -36,7 +36,7 @@ describe("resolveMemoryTarget", () => {
       memoryMode: "living",
     });
     expect(routed.suggestedTriggers).toEqual(["Viktor protocol"]);
-    expect(routed.rationale).toContain("separate living Story Card");
+    expect(routed.rationale).toContain("separate living Reference Card");
   });
 
   it("creates a historical child card instead of appending completed events to a static profile", () => {

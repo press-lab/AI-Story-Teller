@@ -101,7 +101,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
       <details className="panel editor-tools-panel" open>
         <summary>System memory triggers</summary>
         <p className="muted">
-          Inline story card detection runs without extra API calls. The model flags permanent story facts while writing
+          Inline reference card detection runs without extra API calls. The model flags permanent story facts while writing
           each response, then proposals go to Memory Suggestions for approval.
         </p>
         {(() => {
@@ -163,7 +163,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
           to evaluate natural-language conditions after the turn completes in the background.
         </p>
         <p className="muted">
-          Actions can update Story Cards, Brains, Plot Essentials, state flags, or Memory Suggestion proposals. Use
+          Actions can update Reference Cards, Brains, Plot Essentials, state flags, or Memory Suggestion proposals. Use
           Trigger History and Evaluation Log to see what fired and why.
         </p>
       </details>

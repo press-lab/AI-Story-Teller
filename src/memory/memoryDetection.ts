@@ -30,7 +30,7 @@ function proposalFormatInstruction(proposal: MemoryProposal): string {
         : mode === "living"
           ? "Write the current state of an evolving subject in present tense. Remove or rewrite obsolete current-state facts."
           : "Write always-true facts in present tense.";
-    return `Format: bullet points, one per line, no title in the body. This is a ${mode} Story Card. ${tense}
+    return `Format: bullet points, one per line, no title in the body. This is a ${mode} Reference Card. ${tense}
 ${storyCardCreationGuidance(mode)}
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}

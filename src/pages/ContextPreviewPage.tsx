@@ -55,8 +55,8 @@ function canOpenSource(item: ContextItem): item is ContextItem & { sourceType: N
 
 function unpinActionLabel(item: ContextItem): string {
   return item.sourceType === "storyCard"
-    ? `Unpin Story Card ${item.title}`
-    : `Unpin Plot Component ${item.title}`;
+    ? `Unpin Reference Card ${item.title}`
+    : `Unpin World Block ${item.title}`;
 }
 
 function contextItemKeepScore(item: ContextItem): number {
@@ -160,7 +160,7 @@ function sectionShortLabel(sectionId: string): string {
     plotEssentials: "Plot",
     authorNote: "Author",
     generalComponents: "Blocks",
-    storyCards: "Cards",
+    storyCards: "Ref Cards",
     brains: "Chars",
     questState: "Quests",
     rollingSummary: "Summary",
@@ -438,7 +438,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           <span className="token-metrics-sep">·</span>
           <span title="Average prompt tokens per story turn">avg {avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
           <span className="token-metrics-sep">·</span>
-          <span title="Total tokens used by background AI calls (brain updates, story card updates, plot updates, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
+          <span title="Total tokens used by background AI calls (brain updates, reference card updates, plot updates, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
           <span className="token-metrics-sep">·</span>
           <span title="Prompt-cache tokens reported by the provider across story turns">cache {totalCacheRead > 0 || totalCacheWrite > 0 ? `${totalCacheRead.toLocaleString()} read ${totalCacheWrite.toLocaleString()} write` : "—"}</span>
         </span>

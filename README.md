@@ -61,8 +61,8 @@ Context sections, in fixed order:
 | `aiInstructions` | B. AI Instructions | Components with `type === "aiInstructions"` |
 | `plotEssentials` | C. Plot Essentials | `plotEssentials` and one-sentence `activePressure` components |
 | `currentArc` | C2. Current Story Arc | Active arc log and gated Arc Director phase instruction |
-| `components` | E. Components | General always-on or pinned custom components |
-| `storyCards` | F. Story Cards | Triggered / pinned Story Cards |
+| `components` | E. World Blocks | General always-on or pinned custom components |
+| `storyCards` | F. Reference Cards | Triggered / pinned Reference Cards |
 | `brains` | G. Brains | Active Brain entries for triggered characters |
 | `authorNote` | D. Author's Note | Components with `type === "authorNote"`; placed near recent context for AID-style influence |
 | `nextTurnNote` | J. Next Output Bias | User-written short-term steering note for the next generation |
@@ -102,15 +102,15 @@ The Context Preview page shows:
 - **Adventure Chronicle**: `adventure.messages`, the full persisted transcript. Inspectable in the Chronicle tab. Never automatically compressed or flooded into model context.
 - **Rolling Summary**: `adventure.rollingSummary`, legacy compression of the Chronicle retained for save compatibility. It is not emitted as a model context section.
 - **Next Output Bias**: `activeState.nextTurnNote`, a visible short-term steering note. It appears in section J, is token-counted, and expires after one successful generation by default.
-- **Story Cards**: durable triggered records for one subject: character, location, faction, object, relationship, secret, rule, or completed event. Cards carry `memoryMode` (`static`, `living`, or `historical`) so generated updates know whether to write always-true facts, current evolving state, or past-tense history. The Story Cards page can turn a user description into a pending AI-generated Memory Proposal for review. Optional AI auto-updates use a per-card cooldown and can be routed through Memory Inbox when approval is required.
+- **Reference Cards**: durable triggered records for one subject: character, location, faction, object, relationship, secret, rule, or completed event. Cards carry `memoryMode` (`static`, `living`, or `historical`) so generated updates know whether to write always-true facts, current evolving state, or past-tense history. The Reference Cards page can turn a user description into a pending AI-generated Memory Proposal for review. Optional AI auto-updates use a per-card cooldown and can be routed through Memory Inbox when approval is required.
 - **Brains**: opt-in character-internal state for major characters only. AI may update a Brain only when a `BrainEntry` already exists. Do not create Brains for random NPCs.
-- **Plot Essentials**: tiny always-on current operating truth: what is happening now, open tensions, obligations, and major constraints that should shape every scene. PE replacement proposals overwrite the block; outgoing facts become pending historical Story Card proposals for review. Section C.
+- **Plot Essentials**: tiny always-on current operating truth: what is happening now, open tensions, obligations, and major constraints that should shape every scene. PE replacement proposals overwrite the block; outgoing facts become pending historical Reference Card proposals for review. Section C.
 - **Active Pressure**: one sentence naming the current external threat, obligation, or force pressing on the player character. Section C. Auto-updated and auto-approved by default.
 - **Immediate Momentum**: disabled legacy component type. It is not generated, imported, auto-updated, or sent to the model.
 - **Narration Rules**: the primary per-adventure behavior contract, copied from defaults but editable during creation and afterward. Loaded with the system shell before other context.
 - **AI Instructions**: optional persistent scenario-specific behavior rules in section B. Use them for genre, drift prevention, scene-loop, and prose contracts, not facts. They are not required when Narration Rules already contain the complete stable contract. Avoid duplicating the same rule across both surfaces. AI must not modify these.
 - **Author's Note**: author-layer mood or tonal constraints. Section D. AI must not modify these.
-- **Memory Inbox / Proposals**: `activeState.memoryProposals`, where AI-suggested durable memories wait for user approval. Pending proposals appear in Context Preview but are not model context. Approving converts them to Story Cards, Brain updates, Plot Essentials edits, Active Pressure edits, or legacy Summary updates through reducer actions.
+- **Memory Inbox / Proposals**: `activeState.memoryProposals`, where AI-suggested durable memories wait for user approval. Pending proposals appear in Context Preview but are not model context. Approving converts them to Reference Cards, Brain updates, Plot Essentials edits, Active Pressure edits, or legacy Summary updates through reducer actions.
 - **Protected**: non-droppable during token truncation. `aiInstructions`, `plotEssentials`, and `authorNote` components are protected by default.
 - **Pinned**: prioritized for inclusion and ordering, but droppable if budget is exhausted and the item is not also protected.
 
@@ -118,7 +118,7 @@ Use `src/memory/classificationPolicy.ts` for deterministic memory routing. Use `
 
 ### Deferred Memory Bank Idea
 
-An optional Inspectable Memory Bank may be useful later, but it is intentionally not part of the MVP. Story Cards, Brains, Memory Inbox, Plot Essentials, Active Pressure, Current Arc, Next Output Bias, and Recent Messages already cover the current context roles without an additional retrieval layer.
+An optional Inspectable Memory Bank may be useful later, but it is intentionally not part of the MVP. Reference Cards, Brains, Memory Inbox, Plot Essentials, Active Pressure, Current Arc, Next Output Bias, and Recent Messages already cover the current context roles without an additional retrieval layer.
 
 If added later, Memory Bank entries must be their own visible context section with item-level source turns, token cost, relevance reason, usage count, last-used timestamp, and approve/edit/archive/delete controls. They must never enter the model as an opaque retrieved-memory bucket.
 
@@ -142,7 +142,7 @@ Rejected AI update targets:
 - raw imported source text
 - system shell/global generation rules
 
-If an entity has no BrainEntry, AI-driven memory routing must not create or update a Brain by default. Durable character facts should route to an existing Story Card when possible, otherwise to a pending Story Card proposal in Memory Inbox. Random NPCs, one-scene characters, locations, factions, and objects should not receive BrainEntries by default.
+If an entity has no BrainEntry, AI-driven memory routing must not create or update a Brain by default. Durable character facts should route to an existing Reference Card when possible, otherwise to a pending Reference Card proposal in Memory Inbox. Random NPCs, one-scene characters, locations, factions, and objects should not receive BrainEntries by default.
 
 The play loop is implemented in `src/App.tsx`:
 
@@ -161,18 +161,18 @@ The context builder in `src/contextBuilder/contextBuilder.ts` follows the requir
 - Adventure create, open, duplicate, delete, export, import, and runtime reset.
 - IndexedDB persistence.
 - Play UI with submit, continue, regenerate, last-message editing, save status, token display, and context preview.
-- Components, Story Cards, Brains, Triggers, Memory Inbox, Chronicle, Context Preview, Settings, Saves, and Import/Export tabs.
+- World Blocks, Reference Cards, Brains, Triggers, Memory Inbox, Chronicle, Context Preview, Settings, Saves, and Import/Export tabs.
 - Chronicle and Memory Inbox tabs for inspecting transcript history and proposed durable memories.
 - Trigger matching for keyword, phrase, and regex; deterministic priority order; cooldowns; trigger log.
-- LLM semantic trigger evaluation with generated updates for brains, story cards, Plot Essentials, Current Arc, and Active Pressure.
+- LLM semantic trigger evaluation with generated updates for brains, reference cards, Plot Essentials, Current Arc, and Active Pressure.
 - Full trigger action suite wired through the reducer.
 - Legacy quest, Auto-Card, Rolling Summary, and Scene State fields preserved for older saves, but not part of default runtime context.
-- AI Dungeon import flow for transcript/action JSON, metadata setup, story cards, and character brain cards.
+- AIST/GitHub backup import and reusable Reference Card / World Block JSON export.
 - Approximate token estimator in `src/tokenizer/approximateTokenCount.ts`.
 
 ## Architecture Decision: Semantic Engine and Memory Proposals
 
-The semantic post-turn evaluator can apply brain, story card, Plot Essentials, Current Arc, and Active Pressure updates through reducer-backed proposal/update paths. When `semanticEvaluationSettings.requireApprovalForAutoUpdates` is `true`, generated updates become Memory Inbox proposals and do not mutate active memory until approved.
+The semantic post-turn evaluator can apply brain, reference card, Plot Essentials, Current Arc, and Active Pressure updates through reducer-backed proposal/update paths. When `semanticEvaluationSettings.requireApprovalForAutoUpdates` is `true`, generated updates become Memory Inbox proposals and do not mutate active memory until approved.
 
 Memory Inbox / Memory Proposals is the path for unstructured AI-suggested new memory (the `classifyMemory` flow), where the AI is making a novel durable-memory suggestion the user has not pre-authorized.
 
@@ -198,7 +198,7 @@ npm.cmd run build
 npm.cmd run smoke:prod
 ```
 
-The deterministic test suite covers context order/inclusion/exclusion, story-card triggering and truncation, trigger matching/action mapping, reducer actions, AI memory mutation boundaries, memory classification, Memory Inbox approval/rejection, AI Dungeon import parsing, golden memory architecture, and a multi-turn play smoke path.
+The deterministic test suite covers context order/inclusion/exclusion, Reference Card triggering and truncation, trigger matching/action mapping, reducer actions, AI memory mutation boundaries, memory classification, Memory Inbox approval/rejection, reusable JSON parsing, golden memory architecture, and a multi-turn play smoke path.
 
 Live provider checks are opt-in and use `.env.test.local`:
 

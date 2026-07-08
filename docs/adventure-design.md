@@ -63,7 +63,7 @@ overwritten) and a behavioral voice contract. The loop pokes; the Brain reacts
 across the loop instead of resetting every scene.
 
 > Relationships, bonds, and pacts between known characters live **on the
-> characters' Brains**, never as their own standalone Story Cards. A card title
+> characters' Brains**, never as their own standalone Reference Cards. A card title
 > is always the proper name of a single entity, never "Dynamic between X and Y."
 
 ### The Voice Contract
@@ -71,7 +71,7 @@ across the loop instead of resetting every scene.
 Trait lists ("sarcastic, loyal, brave") *describe* a character but don't
 *demonstrate* them — the model flattens descriptions into generic helpful-
 assistant prose. A **Voice Contract** demonstrates. Put one at the bottom of
-every non-player character's Story Card:
+every non-player character's Reference Card:
 
 ```
 VOICE CONTRACT
@@ -85,7 +85,7 @@ Example lines: "…" / "…" / "…"
 The **Example lines** are the load-bearing part — two to four direct quotes in
 the character's actual voice. They give the model something to match instead of
 interpret, and they hold the voice steady across hundreds of turns. The
-"Draft a Story Card with AI" builder produces this shape automatically for
+"Draft a Reference Card with AI" builder produces this shape automatically for
 character cards, and card auto-updates preserve it. Skip the contract for the
 player character — the model never writes their lines.
 
@@ -114,7 +114,7 @@ one?** If yes, it prints scenes indefinitely.
 
 The loop is also a **thread-dropper**: every cycle leaves a thread (a rival, a
 mystery, a faction). In AIST those threads already have a home — they're the
-Story Cards and Brains the loop spawns anyway. That existing cast *is* the arc's
+Reference Cards and Brains the loop spawns anyway. That existing cast *is* the arc's
 raw material. There is no separate ledger to manage.
 
 ---
@@ -248,7 +248,7 @@ For a new or existing adventure that should have a climbing arc:
 - [ ] A **loop** where each phase manufactures the next.
 - [ ] **Active Pressure** as one sentence naming the external force pressing now.
 - [ ] One **Current Arc** with an Arc Director:
-  - [ ] **The Baddie** — which Story Cards / Brains are this arc's threads.
+  - [ ] **The Baddie** — which Reference Cards / Brains are this arc's threads.
   - [ ] **The Timer** — pace (Short / Medium / Long / Epic).
   - [ ] **How it simmers** — recur, hint, stay off-screen, stay connected to the
         larger plan.

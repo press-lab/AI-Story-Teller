@@ -33,7 +33,7 @@ The app is browser-only, local-first, IndexedDB-persisted, no backend. All LLM c
 ### Background (async, after turn — not blocking):
 - Semantic evaluation (`runSemanticPostTurnEvaluation`) every `semanticEvalEveryNTurns` turns
 - Memory detection (`detectMemoryFromTurn`) every `memoryDetectionSettings.everyNTurns` turns
-- Memory cycle (`runMemoryCycle`) — periodic LLM check for story card / PE updates
+- Memory cycle (`runMemoryCycle`) — periodic LLM check for reference card / PE updates
 
 ---
 
@@ -51,8 +51,8 @@ Pure function — builds the provider payload each turn. Sections are assembled 
 | 1 | `aiInstructions` | B. AI Instructions | All active `aiInstructions` components |
 | 2 | `plotEssentials` | C. Plot Essentials | `plotEssentials`, `activePressure` components |
 | 2.5 | `currentArc` | C2. Current Story Arc | `currentArc` components (prefixed with `[Arc Premise: ...]` if set) |
-| 3 | `components` | E. Components | Always-on or pinned non-special-typed components |
-| 4 | `storyCards` | F. Story Cards | Triggered, always, or pinned story cards |
+| 3 | `components` | E. World Blocks | Always-on or pinned non-special-typed components |
+| 4 | `storyCards` | F. Reference Cards | Triggered, always, or pinned reference cards |
 | 5 | `brains` | G. Brains | Triggered or pinned brain entries (thoughts only) |
 | 8 | `authorNote` | D. Author's Note | `authorNote` components (placed late for recency influence) |
 | 10 | `nextTurnNote` | J. Next Output Bias | Active next-turn note |
@@ -67,7 +67,7 @@ Pure function — builds the provider payload each turn. Sections are assembled 
 ### Token budget management:
 When total exceeds `maxContextTokens`, items are dropped in priority order:
 1. Oldest recent messages (up to recency limit)
-2. Unpinned triggered story cards (if `allowSystemToDropUnpinnedTriggeredCards`)
+2. Unpinned triggered reference cards (if `allowSystemToDropUnpinnedTriggeredCards`)
 3. Lowest-priority unprotected items across all sections
 4. Protected items are never dropped
 
@@ -75,7 +75,7 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 
 ---
 
-## 3. Component Types (Plot Components)
+## 3. Component Types (World Blocks)
 
 **Files:** `pages/ComponentsPage.tsx`, `contextBuilder/contextBuilder.ts`, `triggers/semanticEngine.ts`
 
@@ -84,11 +84,11 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 | `narrationRules` | Yes | System shell (A) | No | Primary per-adventure behavior contract. POV, agency, continuity, tone, format. Protected. One per adventure. |
 | `aiInstructions` | Yes | B | No | Optional separately inspectable scenario-specific contract. Not required when Narration Rules already contain the stable rules. Protected. One per adventure. |
 | `plotEssentials` | Yes | C | Yes (append) | Static world constants — setting, factions, arc beats. Human-edited. AI appends only via Memory Inbox. Auto-update toggle required. |
-| `currentArc` | Yes | C2 | Yes (append) | Running arc log. Requires `arcPremise` for auto-update. Graduate → Story Card when done. |
+| `currentArc` | Yes | C2 | Yes (append) | Running arc log. Requires `arcPremise` for auto-update. Graduate → Reference Card when done. |
 | `activePressure` | No* | C | Yes (replace) | One-sentence current external threat or obligation. Auto-updated, auto-approved by default. |
 | `immediateMomentum` | No | — | No | Disabled legacy type. Not generated, auto-updated, or assembled into context. |
 | `authorNote` | Yes | D (near-context) | No | Immediate narrative correction. One per adventure. Most powerful short-term tool. |
-| `memory` | No | — | No | **Legacy.** Migrate content to Story Cards (type: Lore). |
+| `memory` | No | — | No | **Legacy.** Migrate content to Reference Cards (type: Lore). |
 | `custom` | No | E (if always-on/pinned) | No | General purpose. Configure inclusion policy, priority, protection manually. |
 
 *`activePressure` is treated as a singleton by defaults/normalization. `immediateMomentum` remains in the type system only for old-save compatibility.
@@ -96,10 +96,10 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 ### Current Story Arc — interaction notes:
 - Requires `arcPremise` text — this is the LLM filter condition. No premise = no auto-updates fire.
 - Auto-approval: `memoryAutoApprove.currentArcUpdate` (default `true`)
-- "Complete Arc → Story Card" button: creates a `plot` type Story Card from the log, clears content and arcPremise
+- "Complete Arc → Reference Card" button: creates a `plot` type Reference Card from the log, clears content and arcPremise
 - Cooldown: 4 turns default (coarser than Active Pressure's 3)
 - Difference from Plot Essentials: PE = current operating truth and always-on constraints. Arc = the active conflict's running log (accumulates as story unfolds, then gets retired)
-- Difference from Quests: Arc tracks narrative shape, not task completion. No objective states. Graduated arc becomes referenced backstory via Story Card, not a "quest completed" flag.
+- Difference from Quests: Arc tracks narrative shape, not task completion. No objective states. Graduated arc becomes referenced backstory via Reference Card, not a "quest completed" flag.
 
 ### Arc Director (deterministic story pacing)
 
@@ -107,7 +107,7 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 
 Optional pacing layer on a `currentArc` component that makes an antagonist's arc climb and *break* on its own. Configured via the Arc Director panel; all state lives on the component.
 
-- **Config fields** (on `ComponentEntry`): `arcThreadKeys` (Story Card / Brain ids that are this arc's "baddie"), `arcPace` (`short`/`medium`/`long`/`epic`), `arcTriggerMode` (`auto` fires the break itself / `ask` surfaces a one-click prompt — the leash), `arcSimmerInstruction`, `arcBreakInstruction` (the cost policy).
+- **Config fields** (on `ComponentEntry`): `arcThreadKeys` (Reference Card / Brain ids that are this arc's "baddie"), `arcPace` (`short`/`medium`/`long`/`epic`), `arcTriggerMode` (`auto` fires the break itself / `ask` surfaces a one-click prompt — the leash), `arcSimmerInstruction`, `arcBreakInstruction` (the cost policy).
 - **Runtime state** (`arcState: ArcPacingState`): `phase` (`simmer → escalate → break → aftermath`), `tier` (0–5), `threadEngagement` (per-thread counts), `pendingBreak`, `brokeAtTurn`.
 - **The gate:** `simmer`/`escalate` inject `arcSimmerInstruction`; `break` injects `arcBreakInstruction`. The break (cost) instruction is **withheld from context entirely until `phase === "break"`** — the model cannot land the climax early on something it never sees.
 - **Driver:** after each turn, `turnPipeline` dispatches `ADVANCE_ARC_PACING` with the ids that triggered in-scene; the reducer increments `threadEngagement` for ids in `arcThreadKeys`, derives the tier, and advances the phase against the pace thresholds (`short` 4/8, `medium` 8/16, `long` 16/32, `epic` 30/60 for escalate/break). **Counted engagement only — never an LLM verdict.**
@@ -116,7 +116,7 @@ Optional pacing layer on a `currentArc` component that makes an antagonist's arc
 
 ---
 
-## 4. Story Cards
+## 4. Reference Cards
 
 **Files:** `pages/StoryCardsPage.tsx`, `contextBuilder/contextBuilder.ts`, `triggers/semanticEngine.ts`, `memory/storyCardAudit.ts`
 
@@ -130,8 +130,8 @@ Types: `character`, `location`, `lore`, `plot`, `custom`
 - `forceIncludeNextTurn` overrides trigger matching for one turn
 
 ### AI-assisted creation:
-- The Story Cards page accepts a freeform description of a character, place, faction, relationship, object, secret, or durable rule.
-- The AI compares the description with existing Story Cards and character entries.
+- The Reference Cards page accepts a freeform description of a character, place, faction, relationship, object, secret, or durable rule.
+- The AI compares the description with existing Reference Cards and character entries.
 - The result is one or more pending `storyCard` Memory Proposals, never an immediate active-memory write.
 - Native DeepSeek requests use JSON output with thinking disabled for this schema-driven call.
 - **Related generators** (`ai/generators.ts`, user-initiated ✨ buttons): fresh content for Narration Rules / AI Instructions / Author's Note (preview → Apply), a full Arc Director setup from a one-line concept (premise + simmer + break + pace + trigger mode), and a character Brain from just a name (behavioral voice contract, not trait lists). All are grounded in a compact adventure snapshot. See `AGENTS.md` → "AI Generation Buttons".
@@ -149,7 +149,7 @@ Two passes:
 2. **LLM pass**: semantic accuracy and gap detection on eligible cards
 
 ### Voice Contracts (best practice for character cards):
-When writing character story cards, use this structure instead of trait lists:
+When writing character reference cards, use this structure instead of trait lists:
 ```
 Rhythm: [how they speak — pace, sentence structure]
 Default move: [what they do under pressure]
@@ -196,7 +196,7 @@ All AI-generated content suggestions pass through Memory Proposals before becomi
 ### Proposal types:
 | Type | Source | Auto-Approve Default | Apply Behavior |
 |---|---|---|---|
-| `storyCard` | Memory detection, inline `<memory>` tags, story card audit, "Remember This" | Off | Upsert story card |
+| `storyCard` | Memory detection, inline `<memory>` tags, reference card audit, "Remember This" | Off | Upsert reference card |
 | `brainUpdate` | Semantic engine (updateBrain/appendBrain) | Off | Apply BrainPatch |
 | `plotEssentialsUpdate` | Semantic engine, "Suggest Updates" | Off | Append to PE component |
 | `currentArcUpdate` | Semantic engine (updateComponentArc) | **On** | Append to arc component |
@@ -225,7 +225,7 @@ Runs in background after each turn (async, doesn't block story).
 - Queues generated actions (brain/card/component updates) — run in parallel up to `maxParallelUpdateCalls`
 
 ### `runMemoryCycle` (periodic, `lastMemoryCycleTurn`):
-- Single-pick evaluation: story card update conditions + plot essentials conditions
+- Single-pick evaluation: reference card update conditions + plot essentials conditions
 - At most one fires per cycle
 - All output routes to Memory Inbox (always awaits approval)
 
@@ -238,7 +238,7 @@ Runs in background after each turn (async, doesn't block story).
 - Per-component: `lastAutoUpdateTurn` + `autoUpdateCooldownTurns`
 - Per-card: `lastAutoUpdateTurn` + `autoUpdateCooldownTurns`
 - Per-brain: `lastUpdatedTurn` + `autoUpdateCooldownTurns`
-- Global story card: `storyCardCooldownTurns` (gap since any card was updated)
+- Global reference card: `storyCardCooldownTurns` (gap since any card was updated)
 
 ---
 
@@ -255,8 +255,8 @@ Three evaluation modes on the same rule schema:
 | `semantic` | Async, post-turn | LLM call | Natural-language `condition` string evaluated by LLM |
 
 ### Available trigger actions:
-- Activate/deactivate/pin/unpin: component, story card, brain
-- Update: component (patch), story card (patch), brain (replace/append), brain state (field + text)
+- Activate/deactivate/pin/unpin: component, reference card, brain
+- Update: component (patch), reference card (patch), brain (replace/append), brain state (field + text)
 - `updateComponentPressure`, `updateComponentArc` — generate new content via LLM
 - `updateComponentMomentum` — disabled legacy action; no runtime effect
 - `updateSummary` — generate rolling summary addition via LLM
@@ -305,7 +305,7 @@ Best use: steering the next response without polluting the Author's Note permane
 
 **Files:** `hooks/useAdventureRuntime.ts`, `triggers/semanticEngine.ts` (`runRememberThis`)
 
-Play page shortcut. Player types a fact → LLM routes it to the most appropriate memory destination (new story card, update existing card, etc.) → result goes to Memory Inbox as a pending proposal. Does not auto-approve. Useful for capturing things the AI said that should become permanent canon.
+Play page shortcut. Player types a fact → LLM routes it to the most appropriate memory destination (new reference card, update existing card, etc.) → result goes to Memory Inbox as a pending proposal. Does not auto-approve. Useful for capturing things the AI said that should become permanent canon.
 
 ---
 
@@ -375,7 +375,7 @@ If you have legacy adventures with summary content, that content remains in the 
 |---|---|---|
 | Quest system | **Removed** | Types kept for save compat (`questDefinitionUpdate` stub in applyAIMemoryUpdate). `quests/questEngine.ts` is an empty stub. No UI. |
 | Auto-cards | **Removed** | `autoCards/autoCardEngine.ts` empty stub. Entity detection stub present but unused. |
-| `memory` component type | **Legacy** | Still creatable; labeled "Lore Block (legacy)". No special behavior. Content should be migrated to triggered Story Cards. |
+| `memory` component type | **Legacy** | Still creatable; labeled "Lore Block (legacy)". No special behavior. Content should be migrated to triggered Reference Cards. |
 | Rolling Summary context injection | **Removed** | Data preserved in saves. No longer in context. `summaryEnabled` setting has no effect. |
 | Scene State context injection | **Removed** | Data preserved in saves. No longer in context. `sceneStateEnabled` setting has no effect. |
 | Summary editor tab | **Removed** | Page file exists (`SummaryPage.tsx`) but is no longer imported or accessible. |
@@ -439,7 +439,7 @@ Player input
         ← narrationRules, aiInstructions, plotEssentials
         ← currentArc (with arcPremise header)
         ← activePressure
-        ← triggered story cards (phrase/keyword/regex match)
+        ← triggered reference cards (phrase/keyword/regex match)
         ← triggered brains (character name match)
         ← authorNote
         ← nextTurnNote (if active)
@@ -479,10 +479,10 @@ ADD_MEMORY_PROPOSAL
 ### Graduate Arc flow:
 ```
 currentArc component (arcLog + arcPremise)
-    → "Complete Arc → Story Card" button
+    → "Complete Arc → Reference Card" button
     → UPSERT_STORY_CARD (type: plot, content: arcLog, title: arcPremise)
     → UPDATE_COMPONENT (clear content + arcPremise)
-    → Story Card enters triggered pool (referenced when keywords match)
+    → Reference Card enters triggered pool (referenced when keywords match)
 ```
 
 ---

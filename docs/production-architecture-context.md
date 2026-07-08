@@ -361,7 +361,7 @@ Input gate:
 Context gate:
 
 - Runs after `buildContext`.
-- Catches disallowed material pulled in from Story Cards, Brains, Plot Essentials, imports, or previous messages.
+- Catches disallowed material pulled in from Reference Cards, Brains, Plot Essentials, imports, or previous messages.
 - Prevents hidden memory from bypassing policy.
 
 Output gate:
@@ -773,7 +773,7 @@ Use Postgres as source of truth.
 
 `story_cards`
 
-- Optional normalized projection of Story Cards.
+- Optional normalized projection of Reference Cards.
 
 `brains`
 

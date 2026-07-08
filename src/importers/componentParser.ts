@@ -171,8 +171,8 @@ function parseJsonValue(value: unknown): ComponentParseResult {
       skipped: [],
       warnings: [
         openingScene
-          ? "Opening scene found; no plot components were included."
-          : "Valid JSON was found, but it did not contain plot components.",
+          ? "Opening scene found; no world blocks were included."
+          : "Valid JSON was found, but it did not contain world blocks.",
       ],
       openingScene,
     };

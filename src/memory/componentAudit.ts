@@ -173,7 +173,7 @@ function deterministicRecommendations(components: ComponentEntry[]): ComponentAu
         `det-pe-long-${component.id}`,
         "edit",
         component,
-        "Plot Essentials is long for always-on current truth; consolidate it and move resolved history to Story Cards.",
+        "Plot Essentials is long for always-on current truth; consolidate it and move resolved history to Reference Cards.",
       ));
     }
 
@@ -196,7 +196,7 @@ function buildPrompt(components: ComponentEntry[], rollingSummary: string, recen
     .map((component) => `[${component.id}] "${component.title}" (${component.type})\n${component.content.slice(0, 2400)}`)
     .join("\n\n---\n\n");
 
-  return `You are cleaning up plot components for an interactive fiction game. Components are always-on or explicitly configured context blocks, so they must be lean and current.
+  return `You are cleaning up world blocks for an interactive fiction game. Components are always-on or explicitly configured context blocks, so they must be lean and current.
 
 COMPONENTS UNDER REVIEW:
 ${componentList || "(none)"}
@@ -214,10 +214,10 @@ Return ONLY a JSON array - no markdown, no prose. Each item must be one of:
 
 Rules:
 - Plot Essentials is compact current operating truth: active stakes, constraints, obligations, and open tensions. Prefer 4-7 tight lines.
-- Plot Essentials should not hoard completed history. If replacing it removes durable history, the app will preserve outgoing facts as historical Story Card suggestions.
+- Plot Essentials should not hoard completed history. If replacing it removes durable history, the app will preserve outgoing facts as historical Reference Card suggestions.
 - Active Pressure is exactly one sentence naming the current external threat, obligation, deadline, pursuit, debt, or force pressing on the player character.
 - Current Story Arc is a past-tense running log of arc developments. Do not duplicate Plot Essentials or write live scene directions there.
-- Custom/memory blocks should hold stable always-on rules or lore only when they truly need to load every turn; otherwise recommend a Story Card in the rationale instead of bloating a component.
+- Custom/memory blocks should hold stable always-on rules or lore only when they truly need to load every turn; otherwise recommend a Reference Card in the rationale instead of bloating a component.
 - Do not propose edits to AI Instructions, Narration Rules, or Author's Note; those are not included in this review.
 - Delete only disabled legacy blocks, empty blocks, or duplicate blocks that are clearly useless.
 - Be selective - only changes with clear story justification.
@@ -302,7 +302,7 @@ export async function runComponentAudit(
         config,
         messages: [
           { role: "system", content: prompt },
-          { role: "user", content: "Clean up these plot components and return your recommendations as a JSON array." },
+          { role: "user", content: "Clean up these world blocks and return your recommendations as a JSON array." },
         ],
       });
       llmRecs = parseLLMResponse(response.content);

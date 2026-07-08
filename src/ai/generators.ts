@@ -47,7 +47,7 @@ function adventureContext(adventure: Adventure): string {
     adventure.openingScene ? `Opening scene:\n${adventure.openingScene.slice(0, 800)}` : "",
     plot ? `Plot essentials:\n${plot.slice(0, 800)}` : "",
     cast ? `Known characters: ${cast}` : "",
-    cards ? `Known story cards: ${cards}` : "",
+    cards ? `Known reference cards: ${cards}` : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -112,7 +112,7 @@ function componentTargetGuidance(type: ComponentType): string {
     case "authorNote":
       return "Author's Note: concise tone, mood, pacing, or prose influence near recent context. One or two sentences. No lore dump, rules catalog, or current-state ledger.";
     case "custom":
-      return "Custom Component: broad always-on world, scene-loop, or mode context that truly matters every turn. If it only matters when a person, place, faction, object, or secret appears, use Story Cards instead.";
+      return "Custom Component: broad always-on world, scene-loop, or mode context that truly matters every turn. If it only matters when a person, place, faction, object, or secret appears, use Reference Cards instead.";
     default:
       return "";
   }
@@ -160,7 +160,7 @@ export async function generateComponentDrafts(
   const recent = request.includeRecentStory
     ? adventure.messages.slice(-12).map((message) => `${message.role}: ${message.content}`).join("\n").slice(0, 3500)
     : "";
-  const systemPrompt = `You are an expert interactive-fiction scenario editor. Draft only the requested Plot Components from the user's prompt.
+  const systemPrompt = `You are an expert interactive-fiction scenario editor. Draft only the requested World Blocks from the user's prompt.
 
 ${adventureContext(adventure)}
 
@@ -170,9 +170,9 @@ Target rules:
 ${targets.map(componentTargetGuidance).filter(Boolean).join("\n\n")}
 
 General rules:
-- Use only the adventure context, recent story if provided, and the user's component prompt.
+- Use only the adventure context, recent story if provided, and the user's World Block prompt.
 - Preserve user-provided names and spellings exactly.
-- Do not create Story Cards, Brains, trigger rules, summaries, or Current Arc fields here.
+- Do not create Reference Cards, Brains, trigger rules, summaries, or Current Arc fields here.
 - Each returned component must match one requested type exactly.
 - Return full replacement content for each requested component, not an append-only note.
 - Keep every generated block inspectable and concise enough to edit.
@@ -180,7 +180,7 @@ General rules:
 Respond ONLY with valid JSON:
 {"components":[{"type":"plotEssentials","title":"Plot Essentials","content":"- ...","priority":80,"alwaysOn":true,"pinned":true,"protected":true}]}`;
 
-  const userPrompt = `Component prompt:
+  const userPrompt = `World Block prompt:
 ${description}
 
 Recent story:
@@ -373,7 +373,7 @@ export interface ProposedArc {
   arcBreakInstruction: string;
   arcPace: ArcPace;
   arcTriggerMode: ArcTriggerMode;
-  /** Ids of existing story cards / brains to carry as this arc's threads. */
+  /** Ids of existing reference cards / brains to carry as this arc's threads. */
   arcThreadKeys: string[];
   /** Why this arc grows out of what just happened — shown as the proposal rationale. */
   rationale: string;
@@ -451,7 +451,7 @@ ${adventureContext(adventure)}
 
 Create a Brain (interior state) for the character named "${trimmed}".
 Make it BEHAVIORAL, not adjectival: describe what they DO in a room, how they treat the player and others, what they want, and how they push scenes forward. "Encourages the player's worst brave ideas and expects them to keep up" — not "reckless and fun".
-Do not use this Brain as a replacement for the character's Story Card. Stable public identity, appearance, powers, voice contract, aliases, and always-true facts belong on a character Story Card. This Brain is only for evolving interior state.
+Do not use this Brain as a replacement for the character's Reference Card. Stable public identity, appearance, powers, voice contract, aliases, and always-true facts belong on a character Reference Card. This Brain is only for evolving interior state.
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { parseAidStoryCards } from "../importers/aidCardParser";
+import { parseStoryCardsJson } from "../importers/storyCardParser";
 import { importAdventureJson } from "../utils/json";
 import {
   createDevelopmentAdventure,
@@ -78,14 +78,14 @@ describe("development adventure seed", () => {
 
     expect(result.messages[0].content).toContain("# B. AI Instructions");
     expect(result.messages[0].content).toContain("# C. Plot Essentials");
-    expect(result.messages[0].content).toContain("# F. Story Cards");
+    expect(result.messages[0].content).toContain("# F. Reference Cards");
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual([
       "dev-component-mission-loop",
       "dev-component-dragon-fire",
     ]);
   });
 
-  it("can load every development component and every development story card when card keys are present", () => {
+  it("can load every development component and every development reference card when card keys are present", () => {
     const adventure = createDevelopmentAdventure();
     const allCardKeys = adventure.storyCards.flatMap((card) => card.keys).join(" ");
     const result = buildContext(adventure, {
@@ -98,13 +98,13 @@ describe("development adventure seed", () => {
     expect(result.excludedItems.filter((item) => item.sourceType === "storyCard")).toEqual([]);
   });
 
-  it("exports re-importable full adventure JSON and Story Card JSON", () => {
+  it("exports re-importable full adventure JSON and Reference Card JSON", () => {
     const imported = importAdventureJson(createDevelopmentAdventureJson());
     expect(imported.title).toBe(developmentAdventureTitle);
     expect(imported.storyCards).toHaveLength(23);
     expect(imported.brains).toHaveLength(6);
 
-    const parsedCards = parseAidStoryCards(createDevelopmentStoryCardsJson());
+    const parsedCards = parseStoryCardsJson(createDevelopmentStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
     expect(parsedCards.cards).toHaveLength(23);
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Prince Setu");

@@ -44,7 +44,7 @@ describe("AdventuresPage new adventure setup", () => {
     vi.mocked(runAdventureGen).mockReset();
   });
 
-  it("creates a new adventure with starter components and manual Story Cards", async () => {
+  it("creates a new adventure with starter components and manual Reference Cards", async () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();
 
@@ -57,7 +57,7 @@ describe("AdventuresPage new adventure setup", () => {
     const componentContentFields = screen.getAllByLabelText("Content");
     await user.type(componentContentFields[componentContentFields.length - 1], "The city is under siege.");
 
-    await user.click(screen.getByRole("button", { name: "Add Manual Card" }));
+    await user.click(screen.getByRole("button", { name: "Add Manual Reference Card" }));
     const titleFields = screen.getAllByLabelText("Title");
     await user.clear(titleFields[titleFields.length - 1]);
     await user.type(titleFields[titleFields.length - 1], "Margo");
@@ -102,7 +102,7 @@ describe("AdventuresPage new adventure setup", () => {
     expect(onCreate.mock.calls[0][1]).toEqual({ deviceOnly: true });
   });
 
-  it("imports Story Cards from an uploaded JSON file before creating the adventure", async () => {
+  it("imports Reference Cards from an uploaded JSON file before creating the adventure", async () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();
     const file = new File(
@@ -123,7 +123,7 @@ describe("AdventuresPage new adventure setup", () => {
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
     await user.upload(screen.getByLabelText("Upload .json file"), file);
 
-    await waitFor(() => expect(screen.getByText("1 JSON Story Card(s) ready")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("1 JSON Reference Card(s) ready")).toBeInTheDocument());
     expect(screen.getByText("Ward Threshold")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
@@ -252,12 +252,12 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.queryByRole("heading", { name: "Choose an adventure" })).not.toBeInTheDocument();
   });
 
-  it("prevents creation when an unpinned Story Card has no triggers", async () => {
+  it("prevents creation when an unpinned Reference Card has no triggers", async () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();
 
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
-    await user.click(screen.getByRole("button", { name: "Add Manual Card" }));
+    await user.click(screen.getByRole("button", { name: "Add Manual Reference Card" }));
     await user.type(screen.getAllByLabelText("Content").at(-1)!, "A fact that needs to be reachable.");
     await user.click(screen.getByRole("button", { name: "Create Adventure" }));
 
@@ -309,7 +309,7 @@ describe("AdventuresPage new adventure setup", () => {
       });
 
     await user.click(screen.getByRole("button", { name: "New Adventure" }));
-    await user.click(screen.getByRole("button", { name: "Add Manual Card" }));
+    await user.click(screen.getByRole("button", { name: "Add Manual Reference Card" }));
     const manualTitle = screen.getAllByLabelText("Title").at(-1)!;
     await user.clear(manualTitle);
     await user.type(manualTitle, "Manual Ally");

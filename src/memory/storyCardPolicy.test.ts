@@ -3,7 +3,7 @@ import { makeStoryCard } from "../state/defaults";
 import { applyGuardedStoryCardPolicy, storyCardContextContent } from "./storyCardPolicy";
 
 describe("storyCardContextContent", () => {
-  it("does not auto-pin guarded compact story cards", () => {
+  it("does not auto-pin guarded compact reference cards", () => {
     const card = makeStoryCard({
       title: "Avery's Pact",
       content: "Avery and Jinx have a secret pact.",

@@ -147,12 +147,12 @@ describe("App adventure tool workspace", () => {
     await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
     const editorNav = screen.getByRole("navigation", { name: "Adventure editor" });
     expect(within(editorNav).queryByRole("button", { name: "Saves" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Story Cards" }));
+    await user.click(screen.getByRole("button", { name: "Reference Cards" }));
 
     // Now in the editor — title is an editable input
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("Workspace Test")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create Story Card" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create Reference Card" })).toBeInTheDocument();
 
     // Adventure tab returns to dashboard — heading again
     await user.click(screen.getByRole("button", { name: "Adventure" }));

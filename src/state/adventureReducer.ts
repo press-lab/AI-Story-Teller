@@ -358,7 +358,7 @@ function mergeThoughts(
 /** Default character budget for a brain's live thought log before old entries get archived. */
 const DEFAULT_THOUGHT_BUDGET = 1600;
 
-/** Default character budget for a living story card's content (~200 tokens) before old facts archive. */
+/** Default character budget for a living reference card's content (~200 tokens) before old facts archive. */
 const DEFAULT_CARD_CONTENT_BUDGET = 900;
 
 /** Split a card body into individual facts (one per non-empty line), preserving bullet markers. */
@@ -1170,7 +1170,7 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
 
   if (proposal.proposedType === "arcProposal") {
     // Approving an AI-drafted arc seeds the Current Arc and starts it simmering. Any stale/finished
-    // arc that was sitting in the component is banked as a Story Card first, so previous arcs are
+    // arc that was sitting in the component is banked as a Reference Card first, so previous arcs are
     // preserved — same as the aftermath continuation flow.
     let seed: Record<string, unknown>;
     try {
@@ -1490,7 +1490,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const comp = state.components.find((c) => c.id === action.componentId);
       if (!comp) return state;
       const opt = action.option;
-      // Bank the resolved arc as a Story Card so previous arcs are preserved, then reseed
+      // Bank the resolved arc as a Reference Card so previous arcs are preserved, then reseed
       // this component as the next arc and start its climb fresh.
       const archived = arcArchiveCard(comp);
       return touchAdventure(state, {
@@ -1629,7 +1629,7 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
       const clean = sanitizeProposal(routedProposal(state, action.proposal));
       if (!clean) return state;
       // Dedup: drop a proposal that duplicates one already pending, one the user already
-      // dismissed (rejected/ignored), or a NEW story card whose title already exists as a card.
+      // dismissed (rejected/ignored), or a NEW reference card whose title already exists as a card.
       // Without this, the model re-suggesting the same entity each turn spawns a fresh duplicate —
       // including resurrecting suggestions the user has already said no to.
       const normTitle = normalizeProposalTitle(clean.title);

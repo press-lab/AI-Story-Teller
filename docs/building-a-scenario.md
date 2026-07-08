@@ -22,7 +22,7 @@ A scenario is six things working together:
 | Piece | Component / object | Job |
 |---|---|---|
 | **Current truth + premise** | Plot Essentials | What is happening now + always-on constraints |
-| **The cast** | Story Cards (`character`) **+ Voice Contracts** | Who's fun in a room |
+| **The cast** | Reference Cards (`character`) **+ Voice Contracts** | Who's fun in a room |
 | **Interior life** | Brains | Hidden agendas that simmer and persist |
 | **The engine** | a custom "missions" component | The repeatable loop that prints scenes |
 | **The spine** | Current Story Arc + **Arc Director** | The conflict that climbs and breaks |
@@ -36,7 +36,7 @@ Build them in that order.
 
 The New Adventure generator asks for outcome choices before it drafts the setup.
 Pick the result you want; the app routes the details into AI Instructions, Plot
-Essentials, Active Pressure, Author's Note, Story Cards, and Brains.
+Essentials, Active Pressure, Author's Note, Reference Cards, and Brains.
 
 | Want | Choose | What it changes |
 |---|---|---|
@@ -64,7 +64,7 @@ separable.
 
 The generator should still keep Plot Essentials tight. Relationship trackers,
 voice guides, quest logs, secrets, and recurring locations usually belong in
-Story Cards or Brains, not in PE.
+Reference Cards or Brains, not in PE.
 
 ---
 
@@ -91,9 +91,9 @@ Two rules from experience:
 
 ---
 
-## Step 2 — The cast: Story Cards + Voice Contracts
+## Step 2 — The cast: Reference Cards + Voice Contracts
 
-One `character` Story Card per named figure who recurs. Bullet the durable facts
+One `character` Reference Card per named figure who recurs. Bullet the durable facts
 (role, appearance, allegiance, what they want), then **append a VOICE CONTRACT to
 every non-player character.** This is the single biggest quality lever.
 
@@ -131,7 +131,7 @@ Rules learned the hard way:
   card. Event, relationship, or subplot cards should use specific consequences,
   objects, locations, factions, or case names instead of broad character names.
 
-The **"Draft a Story Card with AI"** builder and the in-play detector now emit
+The **"Draft a Reference Card with AI"** builder and the in-play detector now emit
 voice contracts for character cards automatically — so cards you mint mid-game
 match. But hand-author the core cast for control.
 
@@ -214,7 +214,7 @@ so the loop has an in-world source.
 
 On a **Current Story Arc** component, open the Arc Director and set:
 
-- **The Baddie** — the Story Cards / Brains that are this arc's threads (the
+- **The Baddie** — the Reference Cards / Brains that are this arc's threads (the
   antagonist + their faction; optionally a wildcard). *Heir:* the New Ozai
   Society, House Renzan, Lord Renzan, Azula.
 - **The Cost (break instruction)** — what the climax costs. *"The antagonist
@@ -269,10 +269,10 @@ Set the **response length** to a target (slider on the Play page) — V3.2 write
   ("Reset to simmer" pulls it back if you sprang early.)
 - After the break resolves (aftermath), the Director **drafts next-arc directions
   and offers them in the Arc Director.** Pick one → the finished arc is **banked
-  as a Story Card** and the next arc seeds, simmering. That's how the story
+  as a Reference Card** and the next arc seeds, simmering. That's how the story
   self-continues — a stranger never becomes the next villain; a surviving thread
   is promoted (e.g. *Azula takes the leaderless Society*).
-- Bank completed arcs with **"Complete Arc → Story Card"** (the next-arc chooser
+- Bank completed arcs with **"Complete Arc → Reference Card"** (the next-arc chooser
   does this for you automatically).
 
 ---

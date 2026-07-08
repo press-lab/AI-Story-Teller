@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyMemory } from "./classificationPolicy";
 
 describe("classifyMemory", () => {
-  it("classifies private jokes as story cards", () => {
+  it("classifies private jokes as reference cards", () => {
     expect(classifyMemory("Margo calls Avery 'hedge prince' as a private joke").proposedType).toBe("storyCard");
   });
 
@@ -21,21 +21,21 @@ describe("classifyMemory", () => {
     expect(result.rationale).toContain("No existing BrainEntry");
   });
 
-  it("routes durable character facts to existing Story Cards or story-card proposals when no Brain exists", () => {
+  it("routes durable character facts to existing Reference Cards or story-card proposals when no Brain exists", () => {
     const existing = classifyMemory("Margo promised Avery she would return", {
       characterName: "Margo",
       existingStoryCards: [{ id: "card-margo", title: "Margo", keys: ["Margo"] }],
     });
     expect(existing.proposedType).toBe("storyCard");
     expect(existing.targetId).toBe("card-margo");
-    expect(existing.rationale).toContain("existing Story Card");
+    expect(existing.rationale).toContain("existing Reference Card");
 
     const proposal = classifyMemory("Margo promised Avery she would return", { characterName: "Margo" });
     expect(proposal.proposedType).toBe("storyCard");
     expect(proposal.targetId).toBeUndefined();
   });
 
-  it("classifies engagement and magical rules as durable story cards", () => {
+  it("classifies engagement and magical rules as durable reference cards", () => {
     expect(classifyMemory("Avery and Margo are now officially engaged").proposedType).toBe("storyCard");
     expect(classifyMemory("Magic cannot cross the warded threshold").proposedType).toBe("storyCard");
   });

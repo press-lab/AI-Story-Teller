@@ -233,8 +233,8 @@ export function resolveMemoryTarget(adventure: Adventure, draft: MemoryTargetDra
   const suggestedTriggers = sanitizeStoryCardTriggers(adventure, title, draft.suggestedTriggers, target?.id, memoryMode);
   const rationale = [
     draft.rationale,
-    target && !draft.targetId ? `Routed to existing ${memoryMode} Story Card "${target.title}".` : undefined,
-    blockedTarget ? `Created a separate ${memoryMode} Story Card instead of appending ${memoryMode} facts to static "${blockedTarget.title}".` : undefined,
+    target && !draft.targetId ? `Routed to existing ${memoryMode} Reference Card "${target.title}".` : undefined,
+    blockedTarget ? `Created a separate ${memoryMode} Reference Card instead of appending ${memoryMode} facts to static "${blockedTarget.title}".` : undefined,
   ].filter(Boolean).join(" ") || undefined;
 
   return {

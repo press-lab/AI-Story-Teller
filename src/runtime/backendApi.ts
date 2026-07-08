@@ -33,12 +33,10 @@ export interface BackendSessionState {
 }
 
 export interface BackendImportRequest {
-  sourceType: "aist" | "aid" | "githubSave";
+  sourceType: "aist" | "githubSave";
   text?: string;
   json?: unknown;
   title?: string;
-  storyCardsText?: string;
-  componentsText?: string;
 }
 
 export interface BackendPolicyDecision {

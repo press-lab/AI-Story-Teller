@@ -141,7 +141,7 @@ describe("saveToGitHub", () => {
     expect(indexContent.slots[0].saveId).toBe(slot.saveId);
   });
 
-  it("saves complete adventure state including messages, components, and story cards", async () => {
+  it("saves complete adventure state including messages, components, and reference cards", async () => {
     const adventure = makeAdventure();
     adventure.messages = [
       { id: "m1", role: "user", content: "Hello", createdAt: "2026-01-01T00:00:00.000Z" },

@@ -189,7 +189,7 @@ describe("buildContext", () => {
     expect(result.sections.find((section) => section.id === "aiInstructions")?.items.map((item) => item.id)).toEqual(["c-ai"]);
     expect(result.sections.find((section) => section.id === "plotEssentials")?.items.map((item) => item.id)).toEqual(["c-plot-high", "c-plot-low"]);
     expect(result.sections.find((section) => section.id === "authorNote")?.items).toHaveLength(0);
-    // Pinned custom component lands in E. Components
+    // Pinned custom component lands in E. World Blocks
     expect(result.sections.find((section) => section.id === "components")?.items.map((item) => item.id)).toEqual(["c-pinned"]);
     expect(result.excludedItems).toContainEqual(expect.objectContaining({ id: "c-inactive", reason: "inactive" }));
   });
@@ -212,7 +212,7 @@ describe("buildContext", () => {
     expect(result.messages[0].content).not.toContain("Momentum should not load.");
   });
 
-  it("triggers story cards from input, output, recent history, pins, and regex-only match mode", () => {
+  it("triggers reference cards from input, output, recent history, pins, and regex-only match mode", () => {
     const inputCard = makeStoryCard({ id: "card-input", title: "Input", content: "input", keys: ["silver key"], active: true, priority: 50 });
     const outputCard = makeStoryCard({ id: "card-output", title: "Output", content: "output", keys: ["moon bell"], active: true, priority: 40 });
     const historyCard = makeStoryCard({ id: "card-history", title: "History", content: "history", keys: ["old vow"], active: true, priority: 30 });
@@ -390,7 +390,7 @@ describe("buildContext", () => {
       "system-shell",
       "turn-scope-contract",
     ]);
-    // Protected Huge survives in E. Components; Pinned Huge is dropped
+    // Protected Huge survives in E. World Blocks; Pinned Huge is dropped
     const componentItems = result.sections.find((section) => section.id === "components")?.items ?? [];
     expect(componentItems[0].title).toBe("Protected Huge");
     expect(componentItems).toHaveLength(1);
@@ -731,8 +731,8 @@ describe("buildContext", () => {
     expect(payload).not.toContain("# C. Plot Essentials");
     expect(payload).not.toContain("# D. Author's Note");
     // Non-empty sections do appear
-    expect(payload).toContain("# E. Components");
-    expect(payload).toContain("# F. Story Cards");
+    expect(payload).toContain("# E. World Blocks");
+    expect(payload).toContain("# F. Reference Cards");
   });
 
   it("golden adventure context matches the preview and provider payload contract", () => {
@@ -779,7 +779,7 @@ describe("buildContext", () => {
     expect(result.messages[0].role).toBe("system");
     expect(result.messages[0].content).toContain("# A. System Shell / Global Generation Rules");
     expect(result.messages[0].content).toContain("# B. AI Instructions");
-    expect(result.messages[0].content).toContain("# F. Story Cards");
+    expect(result.messages[0].content).toContain("# F. Reference Cards");
     expect(result.messages[0].content).toContain("## Hedge Prince Joke");
     expect(result.messages[0].content).not.toContain("# I. Rolling Summary");
     const expectedRecent = [
@@ -793,9 +793,9 @@ describe("buildContext", () => {
     // Runtime instructions are part of the system section; recent messages still follow in order.
     expect(result.messages.slice(1, 1 + expectedRecent.length).map((message) => message.content)).toEqual(expectedRecent);
 
-    // E. Components is present because the golden adventure has a pinned weather component
+    // E. World Blocks is present because the golden adventure has a pinned weather component
     // Single-item sections render content directly under the section header (no ## sub-header)
-    expect(result.messages[0].content).toContain("# E. Components");
+    expect(result.messages[0].content).toContain("# E. World Blocks");
     expect(result.messages[0].content).toContain("Rain makes the city smell like iron.");
   });
 

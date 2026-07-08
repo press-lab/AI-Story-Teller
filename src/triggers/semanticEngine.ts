@@ -101,7 +101,7 @@ Return ONLY valid JSON. Only include keys that changed.
 
 For "thoughts": add ONE new entry. Key is snake_case label. Value is "${turn} → first-person observation, reaction, or plan". Write in ${brain.characterName}'s own voice — cite specific people, what was said or done, and what it privately means or what they intend to do about it. Never use generic labels ("excited", "uneasy", "focused"). Optionally set one stale entry to null to archive it.
 
-Do NOT record: current location, who is present in this scene, or stable personality traits. Location and scene presence belong in Scene State. Permanent behavioral patterns belong in a Story Card, not here.
+Do NOT record: current location, who is present in this scene, or stable personality traits. Location and scene presence belong in Scene State. Permanent behavioral patterns belong in a Reference Card, not here.
 
 Example: { "thoughts": { "azula_praise_after_council": "${turn} → Her 'good to have you back' landed too clean. Azula doesn't give compliments — she extends leashes. I need to find out how much she knows before the delegation arrives." } }
 
@@ -268,7 +268,7 @@ function plotEssentialsDriftConditions(adventure: Adventure): SemanticCondition[
     .map((component) => ({
       id: `plotEssentialsDrift:${component.id}`,
       label: `Plot Essentials Drift: ${component.title}`,
-      condition: `when the current Plot Essentials block is stale, incomplete, or no longer describes the story's current operating truth after recent events. Do NOT fire for minor scene motion, temporary room state, or changes that only belong in Active Pressure, Current Arc, or a Story Card.`,
+      condition: `when the current Plot Essentials block is stale, incomplete, or no longer describes the story's current operating truth after recent events. Do NOT fire for minor scene motion, temporary room state, or changes that only belong in Active Pressure, Current Arc, or a Reference Card.`,
       sourceType: "component" as const,
       actionFactory: () => [{ type: "updateComponent" as const, componentId: component.id }],
     }));
@@ -328,7 +328,7 @@ function storyCardUpdateConditions(adventure: Adventure): SemanticCondition[] {
   if (!target) return [];
   return [{
     id: `storyCard:${target.id}`,
-    label: `Story Card: ${target.title}`,
+    label: `Reference Card: ${target.title}`,
     condition: `when the story has established new details, developments, or changes that should update the fact card titled "${target.title}" — only fire when something meaningfully new has been revealed about this entity`,
     sourceType: "storyCard" as const,
     actionFactory: () => [{ type: "updateStoryCard" as const, storyCardId: target.id }],
@@ -575,7 +575,7 @@ async function generatedActionsFor(
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || storyCardPrompt(card), accum);
       if (requireApproval) {
         const proposal = makeProposal(
-          { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, appendContent: false, memoryMode: card.memoryMode, rationale: `Auto-update for story card "${card.title}".` },
+          { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, appendContent: false, memoryMode: card.memoryMode, rationale: `Auto-update for reference card "${card.title}".` },
           adventure,
         );
         return {
@@ -831,7 +831,7 @@ export async function runManualStoryCardsUpdate(
   };
 
   if (cards.length === 0) {
-    const logEntry = { ...emptyLog, errors: ["No active Story Cards found."] };
+    const logEntry = { ...emptyLog, errors: ["No active Reference Cards found."] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 
@@ -882,7 +882,7 @@ function defaultStoryCardType(intent: StoryCardAIBuilderRequest["intent"]): Stor
 function storyCardIntentGuidance(intent: StoryCardAIBuilderRequest["intent"]): string {
   switch (intent) {
     case "relationship":
-      return "The user is building a relationship/dynamic card. Use a living Story Card only when the relationship is its own recurring subject. Name the specific bond, pressure, rivalry, bargain, or intimacy; do not create a vague 'Dynamic between X and Y' card. Avoid using both broad character names as the only triggers if those names already have character cards.";
+      return "The user is building a relationship/dynamic card. Use a living Reference Card only when the relationship is its own recurring subject. Name the specific bond, pressure, rivalry, bargain, or intimacy; do not create a vague 'Dynamic between X and Y' card. Avoid using both broad character names as the only triggers if those names already have character cards.";
     case "character":
       return "The user is building a character card. Include durable public identity, important traits, role, aliases, and a VOICE CONTRACT when there is enough voice signal. Do not store private inner-state that belongs in an existing Brain.";
     case "location":
@@ -900,7 +900,7 @@ function storyCardIntentGuidance(intent: StoryCardAIBuilderRequest["intent"]): s
     case "event":
       return "The user is building a completed-event card. Prefer historical mode and past tense unless the event created an ongoing current status.";
     default:
-      return "Infer the right Story Card shape from the user's brief and the existing adventure memory.";
+      return "Infer the right Reference Card shape from the user's brief and the existing adventure memory.";
   }
 }
 
@@ -927,7 +927,7 @@ export async function runStoryCardAIBuilder(
   };
 
   if (!description) {
-    const logEntry = { ...emptyLog, errors: ["Story Card builder needs a description."] };
+    const logEntry = { ...emptyLog, errors: ["Reference Card builder needs a description."] };
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 
@@ -953,7 +953,7 @@ export async function runStoryCardAIBuilder(
     .map((b) => `[ID: ${b.id}] ${b.characterName}: ${b.currentState.slice(0, 180)}`)
     .join("\n");
 
-  const systemPrompt = `You are an AI Memory Builder for an interactive fiction game. Draft reviewable Story Card memory from the user's brief.
+  const systemPrompt = `You are an AI Memory Builder for an interactive fiction game. Draft reviewable Reference Card memory from the user's brief.
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}
 
@@ -1010,7 +1010,7 @@ ${selectedCard ? `[ID: ${selectedCard.id}] "${selectedCard.title}" (${selectedCa
 Recent story messages${recentMessageCount > 0 ? ` (last ${recentMessageCount})` : ""}:
 ${recentBlock}
 
-Existing Story Cards:
+Existing Reference Cards:
 ${cardList || "(none)"}
 
 Existing Character Brains:
@@ -1049,7 +1049,7 @@ ${brainList || "(none)"}`;
     const generatedContent: GeneratedContentPreview[] = [];
     const now = nowIso();
     const turnId = String(adventure.activeState.turn);
-    const sourceText = `AI Story Card Builder
+    const sourceText = `AI Reference Card Builder
 Intent: ${request.intent}
 Requested mode: ${requestedMode ?? "infer"}
 Selected card: ${selectedCard?.title ?? "none"}
@@ -1092,7 +1092,7 @@ ${recentBlock}`;
         content: routed.content,
         suggestedTriggers: routed.suggestedTriggers,
         confidence: 0.88,
-        rationale: routed.rationale ?? parsed.rationale ?? "Generated by the AI Story Card Builder.",
+        rationale: routed.rationale ?? parsed.rationale ?? "Generated by the AI Reference Card Builder.",
         status: "pending",
         targetId: routed.targetId,
         appendContent: routed.appendContent,
@@ -1110,7 +1110,7 @@ ${recentBlock}`;
     const logEntry: EvaluationLogEntry = {
       ...emptyLog,
       conditionsFired: ["storyCardAIBuilder"],
-      actionsExecuted: [`Story Card Builder: ${actions.length} proposal(s)`],
+      actionsExecuted: [`Reference Card Builder: ${actions.length} proposal(s)`],
       generatedContent,
     };
     return { actions: [...actions, { type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
@@ -1160,8 +1160,8 @@ Rules:
 - Return exactly one proposal for the requested target: ${proposedType}.
 - Plot Essentials is the compact current operating truth. Write 4-7 tight bullets or short labeled lines as a full replacement, not a chronological log.
 - Active Pressure is one sentence naming the current external threat, obligation, deadline, or force pressing on the player character.
-- Do not store relationship trackers, character biographies, locations, secrets, completed events, or voice contracts in Plot Essentials. Those belong in Story Cards or Brains.
-- Remove resolved or outgoing facts from Plot Essentials. They can become historical Story Card proposals elsewhere.
+- Do not store relationship trackers, character biographies, locations, secrets, completed events, or voice contracts in Plot Essentials. Those belong in Reference Cards or Brains.
+- Remove resolved or outgoing facts from Plot Essentials. They can become historical Reference Card proposals elsewhere.
 - The proposal is pending review. Do not claim it is already active.
 
 Respond ONLY with valid JSON:
@@ -1568,12 +1568,12 @@ The target list was selected deterministically. Do not add targets. Do not inven
 Rules:
 - If the user provided a directive, it is authoritative for current continuity. If not, infer relevant memory updates from the source material.
 - If source material includes an out-of-character planning conversation, extract durable story-state decisions from it. Do not preserve meta chatter, boredom notes, or questions as story facts unless they define an actual direction or current pressure.
-- In Plot and Story Card review mode, review every listed Plot component and Story Card against the selected source material. Return updates only for targets whose current content is stale, incomplete, contradicted, or missing important durable context from the source material.
-- In Plot and Story Card review mode, return at most ${BROAD_RECONCILE_MAX_UPDATES} highest-impact updates. Prefer Plot Essentials, Active Pressure, and directly changed Story Cards. Keep each Story Card update under 900 characters.
+- In Plot and Reference Card review mode, review every listed Plot component and Reference Card against the selected source material. Return updates only for targets whose current content is stale, incomplete, contradicted, or missing important durable context from the source material.
+- In Plot and Reference Card review mode, return at most ${BROAD_RECONCILE_MAX_UPDATES} highest-impact updates. Prefer Plot Essentials, Active Pressure, and directly changed Reference Cards. Keep each Reference Card update under 900 characters.
 - Remove stale active pressure. Preserve true completed events as historical facts.
 - Plot Essentials: full compact replacement, 4-7 tight bullets or short lines, current operating truth only.
 - Active Pressure: exactly one sentence naming the current external pressure.
-- Story Cards: full replacement content for that card. Use present tense for static/living current facts and past tense for historical/resolved facts.
+- Reference Cards: full replacement content for that card. Use present tense for static/living current facts and past tense for historical/resolved facts.
 - Brain updates: return JSON with changed fields or thoughts only. Only update an existing listed Brain.
 - If deterministicStoryCardPatch or deterministicComponentPatch is present, write content that matches that state change.
 
@@ -1720,7 +1720,7 @@ export async function runRememberThis(
 ${STORY_CARD_BEST_PRACTICES}
 ${TRIGGER_BEST_PRACTICES}
 
-Examine the description against existing story cards and characters:
+Examine the description against existing reference cards and characters:
 - If the fact is a property or development of existing entities, propose updating those cards (action "update" with the cardId)
 - If the fact is a distinct event, concept, or relationship with its own identity, propose a new card (action "create")
 - You may propose both updates AND a new card for the same fact
@@ -1748,7 +1748,7 @@ Never sounds like: <what to avoid — generic, "I feel…" statements, offering 
 Example lines: "<line>" / "<line>" / "<line>"
 Write the example lines in the character's actual voice. Omit the VOICE CONTRACT only if there is no usable sense of how they speak.`;
 
-  const userPrompt = `Description to turn into durable Story Card memory:\n${fact.trim()}\n\nExisting Story Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
+  const userPrompt = `Description to turn into durable Reference Card memory:\n${fact.trim()}\n\nExisting Reference Cards:\n${cardList || "(none)"}\n\nExisting Characters:\n${brainList || "(none)"}`;
 
   const emptyLog: EvaluationLogEntry = {
     id: createId("evaluation"),

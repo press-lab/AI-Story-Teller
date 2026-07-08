@@ -91,7 +91,7 @@ If future context is compressed and the owner says "implement the next step," co
    - Add backend adventure snapshot/event tables.
    - Add backend adventure CRUD.
    - Add import-as-copy for AIST JSON.
-   - Add import-as-copy for AI Dungeon JSON.
+   - Keep import-as-copy for AIST and GitHub save JSON; reject legacy third-party backup formats.
    - Add import-as-copy for GitHub save JSON files.
    - Strip runtime provider secrets on import.
    - Never ask for or use the owner's personal GitHub token.
@@ -175,7 +175,7 @@ Step 9, manual policy review, can happen at any time. It must be complete before
 | 3 | [Local API skeleton](#phase-2-backend-skeleton) | API starts locally; owner-server mode binds for shared access; `GET /health` and `GET /version` pass; CORS accepts local Vite and GitHub Pages origin for owner testing; frontend still builds without API running. |
 | 4 | [Local database and migrations](#phase-2-backend-skeleton) | Migration command runs from clean local DB; schema version is visible; failed DB connection produces a clear backend error without affecting local frontend mode. |
 | 5 | [Invite-gated auth](#phase-3-auth-and-invite-gate) | No account activates without invite; Google invited signup works; email/password invited signup works; email verification/reset paths work in local test mode; bad/reused/expired invites fail. |
-| 6 | [Backend adventure persistence](#phase-4-backend-adventure-persistence) | AIST JSON imports as a copy; AI Dungeon JSON imports as a copy; GitHub save JSON imports as a copy; provider secrets are stripped; local IndexedDB source is not mutated. |
+| 6 | [Backend adventure persistence](#phase-4-backend-adventure-persistence) | AIST JSON imports as a copy; GitHub save JSON imports as a copy; discontinued third-party backup formats are rejected; provider secrets are stripped; local IndexedDB source is not mutated. |
 | 7 | [Server context preview](#phase-5-server-context-preview) | Backend context preview matches local context on fixtures; section order, `generatedBy`, pending proposals, and Arc Director break gating are preserved. |
 | 8 | [Policy engine scaffold](#phase-6-deterministic-policy-engine) | Rule-pack loader works with sanitized fixtures; policy decisions are structured and logged; real-user enforcement remains disabled pending manual review. |
 | 9 | [Manual policy review](#manual-review-gate) | Owner-approved review notes cover category definitions, severity, safety events, restriction transitions, refusal text, retention, admin visibility, and appeal/export behavior. |
@@ -220,7 +220,7 @@ The policy pack includes everything that currently makes sense as a draft, but i
 | 3. Local API skeleton | Done | `apps/api`, `npm.cmd run api:dev`, `npm.cmd run api:serve`, `GET /health`, `GET /version`, typed config, CORS, `.env.example`, `.env` loader, owner-hosted Pages API URL support, and `npm.cmd run api:test` exist. |
 | 4. Local database and migrations | Done | Local JSON DB remains available for dev; local Postgres is supported through `AIST_DATABASE_URL`; JSON-to-Postgres migration preserves IDs and refuses non-empty overwrite without `--force`. |
 | 5. Invite-gated auth | Done | Invite creation/preview, email/password signup/login, email verification, password reset, real Google OAuth/OIDC, local Google dev stub, hashed passwords, rate limits, sessions, profiles, admin roles, and no-invite activation tests exist. |
-| 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, AI Dungeon import-as-copy, GitHub save JSON import-as-copy, provider-secret stripping, and no personal GitHub token use are implemented. |
+| 6. Backend adventure persistence | Done | Backend CRUD, snapshots, AIST import-as-copy, GitHub save JSON import-as-copy, discontinued third-party backup rejection, provider-secret stripping, and no personal GitHub token use are implemented. |
 | 7. Server context preview | Done | Backend context preview uses shared `buildContext`; tests compare backend payload/section order against local output. |
 | 8. Policy engine scaffold | Done | Versioned rule-pack loader, policy decision records, gate interfaces, sanitized fixtures, and review/enforce modes are implemented. |
 | 9. Manual policy review | Ready for owner review | Draft policy pack includes the categories, matchers, severity, safety event triggers, and restriction transitions that currently make sense. Owner approval is still required before real-user enforcement. |
@@ -237,7 +237,7 @@ Implemented in local backend mode:
 - Real Google OAuth/OIDC account creation and login through the local backend.
 - Backend profiles with owned adventure and scenario summaries.
 - Backend adventure autosave through the selected backend adventure store.
-- Import-as-copy for AIST JSON, AI Dungeon JSON, and GitHub save JSON.
+- Import-as-copy for AIST JSON and GitHub save JSON.
 - Scenario drafts, immutable revisions, Profile -> Publish Scenario, publish/share-token flow, Explore listings for published revisions, and Explore -> Start Adventure forks.
 - Normal signed-in backend accounts do not see model routing, background cost controls, LLM evaluation/background provider controls, AI memory detection controls, GitHub cloud sync, dev seed loaders, or the Play model selector. Built-in premade scenarios are available through Explore.
 - Admin accounts can manage platform-wide non-secret settings from Admin Console; provider API keys and OAuth secrets stay in `.env` or environment variables.
@@ -268,7 +268,7 @@ Current local workflow to preserve:
 - BYO API key in localStorage.
 - Browser-to-provider generation.
 - JSON backup and restore.
-- AI Dungeon import.
+- Rejection of discontinued third-party backup formats.
 - GitHub save slots.
 - GitHub cloud sync in the existing local workflow.
 - Local development with `npm.cmd run dev`.
@@ -479,7 +479,7 @@ Tasks:
 - Add adventure tables.
 - Add backend adventure CRUD endpoints.
 - Add JSON import endpoint for current AIST local exports.
-- Add AI Dungeon JSON import endpoint or route through the existing import parser.
+- Reject discontinued third-party backup formats instead of routing them through import parsers.
 - Add GitHub save JSON import support by accepting uploaded/pasted save-slot JSON.
 - Add backend export endpoint.
 - Add version checks for writes.
@@ -515,7 +515,7 @@ Exit criteria:
 
 - A local adventure can be copied to backend mode.
 - A backend adventure can be exported back to current JSON format.
-- AIST JSON, AI Dungeon JSON, and GitHub save JSON can be imported as copies.
+- AIST JSON and GitHub save JSON can be imported as copies.
 - Local mode still works if the API is offline.
 
 ## Phase 5: Server Context Preview
@@ -663,7 +663,7 @@ Blocking behavior:
 - Blocked context identifies the section/item when possible and no provider request is made.
 - Blocked output is never displayed raw to the user.
 - Blocked output stores a placeholder assistant event and a policy decision.
-- Blocked memory writes do not create or update Story Cards, Brains, Plot Essentials, or Active Pressure.
+- Blocked memory writes do not create or update Reference Cards, Brains, Plot Essentials, or Active Pressure.
 - Blocked imports remain quarantined or rejected.
 - Blocked shares remain private and unpublished.
 - Severe blocked attempts create account safety events for restriction evaluation.
@@ -699,7 +699,7 @@ system: app/server generated instruction
 policy: server policy or entitlement instruction
 userInstruction: user-authored AI Instructions or Author's Note
 currentUserInput: current user message
-adventureData: Story Cards, Brains, components, transcript
+adventureData: Reference Cards, Brains, components, transcript
 externalData: imported/shared/scenario text
 modelOutput: previous assistant text
 ```
@@ -903,7 +903,7 @@ Worker jobs:
 - semantic evaluation
 - memory detection
 - memory cycle
-- Story Card audit
+- Reference Card audit
 - Brain audit
 - import processing
 - export packaging

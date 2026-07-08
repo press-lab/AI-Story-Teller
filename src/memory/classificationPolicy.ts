@@ -104,7 +104,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
         suggestedTriggers,
         confidence: durableFallback ? 0.66 : 0.7,
         rationale: durableFallback
-          ? "No existing BrainEntry for this character; routed to Story Card instead of Brain."
+          ? "No existing BrainEntry for this character; routed to Reference Card instead of Brain."
           : "No existing BrainEntry for this character, and the detail looks temporary rather than durable.",
         targetId: target?.id,
       };
@@ -158,8 +158,8 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
       suggestedTriggers,
       confidence: 0.84,
       rationale: target
-        ? "Durable character fact routed to an existing Story Card."
-        : "Durable recurring facts, relationship facts, rules, promises, secrets, nicknames, and important named objects belong in Story Cards.",
+        ? "Durable character fact routed to an existing Reference Card."
+        : "Durable recurring facts, relationship facts, rules, promises, secrets, nicknames, and important named objects belong in Reference Cards.",
       targetId: target?.id,
     };
   }

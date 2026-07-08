@@ -1,40 +1,28 @@
-import { makeBrain, makeStoryCard } from "../state/defaults";
-import type { BrainEntry, StoryCard, StoryCardType } from "../types/adventure";
+import { makeStoryCard } from "../state/defaults";
+import type { StoryCard, StoryCardType } from "../types/adventure";
 
-export type AidCardImportTarget = "storyCard" | "brain" | "skip";
-export type AidCardSuggestion = "storyCard" | "brain" | "ambiguous";
-
-export interface AidParsedCard {
+export interface ParsedStoryCard {
   id: string;
   sourceIndex: number;
   title: string;
   keysText: string;
   content: string;
   originalType: string;
-  suggestion: AidCardSuggestion;
-  suggestionReason: string;
   storyCard: StoryCard;
-  brainCandidate?: BrainEntry;
   raw: unknown;
 }
 
-export interface AidSkippedCard {
+export interface SkippedStoryCard {
   sourceIndex: number;
   reason: string;
   raw: unknown;
 }
 
-export interface AidCardParseResult {
-  cards: AidParsedCard[];
-  skipped: AidSkippedCard[];
+export interface StoryCardParseResult {
+  cards: ParsedStoryCard[];
+  skipped: SkippedStoryCard[];
   warnings: string[];
   error?: string;
-}
-
-interface BrainKeyData {
-  agent?: string;
-  description?: string;
-  notes?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -56,23 +44,7 @@ function firstString(...values: unknown[]): string {
   return "";
 }
 
-function parseBrainKeyData(keysText: string): BrainKeyData | undefined {
-  if (!keysText.trim().startsWith("{")) return undefined;
-  try {
-    const parsed = JSON.parse(keysText) as unknown;
-    if (!isRecord(parsed)) return undefined;
-    const agent = typeof parsed.agent === "string" ? parsed.agent : undefined;
-    const description = typeof parsed.description === "string" ? parsed.description : undefined;
-    const notes = typeof parsed.notes === "string" ? parsed.notes : undefined;
-    return { agent, description, notes };
-  } catch {
-    return undefined;
-  }
-}
-
-function keysToArray(keysText: string, brainKeyData?: BrainKeyData): string[] {
-  const agent = brainKeyData?.agent?.trim();
-  if (agent) return Array.from(new Set([agent]));
+function keysToArray(keysText: string): string[] {
   return keysText
     .split(",")
     .map((key) => key.trim().replace(/^["']|["']$/g, ""))
@@ -108,13 +80,9 @@ function extractTopLevelJsonDocuments(text: string): string[] {
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
     if (inString) {
-      if (escaped) {
-        escaped = false;
-      } else if (char === "\\") {
-        escaped = true;
-      } else if (char === "\"") {
-        inString = false;
-      }
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "\"") inString = false;
       continue;
     }
 
@@ -139,7 +107,7 @@ function extractTopLevelJsonDocuments(text: string): string[] {
   return documents;
 }
 
-function parseCard(raw: unknown, sourceIndex: number): AidParsedCard | AidSkippedCard {
+function parseCard(raw: unknown, sourceIndex: number): ParsedStoryCard | SkippedStoryCard {
   if (!isRecord(raw)) {
     return { sourceIndex, reason: "Card was not an object.", raw };
   }
@@ -147,57 +115,28 @@ function parseCard(raw: unknown, sourceIndex: number): AidParsedCard | AidSkippe
   const keysText = stringValue(raw.keys);
   const content = firstString(raw.entry, raw.value, raw.content);
   const originalType = firstString(raw.type) || "custom";
-  const brainKeyData = parseBrainKeyData(keysText);
-  const title = firstString(raw.title, brainKeyData?.agent, `Imported Card ${sourceIndex + 1}`);
-  const description = firstString(raw.description, raw.notes, brainKeyData?.description, brainKeyData?.notes);
+  const title = firstString(raw.title, `Imported Card ${sourceIndex + 1}`);
+  const description = firstString(raw.description, raw.notes);
 
   if (!title.trim() && !content.trim()) {
     return { sourceIndex, reason: "Card had no title or content.", raw };
   }
 
-  const isJsonBrain = Boolean(brainKeyData?.agent);
-  const mentionsAgent = keysText.toLowerCase().includes("agent");
-  const typedBrain = originalType.toLowerCase() === "brain";
-  const isBrainCandidate = isJsonBrain || mentionsAgent || typedBrain;
-  const suggestion: AidCardSuggestion = isJsonBrain || typedBrain ? "brain" : mentionsAgent ? "ambiguous" : "storyCard";
-  const suggestionReason = isJsonBrain
-    ? "keys field is JSON with an agent property."
-    : typedBrain
-      ? "AI Dungeon card type is Brain."
-      : mentionsAgent
-        ? "keys field mentions agent; review before importing as a Brain."
-        : "Standard AI Dungeon story card.";
-
-  const keys = keysToArray(keysText, brainKeyData);
   const storyCard = makeStoryCard({
     title,
-    keys,
+    keys: keysToArray(keysText),
     content,
     type: mapStoryCardType(originalType),
     active: true,
     pinned: false,
     priority: 0,
     state: JSON.stringify({
-      source: "aiDungeon",
+      source: "storyCardJson",
       originalType,
       description,
       originalKeys: keysText,
     }),
   });
-
-  const brainState = description || content;
-  const brainCandidate = isBrainCandidate
-    ? makeBrain({
-        characterName: brainKeyData?.agent || title,
-        triggers: keys,
-        source: "imported",
-        currentState: brainState,
-        recentDevelopments: content !== brainState ? content : "",
-        active: true,
-        pinned: false,
-        priority: 0,
-      })
-    : undefined;
 
   return {
     id: storyCard.id,
@@ -206,33 +145,27 @@ function parseCard(raw: unknown, sourceIndex: number): AidParsedCard | AidSkippe
     keysText,
     content,
     originalType,
-    suggestion,
-    suggestionReason,
     storyCard,
-    brainCandidate,
     raw,
   };
 }
 
-function parseJsonValue(value: unknown): AidCardParseResult {
+function parseJsonValue(value: unknown): StoryCardParseResult {
   const rawCards = collectCards(value);
   if (rawCards.length === 0) {
     return {
       cards: [],
       skipped: [],
-      warnings: ["Valid JSON was found, but it did not contain AI Dungeon story cards."],
+      warnings: ["Valid JSON was found, but it did not contain reference cards."],
     };
   }
 
-  const cards: AidParsedCard[] = [];
-  const skipped: AidSkippedCard[] = [];
+  const cards: ParsedStoryCard[] = [];
+  const skipped: SkippedStoryCard[] = [];
   rawCards.forEach((rawCard, index) => {
     const parsed = parseCard(rawCard, index);
-    if ("storyCard" in parsed) {
-      cards.push(parsed);
-    } else {
-      skipped.push(parsed);
-    }
+    if ("storyCard" in parsed) cards.push(parsed);
+    else skipped.push(parsed);
   });
 
   return {
@@ -242,10 +175,10 @@ function parseJsonValue(value: unknown): AidCardParseResult {
   };
 }
 
-function tryParseMultipleDocuments(text: string): AidCardParseResult | undefined {
+function tryParseMultipleDocuments(text: string): StoryCardParseResult | undefined {
   const documents = extractTopLevelJsonDocuments(text);
   if (documents.length <= 1) return undefined;
-  const results: AidCardParseResult[] = [];
+  const results: StoryCardParseResult[] = [];
   for (const document of documents) {
     try {
       results.push(parseJsonValue(JSON.parse(document)));
@@ -253,10 +186,10 @@ function tryParseMultipleDocuments(text: string): AidCardParseResult | undefined
       return undefined;
     }
   }
-  return mergeAidCardParseResults(results);
+  return mergeStoryCardParseResults(results);
 }
 
-export function mergeAidCardParseResults(results: AidCardParseResult[]): AidCardParseResult {
+export function mergeStoryCardParseResults(results: StoryCardParseResult[]): StoryCardParseResult {
   return {
     cards: results.flatMap((result) => result.cards),
     skipped: results.flatMap((result) => result.skipped),
@@ -265,13 +198,13 @@ export function mergeAidCardParseResults(results: AidCardParseResult[]): AidCard
   };
 }
 
-export function parseAidStoryCards(rawText: string): AidCardParseResult {
+export function parseStoryCardsJson(rawText: string): StoryCardParseResult {
   const text = rawText.trim();
   if (!text) {
     return {
       cards: [],
       skipped: [],
-      warnings: ["Story card JSON is empty. You can still import message history only."],
+      warnings: ["Reference Card JSON is empty."],
     };
   }
 

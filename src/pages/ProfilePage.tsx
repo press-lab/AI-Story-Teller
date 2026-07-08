@@ -433,7 +433,7 @@ function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
           <p className="eyebrow">1. Start</p>
           <h3>Create or explore</h3>
           <p className="muted">
-            Use New Adventure for your own setup, Import from AIST / AI Dungeon / GitHub JSON to continue an existing save,
+            Use New Adventure for your own setup, Import from AIST / GitHub JSON to continue an existing save,
             or Explore to copy a built-in or community scenario into your account.
           </p>
         </article>
@@ -442,14 +442,14 @@ function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
           <h3>Adventure, Play, Edit</h3>
           <p className="muted">
             Once an adventure is open, the top-left Adventure group appears. Adventure is the dashboard, Play is the turn
-            screen, and Edit is where setup, Story Cards, Characters, Plot, automations, and imports live.
+            screen, and Edit is where setup, Reference Cards, Characters, Plot, automations, and imports live.
           </p>
         </article>
         <article>
           <p className="eyebrow">3. Build context</p>
           <h3>Memory is inspectable</h3>
           <p className="muted">
-            Plot Essentials, Active Pressure, Story Cards, Characters, Author's Note, and recent messages are assembled
+            Plot Essentials, Active Pressure, Reference Cards, Characters, Author's Note, and recent messages are assembled
             into Context Preview. Nothing important should be hidden from review.
           </p>
         </article>

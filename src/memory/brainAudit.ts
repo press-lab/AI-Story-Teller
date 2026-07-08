@@ -252,7 +252,7 @@ Return ONLY a JSON array - no markdown, no prose. Each item must be one of:
 
 Rules:
 - Brains should hold private internal reactions, suspicions, motives, pressure, and plans for major recurring characters only.
-- Stable public identity, appearance, powers, biography, voice contract, locations, factions, and completed public events belong on Story Cards, not Brains.
+- Stable public identity, appearance, powers, biography, voice contract, locations, factions, and completed public events belong on Reference Cards, not Brains.
 - Keep current thoughts distinct. Remove duplicate thoughts that restate the same beat.
 - Keep thoughts in the brain character's own first-person perspective. Rewrite or remove thoughts that are in narrator voice, second person, player perspective, or another character's interiority.
 - Keep thoughts specific to a recent or durable private interpretation.

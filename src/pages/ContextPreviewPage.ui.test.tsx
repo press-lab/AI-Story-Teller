@@ -47,7 +47,7 @@ describe("ContextPreviewPage condense", () => {
     cleanup();
   });
 
-  it("updates compact Story Card context immediately after accepting a condensed draft", async () => {
+  it("updates compact Reference Card context immediately after accepting a condensed draft", async () => {
     const user = userEvent.setup();
     const card = makeStoryCard({
       id: "card-pact",
@@ -200,7 +200,7 @@ describe("ContextPreviewPage condense", () => {
     expect(within(screen.getByRole("table")).getByText("Independent Signal")).toBeInTheDocument();
   });
 
-  it("opens Story Card and Plot Component sources from context item titles", async () => {
+  it("opens Reference Card and World Block sources from context item titles", async () => {
     const user = userEvent.setup();
     const onOpenSourceItem = vi.fn();
     const adventure = {
@@ -250,7 +250,7 @@ describe("ContextPreviewPage condense", () => {
     });
   });
 
-  it("unpins Story Cards and Plot Components from context preview actions", async () => {
+  it("unpins Reference Cards and World Blocks from context preview actions", async () => {
     const user = userEvent.setup();
     const adventure = {
       ...createDefaultAdventure("Unpin Test"),
@@ -291,10 +291,10 @@ describe("ContextPreviewPage condense", () => {
     expect(cardRow).not.toBeNull();
     expect(componentRow).not.toBeNull();
 
-    await user.click(within(cardRow!).getByRole("button", { name: "Unpin Story Card Nyxa Tension" }));
-    await user.click(within(componentRow!).getByRole("button", { name: "Unpin Plot Component Mission Loop" }));
+    await user.click(within(cardRow!).getByRole("button", { name: "Unpin Reference Card Nyxa Tension" }));
+    await user.click(within(componentRow!).getByRole("button", { name: "Unpin World Block Mission Loop" }));
 
-    expect(within(screen.getByText("Nyxa Tension").closest("tr")!).queryByRole("button", { name: "Unpin Story Card Nyxa Tension" })).not.toBeInTheDocument();
-    expect(within(screen.getByText("Mission Loop").closest("tr")!).queryByRole("button", { name: "Unpin Plot Component Mission Loop" })).not.toBeInTheDocument();
+    expect(within(screen.getByText("Nyxa Tension").closest("tr")!).queryByRole("button", { name: "Unpin Reference Card Nyxa Tension" })).not.toBeInTheDocument();
+    expect(within(screen.getByText("Mission Loop").closest("tr")!).queryByRole("button", { name: "Unpin World Block Mission Loop" })).not.toBeInTheDocument();
   });
 });

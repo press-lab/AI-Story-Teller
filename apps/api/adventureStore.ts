@@ -1,10 +1,7 @@
-import type { Adventure, AdventureAction, ChatMessage, ComponentEntry, ContextBuildResult, MemoryReconcileRequest, ProviderConfig, ProviderUsage, StoryCardAIBuilderRequest } from "../../src/types/adventure";
+import type { Adventure, AdventureAction, ChatMessage, ContextBuildResult, MemoryReconcileRequest, ProviderConfig, ProviderUsage, StoryCardAIBuilderRequest } from "../../src/types/adventure";
 import { runAdventureGen, type AdventureGenPreferences, type AdventureGenResult } from "../../src/ai/adventureGen";
 import { buildContext } from "../../src/contextBuilder/contextBuilder";
-import { parseAidStoryCards } from "../../src/importers/aidCardParser";
-import { parseAidStoryText } from "../../src/importers/aidStoryParser";
-import { parseComponentsJson } from "../../src/importers/componentParser";
-import { createDefaultAdventure, makeComponent, normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
+import { createDefaultAdventure, normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
 import { adventureReducer } from "../../src/state/adventureReducer";
 import { runTurnPipeline } from "../../src/state/turnPipeline";
 import {
@@ -34,12 +31,10 @@ import { createId, nowIso } from "./ids";
 import { appendPerformanceTrace, createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
 
 export interface ImportAdventureInput {
-  sourceType: "aist" | "aid" | "githubSave";
+  sourceType: "aist" | "githubSave";
   text?: string;
   json?: unknown;
   title?: string;
-  storyCardsText?: string;
-  componentsText?: string;
 }
 
 export interface TurnExecutionResult {
@@ -181,6 +176,10 @@ export function importAdventureAsCopy(
   input: ImportAdventureInput,
   config: ApiConfig,
 ): Adventure[] {
+  if ((input as { sourceType?: string }).sourceType === "aid") {
+    throw new Error("This backup import format is no longer supported.");
+  }
+
   const rawText = asJsonText(input);
   const importDecision = recordPolicyDecision(data, {
     gate: "import",
@@ -195,7 +194,8 @@ export function importAdventureAsCopy(
     ? [importAist(input)]
     : input.sourceType === "githubSave"
       ? importGitHubSave(input)
-      : [importAid(input)];
+      : undefined;
+  if (!imported) throw new Error("Unsupported import source.");
 
   for (const adventure of imported) {
     saveBackendAdventure(data, ownerUserId, adventure, "import");
@@ -343,7 +343,7 @@ export async function runBackendStoryCardBuilder(
   assertBackendAiInputAllowed(data, ownerUserId, adventureId, request.description ?? "", config);
   const result = await runStoryCardAIBuilder(record.adventure, backendProviderConfig(data, config, providerOverride), request);
   const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
-  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce a Story Card suggestion.");
+  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce a Reference Card suggestion.");
   const next = applyActionsToAdventure(record.adventure, result.actions);
   return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
 }
@@ -359,7 +359,7 @@ export async function runBackendStoryCardUpdates(
   const record = getOwnedAdventureRecord(data, ownerUserId, adventureId);
   const result = await runManualStoryCardsUpdate(record.adventure, backendProviderConfig(data, config, providerOverride));
   const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
-  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce Story Card update suggestions.");
+  assertAiToolProducedWork(proposalCount, result.logEntry.errors, "The AI did not produce Reference Card update suggestions.");
   const next = applyActionsToAdventure(record.adventure, result.actions);
   return { adventure: saveBackendAdventure(data, ownerUserId, next, "manualSave").adventure };
 }
@@ -988,58 +988,6 @@ function importGitHubSave(input: ImportAdventureInput): Adventure[] {
   throw new Error("GitHub save JSON was not recognized as an AI Story Teller bundle or save file.");
 }
 
-function importAid(input: ImportAdventureInput): Adventure {
-  const storyText = asJsonText(input);
-  const storyResult = parseAidStoryText(storyText);
-  const cardResult = input.storyCardsText ? parseAidStoryCards(input.storyCardsText) : undefined;
-  const componentResult = input.componentsText ? parseComponentsJson(input.componentsText) : undefined;
-  const title = input.title?.trim() || storyResult.detectedTitle?.trim() || "Imported AI Dungeon Adventure";
-  const base = createDefaultAdventure(title);
-  const timestamp = nowIso();
-  const setupComponents = mergeSingletonComponents<ComponentEntry>([
-    ...storyResult.setupComponents.map((component) => makeComponent(component)),
-    ...(componentResult?.components.map((parsed) => parsed.component) ?? []),
-  ]);
-  const adventure: Adventure = {
-    ...base,
-    openingScene: componentResult?.openingScene ?? storyResult.openingScene ?? base.openingScene,
-    components: mergeSingletonComponents([...base.components, ...setupComponents]),
-    storyCards: cardResult?.cards.map((card) => card.storyCard) ?? [],
-    brains: cardResult?.cards.flatMap((card) => card.brainCandidate ? [card.brainCandidate] : []) ?? [],
-    messages: storyResult.messages,
-    metadata: {
-      ...base.metadata,
-      aiDungeonImport: {
-        importedAt: timestamp,
-        storySourceKind: storyResult.sourceKind,
-        messageCount: storyResult.messages.length,
-        parsedCardCount: cardResult?.cards.length ?? 0,
-        warnings: [...storyResult.warnings, ...(cardResult?.warnings ?? []), ...(componentResult?.warnings ?? [])],
-      },
-    },
-    activeState: {
-      ...base.activeState,
-      turn: storyResult.messages.filter((message) => message.role === "user").length,
-    },
-    updatedAt: timestamp,
-  };
-  return normalizeAdventure(sanitizeAdventureForPersistence(adventure));
-}
-
 function duplicateAdventure(adventure: Adventure): Adventure {
   return importAdventureJson(JSON.stringify(adventure), true);
-}
-
-function mergeSingletonComponents<T extends { type: ComponentEntry["type"] }>(components: T[]): T[] {
-  const singletonTypes = new Set<ComponentEntry["type"]>(["narrationRules", "aiInstructions", "plotEssentials", "currentArc", "activePressure", "authorNote"]);
-  const out: T[] = [];
-  const seenSingleton = new Set<ComponentEntry["type"]>();
-  for (const component of components) {
-    if (singletonTypes.has(component.type)) {
-      if (seenSingleton.has(component.type)) continue;
-      seenSingleton.add(component.type);
-    }
-    out.push(component);
-  }
-  return out;
 }

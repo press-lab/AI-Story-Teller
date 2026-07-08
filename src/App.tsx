@@ -132,7 +132,7 @@ type BackendModelMode = "platform" | "personal";
 
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
   { id: "components", label: "Plot" },
-  { id: "storyCards", label: "Story Cards" },
+  { id: "storyCards", label: "Reference Cards" },
   { id: "brains", label: "Characters" },
   { id: "memoryInbox", label: "Memory", badge: "memory" },
   { id: "chronicle", label: "Chronicle" },
@@ -159,7 +159,7 @@ const modalTitles: Partial<Record<TabId, string>> = {
   context: "Context",
   chronicle: "Adventure Chronicle",
   components: "Plot",
-  storyCards: "Story Cards",
+  storyCards: "Reference Cards",
   brains: "Characters",
   triggers: "Automations",
   memoryInbox: "Memory Suggestions",
@@ -1500,11 +1500,6 @@ export default function App() {
           <ImportExportPage
             {...common}
             onImportAdventure={library.importAdventure}
-            onCreateAdventureFromImport={library.createAdventureFromImport}
-            onOpenImportedAdventure={() => {
-              setModalTab(undefined);
-              navigateTo("play");
-            }}
             isBackendAdmin={isBackendAdmin}
             deviceOnlyDataMode={adminDeviceOnlyDataActive}
             onDeviceOnlyDataModeChange={setCurrentAdventureDeviceOnlyDataMode}
@@ -1540,7 +1535,6 @@ export default function App() {
         onCreate={createAdventureFromSetup}
         onOpen={async (id) => { await library.openAdventure(id); }}
         onOpenEdit={async (id) => { const opened = await library.openAdventure(id); if (opened) openEditor(); }}
-        onCreateAdventureFromImport={library.createAdventureFromImport}
         onImportAdventure={library.importAdventure}
         onDuplicate={library.duplicateAdventure}
         onDelete={(id) => library.removeAdventure(id, adventure?.id)}

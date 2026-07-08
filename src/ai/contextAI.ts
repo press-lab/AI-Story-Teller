@@ -69,7 +69,7 @@ export async function runContextDedup(
       {
         role: "system",
         content:
-          'Analyze adventure story context for duplicate or overlapping information. Return ONLY valid JSON.\n\nRules:\n- Story Cards are canonical for characters/locations/lore; prefer trimming non-card items when they overlap with a Story Card.\n- Only flag genuine redundancy (>40% conceptual overlap).\n- suggestedContent: the trimItemId content after removing duplicated facts. Empty string if both need manual review.\n- isConflict: true if both items are Story Cards or are the same priority (user must decide which wins).',
+          'Analyze adventure story context for duplicate or overlapping information. Return ONLY valid JSON.\n\nRules:\n- Reference Cards are canonical for characters/locations/lore; prefer trimming non-card items when they overlap with a Reference Card.\n- Only flag genuine redundancy (>40% conceptual overlap).\n- suggestedContent: the trimItemId content after removing duplicated facts. Empty string if both need manual review.\n- isConflict: true if both items are Reference Cards or are the same priority (user must decide which wins).',
       },
       {
         role: "user",

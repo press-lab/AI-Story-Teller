@@ -23,7 +23,7 @@ Default local database:
 
 For shared tester access, use Postgres instead. See [Local Postgres Backend](./postgres-local-development.md). Set `AIST_DATABASE_URL` and run `npm.cmd run api:postgres:migrate` before starting `api:serve`.
 
-The frontend now opens on an account-required welcome page. Profile is the combined home and adventure library. Browser Local remains an owner/testing runtime and keeps IndexedDB saves, browser provider settings, JSON backup/restore, AI Dungeon import, and GitHub saves independent from backend adventure storage.
+The frontend now opens on an account-required welcome page. Profile is the combined home and adventure library. Browser Local remains an owner/testing runtime and keeps IndexedDB saves, browser provider settings, JSON backup/restore, and GitHub saves independent from backend adventure storage.
 
 For shared tester access, use:
 
@@ -177,12 +177,12 @@ It separates:
 - Scenarios: reusable setup packages that can be published to Explore.
 - Adventures: private playthroughs with actions to open, edit, or publish reusable setup as a scenario.
 
-Publishing from an adventure creates a scenario draft, creates an immutable revision, runs the share gate, publishes the revision, and refreshes Profile and Explore. The published payload includes reusable setup surfaces such as opening scene, components, story cards, brains, trigger rules, and thumbnail. It excludes transcript messages and private runtime state.
+Publishing from an adventure creates a scenario draft, creates an immutable revision, runs the share gate, publishes the revision, and refreshes Profile and Explore. The published payload includes reusable setup surfaces such as opening scene, components, reference cards, brains, trigger rules, and thumbnail. It excludes transcript messages and private runtime state.
 
 ## Explore Scenario Starts
 
 Explore contains built-in premade scenarios and backend-published community scenarios.
 
-Starting a backend-published scenario calls `POST /scenario-revisions/:id/fork` and creates a fresh adventure owned by the current user. The fork includes the published setup content, opening scene, story cards, components, and setup metadata. It does not copy the creator's private transcript.
+Starting a backend-published scenario calls `POST /scenario-revisions/:id/fork` and creates a fresh adventure owned by the current user. The fork includes the published setup content, opening scene, reference cards, components, and setup metadata. It does not copy the creator's private transcript.
 
 The current implementation has no user-variable substitution. Explore warns the tester before starting that they should edit the new adventure if they do not want to use the premade player character.

@@ -22,8 +22,8 @@ CONTEXT SECTIONS (read all, honour their order):
   B. AI Instructions — narrative rules and style for this adventure.
   C. Plot Essentials — current operating truth and always-on constraints. Ground truth.
   C2. Current Story Arc — active arc log and any gated Arc Director phase instruction.
-  E. Components — general world-building context (always-on or pinned entries).
-  F. Story Cards — World Info entries injected when their trigger keywords appear in recent text.
+  E. World Blocks — general world-building context (always-on or pinned entries).
+  F. Reference Cards — triggered reference entries injected when their keywords appear in recent text.
   G. Brains — internal mental state of named characters. Private to the narrator; never quote directly.
   D. Author's Note — immediate narrative direction for this turn. Highest-priority steering.
   J. Next Output Bias — one-turn instruction. Apply it, then disregard it.
@@ -32,8 +32,8 @@ CONTEXT SECTIONS (read all, honour their order):
 
 CANON GROUNDING:
   Treat this adventure's context as the only canon, even when names, places, factions, or concepts resemble a published setting, fandom, or prior playthrough.
-  Story Cards are binding identity records for named characters, locations, factions, relationships, and lore. If a Story Card is present, follow it over any outside knowledge.
-  If a famous or familiar name appears but no matching Story Card, Plot Essential, Brain, or Recent Message establishes the detail, treat the detail as unknown. Do not import biography, relationships, motives, powers, locations, or events from model training data.
+  Reference Cards are binding identity records for named characters, locations, factions, relationships, and lore. If a Reference Card is present, follow it over any outside knowledge.
+  If a famous or familiar name appears but no matching Reference Card, Plot Essential, Brain, or Recent Message establishes the detail, treat the detail as unknown. Do not import biography, relationships, motives, powers, locations, or events from model training data.
 
 Honour every section. Continue the scene in prose. Keep the player able to act.`;
 
@@ -307,7 +307,7 @@ export function buildMemoryTagInstruction(categories: string[], existingCardTitl
   };
   const lines = categories.map((c) => `- ${c}: ${categoryDescriptions[c] ?? c}`).join("\n");
   return `[MEMORY TAGGING]
-After writing your response, append ONE self-closing <memory> tag if this turn created a durable new fact or meaningful update that should become Story Card memory. These tags are stripped before the player sees them. Pick the strongest single Story Card memory candidate in the response.
+After writing your response, append ONE self-closing <memory> tag if this turn created a durable new fact or meaningful update that should become Reference Card memory. These tags are stripped before the player sees them. Pick the strongest single Reference Card memory candidate in the response.
 
 Qualifying categories:
 ${lines}
@@ -330,8 +330,8 @@ RULES:
 - NEW subject (no existing card): tag it with a new title.
 - EXISTING subject (already has a card in the list below): if a NEW permanent fact about it became true this turn, REUSE that card's EXACT title and put ONLY the new fact in content — it updates the living card instead of duplicating. NEVER invent a second title for a subject that already has a card (no "Setu and Nyxa's Private Space" when "Setu and Nyxa" exists). If nothing permanent changed, skip.
 - Worth tagging: a relationship becomes public or changes terms; a new recurring NPC/location/faction appears; a secret is revealed; an alliance, betrayal, title, injury, debt, promise, rule, or permanent consequence is established.
-- Not worth tagging: room position, travel between rooms, one-off banter, temporary mood, routine attacks with no lasting effect, or facts already present in Story Cards/Brains/Plot Essentials.
-- One Story Card memory tag per response. If nothing durable changed, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting story cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
+- Not worth tagging: room position, travel between rooms, one-off banter, temporary mood, routine attacks with no lasting effect, or facts already present in Reference Cards/Brains/Plot Essentials.
+- One Reference Card memory tag per response. If nothing durable changed, omit entirely.${existingCardTitles.length > 0 ? `\n\nExisting Reference Cards — reuse the exact title to UPDATE, never duplicate: ${existingCardTitles.join(", ")}` : ""}`;
 }
 
 function buildTurnScopeContract(responseLengthHint: number | undefined): string {
@@ -488,7 +488,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // E. Components — general always-on or pinned components (not a special typed section above)
+  // E. World Blocks — general always-on or pinned components (not a special typed section above)
   const generalComponentItems = prioritySort(adventure.components).flatMap((component) => {
     if (component.type === "narrationRules" || component.type === "aiInstructions" || component.type === "plotEssentials" || component.type === "currentArc" || component.type === "activePressure" || component.type === "immediateMomentum" || component.type === "authorNote") return [];
     if (!component.active) {
@@ -501,7 +501,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     return [next];
   });
 
-  // F. Story Cards + Auto-Cards
+  // F. Reference Cards
   const storyCardItems: ContextItem[] = [];
   for (const card of prioritySort(adventure.storyCards)) {
     const forced = isForced(adventure, "storyCard", card.id);
@@ -518,7 +518,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
       pushIncluded(next, `Story card included by ${card.pinned ? "pin" : forced ? "manual force" : card.inclusionPolicy === "always" ? "always policy" : `trigger ${match.pattern}`}; priority=${card.priority}; protected=${card.protected}.`);
       storyCardItems.push(next);
     } else {
-      pushExcluded("storyCard", card.id, card.title, "not_triggered", "No story card trigger matched current input, output, or recent history.");
+      pushExcluded("storyCard", card.id, card.title, "not_triggered", "No reference card trigger matched current input, output, or recent history.");
     }
   }
 
@@ -542,7 +542,7 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     // thoughts are always the current, size-capped snapshot. The legacy currentState /
     // relationshipPressure / recentDevelopments fields are NOT injected: they have no editor field,
     // append unbounded, and ballooned context (a high-frequency character hit ~9KB). History lives
-    // in the thought archive and in arc-graduated story cards, not in an ever-growing state blob.
+    // in the thought archive and in arc-graduated reference cards, not in an ever-growing state blob.
     const thoughtsForContext = dedupeThoughtRecord(brain.thoughts);
     if (Object.keys(thoughtsForContext).length === 0) {
       pushExcluded("brain", brain.id, brain.characterName, "not_triggered", "Brain triggered but has no thoughts yet — nothing to inject.");
@@ -629,8 +629,8 @@ export function buildContext(adventure: Adventure, options: BuildOptions = {}): 
     section("aiInstructions", "B. AI Instructions", 1, aiInstructionItems),
     section("plotEssentials", "C. Plot Essentials", 2, plotEssentialItems),
     section("currentArc", "C2. Current Story Arc", 2.5, currentArcItems),
-    section("components", "E. Components", 3, generalComponentItems),
-    section("storyCards", "F. Story Cards", 4, storyCardItems),
+    section("components", "E. World Blocks", 3, generalComponentItems),
+    section("storyCards", "F. Reference Cards", 4, storyCardItems),
     section("brains", "G. Brains", 5, brainItems),
     // D. Author's Note is placed just before recent messages (AID-style) for maximum recency influence
     section("authorNote", "D. Author's Note", 8, authorNoteItems),

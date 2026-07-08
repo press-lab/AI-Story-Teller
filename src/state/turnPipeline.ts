@@ -143,7 +143,7 @@ export async function applyProviderResponse({
     finalContent = `${finalContent}\n\n${visibleThoughtLines.join("\n")}`;
   }
 
-  // Convert inline memory tags to story card proposals (zero extra API calls).
+  // Convert inline memory tags to reference card proposals (zero extra API calls).
   // Living-card routing: if a tag's subject already has a card (matched by exact title), it becomes
   // an UPDATE to that card (append + archive on approval) instead of a duplicate sibling. Otherwise
   // it's a new card. Either way it lands in the Memory Inbox for approval.
@@ -196,7 +196,7 @@ export async function applyProviderResponse({
 
   next = applyRuntimeEngines(next, { source: "output", text: finalContent });
 
-  // Arc Director: count only Story Card / Brain ids whose trigger patterns matched turn text.
+  // Arc Director: count only Reference Card / Brain ids whose trigger patterns matched turn text.
   // Pinned or always-on context can be included without counting as engagement.
   const triggeredIds = preProviderContext.triggeredThreadIds;
   if (advanceArcPacing && triggeredIds.length > 0) {

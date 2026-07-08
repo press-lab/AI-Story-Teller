@@ -319,7 +319,7 @@ describe("adventureReducer", () => {
     expect(state.components.some((entry) => entry.id === component.id)).toBe(false);
   });
 
-  it("handles every story card action", () => {
+  it("handles every reference card action", () => {
     let state = baseAdventure();
     const storyCard = makeStoryCard({ title: "Story C", content: "C", priority: 30 });
     state = reduce(state, { type: "UPSERT_STORY_CARD", storyCard });
@@ -419,7 +419,7 @@ describe("adventureReducer", () => {
     expect(updated.archivedThoughts.first).toBe("1 → oldest thought here");
   });
 
-  it("turns overwritten AI Brain fields into pending historical Story Card proposals", () => {
+  it("turns overwritten AI Brain fields into pending historical Reference Card proposals", () => {
     const brain = makeBrain({
       id: "brain-margo-history",
       characterName: "Margo",
@@ -450,7 +450,7 @@ describe("adventureReducer", () => {
     expect(outgoing.every((proposal) => proposal.memoryMode === "historical")).toBe(true);
   });
 
-  it("auto-approves overwritten Brain field history when Story Cards are auto-approved", () => {
+  it("auto-approves overwritten Brain field history when Reference Cards are auto-approved", () => {
     const brain = makeBrain({
       id: "brain-margo-auto-history",
       characterName: "Margo",
@@ -681,7 +681,7 @@ describe("adventureReducer", () => {
     expect(statusState.activeState.memoryProposals.find((proposal) => proposal.id === "proposal-ignore")?.status).toBe("ignored");
   });
 
-  it("preserves static story card mode when approving an appended static proposal", () => {
+  it("preserves static reference card mode when approving an appended static proposal", () => {
     let state = baseAdventure();
     const redRing = makeStoryCard({
       id: "card-red-ring",
@@ -764,7 +764,7 @@ describe("adventureReducer", () => {
     expect(child?.content).toContain("notification protocol");
   });
 
-  it("does not resurrect dismissed static story card update proposals", () => {
+  it("does not resurrect dismissed static reference card update proposals", () => {
     let state = baseAdventure();
     state = reduce(state, {
       type: "UPSERT_STORY_CARD",
@@ -949,7 +949,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-duplicate")).toBe(false);
   });
 
-  it("auto-approves Story Card history created by an auto-approved Plot Essentials replacement", () => {
+  it("auto-approves Reference Card history created by an auto-approved Plot Essentials replacement", () => {
     const plot = makeComponent({
       id: "component-plot",
       title: "Plot Essentials",
@@ -1049,7 +1049,7 @@ describe("adventureReducer", () => {
     expect(seeded?.arcState?.phase).toBe("simmer");
     expect(seeded?.arcState?.tier).toBe(0);
     expect(seeded?.content).toBe("");
-    // Old arc banked as a Story Card so prior arcs are preserved.
+    // Old arc banked as a Reference Card so prior arcs are preserved.
     expect(state.storyCards.some((card) => card.content.includes("Renzan conspiracy was broken"))).toBe(true);
   });
 
@@ -1215,7 +1215,7 @@ describe("adventureReducer", () => {
     expect(updated?.tokenBudget).toBeGreaterThanOrEqual(450);
   });
 
-  it("applies Story Card proposal type and auto-update settings when approving AI builder drafts", () => {
+  it("applies Reference Card proposal type and auto-update settings when approving AI builder drafts", () => {
     let state = baseAdventure();
     const proposal = makeMemoryProposal({
       id: "proposal-relationship-card",
@@ -1241,7 +1241,7 @@ describe("adventureReducer", () => {
     });
   });
 
-  it("routes related generated facts into an existing living story card instead of creating a sibling", () => {
+  it("routes related generated facts into an existing living reference card instead of creating a sibling", () => {
     const viktor = makeStoryCard({
       id: "card-viktor",
       title: "Viktor's Lattice Heart",
@@ -1355,7 +1355,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.find((proposal) => proposal.id === "pe-replacement")?.status).toBe("approved");
   });
 
-  it("archives direct AI Plot Essentials replacements through historical Story Card proposals", () => {
+  it("archives direct AI Plot Essentials replacements through historical Reference Card proposals", () => {
     const plot = makeComponent({
       id: "component-pe-direct",
       title: "Plot Essentials",
@@ -1383,7 +1383,7 @@ describe("adventureReducer", () => {
     expect(outgoing.every((proposal) => proposal.memoryMode === "historical")).toBe(true);
   });
 
-  it("auto-approves outgoing Plot Essentials history when Story Cards are auto-approved", () => {
+  it("auto-approves outgoing Plot Essentials history when Reference Cards are auto-approved", () => {
     const plot = makeComponent({
       id: "component-pe-auto-history",
       title: "Plot Essentials",
@@ -1442,7 +1442,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.filter((p) => p.title.toLowerCase() === "the harbormaster")).toHaveLength(1);
     expect(state.activeState.memoryProposals.some((p) => p.id === "p2")).toBe(false);
 
-    // New story card proposal whose title already exists as a card → dropped.
+    // New reference card proposal whose title already exists as a card → dropped.
     state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: makeMemoryProposal({ id: "p3", title: "Story A", proposedType: "storyCard", status: "pending" }) });
     expect(state.activeState.memoryProposals.some((p) => p.id === "p3")).toBe(false);
 
@@ -1480,7 +1480,7 @@ describe("adventureReducer", () => {
     const cardsBefore = state.storyCards.length;
     state = reduce(state, { type: "APPLY_ARC_CONTINUATION", componentId: arc.id, option });
 
-    // The finished arc is banked as a Story Card.
+    // The finished arc is banked as a Reference Card.
     expect(state.storyCards.length).toBe(cardsBefore + 1);
     expect(state.storyCards.some((card) => card.content.includes("Renzan fell"))).toBe(true);
 
@@ -1493,7 +1493,7 @@ describe("adventureReducer", () => {
     expect(get().arcContinuationOptions).toBeUndefined();
   });
 
-  it("completes the current arc directly into a historical Story Card", () => {
+  it("completes the current arc directly into a historical Reference Card", () => {
     let state = baseAdventure();
     const arc = makeComponent({
       title: "Current Story Arc",

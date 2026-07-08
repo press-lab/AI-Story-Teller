@@ -11,18 +11,18 @@ export const AI_INSTRUCTIONS_BEST_PRACTICES = `AI Instructions best practices:
 - Do not store character facts, location facts, relationship facts, current mission state, or backstory here.
 - Keep them scenario-specific and non-redundant with Narration Rules.
 - Prefer named sections with a few concrete bullets over one large lore paragraph.
-- Per-character voice belongs on that character's Story Card, not in AI Instructions.`;
+- Per-character voice belongs on that character's Reference Card, not in AI Instructions.`;
 
 export const PLOT_ESSENTIALS_BEST_PRACTICES = `Plot Essentials best practices:
 - Plot Essentials are the compact current operating truth: what is happening now, the active story situation, open tensions, obligations, and major constraints that should shape every scene.
 - They are always-on context, so keep them short and non-redundant.
 - Replace the full block when the story drifts; do not append a chronological log.
-- Remove resolved or outgoing facts. The reducer will turn outgoing PE facts into pending historical Story Card proposals for review.
+- Remove resolved or outgoing facts. The reducer will turn outgoing PE facts into pending historical Reference Card proposals for review.
 - Do not include temporary room position, who is standing where, momentary emotions, or one-off scenery.
-- Put situational lore, character identity, relationships, secrets, recurring objects, locations, factions, and completed past events in Story Cards instead.`;
+- Put situational lore, character identity, relationships, secrets, recurring objects, locations, factions, and completed past events in Reference Cards instead.`;
 
-export const STORY_CARD_BEST_PRACTICES = `Story Card best practices:
-- A Story Card is durable triggered memory for one subject: a character, location, faction, object, relationship, secret, rule, or completed event.
+export const STORY_CARD_BEST_PRACTICES = `Reference Card best practices:
+- A Reference Card is durable triggered memory for one subject: a character, location, faction, object, relationship, secret, rule, or completed event.
 - The entry must be self-contained. Repeat the subject name in the body; do not rely on the title alone.
 - Keep entries concise, concrete, and unambiguous. Avoid temporary scene state and excessive appearance details unless they matter.
 - Use present tense for static always-true facts and living current-state cards. Use past tense for historical/completed events.
@@ -47,12 +47,12 @@ ${TRIGGER_BEST_PRACTICES}`;
 
 export function storyCardModeGuidance(mode: StoryCardMemoryMode | undefined): string {
   if (mode === "living") {
-    return "This is a living Story Card: keep only the subject's current evolving state in live content. Preserve still-current facts, replace obsolete claims, and write in present tense. Do not create sibling cards for the same evolving subject.";
+    return "This is a living Reference Card: keep only the subject's current evolving state in live content. Preserve still-current facts, replace obsolete claims, and write in present tense. Do not create sibling cards for the same evolving subject.";
   }
   if (mode === "historical") {
-    return "This is a historical Story Card: record completed past events or retired Plot Essentials facts in past tense. Do not make resolved events sound current.";
+    return "This is a historical Reference Card: record completed past events or retired Plot Essentials facts in past tense. Do not make resolved events sound current.";
   }
-  return "This is a static Story Card: record durable always-true facts, traits, rules, identity, voice, location, or lore in present tense.";
+  return "This is a static Reference Card: record durable always-true facts, traits, rules, identity, voice, location, or lore in present tense.";
 }
 
 export function storyCardCreationGuidance(mode: StoryCardMemoryMode | undefined): string {

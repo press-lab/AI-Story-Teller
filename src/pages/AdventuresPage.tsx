@@ -11,10 +11,9 @@ import type {
   StoryCardMemoryMode,
   StoryCardType,
 } from "../types/adventure";
-import { AidImportWizard } from "../components/AidImportWizard";
 import type { AdventureSummary } from "../db/adventureDb";
 import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../state/defaults";
-import { parseAidStoryCards } from "../importers/aidCardParser";
+import { parseStoryCardsJson } from "../importers/storyCardParser";
 import {
   runAdventureGen,
   STORYTELLER_PROFILES,
@@ -51,7 +50,6 @@ interface AdventuresPageProps {
   onRestoreBackup?: (id: string, snapshotId: string) => Promise<void>;
   onResolveSyncConflict?: (id: string, resolution: AdventureSyncConflictResolution) => Promise<void>;
   onImportAdventure?: (text: string) => Promise<void>;
-  onCreateAdventureFromImport?: (adventure: Adventure) => Promise<void>;
   saveSlots?: GitHubSaveSlot[];
   savesStatus?: string;
   loadingSlotId?: string;
@@ -130,7 +128,7 @@ const storyShapeOptions: Array<{ value: AdventureStoryShape; label: string; desc
   { value: "balanced", label: "Balanced starter", description: "Small cast, clear premise, active pressure, and a few durable cards." },
   { value: "sandbox", label: "Sandbox", description: "Reactive world, loose hooks, more factions/locations, less plot locking." },
   { value: "missionLoop", label: "Mission loop", description: "Jobs create fallout, fallout creates team scenes, team scenes create the next job." },
-  { value: "mystery", label: "Mystery", description: "Known question in PE, clues/suspects/secrets in Story Cards, no early answer." },
+  { value: "mystery", label: "Mystery", description: "Known question in PE, clues/suspects/secrets in Reference Cards, no early answer." },
   { value: "factionPolitics", label: "Faction politics", description: "Leverage, alliances, public pressure, and consequences." },
   { value: "romanceDrama", label: "Romance drama", description: "Choice-driven tension, banter, relationships as pressure, not forced commitment." },
   { value: "survivalHorror", label: "Survival / horror", description: "Threat rules, scarcity, safe places, dread, and consequences." },
@@ -187,7 +185,7 @@ function blankStoryCardDraft(): StoryCardDraft {
   return {
     id: createId("storyDraft"),
     source: "manual",
-    title: "New Story Card",
+    title: "New Reference Card",
     keysText: "",
     content: "",
     type: "custom",
@@ -217,7 +215,7 @@ function storyCardFromDraft(draft: StoryCardDraft): StoryCard | undefined {
   const content = draft.content.trim();
   if (!title && !content) return undefined;
   return makeStoryCard({
-    title: title || "Untitled Story Card",
+    title: title || "Untitled Reference Card",
     keys: fromCommaList(draft.keysText),
     content,
     type: draft.type,
@@ -252,7 +250,6 @@ export function AdventuresPage({
   onRestoreBackup,
   onResolveSyncConflict,
   onImportAdventure,
-  onCreateAdventureFromImport,
   saveSlots,
   savesStatus,
   loadingSlotId,
@@ -271,7 +268,7 @@ export function AdventuresPage({
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
 }: AdventuresPageProps) {
   const { confirmAction, notify } = useActionFeedback();
-  const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github" | "backups">("list");
+  const [view, setView] = useState<"list" | "create" | "aistImport" | "github" | "backups">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [backupAdventure, setBackupAdventure] = useState<AdventureSummary | undefined>();
   const [backupSnapshots, setBackupSnapshots] = useState<BackendAdventureSnapshotSummary[]>([]);
@@ -428,7 +425,7 @@ export function AdventuresPage({
   }
 
   function parseStoryCardJson(text = storyCardJsonText) {
-    const result = parseAidStoryCards(text);
+    const result = parseStoryCardsJson(text);
     if (result.error) {
       setJsonStoryCards([]);
       setJsonImportError(result.error);
@@ -612,7 +609,7 @@ export function AdventuresPage({
               <p className="eyebrow">New Adventure</p>
               <h3>Set up before playing</h3>
               <p className="muted">
-                Add starter context and Story Cards now, or leave everything blank and build it later.
+                Add starter context and Reference Cards now, or leave everything blank and build it later.
               </p>
             </div>
             <div className="toolbar">
@@ -621,9 +618,6 @@ export function AdventuresPage({
                   Import from AIST
                 </button>
               )}
-              <button type="button" onClick={() => setView("aidImport")}>
-                Import from AI Dungeon
-              </button>
               {allowDeviceOnlyScenarioCreation && (
                 <CheckboxField
                   label="Keep this adventure on this device only"
@@ -643,7 +637,7 @@ export function AdventuresPage({
             <details className="setup-panel" open={!title || title === "New Adventure"}>
               <summary>Generate with AI</summary>
               <p className="muted">
-                Pick a setup guide or stay custom, then describe your adventure idea. The AI drafts a title, opening scene, components, and story cards for review.
+                Pick a setup guide or stay custom, then describe your adventure idea. The AI drafts a title, opening scene, World Blocks, and reference cards for review.
               </p>
               <Field label="Storyteller">
                 <div className="storyteller-profile-grid" role="radiogroup" aria-label="Storyteller">
@@ -775,9 +769,9 @@ export function AdventuresPage({
           </details>
 
           <details className="setup-panel">
-            <summary>Starter Components ({starterComponents.length})</summary>
+            <summary>Starter World Blocks ({starterComponents.length})</summary>
             <p className="muted">
-              Components become Plot Components. Keep Plot Essentials short and factual; use AI Instructions for
+              Starter blocks become World Blocks. Keep Plot Essentials short and factual; use AI Instructions for
               persistent generation rules and Author's Note for tone.
             </p>
             <div className="toolbar">
@@ -797,11 +791,11 @@ export function AdventuresPage({
                 </button>
               )}
               <button type="button" onClick={() => setComponentDrafts((drafts) => [...drafts, blankComponentDraft("custom")])}>
-                Add Custom Component
+                  Add Custom Block
               </button>
             </div>
             {componentDrafts.length === 0 ? (
-              <p className="muted">No starter components selected.</p>
+              <p className="muted">No starter World Blocks selected.</p>
             ) : (
               <div className="list">
                 {componentDrafts.map((draft) => (
@@ -864,22 +858,22 @@ export function AdventuresPage({
           </details>
 
           <details className="setup-panel" open>
-            <summary>Starter Story Cards ({totalStoryCardCount})</summary>
+            <summary>Starter Reference Cards ({totalStoryCardCount})</summary>
             <p className="muted">
-              Cards should be self-contained. Add names, aliases, and nicknames as triggers; unpinned cards need at
+              Reference Cards should be self-contained. Add names, aliases, and nicknames as triggers; unpinned cards need at
               least one trigger to enter context. Character cards work best with concrete voice examples.
             </p>
 
             <div className="grid two">
               <section className="setup-column">
                 <div className="panel-heading">
-                  <h3>Manual Story Cards</h3>
+                  <h3>Manual Reference Cards</h3>
                   <button type="button" onClick={() => setManualStoryCardDrafts((drafts) => [...drafts, blankStoryCardDraft()])}>
-                    Add Manual Card
+                    Add Manual Reference Card
                   </button>
                 </div>
                 {manualStoryCardDrafts.length === 0 ? (
-                  <p className="muted">No manual Story Cards yet.</p>
+                  <p className="muted">No manual Reference Cards yet.</p>
                 ) : (
                   <div className="list">
                     {manualStoryCardDrafts.map((draft) => (
@@ -953,7 +947,7 @@ export function AdventuresPage({
 
               <section className="setup-column">
                 <div className="panel-heading">
-                  <h3>Story Card JSON</h3>
+                  <h3>Reference Card JSON</h3>
                   <button type="button" onClick={() => parseStoryCardJson()}>
                     Parse JSON
                   </button>
@@ -961,7 +955,7 @@ export function AdventuresPage({
                 <Field label="Upload .json file">
                   <input type="file" accept="application/json,.json" onChange={readStoryCardFile} />
                 </Field>
-                <Field label="Paste Story Card JSON">
+                <Field label="Paste Reference Card JSON">
                   <textarea
                     rows={10}
                     value={storyCardJsonText}
@@ -977,7 +971,7 @@ export function AdventuresPage({
                 ))}
                 {jsonStoryCards.length > 0 && (
                   <div className="notice">
-                    <strong>{jsonStoryCards.length} JSON Story Card(s) ready</strong>
+                    <strong>{jsonStoryCards.length} JSON Reference Card(s) ready</strong>
                     <ul className="compact-list setup-preview-list">
                       {jsonStoryCards.slice(0, 8).map((card) => (
                         <li key={card.id}>
@@ -988,7 +982,7 @@ export function AdventuresPage({
                     </ul>
                     {jsonStoryCards.length > 8 && <p className="muted">Showing first 8 imported cards.</p>}
                     <button type="button" onClick={() => setJsonStoryCards([])}>
-                      Clear JSON Cards
+                      Clear JSON Reference Cards
                     </button>
                   </div>
                 )}
@@ -1048,9 +1042,9 @@ export function AdventuresPage({
                 <dl className="import-export-stats">
                   <div><dt>Turn</dt><dd>{aistImportPreview.turn}</dd></div>
                   <div><dt>Messages</dt><dd>{aistImportPreview.messages}</dd></div>
-                  <div><dt>Story Cards</dt><dd>{aistImportPreview.storyCards}</dd></div>
+                  <div><dt>Reference Cards</dt><dd>{aistImportPreview.storyCards}</dd></div>
                   <div><dt>Brains</dt><dd>{aistImportPreview.brains}</dd></div>
-                  <div><dt>Plot Components</dt><dd>{aistImportPreview.components}</dd></div>
+                  <div><dt>World Blocks</dt><dd>{aistImportPreview.components}</dd></div>
                   {aistImportPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{aistImportPreview.rawImports}</dd></div>}
                 </dl>
               </>
@@ -1070,32 +1064,6 @@ export function AdventuresPage({
               Cancel
             </button>
           </div>
-        </article>
-      </section>
-    );
-  }
-
-  if (view === "aidImport") {
-    return (
-      <section className="page">
-        <article className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Import</p>
-              <h3>Import from AI Dungeon</h3>
-              <p className="muted">
-                Upload your AID export files. Multiple files are read in filename order and merged in sequence.
-              </p>
-            </div>
-          </div>
-          {onCreateAdventureFromImport && (
-            <AidImportWizard
-              onCreateAdventureFromImport={onCreateAdventureFromImport}
-              onComplete={() => setView("list")}
-              onBack={() => setView("list")}
-              backLabel="← Library"
-            />
-          )}
         </article>
       </section>
     );

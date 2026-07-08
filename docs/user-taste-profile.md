@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-30
 
-Use this as repo-local context when reviewing, building, or tuning AI Story Teller scenarios for Avery. This profile is based on a read of supplied AI Dungeon zipped saves and the latest on-disk saves per story, plus Avery's correction that forced spy/paperwork arcs are not a favorite.
+Use this as repo-local context when reviewing, building, or tuning AI Story Teller scenarios for Avery. This profile is based on a read of supplied supplied zipped saves and the latest on-disk saves per story, plus Avery's correction that forced spy/paperwork arcs are not a favorite.
 
 ## Core Taste
 

@@ -129,7 +129,7 @@ export function DashboardPage({
 
         <aside className="adventure-stats-panel">
           <div className="adventure-stat">
-            <span>Story Cards</span>
+            <span>Reference Cards</span>
             <strong>{activeCards.length}</strong>
           </div>
           <div className="adventure-stat">

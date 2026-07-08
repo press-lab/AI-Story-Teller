@@ -77,7 +77,7 @@ Implemented locally:
 - Invite-only auth supports email/password and a local Google-signup stub.
 - Email/password signup requires invite redemption and email verification before login.
 - Password reset tokens exist for local testing.
-- Backend adventure imports accept AIST JSON, AI Dungeon JSON, and GitHub save JSON as copies.
+- Backend adventure imports accept AIST JSON and GitHub save JSON as copies.
 - Server context preview uses the existing `buildContext` implementation.
 - Backend turn execution uses the existing `runTurnPipeline` implementation and backend-owned provider config.
 - Policy gates run at input, context, output, memory-write, import, share, and profile boundaries.
@@ -129,7 +129,7 @@ Backend local mode:
 - Uses backend-owned provider credentials from local server configuration.
 - Enforces invite/account/subscription/policy/usage server-side.
 - Uses server-side context preview and turn execution.
-- Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats.
+- Treats AIST JSON and GitHub save JSON as import formats.
 - Does not require the user's personal GitHub token or current GitHub save access.
 
 Hosted backend mode, later:
@@ -140,7 +140,7 @@ Hosted backend mode, later:
 - Uses server-owned provider credentials.
 - Enforces invite/account/subscription/policy/usage server-side.
 - Uses server-side context preview and turn execution.
-- Treats AIST JSON, AI Dungeon JSON, and GitHub save JSON as import formats, not production persistence.
+- Treats AIST JSON and GitHub save JSON as import formats, not production persistence.
 
 GitHub Pages can continue to host the static frontend during backend-local development. The important limitation is that `127.0.0.1` always means the viewer's own machine. Public UAT must therefore build the frontend with the owner's HTTPS API URL, which forwards to the local API on the owner's machine.
 
@@ -250,7 +250,7 @@ Supported import sources:
 
 - AI Story Teller full adventure JSON.
 - AI Story Teller partial component/story-card JSON where applicable.
-- AI Dungeon story exports and card JSON.
+- Reusable Reference Card / World Block JSON.
 - GitHub save-slot JSON files exported or downloaded from the existing save repo.
 
 Explicitly out of scope for the first backend:
@@ -293,8 +293,8 @@ Rules:
 - Reducer events are logged with action type, actor, before version, after version, and payload hash.
 - Runtime provider secrets are never stored in adventure JSON.
 - AIST JSON import remains supported.
-- AI Dungeon JSON import remains supported.
 - GitHub save JSON import remains supported.
+- Legacy third-party backup imports are not supported.
 
 ## Scenarios
 
@@ -319,7 +319,7 @@ Scenario revision contents:
 - visibility
 - opening scene
 - components
-- story cards
+- reference cards
 - optional brains intentionally included by author
 - author profile
 - thumbnail asset
@@ -447,7 +447,7 @@ Policy gates:
 - share/publish gate
 - profile gate
 
-The context gate matters because unsafe material can enter from Story Cards, Brains, Plot Essentials, imported scenarios, old transcript, or memory proposals.
+The context gate matters because unsafe material can enter from Reference Cards, Brains, Plot Essentials, imported scenarios, old transcript, or memory proposals.
 
 ### Blocking Flow
 
@@ -465,7 +465,7 @@ Context blocking:
 
 1. Backend builds inspectable context sections.
 2. Backend scans the assembled context before the provider call.
-3. If Story Cards, Brains, imports, transcript, or scenario text pull in blocked material, the provider call is stopped.
+3. If Reference Cards, Brains, imports, transcript, or scenario text pull in blocked material, the provider call is stopped.
 4. The unsafe context item is identified by section/item id where possible so support can diagnose it without a blind prompt dump.
 
 Output blocking:
@@ -479,7 +479,7 @@ Output blocking:
 Memory/import/share blocking:
 
 - AI-generated memory proposals and direct updates pass through the memory-write gate before durability.
-- AIST, AI Dungeon, and GitHub save JSON imports pass through import and prompt-injection gates before becoming trusted backend adventure material.
+- AIST and GitHub save JSON imports pass through import and prompt-injection gates before becoming trusted backend adventure material.
 - Public scenario publishing and adventure share links pass through stricter share gates before visibility.
 
 The result is explicit: blocked content cannot reach the model at input/context gates, cannot be shown at output gates, cannot become durable memory at memory gates, and cannot be published at share gates.
@@ -556,7 +556,7 @@ Trust levels:
 2. Server policy and entitlement instructions.
 3. User-authored AI Instructions and Author's Note.
 4. Current user turn.
-5. Adventure content: components, Story Cards, Brains, summaries, imports.
+5. Adventure content: components, Reference Cards, Brains, summaries, imports.
 6. Public scenario text and shared adventure text.
 7. Model output from previous turns.
 

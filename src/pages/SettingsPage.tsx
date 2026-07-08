@@ -619,7 +619,6 @@ export function SettingsPage({
                     onChange={(event) => setBackendImportSource(event.target.value as BackendImportRequest["sourceType"])}
                   >
                     <option value="aist">AIST JSON</option>
-                    <option value="aid">AI Dungeon JSON</option>
                     <option value="githubSave">GitHub save JSON</option>
                   </select>
                 </Field>
@@ -632,7 +631,7 @@ export function SettingsPage({
                   rows={5}
                   value={backendImportText}
                   onChange={(event) => setBackendImportText(event.target.value)}
-                  placeholder="Paste AIST, AI Dungeon, or GitHub save JSON."
+                  placeholder="Paste AIST or GitHub save JSON."
                 />
               </Field>
               <div className="toolbar">
@@ -996,7 +995,7 @@ export function SettingsPage({
             </p>
             <h4>Background Provider</h4>
             <p className="muted">
-              Route background tasks (evaluation, brain updates, story card updates, and plot updates) through a
+              Route background tasks (evaluation, brain updates, reference card updates, and plot updates) through a
               separate provider. Leave blank to use the active preset for all tasks.
             </p>
             <Field label="Base URL">
@@ -1087,7 +1086,7 @@ export function SettingsPage({
                   <CheckboxField label="Active Pressure" checked={activeSettings.memoryAutoApprove.plotPressureUpdate} onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })} />
                   <CheckboxField label="Current Arc" checked={activeSettings.memoryAutoApprove.currentArcUpdate} onChange={(currentArcUpdate) => updateMemoryAutoApprove({ currentArcUpdate })} />
                   <CheckboxField label="Arc Proposals" checked={activeSettings.memoryAutoApprove.arcProposal} onChange={(arcProposal) => updateMemoryAutoApprove({ arcProposal })} />
-                  <CheckboxField label="Story Cards" checked={activeSettings.memoryAutoApprove.storyCard} onChange={(storyCard) => updateMemoryAutoApprove({ storyCard })} />
+                  <CheckboxField label="Reference Cards" checked={activeSettings.memoryAutoApprove.storyCard} onChange={(storyCard) => updateMemoryAutoApprove({ storyCard })} />
                   <CheckboxField label="Characters" checked={activeSettings.memoryAutoApprove.brainUpdate} onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })} />
                 </div>
                 <p className="muted">
@@ -1180,7 +1179,7 @@ export function SettingsPage({
                 <p className="eyebrow">Playtest Seed</p>
                 <h3>{developmentAdventureTitle}</h3>
                 <p className="muted">
-                  Loads a complete adult Fire Nation AU scenario with Plot Components, Story Cards, Characters,
+                  Loads a complete adult Fire Nation AU scenario with World Blocks, Reference Cards, Characters,
                   semantic triggers, a quest, legacy rolling summary data, and one opening message.
                 </p>
               </div>
@@ -1199,12 +1198,12 @@ export function SettingsPage({
                 type="button"
                 onClick={() => downloadJson("ai-story-teller-dev-story-cards.json", createDevelopmentStoryCardsJson())}
               >
-                Download Story Cards JSON
+                Download Reference Cards JSON
               </button>
             </div>
             <p className="notice">
-              The full adventure JSON can be re-uploaded through Import / Export. The Story Cards JSON can be
-              pasted or uploaded in New Adventure setup or the Story Cards editor.
+              The full adventure JSON can be re-uploaded through Import / Export. The Reference Cards JSON can be
+              pasted or uploaded in New Adventure setup or the Reference Cards editor.
             </p>
           </details>
         )}
@@ -1237,12 +1236,12 @@ export function SettingsPage({
                 type="button"
                 onClick={() => downloadJson("ai-story-teller-dispatch-story-cards.json", createDispatchStoryCardsJson())}
               >
-                Download Story Cards JSON
+                Download Reference Cards JSON
               </button>
             </div>
             <p className="notice">
-              The full adventure JSON can be re-uploaded through Import / Export. The Story Cards JSON can be
-              pasted or uploaded in New Adventure setup or the Story Cards editor.
+              The full adventure JSON can be re-uploaded through Import / Export. The Reference Cards JSON can be
+              pasted or uploaded in New Adventure setup or the Reference Cards editor.
             </p>
           </details>
         )}

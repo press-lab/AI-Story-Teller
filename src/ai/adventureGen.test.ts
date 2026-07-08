@@ -49,7 +49,7 @@ describe("runAdventureGen", () => {
     expect(result.storyCards.map((card) => card.title)).toEqual(["Margo"]);
   });
 
-  it("does not allow generated story cards to arrive pinned", async () => {
+  it("does not allow generated reference cards to arrive pinned", async () => {
     vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
       content: JSON.stringify({
         title: "Unpinned",

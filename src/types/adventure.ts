@@ -36,7 +36,7 @@ export interface ArcPacingState {
   phase: ArcPhase;
   /** Display tier 0–5, derived from total engagement vs the break threshold. */
   tier: number;
-  /** Per-thread engagement counts, keyed by Story Card / Brain id. Incremented when a thread triggers in-scene. */
+  /** Per-thread engagement counts, keyed by Reference Card / Brain id. Incremented when a thread triggers in-scene. */
   threadEngagement: Record<string, number>;
   /** Ask-mode: the break gate has opened and is awaiting the player's confirmation. */
   pendingBreak: boolean;
@@ -52,7 +52,7 @@ export interface ArcContinuationOption {
   /** Short button label, e.g. "Azula takes the Society". */
   label: string;
   premise: string;
-  /** Story Card / Brain ids carried forward as the next arc's threads. */
+  /** Reference Card / Brain ids carried forward as the next arc's threads. */
   threadKeys: string[];
   simmerInstruction: string;
   breakInstruction: string;
@@ -98,7 +98,7 @@ export interface ComponentEntry {
   content: string;
   /** Current Story Arc only — the one-line premise seeding this arc's auto-update filter. */
   arcPremise?: string;
-  /** Arc Director (currentArc only) — Story Card / Brain ids that are this arc's "baddie" threads. */
+  /** Arc Director (currentArc only) — Reference Card / Brain ids that are this arc's "baddie" threads. */
   arcThreadKeys?: string[];
   /** Arc Director — how long the arc simmers before it can break. */
   arcPace?: ArcPace;
@@ -663,7 +663,7 @@ export type ContextSectionKind =
   | "currentArc"      // C2. Current Story Arc — active arc log with premise
   | "authorNote"      // D. Author's Note components
   | "components"      // E. General always-on / pinned components
-  | "storyCards"      // F. Story Cards + Auto-Cards (triggered / pinned)
+  | "storyCards"      // F. Reference Cards + Auto-Cards (triggered / pinned)
   | "brains"          // G. Brain entries
   | "rollingSummary"  // I. Rolling Summary — durable canon (deprecated, kept for saves compat)
   | "nextTurnNote"    // J. Next Output Bias
@@ -732,7 +732,7 @@ export interface ContextBuildResult {
   totalEstimatedTokens: number;
   excludedItems: ExcludedContextItem[];
   decisions: ContextBuildDecision[];
-  /** Story Card / Brain ids whose trigger patterns matched current turn text. Used for deterministic arc pacing. */
+  /** Reference Card / Brain ids whose trigger patterns matched current turn text. Used for deterministic arc pacing. */
   triggeredThreadIds: string[];
   /** Pending Memory Proposals — not in model context; shown in preview for user review. */
   pendingProposals: MemoryProposal[];

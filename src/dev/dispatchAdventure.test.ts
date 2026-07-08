@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildContext } from "../contextBuilder/contextBuilder";
-import { parseAidStoryCards } from "../importers/aidCardParser";
+import { parseStoryCardsJson } from "../importers/storyCardParser";
 import { importAdventureJson } from "../utils/json";
 import {
   createDispatchAdventure,
@@ -53,13 +53,13 @@ describe("dispatch adventure seed", () => {
     }
   });
 
-  it("exports re-importable full adventure JSON and Story Card JSON", () => {
+  it("exports re-importable full adventure JSON and Reference Card JSON", () => {
     const imported = importAdventureJson(createDispatchAdventureJson());
     expect(imported.title).toBe(dispatchAdventureTitle);
     expect(imported.storyCards).toHaveLength(21);
     expect(imported.brains).toHaveLength(8);
 
-    const parsedCards = parseAidStoryCards(createDispatchStoryCardsJson());
+    const parsedCards = parseStoryCardsJson(createDispatchStoryCardsJson());
     expect(parsedCards.error).toBeUndefined();
     expect(parsedCards.cards).toHaveLength(21);
     expect(parsedCards.cards.map((card) => card.storyCard.title)).toContain("Avery Prest");

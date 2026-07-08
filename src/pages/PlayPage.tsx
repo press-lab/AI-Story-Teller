@@ -189,7 +189,7 @@ export function PlayPage({
   const totalDropped = budgetDropped.length;
   const trimTooltip = [
     droppedMessages > 0 && `${droppedMessages} story turn${droppedMessages !== 1 ? "s" : ""} dropped`,
-    droppedCards > 0 && `${droppedCards} story card${droppedCards !== 1 ? "s" : ""} dropped`,
+    droppedCards > 0 && `${droppedCards} reference card${droppedCards !== 1 ? "s" : ""} dropped`,
     summaryTruncated && "summary truncated",
   ].filter(Boolean).join(" · ");
 
@@ -337,7 +337,7 @@ export function PlayPage({
   const toolButtons = (
     <>
       <button type="button" onClick={() => openTool("components")}>Plot</button>
-      <button type="button" onClick={() => openTool("storyCards")}>Cards</button>
+      <button type="button" onClick={() => openTool("storyCards")}>Reference Cards</button>
       <button type="button" onClick={() => openTool("brains")}>Characters</button>
       <button type="button" onClick={() => openTool("memoryInbox")}>
         Memory

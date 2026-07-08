@@ -196,7 +196,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       storyCards: [card],
 
-      // deactivate PE components and disable summary so only story card conditions are relevant
+      // deactivate PE components and disable summary so only reference card conditions are relevant
       components: baseAdventure().components.map((c) =>
         c.type === "activePressure" ? { ...c, active: false } : c
       ),
@@ -338,7 +338,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     });
   });
 
-  it("allows one plot, one Story Card, and one character update in the same memory cycle", async () => {
+  it("allows one plot, one Reference Card, and one character update in the same memory cycle", async () => {
     const pressure = makeComponent({
       id: "component-pressure",
       title: "Active Pressure",
@@ -466,7 +466,7 @@ describe("runManualBrainUpdate", () => {
 });
 
 describe("runRememberThis", () => {
-  it("turns a description into a pending Story Card proposal", async () => {
+  it("turns a description into a pending Reference Card proposal", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({
         proposals: [{
@@ -684,7 +684,7 @@ describe("AI memory builders", () => {
     expect(result.logEntry.errors).toEqual([]);
   });
 
-  it("reviews recent planning entries against plot components and active story cards", async () => {
+  it("reviews recent planning entries against world blocks and active reference cards", async () => {
     const plot = makeComponent({
       id: "component-plot",
       title: "Plot Essentials",
@@ -756,7 +756,7 @@ describe("AI memory builders", () => {
     });
 
     const result = await runMemoryReconcile(adventure, providerConfig, {
-      directive: "Update Plot and Story Cards from the recent OOC planning conversation.",
+      directive: "Update Plot and Reference Cards from the recent OOC planning conversation.",
       entryCount: 5,
       includeBrains: false,
       targetScope: "plotAndStoryCards",
@@ -781,7 +781,7 @@ describe("AI memory builders", () => {
     expect(proposals.every((action) => action.proposal.proposedType !== "brainUpdate")).toBe(true);
   });
 
-  it("drafts a living auto-updating Story Card proposal from a guided request", async () => {
+  it("drafts a living auto-updating Reference Card proposal from a guided request", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({
         proposals: [{
@@ -824,7 +824,7 @@ describe("AI memory builders", () => {
     });
   });
 
-  it("grounds Story Card builder prompts on the requested recent message window", async () => {
+  it("grounds Reference Card builder prompts on the requested recent message window", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({
         proposals: [{
@@ -878,12 +878,12 @@ describe("AI memory builders", () => {
         autoUpdate: false,
       },
     });
-    if (proposalAction?.type !== "ADD_MEMORY_PROPOSAL") throw new Error("Expected story card proposal.");
+    if (proposalAction?.type !== "ADD_MEMORY_PROPOSAL") throw new Error("Expected reference card proposal.");
     expect(proposalAction.proposal.sourceText).toContain("Recent messages included: 2");
     expect(proposalAction.proposal.sourceText).toContain("assistant: Jinx's hideout smells of ozone, paint, and hot oil.");
   });
 
-  it("honors the requested Story Card draft count", async () => {
+  it("honors the requested Reference Card draft count", async () => {
     mockProvider.mockResolvedValueOnce({
       content: JSON.stringify({
         proposals: [

@@ -17,7 +17,7 @@ After login, the session is stored locally in the browser. The owner-hosted back
 
 Profile is the account-backed home and library view. It contains the new user tutorial, the adventure library, reusable scenarios, and private adventures.
 
-**Scenarios** are shareable setup packages. They are built from an adventure's reusable setup surfaces: opening scene, Plot Components, Story Cards, Characters, automations, and thumbnail. Published scenarios appear in Explore.
+**Scenarios** are shareable setup packages. They are built from an adventure's reusable setup surfaces: opening scene, World Blocks, Reference Cards, Characters, automations, and thumbnail. Published scenarios appear in Explore.
 
 **Adventures** are private playthroughs. They include your transcript, autosaved progress, and live story state. Adventure cards have actions to open, edit, duplicate, delete, or publish the reusable setup as a scenario.
 
@@ -42,10 +42,9 @@ Autosaves go through the owner-hosted backend. Generation uses the platform mode
 The app supports import-as-copy for:
 
 - AIST adventure JSON
-- AI Dungeon JSON
 - GitHub save JSON
 
-Use Profile -> Adventure Library -> New Adventure -> Import from AIST for full AIST backups. AI Dungeon and GitHub JSON imports remain part of the new-adventure/import flow. The imported material becomes an adventure copy under the signed-in account.
+Use Profile -> Adventure Library -> New Adventure -> Import from AIST for full AIST backups. GitHub JSON imports remain part of the new-adventure/import flow. The imported material becomes an adventure copy under the signed-in account.
 
 ## 6. Publish Or Share A Scenario
 
@@ -80,5 +79,5 @@ Admins use Admin Console to manage platform-wide non-secret defaults, invites, a
 - [Backend Implementation Plan](./backend-implementation-plan.md): implementation status and phase-by-phase backend plan.
 - [Building a Scenario](./building-a-scenario.md): practical scenario authoring guidance.
 - [Adventure Design](./adventure-design.md): deeper design patterns for durable story setups.
-- [AID Best Practices](./aid-best-practices.md): AI Dungeon scenario packaging guidance.
+- Reference Card and World Block JSON exports are covered in the app documentation.
 - [Feature Reference](../FEATURES.md): context sections, memory surfaces, and generation behavior.

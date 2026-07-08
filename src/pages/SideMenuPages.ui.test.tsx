@@ -56,8 +56,8 @@ describe("side menu page smoke coverage", () => {
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <StoryCardsPage adventure={adventure} dispatch={dispatch} />);
-    await user.click(screen.getByRole("button", { name: "Create Story Card" }));
-    expect(screen.getByDisplayValue("New Story Card")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create Reference Card" }));
+    expect(screen.getByDisplayValue("New Reference Card")).toBeInTheDocument();
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => (
@@ -69,7 +69,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
   });
 
-  it("opens and scrolls focused Story Card and Plot Component sources", async () => {
+  it("opens and scrolls focused Reference Card and World Block sources", async () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
@@ -218,10 +218,10 @@ describe("side menu page smoke coverage", () => {
     expect(within(arcDetails as HTMLElement).getAllByText("AFTERMATH")).toHaveLength(2);
     expect(within(arcDetails as HTMLElement).getByText("No arc log")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("No arc premise or log to save yet.");
-    expect(screen.getByRole("button", { name: "Complete Arc -> Story Card" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Complete Arc -> Reference Card" })).toBeDisabled();
   });
 
-  it("completes the Current Arc into a Story Card with visible feedback", async () => {
+  it("completes the Current Arc into a Reference Card with visible feedback", async () => {
     const user = userEvent.setup();
     const arcAdventure: Adventure = {
       ...seedAdventure(),
@@ -247,14 +247,14 @@ describe("side menu page smoke coverage", () => {
       arcAdventure,
     );
 
-    await user.click(screen.getByRole("button", { name: "Complete Arc -> Story Card" }));
+    await user.click(screen.getByRole("button", { name: "Complete Arc -> Reference Card" }));
 
-    expect(screen.getByRole("status")).toHaveTextContent("Completed arc saved as Story Card: Break the Red Ring.");
+    expect(screen.getByRole("status")).toHaveTextContent("Completed arc saved as Reference Card: Break the Red Ring.");
     expect(screen.getByTestId("story-card-count")).toHaveTextContent("1");
-    expect(screen.getByRole("button", { name: "Complete Arc -> Story Card" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Complete Arc -> Reference Card" })).toBeDisabled();
   });
 
-  it("sends a guided Story Card builder request to the AI memory suggestion flow", async () => {
+  it("sends a guided Reference Card builder request to the AI memory suggestion flow", async () => {
     const user = userEvent.setup();
     const onBuildStoryCardMemory = vi.fn(async () => undefined);
     renderWithAdventure((adventure, dispatch) => (
@@ -268,7 +268,7 @@ describe("side menu page smoke coverage", () => {
 
     const description = "Margo is a ward engineer who hides fear behind dry teasing.";
     await user.type(screen.getByLabelText("Describe what to generate"), description);
-    await user.click(screen.getByRole("button", { name: "Draft Card Suggestions" }));
+    await user.click(screen.getByRole("button", { name: "Draft Reference Card Suggestions" }));
 
     expect(onBuildStoryCardMemory).toHaveBeenCalledWith({
       description,
@@ -282,7 +282,7 @@ describe("side menu page smoke coverage", () => {
     });
   });
 
-  it("generates selected Plot Components from a prompt and applies the draft", async () => {
+  it("generates selected World Blocks from a prompt and applies the draft", async () => {
     const user = userEvent.setup();
     const onGenerateComponents = vi.fn(async () => [
       {
@@ -305,8 +305,8 @@ describe("side menu page smoke coverage", () => {
     ));
 
     const description = "Help with PE for a tense Rookery downtime scene.";
-    await user.type(screen.getByLabelText("Component prompt"), description);
-    await user.click(screen.getByRole("button", { name: "Generate Component Drafts" }));
+    await user.type(screen.getByLabelText("World Block prompt"), description);
+    await user.click(screen.getByRole("button", { name: "Generate World Block Drafts" }));
 
     await waitFor(() => expect(screen.getByDisplayValue("Fresh Plot Essentials")).toBeInTheDocument());
     expect(onGenerateComponents).toHaveBeenCalledWith({
@@ -319,7 +319,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("Fresh Plot Essentials")).toBeInTheDocument();
   });
 
-  it("surfaces Story Card cleanup as a maintenance action", async () => {
+  it("surfaces Reference Card cleanup as a maintenance action", async () => {
     const user = userEvent.setup();
     const onAuditStoryCards = vi.fn(async () => []);
     const onSuggestCardUpdates = vi.fn(async () => undefined);
@@ -334,18 +334,18 @@ describe("side menu page smoke coverage", () => {
       />
     ));
 
-    expect(screen.getByText("Review and Maintain Cards")).toBeInTheDocument();
-    expect(screen.getByText("Clean up existing cards")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clean Up Cards" })).toBeInTheDocument();
+    expect(screen.getByText("Review and Maintain Reference Cards")).toBeInTheDocument();
+    expect(screen.getByText("Clean up Reference Cards")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clean Up Reference Cards" })).toBeInTheDocument();
     expect(screen.getByLabelText("Include AI semantic pass")).not.toBeChecked();
-    expect(screen.getByText("Automatic Card Updates")).toBeInTheDocument();
-    expect(screen.getByText("Story Card JSON")).toBeInTheDocument();
+    expect(screen.getByText("Automatic Reference Card Updates")).toBeInTheDocument();
+    expect(screen.getByText("Reference Card JSON")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clean Up Cards" }));
+    await user.click(screen.getByRole("button", { name: "Clean Up Reference Cards" }));
     expect(onAuditStoryCards).toHaveBeenCalledWith(20, false);
   });
 
-  it("surfaces Plot Component cleanup as a maintenance action", async () => {
+  it("surfaces World Block cleanup as a maintenance action", async () => {
     const user = userEvent.setup();
     const onAuditComponents = vi.fn(async () => []);
     const onSuggestPlotUpdates = vi.fn(async () => undefined);
@@ -360,12 +360,12 @@ describe("side menu page smoke coverage", () => {
       />
     ));
 
-    expect(screen.getByText("Review and Maintain Components")).toBeInTheDocument();
-    expect(screen.getByText("Clean up plot components")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clean Up Components" })).toBeInTheDocument();
+    expect(screen.getByText("Review and Maintain World Blocks")).toBeInTheDocument();
+    expect(screen.getByText("Clean up World Blocks")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clean Up World Blocks" })).toBeInTheDocument();
     expect(screen.getByLabelText("Include AI semantic pass")).not.toBeChecked();
 
-    await user.click(screen.getByRole("button", { name: "Clean Up Components" }));
+    await user.click(screen.getByRole("button", { name: "Clean Up World Blocks" }));
     expect(onAuditComponents).toHaveBeenCalledWith(20, false);
   });
 
@@ -392,7 +392,7 @@ describe("side menu page smoke coverage", () => {
     expect(onAuditBrains).toHaveBeenCalledWith(20, false);
   });
 
-  it("filters Story Cards by active status and living mode", async () => {
+  it("filters Reference Cards by active status and living mode", async () => {
     const user = userEvent.setup();
     const adventure: Adventure = {
       ...seedAdventure(),
@@ -416,7 +416,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
-  it("filters Story Cards by pinned and protected flags", async () => {
+  it("filters Reference Cards by pinned and protected flags", async () => {
     const user = userEvent.setup();
     const adventure: Adventure = {
       ...seedAdventure(),
@@ -610,18 +610,18 @@ describe("side menu page smoke coverage", () => {
     });
   });
 
-  it("drafts Plot and Story Card reconcile from recent entries", async () => {
+  it("drafts Plot and Reference Card reconcile from recent entries", async () => {
     const user = userEvent.setup();
     const onReconcileMemory = vi.fn(async () => ({ generatedCount: 2, pendingDelta: 0, recordedDelta: 2 }));
     renderWithAdventure((adventure, dispatch) => (
       <MemoryInboxPage adventure={adventure} dispatch={dispatch} onReconcileMemory={onReconcileMemory} />
     ));
 
-    await user.type(screen.getByLabelText("What changed? (optional)"), "Update Plot and Story Cards from the recent OOC planning conversation.");
-    await user.click(screen.getByRole("button", { name: "Draft Plot & Card Updates" }));
+    await user.type(screen.getByLabelText("What changed? (optional)"), "Update Plot and Reference Cards from the recent OOC planning conversation.");
+    await user.click(screen.getByRole("button", { name: "Draft Plot & Reference Card Updates" }));
 
     expect(onReconcileMemory).toHaveBeenCalledWith({
-      directive: "Update Plot and Story Cards from the recent OOC planning conversation.",
+      directive: "Update Plot and Reference Cards from the recent OOC planning conversation.",
       entryCount: 20,
       includeBrains: false,
       targetScope: "plotAndStoryCards",
@@ -633,8 +633,6 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
     const onBuildContext = vi.fn();
     const onImportAdventure = vi.fn(async () => undefined);
-    const onCreateAdventureFromImport = vi.fn(async () => undefined);
-    const onOpenImportedAdventure = vi.fn();
     const onSaveToCloud = vi.fn(async () => undefined);
 
     renderWithAdventure((adventure, dispatch) => (
@@ -655,8 +653,6 @@ describe("side menu page smoke coverage", () => {
         adventure={adventure}
         dispatch={dispatch}
         onImportAdventure={onImportAdventure}
-        onCreateAdventureFromImport={onCreateAdventureFromImport}
-        onOpenImportedAdventure={onOpenImportedAdventure}
         onSaveToCloud={onSaveToCloud}
         cloudSaveStatus="Cloud ready."
       />
@@ -665,8 +661,9 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByRole("tab", { name: /Back Up/i })).toHaveAttribute("aria-selected", "true");
     await user.click(screen.getByRole("button", { name: "Save to Cloud" }));
     expect(onSaveToCloud).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole("tab", { name: /Migrate/i }));
-    expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Migrate/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: /Restore/i }));
+    expect(screen.getByText("Open an adventure backup")).toBeInTheDocument();
     cleanup();
 
     const onGenerateDurableSummary = vi.fn(async () => "Generated durable summary.");
@@ -692,8 +689,6 @@ describe("side menu page smoke coverage", () => {
         adventure={adventure}
         dispatch={dispatch}
         onImportAdventure={vi.fn(async () => undefined)}
-        onCreateAdventureFromImport={vi.fn(async () => undefined)}
-        onOpenImportedAdventure={vi.fn()}
         onDeviceOnlyDataModeChange={onDeviceOnlyDataModeChange}
       />
     ));
@@ -705,8 +700,6 @@ describe("side menu page smoke coverage", () => {
         adventure={adventure}
         dispatch={dispatch}
         onImportAdventure={vi.fn(async () => undefined)}
-        onCreateAdventureFromImport={vi.fn(async () => undefined)}
-        onOpenImportedAdventure={vi.fn()}
         isBackendAdmin
         deviceOnlyDataMode
         onDeviceOnlyDataModeChange={onDeviceOnlyDataModeChange}

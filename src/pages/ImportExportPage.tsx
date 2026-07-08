@@ -1,16 +1,12 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { exportAdventureJson } from "../utils/json";
-import type { Adventure } from "../types/adventure";
 import type { AdventurePageProps } from "./pageTypes";
 import { CheckboxField, Field } from "./shared";
-import { AidImportWizard } from "../components/AidImportWizard";
 import { parseAdventureBackupPreview } from "../utils/adventureBackupPreview";
 import { useActionFeedback } from "../components/ActionFeedback";
 
 interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
-  onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
-  onOpenImportedAdventure: () => void;
   isBackendAdmin?: boolean;
   deviceOnlyDataMode?: boolean;
   onDeviceOnlyDataModeChange?: (enabled: boolean) => Promise<void>;
@@ -18,12 +14,11 @@ interface ImportExportPageProps extends AdventurePageProps {
   cloudSaveStatus?: string;
 }
 
-type ImportExportMode = "backup" | "restore" | "migrate";
+type ImportExportMode = "backup" | "restore";
 
 const modeOptions: Array<{ id: ImportExportMode; label: string; description: string }> = [
   { id: "backup", label: "Back Up", description: "Save a complete copy or reusable parts." },
   { id: "restore", label: "Restore", description: "Open a saved adventure backup." },
-  { id: "migrate", label: "Migrate", description: "Convert AI Dungeon material." },
 ];
 
 function download(filename: string, text: string) {
@@ -40,8 +35,6 @@ export function ImportExportPage({
   adventure,
   dispatch,
   onImportAdventure,
-  onCreateAdventureFromImport,
-  onOpenImportedAdventure,
   isBackendAdmin = false,
   deviceOnlyDataMode = false,
   onDeviceOnlyDataModeChange,
@@ -146,17 +139,17 @@ export function ImportExportPage({
     const filename = `${slug()}-story-cards.json`;
     const text = JSON.stringify({ storyCards: adventure.storyCards }, null, 2);
     download(filename, text);
-    setStatusMessage(`Downloaded reusable Story Cards: ${filename}`);
+    setStatusMessage(`Downloaded reusable Reference Cards: ${filename}`);
   }
 
   function handleExportComponents() {
-    const filename = `${slug()}-components.json`;
+    const filename = `${slug()}-world-blocks.json`;
     const text = JSON.stringify({
       openingScene: adventure.openingScene,
       components: adventure.components,
     }, null, 2);
     download(filename, text);
-    setStatusMessage(`Downloaded plot setup: ${filename}`);
+    setStatusMessage(`Downloaded World Blocks setup: ${filename}`);
   }
 
   async function resetRuntimeState() {
@@ -182,7 +175,7 @@ export function ImportExportPage({
     <section className="page editor-surface import-export-page">
       <div className="editor-page-summary">
         <p className="muted">
-          Back up the current adventure, restore a saved JSON file, or migrate an AI Dungeon export into a new adventure.
+          Back up the current adventure or restore a saved JSON file.
           Full backups keep the playable save together; partial exports are for reuse and editing.
         </p>
         <div className="editor-stat-row" aria-label="Adventure export counts">
@@ -245,7 +238,7 @@ export function ImportExportPage({
             <p className="eyebrow">backup</p>
             <h3>Back up this adventure</h3>
             <p className="muted">
-              Includes transcript, plot blocks, story cards, brains, triggers, and settings. Runtime API keys stay out.
+              Includes transcript, World Blocks, reference cards, brains, triggers, and settings. Runtime API keys stay out.
             </p>
           </div>
           <div className="import-export-preview" aria-label="Current adventure backup preview">
@@ -256,7 +249,7 @@ export function ImportExportPage({
             <dl>
               <div><dt>Turn</dt><dd>{adventure.activeState.turn}</dd></div>
               <div><dt>Messages</dt><dd>{transcriptCount}</dd></div>
-              <div><dt>Story Cards</dt><dd>{adventure.storyCards.length}</dd></div>
+              <div><dt>Reference Cards</dt><dd>{adventure.storyCards.length}</dd></div>
               <div><dt>Brains</dt><dd>{adventure.brains.length}</dd></div>
             </dl>
           </div>
@@ -276,11 +269,11 @@ export function ImportExportPage({
           )}
           <div className="import-export-secondary-actions" aria-label="Partial exports">
             <button type="button" onClick={handleExportStoryCards}>
-              <span>Story Cards</span>
+              <span>Reference Cards</span>
               <small>{adventure.storyCards.length} reusable memory cards</small>
             </button>
             <button type="button" onClick={handleExportComponents}>
-              <span>Plot Setup</span>
+              <span>World Blocks</span>
               <small>Opening scene and context blocks</small>
             </button>
           </div>
@@ -330,9 +323,9 @@ export function ImportExportPage({
                 <dl>
                   <div><dt>Turn</dt><dd>{importPreview.turn}</dd></div>
                   <div><dt>Messages</dt><dd>{importPreview.messages}</dd></div>
-                  <div><dt>Story Cards</dt><dd>{importPreview.storyCards}</dd></div>
+                  <div><dt>Reference Cards</dt><dd>{importPreview.storyCards}</dd></div>
                   <div><dt>Brains</dt><dd>{importPreview.brains}</dd></div>
-                  <div><dt>Plot Components</dt><dd>{importPreview.components}</dd></div>
+                  <div><dt>World Blocks</dt><dd>{importPreview.components}</dd></div>
                   {importPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{importPreview.rawImports}</dd></div>}
                 </dl>
               </>
@@ -353,21 +346,6 @@ export function ImportExportPage({
         </article>
         )}
 
-        {mode === "migrate" && (
-          <article className="panel import-export-card import-export-migrate-card">
-            <div className="import-export-card-copy">
-              <p className="eyebrow">migrate</p>
-              <h3>Import from AI Dungeon</h3>
-              <p className="muted">
-                Convert story text, Story Card JSON, and optional plot setup into a new adventure you can review before opening.
-              </p>
-            </div>
-            <AidImportWizard
-              onCreateAdventureFromImport={onCreateAdventureFromImport}
-              onComplete={onOpenImportedAdventure}
-            />
-          </article>
-        )}
       </div>
 
       {rawImportCount > 0 && (
@@ -424,8 +402,4 @@ export function ImportExportPage({
       )}
     </section>
   );
-}
-
-export function assertAdventure(_adventure: Adventure) {
-  return true;
 }
