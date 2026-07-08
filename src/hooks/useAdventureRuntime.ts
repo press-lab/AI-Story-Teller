@@ -47,7 +47,7 @@ import type {
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
-import type { AdventureStore, ContextPreviewSource, TurnRunner } from "../runtime/adventureStore";
+import { isBackendSyncQueuedError, type AdventureStore, type ContextPreviewSource, type TurnRunner } from "../runtime/adventureStore";
 
 function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const sessionId = `ai-story-teller:${adventure.id}`.slice(0, 256);
@@ -242,6 +242,11 @@ export async function saveDeviceAdventureBeforeBackendTurn(
     await refreshAdventures();
     return adventure;
   } catch (error) {
+    if (isBackendSyncQueuedError(error)) {
+      setSaveStatus(error.message);
+      await refreshAdventures();
+      return adventure;
+    }
     setSaveStatus(error instanceof Error ? error.message : "save failed");
     throw error;
   }
@@ -310,6 +315,9 @@ export function useAdventureRuntime(
       void adventureStore.save(next).then(() => {
         setSaveStatus("saved");
         void refreshAdventures();
+      }).catch((error: unknown) => {
+        setSaveStatus(error instanceof Error ? error.message : "save failed");
+        if (isBackendSyncQueuedError(error)) void refreshAdventures();
       });
       return next;
     });

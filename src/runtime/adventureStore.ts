@@ -32,6 +32,27 @@ export interface AdventureStore {
 
 export type AdventureSyncConflictResolution = "uploadLocal" | "downloadServer";
 
+const CLOUD_SAVE_QUEUED_MESSAGE =
+  "Cloud save failed; playing from this device. Changes will sync when the backend reconnects.";
+
+export class BackendSyncQueuedError extends Error {
+  constructor(readonly originalError: unknown) {
+    super(CLOUD_SAVE_QUEUED_MESSAGE);
+    this.name = "BackendSyncQueuedError";
+  }
+}
+
+export function isBackendSyncQueuedError(error: unknown): error is BackendSyncQueuedError {
+  return error instanceof BackendSyncQueuedError
+    || (typeof error === "object" && error !== null && (error as { name?: unknown }).name === "BackendSyncQueuedError");
+}
+
+export function isRetryableBackendSyncError(error: unknown): boolean {
+  if (isBackendSyncQueuedError(error)) return true;
+  const message = error instanceof Error ? error.message : String(error);
+  return /failed to fetch|networkerror|network error|load failed|connection|connectex|aborted|aborterror|timeout|timed out|cloudflare|bad gateway|service unavailable|gateway timeout|HTTP 408|HTTP 425|HTTP 429|HTTP 500|HTTP 502|HTTP 503|HTTP 504/i.test(message);
+}
+
 export interface TurnResult {
   adventure: Adventure;
   responseContent: string;
@@ -233,6 +254,32 @@ export function createCachedBackendAdventureStore(
   ownerUserId: string,
 ): AdventureStore {
   const backend = createBackendAdventureStore(config, authToken);
+  let pendingFlushTimer: ReturnType<typeof setTimeout> | undefined;
+  let pendingFlushInFlight: Promise<void> | undefined;
+
+  function schedulePendingFlush(delayMs = 10_000): void {
+    if (pendingFlushTimer !== undefined) return;
+    const timer = setTimeout(() => {
+      pendingFlushTimer = undefined;
+      void flushPendingBackupsAndReschedule();
+    }, delayMs) as ReturnType<typeof setTimeout> & { unref?: () => void };
+    timer.unref?.();
+    pendingFlushTimer = timer;
+  }
+
+  async function flushPendingBackupsAndReschedule(): Promise<void> {
+    if (pendingFlushInFlight) return pendingFlushInFlight;
+    pendingFlushInFlight = (async () => {
+      await flushPendingBackups();
+      const backups = await listAccountAdventureBackups(ownerUserId);
+      if (backups.some(shouldRetryBackup)) {
+        schedulePendingFlush(15_000);
+      }
+    })().finally(() => {
+      pendingFlushInFlight = undefined;
+    });
+    return pendingFlushInFlight;
+  }
 
   async function cacheCleanAdventure(adventure: Adventure): Promise<void> {
     await saveAccountAdventureBackup({
@@ -262,7 +309,17 @@ export function createCachedBackendAdventureStore(
       && existingBackup.adventure.updatedAt === adventure.updatedAt
       && existingBackup.lastServerUpdatedAt === adventure.updatedAt
     ) {
-      const serverAdventure = await backend.get(adventure.id);
+      let serverAdventure: Adventure | undefined;
+      try {
+        serverAdventure = await backend.get(adventure.id);
+      } catch (error) {
+        if (isRetryableBackendSyncError(error)) {
+          await markBackupFailed(adventure, error);
+          schedulePendingFlush();
+          throw new BackendSyncQueuedError(error);
+        }
+        throw error;
+      }
       if (!serverAdventure) {
         await markMissingServerConflict(existingBackup);
         throw new Error("Local backup conflict. Server copy was not found; choose Upload Local Save before generating.");
@@ -284,6 +341,10 @@ export function createCachedBackendAdventureStore(
       return adventure;
     } catch (error) {
       await markBackupFailed(adventure, error);
+      if (isRetryableBackendSyncError(error)) {
+        schedulePendingFlush();
+        throw new BackendSyncQueuedError(error);
+      }
       throw error;
     }
   }
@@ -293,8 +354,15 @@ export function createCachedBackendAdventureStore(
       ownerUserId,
       adventure,
       syncStatus: "failed",
-      lastSyncError: error instanceof Error ? error.message : "Backend sync failed.",
+      lastSyncError: isRetryableBackendSyncError(error)
+        ? CLOUD_SAVE_QUEUED_MESSAGE
+        : error instanceof Error ? error.message : "Backend sync failed.",
     });
+  }
+
+  function shouldRetryBackup(backup: AccountAdventureBackupRecord): boolean {
+    return backup.syncStatus === "pending"
+      || (backup.syncStatus === "failed" && backup.lastSyncError === CLOUD_SAVE_QUEUED_MESSAGE);
   }
 
   async function markBackupConflict(
@@ -337,7 +405,7 @@ export function createCachedBackendAdventureStore(
   async function flushPendingBackups(): Promise<void> {
     const backups = await listAccountAdventureBackups(ownerUserId);
     for (const backup of backups) {
-      if (backup.syncStatus !== "pending" && backup.syncStatus !== "failed") continue;
+      if (!shouldRetryBackup(backup)) continue;
       try {
         if (backup.lastServerUpdatedAt) {
           const serverAdventure = await backend.get(backup.adventureId);
@@ -354,12 +422,13 @@ export function createCachedBackendAdventureStore(
         await cacheCleanAdventure(backup.adventure);
       } catch (error) {
         await markBackupFailed(backup.adventure, error);
+        if (isRetryableBackendSyncError(error)) schedulePendingFlush();
       }
     }
   }
 
   async function mergedListFromServer(): Promise<AdventureSummary[]> {
-    void flushPendingBackups().catch(() => undefined);
+    void flushPendingBackupsAndReschedule().catch(() => undefined);
     const [serverSummaries, backups] = await Promise.all([
       backend.list(),
       listAccountAdventureBackups(ownerUserId),
@@ -406,6 +475,7 @@ export function createCachedBackendAdventureStore(
       try {
         return await mergedListFromServer();
       } catch {
+        schedulePendingFlush();
         const backups = await listAccountAdventureBackups(ownerUserId);
         return backups.map(summarizeAccountAdventureBackup);
       }
@@ -448,6 +518,10 @@ export function createCachedBackendAdventureStore(
         await cacheCleanAdventure(adventure);
       } catch (error) {
         await markBackupFailed(adventure, error);
+        if (isRetryableBackendSyncError(error)) {
+          schedulePendingFlush();
+          throw new BackendSyncQueuedError(error);
+        }
         throw error;
       }
     },

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { Adventure } from "../types/adventure";
-import type { AdventureStore } from "../runtime/adventureStore";
+import { isBackendSyncQueuedError, type AdventureStore } from "../runtime/adventureStore";
 
 export function useAdventureAutosave(
   adventure: Adventure | undefined,
@@ -23,11 +23,12 @@ export function useAdventureAutosave(
           onSaveStatusChangeRef.current("saved");
           onSavedRef.current();
         })
-        .catch((saveError: unknown) =>
+        .catch((saveError: unknown) => {
           onSaveStatusChangeRef.current(
             saveError instanceof Error ? saveError.message : "save failed",
-          ),
-        );
+          );
+          if (isBackendSyncQueuedError(saveError)) onSavedRef.current();
+        });
     }, 350);
     return () => window.clearTimeout(timeout);
   }, [adventure, store]);

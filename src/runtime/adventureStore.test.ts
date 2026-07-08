@@ -112,6 +112,40 @@ describe("cached backend adventure store", () => {
       .rejects.toThrow("Backend request failed with HTTP 502");
   });
 
+  it("queues a retryable cloud save failure while preserving the device backup", async () => {
+    const adventure = createDefaultAdventure("Queued Cloud Save");
+    adventure.id = "adv-cloud-queued";
+    adventure.updatedAt = "2026-07-08T00:00:00.000Z";
+    adventure.messages = [
+      { id: "msg-local", role: "assistant", content: "Keep this local progress.", createdAt: "2026-07-08T00:00:00.000Z" },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/telemetry/client")) {
+        return new Response("{}", { status: 202, headers: { "Content-Type": "application/json" } });
+      }
+      expect(init?.method).toBe("PUT");
+      return new Response("<html><body>Bad Gateway</body></html>", {
+        status: 502,
+        headers: { "Content-Type": "text/html" },
+      });
+    }));
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
+    const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
+
+    await expect(store.save(adventure)).rejects.toThrow("Cloud save failed; playing from this device");
+    const backup = await getAccountAdventureBackup("user-1", "adv-cloud-queued");
+    expect(backup).toMatchObject({
+      syncStatus: "failed",
+      lastSyncError: "Cloud save failed; playing from this device. Changes will sync when the backend reconnects.",
+      adventure: expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({ content: "Keep this local progress." }),
+        ]),
+      }),
+    });
+  });
+
   it("surfaces local and server save timestamps for conflicted backend summaries", async () => {
     const local = createDefaultAdventure("Local Conflict");
     local.id = "adv-conflict";

@@ -246,7 +246,7 @@ function Ensure-Api {
   Stop-ApiListener
   Write-OwnerLog "Starting owner API on $(Get-LocalApiUrl)."
   Start-HiddenCommand "npm.cmd" "run api:serve" $ApiOutLog $ApiErrLog | Out-Null
-  for ($attempt = 1; $attempt -le 30; $attempt++) {
+  for ($attempt = 1; $attempt -le 120; $attempt++) {
     Start-Sleep -Seconds 1
     if (Test-LocalApi) {
       Set-Content -Path $ApiSourceVersionFile -Value $sourceVersion -Encoding ASCII

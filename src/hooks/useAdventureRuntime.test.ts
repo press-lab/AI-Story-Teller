@@ -7,7 +7,7 @@ import {
 } from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
 import { createDefaultAdventure } from "../state/defaults";
-import type { AdventureStore } from "../runtime/adventureStore";
+import { BackendSyncQueuedError, type AdventureStore } from "../runtime/adventureStore";
 
 const baseConfig: RuntimeProviderSettings = {
   name: "openai-compatible",
@@ -144,6 +144,27 @@ describe("saveDeviceAdventureBeforeBackendTurn", () => {
     expect(store.saveForGeneration).toHaveBeenCalledWith(adventure);
     expect(store.save).not.toHaveBeenCalled();
     expect(setSaveStatus).toHaveBeenLastCalledWith("saved");
+    expect(refreshAdventures).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows backend generation to continue when the cloud save is queued locally", async () => {
+    const adventure = createDefaultAdventure("Queued Before Generation");
+    adventure.id = "adv-queued";
+    const store: AdventureStore = {
+      list: vi.fn(),
+      get: vi.fn(),
+      save: vi.fn(async () => {
+        throw new BackendSyncQueuedError(new Error("Backend request failed with HTTP 502."));
+      }),
+      delete: vi.fn(),
+    };
+    const setSaveStatus = vi.fn();
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const result = await saveDeviceAdventureBeforeBackendTurn(adventure, store, setSaveStatus, refreshAdventures);
+
+    expect(result).toBe(adventure);
+    expect(setSaveStatus).toHaveBeenLastCalledWith("Cloud save failed; playing from this device. Changes will sync when the backend reconnects.");
     expect(refreshAdventures).toHaveBeenCalledTimes(1);
   });
 
