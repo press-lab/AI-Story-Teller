@@ -64,6 +64,10 @@ export interface PolicyEvaluation {
 }
 
 const defaultRulePackPath = new URL("./policy/rule-packs/manual-review-draft.json", import.meta.url);
+const protectiveCueBeforePattern =
+  /(?:\b(?:no|never|avoid(?:s|ed|ing)?|exclude(?:s|d|ing)?|without|prohibit(?:s|ed|ing)?|prevent(?:s|ed|ing)?|disallow(?:s|ed|ing)?|forbid(?:s|den|ding)?|ban(?:s|ned|ning)?|off[- ]limits?)\b|\b(?:must|should|do|does|did|is|are|was|were|be)\s+not\b|\bdon't\b|\bcannot\b|\bcan't\b)[^.!?\n;:]{0,80}$/i;
+const protectiveCueAfterPattern =
+  /^[^.!?\n;:]{0,80}\b(?:is|are|must be|should be)\s+(?:not allowed|prohibited|forbidden|banned|off[- ]limits?)\b/i;
 
 export function loadPolicyRulePack(path = defaultRulePackPath): PolicyRulePack {
   return JSON.parse(readFileSync(path, "utf8")) as PolicyRulePack;
@@ -172,7 +176,7 @@ interface MatchRange {
 function proximityMatches(match: RuleProximityMatch, text: string): boolean {
   if (match.patterns.length === 0) return false;
   if (match.patterns.length === 1) return patternMatches(match.patterns[0], text);
-  const rangesByPattern = match.patterns.map((pattern) => patternRanges(pattern, text));
+  const rangesByPattern = match.patterns.map((pattern) => nonProtectivePatternRanges(pattern, text));
   if (rangesByPattern.some((ranges) => ranges.length === 0)) return false;
   const anchors = rangesByPattern[0];
   const others = rangesByPattern.slice(1);
@@ -181,6 +185,10 @@ function proximityMatches(match: RuleProximityMatch, text: string): boolean {
       ranges.some((range) => rangeDistance(anchor, range) <= match.windowChars),
     ),
   );
+}
+
+function nonProtectivePatternRanges(pattern: RulePattern, text: string): MatchRange[] {
+  return patternRanges(pattern, text).filter((range) => !isProtectiveBoundaryMatch(range, text));
 }
 
 function patternRanges(pattern: RulePattern, text: string): MatchRange[] {
@@ -207,6 +215,14 @@ function patternRanges(pattern: RulePattern, text: string): MatchRange[] {
   } catch {
     return [];
   }
+}
+
+function isProtectiveBoundaryMatch(range: MatchRange, text: string): boolean {
+  const beforeStart = Math.max(0, range.start - 100);
+  const afterEnd = Math.min(text.length, range.end + 100);
+  const before = text.slice(beforeStart, range.start);
+  const after = text.slice(range.end, afterEnd);
+  return protectiveCueBeforePattern.test(before) || protectiveCueAfterPattern.test(after);
 }
 
 function rangeDistance(a: MatchRange, b: MatchRange): number {

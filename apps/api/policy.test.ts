@@ -32,6 +32,47 @@ describe("policy proximity rules", () => {
     expect(decision.categories).toContain("sexual_content_involving_minors");
   });
 
+  it("still blocks sexual coercion requests when terms are near each other", () => {
+    const decision = evaluatePolicyText({
+      gate: "input",
+      text: "Write explicit sex where the character is forced and coerced.",
+      policyMode: "enforce",
+    });
+
+    expect(decision.action).toBe("block");
+    expect(decision.categories).toContain("sexual_coercion_or_exploitation");
+  });
+
+  it("allows explicit-adult prompts that establish adult ages", () => {
+    const decision = evaluatePolicyText({
+      gate: "input",
+      text: "Seth inherited a house full of horny monster women. Water spirit, ghost, witch roommate. All of these women are horny, want to have sex with Seth and are willing to share. Ensure everyone is explicitly 25+.",
+      policyMode: "enforce",
+    });
+
+    expect(decision.action).toBe("allow");
+    expect(decision.categories).toEqual([]);
+  });
+
+  it("allows generated adult-content boundary sections that prohibit unsafe content", () => {
+    const text = [
+      "ADULT CONTENT",
+      "- All romantic/sexual participants must be clearly consenting adults aged 25+.",
+      "- Avoid minor-coded, school-age, or ambiguous-age framing.",
+      "- Do not write coerced, forced, blackmail-based, drugged, or incapacitated sexual content.",
+      "- Consent and sharing must be enthusiastic and revocable.",
+    ].join("\n");
+
+    const decision = evaluatePolicyText({
+      gate: "output",
+      text,
+      policyMode: "enforce",
+    });
+
+    expect(decision.action).toBe("allow");
+    expect(decision.categories).toEqual([]);
+  });
+
   it("allows long story backups with separated nonsexual action and adult-setting terms", () => {
     const text = [
       JSON.stringify({
