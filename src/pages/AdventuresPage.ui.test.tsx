@@ -390,6 +390,83 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.getByDisplayValue("Server Ally")).toBeInTheDocument();
   });
 
+  it("falls back to the private browser provider when backend setup generation is offline", async () => {
+    const user = userEvent.setup();
+    const privateProvider = {
+      name: "deepseek",
+      baseUrl: "https://api.deepseek.com",
+      apiKey: "private-key",
+      model: "deepseek-v4",
+      temperature: 1,
+      maxOutputTokens: 1200,
+    };
+    const onGenerateAdventureSetup = vi.fn(async () => {
+      throw new Error("Backend request failed with HTTP 502.");
+    });
+    vi.mocked(runAdventureGen).mockResolvedValueOnce({
+      title: "Private Draft",
+      openingScene: "The private model writes the opening.",
+      components: [
+        { title: "Plot", type: "plotEssentials", content: "Private-model canon.", alwaysOn: true, pinned: true, priority: 80 },
+      ],
+      storyCards: [
+        { title: "Private Ally", type: "character", keys: ["private ally"], content: "Generated in browser fallback.", pinned: false, priority: 0 },
+      ],
+    });
+
+    renderAdventuresPage(undefined, {
+      onGenerateAdventureSetup,
+      setupGenerationProviderConfig: privateProvider,
+    });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.type(screen.getByLabelText("Premise"), "Make an offline fallback scenario.");
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+
+    await waitFor(() => expect(screen.getByDisplayValue("Private Draft")).toBeInTheDocument());
+    expect(screen.getAllByText(/Backend is offline\. Generating setup/).length).toBeGreaterThan(0);
+    expect(onGenerateAdventureSetup).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(runAdventureGen)).toHaveBeenCalledWith(
+      "Make an offline fallback scenario.",
+      privateProvider,
+      expect.objectContaining({
+        storyShape: "balanced",
+        proseMode: "balanced",
+        playerControl: "strict",
+        adultContent: "off",
+      }),
+    );
+    expect(screen.getByDisplayValue("Private-model canon.")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Private Ally")).toBeInTheDocument();
+  });
+
+  it("requires a private browser key when backend setup generation is offline", async () => {
+    const user = userEvent.setup();
+    const onGenerateAdventureSetup = vi.fn(async () => {
+      throw new Error("NetworkError when attempting to fetch resource.");
+    });
+
+    renderAdventuresPage(undefined, {
+      onGenerateAdventureSetup,
+      setupGenerationProviderConfig: {
+        name: "deepseek",
+        baseUrl: "https://api.deepseek.com",
+        apiKey: "",
+        model: "deepseek-v4",
+        temperature: 1,
+        maxOutputTokens: 1200,
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.type(screen.getByLabelText("Premise"), "Make an offline scenario with no key.");
+    await user.click(screen.getByRole("button", { name: "Generate" }));
+
+    await waitFor(() => expect(screen.getByText(/private model API key in Settings/)).toBeInTheDocument());
+    expect(onGenerateAdventureSetup).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(runAdventureGen)).not.toHaveBeenCalled();
+  });
+
   it("applies Storyteller profile defaults and passes the selected profile to generation", async () => {
     const user = userEvent.setup();
     renderAdventuresPage(undefined, {

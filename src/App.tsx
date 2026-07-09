@@ -1555,6 +1555,7 @@ export default function App() {
         onLoadSave={backendMode ? undefined : (slot) => void gitHubSaveLoad.initiateLoad(slot)}
         onDeleteSave={backendMode ? undefined : (slot) => void gitHubSaves.deleteSave(slot)}
         providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig}
+        setupGenerationProviderConfig={runtime.activeProviderConfig}
         onGenerateAdventureSetup={backendAdventureDataReady && backendSession
           ? (premise, preferences) => generateBackendAdventureSetup(normalizedRuntimeConfig, backendSession, {
             premise,

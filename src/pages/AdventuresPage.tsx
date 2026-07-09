@@ -33,7 +33,7 @@ import { useActionFeedback } from "../components/ActionFeedback";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 import { describeSyncConflictVersions } from "../utils/syncConflict";
 import type { BackendAdventureSnapshotSummary } from "../runtime/backendApi";
-import type { AdventureSyncConflictResolution } from "../runtime/adventureStore";
+import { isRetryableBackendSyncError, type AdventureSyncConflictResolution } from "../runtime/adventureStore";
 
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
@@ -59,6 +59,7 @@ interface AdventuresPageProps {
   onLoadSave?: (slot: GitHubSaveSlot) => void;
   onDeleteSave?: (slot: GitHubSaveSlot) => void;
   providerConfig?: ProviderConfig;
+  setupGenerationProviderConfig?: ProviderConfig;
   onGenerateAdventureSetup?: (
     premise: string,
     preferences: Partial<AdventureGenPreferences>,
@@ -235,6 +236,19 @@ function formatCount(count: number | undefined, singular: string, plural = `${si
   return `${normalized.toLocaleString()} ${normalized === 1 ? singular : plural}`;
 }
 
+const BACKEND_SETUP_FALLBACK_NOTICE =
+  "Backend is offline. Generating setup with your private model in this browser.";
+const BACKEND_SETUP_PRIVATE_MODEL_REQUIRED =
+  "Backend is offline. New scenario generation needs a private model API key in Settings; the platform key stays on the backend.";
+const BACKEND_SETUP_PRIVATE_MODEL_INCOMPLETE =
+  "Backend is offline. New scenario generation needs a complete private model Base URL, model, and API key in Settings.";
+
+function privateSetupProviderIssue(config: ProviderConfig | undefined): string | undefined {
+  if (!config?.apiKey?.trim()) return BACKEND_SETUP_PRIVATE_MODEL_REQUIRED;
+  if (!config.baseUrl.trim() || !config.model.trim()) return BACKEND_SETUP_PRIVATE_MODEL_INCOMPLETE;
+  return undefined;
+}
+
 export function AdventuresPage({
   adventures,
   currentAdventure,
@@ -259,6 +273,7 @@ export function AdventuresPage({
   onLoadSave,
   onDeleteSave,
   providerConfig,
+  setupGenerationProviderConfig,
   onGenerateAdventureSetup,
   embedded = false,
   loading = false,
@@ -385,13 +400,15 @@ export function AdventuresPage({
   const [adultBoundaries, setAdultBoundaries] = useState("");
   const [genLoading, setGenLoading] = useState(false);
   const [genError, setGenError] = useState<string | undefined>();
+  const [genNotice, setGenNotice] = useState<string | undefined>();
   const aistImportPreview = useMemo(() => parseAdventureBackupPreview(aistImportText), [aistImportText]);
   const [setupError, setSetupError] = useState<string | undefined>();
 
   const starterComponents = componentDrafts.map(componentFromDraft).filter((component): component is ComponentEntry => Boolean(component));
   const manualStoryCards = manualStoryCardDrafts.map(storyCardFromDraft).filter((card): card is StoryCard => Boolean(card));
   const totalStoryCardCount = manualStoryCards.length + jsonStoryCards.length;
-  const canGenerateAdventureSetup = Boolean(onGenerateAdventureSetup || providerConfig);
+  const generationProviderConfig = setupGenerationProviderConfig ?? providerConfig;
+  const canGenerateAdventureSetup = Boolean(onGenerateAdventureSetup || generationProviderConfig);
 
   function updateComponentDraft(id: string, patch: Partial<ComponentDraft>) {
     setComponentDrafts((drafts) =>
@@ -519,9 +536,10 @@ export function AdventuresPage({
 
   async function generateAdventure() {
     if (!premise.trim()) return;
-    if (!onGenerateAdventureSetup && !providerConfig) return;
+    if (!onGenerateAdventureSetup && !generationProviderConfig) return;
     setGenLoading(true);
     setGenError(undefined);
+    setGenNotice(undefined);
     try {
       const preferences: Partial<AdventureGenPreferences> = {
         storytellerProfile,
@@ -531,9 +549,21 @@ export function AdventuresPage({
         adultContent,
         boundaries: adultContent === "off" ? "" : adultBoundaries,
       };
-      const result = onGenerateAdventureSetup
-        ? await onGenerateAdventureSetup(premise, preferences)
-        : await runAdventureGen(premise, providerConfig!, preferences);
+      let result: AdventureGenResult;
+      if (onGenerateAdventureSetup) {
+        try {
+          result = await onGenerateAdventureSetup(premise, preferences);
+        } catch (error) {
+          if (!isRetryableBackendSyncError(error)) throw error;
+          const providerIssue = privateSetupProviderIssue(generationProviderConfig);
+          if (providerIssue || !generationProviderConfig) throw new Error(providerIssue);
+          setGenNotice(BACKEND_SETUP_FALLBACK_NOTICE);
+          notify(BACKEND_SETUP_FALLBACK_NOTICE, { type: "info" });
+          result = await runAdventureGen(premise, generationProviderConfig, preferences);
+        }
+      } else {
+        result = await runAdventureGen(premise, generationProviderConfig!, preferences);
+      }
       if (result.title) setTitle(result.title);
       if (result.openingScene) setOpeningScene(result.openingScene);
       setComponentDrafts((existing) => {
@@ -727,6 +757,7 @@ export function AdventuresPage({
                 </Field>
               )}
               {genError && <p className="error-box">{genError}</p>}
+              {genNotice && <p className="status-pill">{genNotice}</p>}
               <div className="toolbar">
                 <button
                   type="button"
