@@ -92,6 +92,49 @@ describe("runAdventureGen", () => {
     expect(request.messages[0].content).toContain("Do not create cards for current scene position");
   });
 
+  it("uses JSON object response format for OpenRouter setup generation", async () => {
+    vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
+      content: JSON.stringify({ title: "Structured", openingScene: "", components: [], storyCards: [] }),
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+      raw: {},
+    });
+
+    await runAdventureGen("A premise", {
+      ...config,
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "deepseek/deepseek-v3.2",
+    });
+
+    const request = vi.mocked(sendOpenAICompatibleChatCompletion).mock.calls[0][0];
+    expect(request.responseFormat).toBe("json_object");
+    expect(request.thinking).toBeUndefined();
+    expect(request.config.maxOutputTokens).toBeGreaterThanOrEqual(4000);
+  });
+
+  it("retries with compact JSON instructions when the first response is malformed", async () => {
+    vi.mocked(sendOpenAICompatibleChatCompletion)
+      .mockResolvedValueOnce({
+        content: "```json\n{\"title\":\"Broken\",\"openingScene\":\"Unfinished",
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        raw: {},
+      })
+      .mockResolvedValueOnce({
+        content: JSON.stringify({ title: "Recovered", openingScene: "Begin again.", components: [], storyCards: [] }),
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        raw: {},
+      });
+
+    const result = await runAdventureGen("A premise", config);
+
+    expect(result.title).toBe("Recovered");
+    expect(vi.mocked(sendOpenAICompatibleChatCompletion)).toHaveBeenCalledTimes(2);
+    const retryRequest = vi.mocked(sendOpenAICompatibleChatCompletion).mock.calls[1][0];
+    expect(retryRequest.messages[1].content).toContain("Retry requirements");
+    expect(retryRequest.messages[1].content).toContain("Do not wrap the JSON in markdown or code fences.");
+    expect(retryRequest.config.temperature).toBeLessThanOrEqual(0.35);
+    expect(retryRequest.config.maxOutputTokens).toBeGreaterThanOrEqual(6000);
+  });
+
   it("passes setup preferences into the generation prompt", async () => {
     vi.mocked(sendOpenAICompatibleChatCompletion).mockResolvedValue({
       content: JSON.stringify({ title: "Preferences", openingScene: "", components: [], storyCards: [] }),

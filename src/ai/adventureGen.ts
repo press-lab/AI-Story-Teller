@@ -1,4 +1,4 @@
-import type { ComponentType, ProviderConfig, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
+import type { ChatMessage, ComponentType, ProviderConfig, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { ADVENTURE_GENERATION_BEST_PRACTICES } from "./authoringBestPractices";
 
@@ -80,6 +80,8 @@ const generatedComponentTypes = new Set<ComponentType>([
 ]);
 const storyCardTypes = new Set<StoryCardType>(["character", "location", "lore", "plot", "custom"]);
 const storyCardMemoryModes = new Set<StoryCardMemoryMode>(["static", "living", "historical"]);
+const ADVENTURE_GEN_MIN_OUTPUT_TOKENS = 4000;
+const ADVENTURE_GEN_RETRY_MIN_OUTPUT_TOKENS = 6000;
 
 const defaultPreferences: AdventureGenPreferences = {
   storytellerProfile: "custom",
@@ -197,6 +199,66 @@ function parseJsonFenced<T>(text: string): T {
   }
   const preview = trimmed.slice(0, 300);
   throw new Error(`Could not parse model response as JSON. Raw response (first 300 chars): ${preview}\n\nParse error: ${String(lastErr)}`);
+}
+
+function adventureGenProviderConfig(config: ProviderConfig, retry = false): ProviderConfig {
+  const minimum = retry ? ADVENTURE_GEN_RETRY_MIN_OUTPUT_TOKENS : ADVENTURE_GEN_MIN_OUTPUT_TOKENS;
+  return {
+    ...config,
+    temperature: retry ? Math.min(config.temperature, 0.35) : config.temperature,
+    maxOutputTokens: Math.max(config.maxOutputTokens || 0, minimum),
+  };
+}
+
+function supportsJsonObjectResponseFormat(config: ProviderConfig): boolean {
+  if (isNativeDeepSeekProvider(config)) return true;
+  try {
+    const hostname = new URL(config.baseUrl).hostname.toLowerCase();
+    return (
+      hostname === "api.openai.com"
+      || hostname.endsWith(".openai.com")
+      || hostname === "openrouter.ai"
+      || hostname.endsWith(".openrouter.ai")
+      || hostname === "api.groq.com"
+      || hostname.endsWith(".groq.com")
+    );
+  } catch {
+    const baseUrl = config.baseUrl.toLowerCase();
+    return baseUrl.includes("openai.com") || baseUrl.includes("openrouter.ai") || baseUrl.includes("groq.com");
+  }
+}
+
+function structuredOutputOptions(config: ProviderConfig) {
+  return {
+    ...(supportsJsonObjectResponseFormat(config) ? { responseFormat: "json_object" as const } : {}),
+    ...(isNativeDeepSeekProvider(config) ? { thinking: "disabled" as const } : {}),
+  };
+}
+
+function retryAdventureGenMessages(messages: ChatMessage[]): ChatMessage[] {
+  const [system, user] = messages;
+  return [
+    system,
+    {
+      role: "user",
+      content: `${user.content}
+
+Retry requirements:
+- Return one complete compact JSON object only.
+- Do not wrap the JSON in markdown or code fences.
+- Keep openingScene under 160 words.
+- Return at most 5 components and at most 6 storyCards.
+- Close every string, array, and object before ending the response.`,
+    },
+  ];
+}
+
+async function requestAdventureGen(messages: ChatMessage[], config: ProviderConfig, retry = false) {
+  return sendOpenAICompatibleChatCompletion({
+    messages,
+    config: adventureGenProviderConfig(config, retry),
+    ...structuredOutputOptions(config),
+  });
 }
 
 const SYSTEM_PROMPT = `You are an expert interactive fiction game master and world builder. Given a premise, generate a complete starter setup for an AI-powered text adventure.
@@ -327,18 +389,24 @@ export async function runAdventureGen(
     ...preferences,
     boundaries: preferences.boundaries ?? defaultPreferences.boundaries,
   };
-  const response = await sendOpenAICompatibleChatCompletion({
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: `Premise:\n${premise.trim()}\n\n${setupPreferenceGuidance(resolvedPreferences)}` },
-    ],
-    config,
-    ...(isNativeDeepSeekProvider(config)
-      ? { responseFormat: "json_object" as const, thinking: "disabled" as const }
-      : {}),
-  });
-
-  const raw = parseJsonFenced<Partial<AdventureGenResult>>(response.content);
+  const messages: ChatMessage[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: `Premise:\n${premise.trim()}\n\n${setupPreferenceGuidance(resolvedPreferences)}` },
+  ];
+  const response = await requestAdventureGen(messages, config);
+  let raw: Partial<AdventureGenResult>;
+  try {
+    raw = parseJsonFenced<Partial<AdventureGenResult>>(response.content);
+  } catch (firstError) {
+    const retryResponse = await requestAdventureGen(retryAdventureGenMessages(messages), config, true);
+    try {
+      raw = parseJsonFenced<Partial<AdventureGenResult>>(retryResponse.content);
+    } catch (retryError) {
+      const retryMessage = retryError instanceof Error ? retryError.message : String(retryError);
+      const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
+      throw new Error(`${retryMessage}\n\nAdventure generation retried once with compact JSON instructions after an earlier parse failure.\nFirst parse failure: ${firstMessage}`);
+    }
+  }
 
   return {
     title: typeof raw.title === "string" ? raw.title : "New Adventure",
