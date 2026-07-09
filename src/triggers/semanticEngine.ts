@@ -196,7 +196,7 @@ function arcUpdatePrompt(component: ComponentEntry): string {
   return `You are appending to a running log of an active story arc.${premiseNote}${existingNote}
 Your job: write 1–3 sentences capturing the specific development that just occurred and how it advances or complicates this arc. Be concrete — name what happened, not how characters felt about it.
 
-Write every entry as a COMPLETED PAST-TENSE record of what happened ("Setu confirmed Renzan's involvement," "Nyxa chose to witness the arrest"). This is a historical log, not a live scene — never present tense, never second person ("you"), so it reads as settled past events when referenced later.
+Write every entry as a COMPLETED PAST-TENSE record of what happened ("The crew exposed the hidden patron," "the witness chose to make the arrest public"). This is a historical log, not a live scene — never present tense, never second person ("you"), so it reads as settled past events when referenced later.
 
 Do NOT restate anything already in the existing log. Do NOT summarize the whole story. Append only what is new and arc-relevant.
 

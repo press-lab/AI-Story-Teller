@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Adventure, MemoryPriorityMode, TokenBudgetSettings } from "../types/adventure";
 import { createDefaultAdventure, defaultNarrationRulesContent, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
+import { createRookeryAdventure } from "../dev/rookeryAdventure";
 import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import { goldenAdventure, makeMemoryProposal } from "../test/goldenAdventure";
 import { buildContext, buildMemoryTagInstruction, extractInlineThoughts } from "./contextBuilder";
@@ -883,11 +884,21 @@ describe("buildContext", () => {
   });
 
   it("asks inline memory tagging to capture durable updates to existing subjects", () => {
-    const instruction = buildMemoryTagInstruction(["relationship", "plot_beat"], ["Setu and Nyxa"]);
+    const instruction = buildMemoryTagInstruction(["relationship", "plot_beat"], ["Existing Bond"]);
 
     expect(instruction).toContain("durable new fact or meaningful update");
     expect(instruction).toContain("REUSE that card's EXACT title");
+    expect(instruction).toContain("Existing Bond");
     expect(instruction).toContain("Worth tagging");
     expect(instruction).toContain("one-off banter");
+    expect(instruction).not.toMatch(/\bNyxa?\b/);
+  });
+
+  it("does not leak unrelated Nyx examples into Rookery provider context", () => {
+    const result = buildContext(createRookeryAdventure());
+    const providerText = result.messages.map((message) => message.content).join("\n\n");
+
+    expect(providerText).toContain("Nix Calder");
+    expect(providerText).not.toMatch(/\bNyxa?\b/);
   });
 });

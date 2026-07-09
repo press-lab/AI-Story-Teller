@@ -196,7 +196,7 @@ Never sounds like: [specific behaviors the AI must not give this character — b
 Example lines: "[line in their actual voice]" / "[another line]" / "[a third line]"`}</pre>
         <p><strong>The example lines carry the most weight.</strong> The model pattern-matches prose style from examples far more reliably than it follows trait descriptions. Three lines in the character's actual voice do more than three paragraphs of personality description.</p>
         <p><strong>"Never sounds like"</strong> is the second most important field. Negative constraints are strong — "never warm, never offers choices, never says what she's feeling directly" is harder for the model to ignore than "emotionally guarded."</p>
-        <p><strong>What not to put in AI Instructions.</strong> Per-character voice belongs on the character's card, not in AI Instructions. AI Instructions apply to every turn globally — character-specific rules dilute them and create two sources of truth. If Nyx needs to sound a specific way, that goes on Nyx's card.</p>
+        <p><strong>What not to put in AI Instructions.</strong> Per-character voice belongs on the character's card, not in AI Instructions. AI Instructions apply to every turn globally — character-specific rules dilute them and create two sources of truth. If a character needs to sound a specific way, that goes on that character's card.</p>
         <p><strong>Auto-generated cards</strong> from "Generate with AI" and inline memory tagging automatically use Voice Contract format for character cards. For existing cards, paste the Voice Contract section in below the existing content — don't overwrite it.</p>
       </>
     ),
@@ -944,7 +944,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
         </p>
         <p>Examples:</p>
         <ul>
-          <li>"Keep the confrontation unresolved — Nyxa shouldn't yield yet."</li>
+          <li>"Keep the confrontation unresolved — the rival shouldn't yield yet."</li>
           <li>"Focus on atmosphere, not dialogue."</li>
           <li>"This is the turning point. Commit."</li>
         </ul>
