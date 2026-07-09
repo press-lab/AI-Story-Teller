@@ -50,7 +50,7 @@ export function isBackendSyncQueuedError(error: unknown): error is BackendSyncQu
 export function isRetryableBackendSyncError(error: unknown): boolean {
   if (isBackendSyncQueuedError(error)) return true;
   const message = error instanceof Error ? error.message : String(error);
-  return /failed to fetch|networkerror|network error|load failed|connection|connectex|aborted|aborterror|timeout|timed out|cloudflare|bad gateway|service unavailable|gateway timeout|HTTP 408|HTTP 425|HTTP 429|HTTP 500|HTTP 502|HTTP 503|HTTP 504/i.test(message);
+  return /failed to fetch|networkerror|network error|load failed|connection|connectex|aborted|aborterror|timeout|timed out|offline|unreachable|temporarily unavailable|cloudflare|bad gateway|service unavailable|gateway timeout|HTTP 408|HTTP 425|HTTP 429|HTTP 500|HTTP 502|HTTP 503|HTTP 504/i.test(message);
 }
 
 export interface TurnResult {
@@ -135,7 +135,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
     if (!response.ok) {
       const message = body && typeof body === "object" && "error" in body
         ? String((body as { error: unknown }).error)
-        : backendHttpErrorMessage(response.status, text);
+        : backendHttpErrorMessage(config, response.status, text);
       throw new Error(message);
     }
     if (text && body === undefined) {
@@ -144,6 +144,9 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
     completedOk = true;
     return body as T;
   } catch (error) {
+    const userFacingError = statusCode === undefined && isBackendTransportError(error)
+      ? new Error(backendTransportErrorMessage(config))
+      : error;
     if (shouldSubmitTrace) {
       recordAndSubmitDeviceTrace(config, {
         id: `client_${traceId}`,
@@ -163,7 +166,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
         createdAt,
       }, initHeaders.Authorization);
     }
-    throw error;
+    throw userFacingError;
   } finally {
     if (shouldSubmitTrace && completedOk && statusCode !== undefined && statusCode < 400) {
       recordAndSubmitDeviceTrace(config, {
@@ -194,12 +197,39 @@ function parseJsonBody(text: string): unknown | undefined {
   }
 }
 
-function backendHttpErrorMessage(status: number, text: string): string {
+function backendHostLabel(apiBaseUrl: string): string {
+  try {
+    const base = typeof window === "undefined" ? "https://story.storymodeai.com" : window.location.origin;
+    const url = new URL(apiBaseUrl, base);
+    return url.host || "the configured backend";
+  } catch {
+    return "the configured backend";
+  }
+}
+
+function isBackendTransportError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /failed to fetch|networkerror|network error|load failed|connection|connectex|aborted|aborterror|timeout|timed out/i.test(message);
+}
+
+function backendTransportErrorMessage(config: RuntimeConfig): string {
+  return `Backend is offline or unreachable. The app could not reach the story server at ${backendHostLabel(config.apiBaseUrl)}. Keep working from this device where available; cloud actions will retry when the backend reconnects.`;
+}
+
+function isTemporaryBackendStatus(status: number): boolean {
+  return [408, 425, 429, 500, 502, 503, 504].includes(status);
+}
+
+function backendHttpErrorMessage(config: RuntimeConfig, status: number, text: string): string {
   const detail = text
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 220);
+  if (isTemporaryBackendStatus(status)) {
+    const detailSuffix = detail ? ` Backend response: ${detail}` : "";
+    return `Backend is temporarily unavailable (HTTP ${status}). The app reached ${backendHostLabel(config.apiBaseUrl)}, but the story server did not return a usable response. Keep working from this device where available; cloud actions will retry when the backend reconnects.${detailSuffix}`;
+  }
   return detail
     ? `Backend request failed with HTTP ${status}: ${detail}`
     : `Backend request failed with HTTP ${status}.`;

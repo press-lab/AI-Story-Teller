@@ -6,7 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
 import { getAccountAdventureBackup, saveAccountAdventureBackup } from "../db/accountAdventureBackupDb";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
-import { createBackendTurnRunner, createCachedBackendAdventureStore } from "./adventureStore";
+import {
+  apiJson,
+  createBackendTurnRunner,
+  createCachedBackendAdventureStore,
+  isRetryableBackendSyncError,
+} from "./adventureStore";
 import type { RuntimeConfig } from "./runtimeConfig";
 
 const DB_NAME = "ai-story-teller";
@@ -109,7 +114,26 @@ describe("cached backend adventure store", () => {
     const runner = createBackendTurnRunner(config, "session-token");
 
     await expect(runner.runTurn({ adventureId: "adv-1", input: "You wait", mode: "do" }))
-      .rejects.toThrow("Backend request failed with HTTP 502");
+      .rejects.toThrow("Backend is temporarily unavailable (HTTP 502)");
+  });
+
+  it("describes browser transport failures instead of surfacing Load failed", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new TypeError("Load failed");
+    }));
+
+    const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "https://offline-backend.example" };
+
+    let message = "";
+    try {
+      await apiJson(config, "/admin/console");
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+
+    expect(message).toMatch(/Backend is offline or unreachable.*offline-backend\.example/);
+    expect(message).not.toContain("Load failed");
+    expect(isRetryableBackendSyncError(new Error(message))).toBe(true);
   });
 
   it("queues a retryable cloud save failure while preserving the device backup", async () => {
