@@ -47,7 +47,13 @@ import type {
 } from "../types/adventure";
 import { createId, nowIso } from "../utils/id";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
-import { isBackendSyncQueuedError, type AdventureStore, type ContextPreviewSource, type TurnRunner } from "../runtime/adventureStore";
+import {
+  isBackendSyncQueuedError,
+  isRetryableBackendSyncError,
+  type AdventureStore,
+  type ContextPreviewSource,
+  type TurnRunner,
+} from "../runtime/adventureStore";
 
 function mergeProviderConfig(adventure: Adventure, settings: RuntimeProviderSettings): RuntimeProviderSettings {
   const sessionId = `ai-story-teller:${adventure.id}`.slice(0, 256);
@@ -187,6 +193,12 @@ const CHALLENGE_PHRASES = [
 ];
 
 const BACKEND_TURN_RECOVERY_DELAYS_MS = [0, 750, 1500, 3000];
+const BACKEND_RECONNECT_ACTION_INTERVAL = 2;
+export const BACKEND_OFFLINE_LOCAL_MODE_MESSAGE =
+  "Backend is offline. Continuing from this device and trying to reconnect every couple of actions.";
+export const BACKEND_OFFLINE_LOCAL_KEY_MESSAGE =
+  "Backend is offline. Local generation needs a personal API key in Settings; the backend platform key stays on the backend.";
+const BACKEND_RECONNECTED_MESSAGE = "Backend reconnected. Cloud saves are active.";
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => globalThis.setTimeout(resolve, ms));
@@ -221,6 +233,15 @@ function shouldRecoverBackendTurn(error: unknown): boolean {
     message.includes("http 503") ||
     message.includes("http 504")
   );
+}
+
+function isRetryableBackendRuntimeError(error: unknown): boolean {
+  return isRetryableBackendSyncError(error) || shouldRecoverBackendTurn(error);
+}
+
+export function shouldAttemptBackendReconnect(localActionsSinceBackendAttempt: number | undefined): boolean {
+  return localActionsSinceBackendAttempt === undefined
+    || localActionsSinceBackendAttempt >= BACKEND_RECONNECT_ACTION_INTERVAL;
 }
 
 export async function saveDeviceAdventureBeforeBackendTurn(
@@ -281,6 +302,7 @@ export function useAdventureRuntime(
   const wasHiddenRef = useRef(false);
   const pendingRetryRef = useRef(false);
   const continueTurnRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  const backendOfflineLocalActionsRef = useRef<number | undefined>(undefined);
   const clearError = useCallback(() => setError(undefined), []);
 
   useEffect(() => { adventureRef.current = adventure; }, [adventure]);
@@ -329,6 +351,59 @@ export function useAdventureRuntime(
     setContextResult(undefined);
     setSaveStatus("saved");
     await refreshAdventures();
+  }
+
+  function localProviderReady(adventureState: Adventure): boolean {
+    return Boolean(mergeProviderConfig(adventureState, providerSettingsRef.current).apiKey?.trim());
+  }
+
+  function requireLocalProviderForBackendFallback(adventureState: Adventure): void {
+    if (localProviderReady(adventureState)) return;
+    setError(BACKEND_OFFLINE_LOCAL_KEY_MESSAGE);
+    setSaveStatus(BACKEND_OFFLINE_LOCAL_KEY_MESSAGE);
+    throw new Error(BACKEND_OFFLINE_LOCAL_KEY_MESSAGE);
+  }
+
+  function markBackendReconnectAttemptFailed(): void {
+    backendOfflineLocalActionsRef.current = 0;
+  }
+
+  function markBackendOfflineLocalAction(message = BACKEND_OFFLINE_LOCAL_MODE_MESSAGE): void {
+    backendOfflineLocalActionsRef.current = Math.min(
+      BACKEND_RECONNECT_ACTION_INTERVAL,
+      (backendOfflineLocalActionsRef.current ?? 0) + 1,
+    );
+    setError(message);
+    setSaveStatus(message);
+  }
+
+  function markBackendActionSucceeded(): void {
+    const wasOffline = backendOfflineLocalActionsRef.current !== undefined;
+    backendOfflineLocalActionsRef.current = undefined;
+    setError(undefined);
+    if (wasOffline) setSaveStatus(BACKEND_RECONNECTED_MESSAGE);
+  }
+
+  async function persistAdventure(next: Adventure): Promise<void> {
+    try {
+      await adventureStore.save(next);
+      setSaveStatus("saved");
+    } catch (saveError) {
+      if (isBackendSyncQueuedError(saveError)) {
+        setSaveStatus(saveError.message);
+        await refreshAdventures();
+        return;
+      }
+      throw saveError;
+    }
+  }
+
+  async function persistFailureState(next: Adventure): Promise<void> {
+    try {
+      await persistAdventure(next);
+    } catch {
+      // Keep the original provider/runtime error visible.
+    }
   }
 
   function queuePendingUpdate(actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
@@ -406,7 +481,15 @@ export function useAdventureRuntime(
     if (backendContextPreview) {
       void backendContextPreview.build(adventure.id)
         .then(setContextResult)
-        .catch((error) => setError(error instanceof Error ? error.message : "Backend context preview failed."));
+        .catch((error) => {
+          if (isRetryableBackendRuntimeError(error)) {
+            markBackendReconnectAttemptFailed();
+            markBackendOfflineLocalAction();
+            setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
+            return;
+          }
+          setError(error instanceof Error ? error.message : "Backend context preview failed.");
+        });
       return;
     }
     setContextResult(buildContext(adventure, { latestModelOutput: latestAssistantOutput(adventure) }));
@@ -458,36 +541,45 @@ export function useAdventureRuntime(
     return false;
   }
 
-  async function submitTurn(text: string, mode: InputMode = "story") {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-
-    if (backendTurnRunner) {
-      try {
-        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
-        const result = await backendTurnRunner.runTurn({ adventureId: syncedAdventure.id, input: text, mode });
-        setAdventure(result.adventure);
-        setContextResult(result.postTurnContext ?? result.preProviderContext);
-        setSaveStatus("saved");
-        await refreshAdventures();
-      } catch (backendError) {
-        if (shouldRecoverBackendTurn(backendError) && await recoverBackendTurnCompletion(adventureRef.current ?? adventure, text)) return;
-        setError(backendError instanceof Error ? backendError.message : "Backend turn failed.");
-        throw backendError;
-      } finally {
-        setLoading(false);
-        isSubmittingRef.current = false;
-      }
-      return;
+  async function tryBackendSubmitTurn(text: string, mode: InputMode): Promise<boolean> {
+    if (!backendTurnRunner || !adventure) return false;
+    if (!shouldAttemptBackendReconnect(backendOfflineLocalActionsRef.current)) {
+      markBackendOfflineLocalAction();
+      return false;
     }
 
+    try {
+      const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+      setAdventure(syncedAdventure);
+      const result = await backendTurnRunner.runTurn({ adventureId: syncedAdventure.id, input: text, mode });
+      setAdventure(result.adventure);
+      setContextResult(result.postTurnContext ?? result.preProviderContext);
+      setSaveStatus("saved");
+      markBackendActionSucceeded();
+      await refreshAdventures();
+      return true;
+    } catch (backendError) {
+      if (shouldRecoverBackendTurn(backendError) && await recoverBackendTurnCompletion(adventureRef.current ?? adventure, text)) {
+        markBackendActionSucceeded();
+        return true;
+      }
+      if (isRetryableBackendRuntimeError(backendError)) {
+        markBackendReconnectAttemptFailed();
+        markBackendOfflineLocalAction();
+        return false;
+      }
+      setError(backendError instanceof Error ? backendError.message : "Backend turn failed.");
+      throw backendError;
+    }
+  }
+
+  async function runLocalSubmitTurn(text: string, mode: InputMode, backendFallback: boolean): Promise<void> {
+    if (!adventure) return;
     let base = flushPendingBeforeContext(adventure);
     if (mode !== "comms" && CHALLENGE_PHRASES.some((re) => re.test(text))) {
       base = adventureReducer(base, { type: "SET_CHALLENGE_MODE" });
     }
+    if (backendFallback) requireLocalProviderForBackendFallback(base);
     let snapshotWithUserMsg: typeof adventure | undefined;
 
     try {
@@ -520,8 +612,7 @@ export function useAdventureRuntime(
       let next = mergeQueuedUpdates(result.adventure);
       setAdventure(next);
       setContextResult(result.postTurnContext);
-      await adventureStore.save(next);
-      setSaveStatus("saved");
+      await persistAdventure(next);
       isSubmittingRef.current = false;
       if (mode !== "comms") {
         void startSemanticEvaluation(next);
@@ -547,8 +638,20 @@ export function useAdventureRuntime(
       }
       const errorState = snapshotWithUserMsg ?? base;
       setAdventure(errorState);
-      await adventureStore.save(errorState);
+      await persistFailureState(errorState);
       throw providerError;
+    }
+  }
+
+  async function submitTurn(text: string, mode: InputMode = "story") {
+    if (!adventure || loading) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      const handledByBackend = await tryBackendSubmitTurn(text, mode);
+      if (!handledByBackend) await runLocalSubmitTurn(text, mode, Boolean(backendTurnRunner));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -556,38 +659,45 @@ export function useAdventureRuntime(
     }
   }
 
-  async function continueTurn() {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-
-    if (backendTurnRunner) {
-      try {
-        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
-        const result = await backendTurnRunner.runTurn({
-          adventureId: syncedAdventure.id,
-          input: "[continue]",
-          mode: "story",
-          recordUserInput: false,
-          providerCue: "[continue]",
-        });
-        setAdventure(result.adventure);
-        setContextResult(result.postTurnContext ?? result.preProviderContext);
-        setSaveStatus("saved");
-        await refreshAdventures();
-      } catch (backendError) {
-        setError(backendError instanceof Error ? backendError.message : "Backend continue failed.");
-      } finally {
-        setLoading(false);
-        isSubmittingRef.current = false;
-      }
-      return;
+  async function tryBackendContinueTurn(): Promise<boolean> {
+    if (!backendTurnRunner || !adventure) return false;
+    if (!shouldAttemptBackendReconnect(backendOfflineLocalActionsRef.current)) {
+      markBackendOfflineLocalAction();
+      return false;
     }
 
     try {
-      const base = flushPendingBeforeContext(adventure);
+      const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+      setAdventure(syncedAdventure);
+      const result = await backendTurnRunner.runTurn({
+        adventureId: syncedAdventure.id,
+        input: "[continue]",
+        mode: "story",
+        recordUserInput: false,
+        providerCue: "[continue]",
+      });
+      setSaveStatus("saved");
+      markBackendActionSucceeded();
+      setAdventure(result.adventure);
+      setContextResult(result.postTurnContext ?? result.preProviderContext);
+      await refreshAdventures();
+      return true;
+    } catch (backendError) {
+      if (isRetryableBackendRuntimeError(backendError)) {
+        markBackendReconnectAttemptFailed();
+        markBackendOfflineLocalAction();
+        return false;
+      }
+      setError(backendError instanceof Error ? backendError.message : "Backend continue failed.");
+      return true;
+    }
+  }
+
+  async function runLocalContinueTurn(backendFallback: boolean): Promise<void> {
+    if (!adventure) return;
+    const base = flushPendingBeforeContext(adventure);
+    if (backendFallback) requireLocalProviderForBackendFallback(base);
+    try {
       const result = await runTurnPipeline({
         adventure: base,
         text: "[continue]",
@@ -615,8 +725,7 @@ export function useAdventureRuntime(
       next = mergeQueuedUpdates(next);
       setAdventure(next);
       setContextResult(result.postTurnContext);
-      await adventureStore.save(next);
-      setSaveStatus("saved");
+      await persistAdventure(next);
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
       checkMemoryCycle(next);
@@ -624,7 +733,19 @@ export function useAdventureRuntime(
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
       setAdventure(adventure);
-      await adventureStore.save(adventure);
+      await persistFailureState(adventure);
+    }
+  }
+
+  async function continueTurn() {
+    if (!adventure || loading) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      const handledByBackend = await tryBackendContinueTurn();
+      if (!handledByBackend) await runLocalContinueTurn(Boolean(backendTurnRunner));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;
@@ -632,37 +753,44 @@ export function useAdventureRuntime(
     }
   }
 
-  async function regenerateLastResponse() {
-    if (!adventure || loading) return;
-    isSubmittingRef.current = true;
-    setLoading(true);
-    setError(undefined);
-
-    if (backendTurnRunner) {
-      try {
-        const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
-        const result = await backendTurnRunner.runTurn({
-          adventureId: syncedAdventure.id,
-          input: "[regenerate]",
-          mode: "story",
-          recordUserInput: false,
-          regenerateLastAssistant: true,
-        });
-        setAdventure(result.adventure);
-        setContextResult(result.postTurnContext ?? result.preProviderContext);
-        setSaveStatus("saved");
-        await refreshAdventures();
-      } catch (backendError) {
-        setError(backendError instanceof Error ? backendError.message : "Backend regeneration failed.");
-      } finally {
-        setLoading(false);
-        isSubmittingRef.current = false;
-      }
-      return;
+  async function tryBackendRegenerateLastResponse(): Promise<boolean> {
+    if (!backendTurnRunner || !adventure) return false;
+    if (!shouldAttemptBackendReconnect(backendOfflineLocalActionsRef.current)) {
+      markBackendOfflineLocalAction();
+      return false;
     }
 
+    try {
+      const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
+      setAdventure(syncedAdventure);
+      const result = await backendTurnRunner.runTurn({
+        adventureId: syncedAdventure.id,
+        input: "[regenerate]",
+        mode: "story",
+        recordUserInput: false,
+        regenerateLastAssistant: true,
+      });
+      setAdventure(result.adventure);
+      setContextResult(result.postTurnContext ?? result.preProviderContext);
+      setSaveStatus("saved");
+      markBackendActionSucceeded();
+      await refreshAdventures();
+      return true;
+    } catch (backendError) {
+      if (isRetryableBackendRuntimeError(backendError)) {
+        markBackendReconnectAttemptFailed();
+        markBackendOfflineLocalAction();
+        return false;
+      }
+      setError(backendError instanceof Error ? backendError.message : "Backend regeneration failed.");
+      return true;
+    }
+  }
+
+  async function runLocalRegenerateLastResponse(backendFallback: boolean): Promise<void> {
+    if (!adventure) return;
     let next = flushPendingBeforeContext(adventure);
+    if (backendFallback) requireLocalProviderForBackendFallback(next);
     next = adventureReducer(next, { type: "REMOVE_LAST_ASSISTANT_MESSAGE" });
     const lastUser = [...next.messages].reverse().find((m) => m.role === "user")?.content ?? "Continue.";
     const context = buildContext(next, { currentInput: lastUser, latestModelOutput: latestAssistantOutput(next) });
@@ -693,13 +821,24 @@ export function useAdventureRuntime(
       next = mergeQueuedUpdates(next);
       setAdventure(next);
       setContextResult(buildContext(next, { latestModelOutput: applied.responseContent }));
-      await adventureStore.save(next);
-      setSaveStatus("saved");
+      await persistAdventure(next);
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Regeneration failed.");
       setAdventure(next);
+    }
+  }
+
+  async function regenerateLastResponse() {
+    if (!adventure || loading) return;
+    isSubmittingRef.current = true;
+    setLoading(true);
+    setError(undefined);
+
+    try {
+      const handledByBackend = await tryBackendRegenerateLastResponse();
+      if (!handledByBackend) await runLocalRegenerateLastResponse(Boolean(backendTurnRunner));
     } finally {
       setLoading(false);
       isSubmittingRef.current = false;

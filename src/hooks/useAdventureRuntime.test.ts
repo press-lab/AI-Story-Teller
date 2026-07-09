@@ -1,13 +1,22 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { act, renderHook } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   applyResponseLengthHint,
+  BACKEND_OFFLINE_LOCAL_MODE_MESSAGE,
   combineProviderUsage,
   isRecoveredBackendTurn,
   saveDeviceAdventureBeforeBackendTurn,
+  shouldAttemptBackendReconnect,
+  useAdventureRuntime,
 } from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
 import { createDefaultAdventure } from "../state/defaults";
-import { BackendSyncQueuedError, type AdventureStore } from "../runtime/adventureStore";
+import { BackendSyncQueuedError, type AdventureStore, type TurnRunner } from "../runtime/adventureStore";
+import type { Adventure } from "../types/adventure";
 
 const baseConfig: RuntimeProviderSettings = {
   name: "openai-compatible",
@@ -92,6 +101,75 @@ describe("isRecoveredBackendTurn", () => {
     };
 
     expect(isRecoveredBackendTurn(before, recovered, "You draw your sword")).toBe(false);
+  });
+});
+
+describe("shouldAttemptBackendReconnect", () => {
+  it("tries the backend initially and then after two local actions", () => {
+    expect(shouldAttemptBackendReconnect(undefined)).toBe(true);
+    expect(shouldAttemptBackendReconnect(0)).toBe(false);
+    expect(shouldAttemptBackendReconnect(1)).toBe(false);
+    expect(shouldAttemptBackendReconnect(2)).toBe(true);
+    expect(shouldAttemptBackendReconnect(3)).toBe(true);
+  });
+});
+
+describe("backend offline local fallback", () => {
+  it("keeps a locally generated continue result when backend sync is queued", async () => {
+    const adventure = createDefaultAdventure("Offline Continue");
+    adventure.id = "adv-offline-continue";
+    adventure.semanticEvaluationSettings = { ...adventure.semanticEvaluationSettings, enabled: false };
+    adventure.memoryDetectionSettings = { ...adventure.memoryDetectionSettings, enabled: false };
+    let latestAdventure: Adventure | undefined = adventure;
+    const store: AdventureStore = {
+      list: vi.fn(async () => []),
+      get: vi.fn(async () => latestAdventure),
+      save: vi.fn(async () => {
+        throw new BackendSyncQueuedError(new Error("Backend request failed with HTTP 502."));
+      }),
+      saveForGeneration: vi.fn(async (next) => next),
+      delete: vi.fn(),
+    };
+    const backendTurnRunner: TurnRunner = {
+      runTurn: vi.fn(async () => {
+        throw new Error("Backend request failed with HTTP 502.");
+      }),
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      choices: [{ message: { content: "Local fallback response." } }],
+      usage: { prompt_tokens: 10, completion_tokens: 4, total_tokens: 14 },
+    }), { status: 200, headers: { "Content-Type": "application/json" } })));
+    const setSaveStatus = vi.fn();
+    const setContextResult = vi.fn();
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const { result } = renderHook(() => {
+      const [current, setCurrent] = useState<Adventure | undefined>(adventure);
+      latestAdventure = current;
+      return useAdventureRuntime(
+        current,
+        setCurrent,
+        baseConfig,
+        store,
+        setSaveStatus,
+        setContextResult,
+        vi.fn(),
+        refreshAdventures,
+        { enabled: false, generateContent: false, everyNTurns: 1 },
+        backendTurnRunner,
+      );
+    });
+
+    await act(async () => {
+      await result.current.continueTurn();
+    });
+
+    expect(backendTurnRunner.runTurn).toHaveBeenCalledOnce();
+    expect(latestAdventure?.messages).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: "assistant", content: "Local fallback response." }),
+    ]));
+    expect(result.current.error).toBe(BACKEND_OFFLINE_LOCAL_MODE_MESSAGE);
+    expect(setSaveStatus).toHaveBeenLastCalledWith("Cloud save failed; playing from this device. Changes will sync when the backend reconnects.");
   });
 });
 
