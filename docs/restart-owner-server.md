@@ -3,6 +3,20 @@
 Use this after the owner PC restarts and testers need `story.storymodeai.com`
 to reach the local backend again.
 
+## What Has To Come Back
+
+Yes: after a full Windows restart, think **Postgres + owner watchdog**.
+
+- Postgres is the app-owned local database on `127.0.0.1:55432`.
+- The owner watchdog starts or repairs the API on `127.0.0.1:8787`.
+- The owner watchdog starts or repairs the Cloudflare Quick Tunnel.
+- If Cloudflare gives a new `https://*.trycloudflare.com` URL, the watchdog
+  updates the GitHub Pages API URL variable and triggers a Pages deploy.
+
+You do not need a local Vite dev server for testers. They load the GitHub Pages
+frontend at `https://story.storymodeai.com/`; the owner machine only needs to
+restore the backend chain.
+
 ## Normal Restart
 
 Open PowerShell in the repo root:
@@ -16,6 +30,10 @@ Start the app-owned local Postgres cluster:
 ```powershell
 npm.cmd run owner:postgres:start
 ```
+
+This explicit step is still worth running after reboot even though the watchdog
+can also start the app-owned Postgres cluster when `.env` points at
+`127.0.0.1:55432/aist_local`.
 
 Start the owner watchdog in the background:
 

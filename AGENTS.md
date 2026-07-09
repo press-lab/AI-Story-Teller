@@ -19,6 +19,11 @@ For owner-hosted backend, Cloudflare Quick Tunnel, GitHub Pages API URL,
 or backend API key incidents, read
 `docs/agent-cloudflare-owner-backend-context.md` first.
 
+After the owner PC restarts, use `docs/restart-owner-server.md`. The normal
+recovery is app-owned Postgres first, then the owner watchdog; the watchdog
+repairs the local API, Cloudflare Quick Tunnel, Pages API URL, and Pages redeploy
+when the Quick Tunnel URL changes.
+
 ## Profile Scenarios vs Adventures
 
 For backend profile-only scenario requests, read `docs/profile-only-scenario-context.md` first.

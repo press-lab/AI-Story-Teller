@@ -1,9 +1,10 @@
 # Agent Context: Owner Backend, Cloudflare Tunnel, And Pages API URL
 
 Read this first when working on owner-hosted backend, Cloudflare Quick Tunnel,
-GitHub Pages API URL, `NetworkError when attempting to fetch resource`,
-Cloudflare 502, Admin Console load failures, missing backend API key errors, or
-backend adventure/scenario actions that appear to do nothing.
+owner PC restart recovery, GitHub Pages API URL, `NetworkError when attempting
+to fetch resource`, Cloudflare 502, Admin Console load failures, missing
+backend API key errors, or backend adventure/scenario actions that appear to do
+nothing.
 
 ## Why This Exists
 
@@ -53,6 +54,17 @@ Normal owner-machine recovery:
 npm.cmd run owner:postgres:start
 npm.cmd run owner:watch:start
 ```
+
+For a full Windows restart, the short runbook is
+[`docs/restart-owner-server.md`](./restart-owner-server.md). The key context is:
+
+- Start or repair the app-owned Postgres cluster on `127.0.0.1:55432`.
+- Start the owner watchdog. The watchdog owns the local API process on
+  `127.0.0.1:8787`, the Cloudflare Quick Tunnel, the GitHub Pages API URL, and
+  the Pages redeploy when Quick Tunnel gives a new public URL.
+- Do not start a Vite dev server for tester recovery. Testers use
+  `https://story.storymodeai.com/`; only the backend chain must come back on
+  the owner machine.
 
 The watchdog is the durable entrypoint. It should keep these pieces healthy:
 
