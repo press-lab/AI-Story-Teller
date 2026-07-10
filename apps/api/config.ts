@@ -19,6 +19,13 @@ export interface ApiConfig {
   port: number;
   dataFile: string;
   databaseUrl?: string;
+  databaseDirectUrl?: string;
+  databasePoolMax: number;
+  databaseConnectionTimeoutMs: number;
+  databaseIdleTimeoutMs: number;
+  databaseStatementTimeoutMs: number;
+  databaseLockTimeoutMs: number;
+  databaseIdleTransactionTimeoutMs: number;
   allowedOrigins: string[];
   adminKey?: string;
   adminEmails: string[];
@@ -83,6 +90,13 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     port: numberEnv("AIST_API_PORT", numberEnv("PORT", 8787)),
     dataFile: stringEnv("AIST_API_DATA_FILE", ".local-backend/aist-api-db.json"),
     databaseUrl: process.env.AIST_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim() || undefined,
+    databaseDirectUrl: process.env.DATABASE_DIRECT_URL?.trim() || undefined,
+    databasePoolMax: numberEnv("AIST_DATABASE_POOL_MAX", 10),
+    databaseConnectionTimeoutMs: numberEnv("AIST_DATABASE_CONNECTION_TIMEOUT_MS", 5_000),
+    databaseIdleTimeoutMs: numberEnv("AIST_DATABASE_IDLE_TIMEOUT_MS", 30_000),
+    databaseStatementTimeoutMs: numberEnv("AIST_DATABASE_STATEMENT_TIMEOUT_MS", 30_000),
+    databaseLockTimeoutMs: numberEnv("AIST_DATABASE_LOCK_TIMEOUT_MS", 5_000),
+    databaseIdleTransactionTimeoutMs: numberEnv("AIST_DATABASE_IDLE_TRANSACTION_TIMEOUT_MS", 15_000),
     allowedOrigins: stringEnv(
       "AIST_API_ALLOWED_ORIGINS",
       "http://localhost:5173,http://127.0.0.1:5173,https://press-lab.github.io",

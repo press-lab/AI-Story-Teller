@@ -107,17 +107,15 @@ async function handleRequest(
   const requestStartedAt = performance.now();
   const requestBytes = numericHeader(request.headers["content-length"]);
   try {
-    if (request.method === "GET" && route.pathname === "/health") {
-      const data = await db.read();
+    if (request.method === "GET" && (route.pathname === "/readyz" || route.pathname === "/health")) {
+      const readiness = await db.readiness();
       sendJson(response, 200, {
         ok: true,
-        database: config.databaseUrl ? "postgres" : "local-json",
-        schemaVersion: data.schemaVersion,
-        migrations: data.migrations,
+        ...readiness,
       }, corsHeaders);
       return;
     }
-    if (request.method === "GET" && route.pathname === "/version") {
+    if (request.method === "GET" && (route.pathname === "/livez" || route.pathname === "/version")) {
       sendJson(response, 200, {
         app: "ai-story-teller-api",
         mode: "local",
@@ -1020,7 +1018,7 @@ function numericHeader(value: string | string[] | number | undefined): number | 
 }
 
 function shouldTraceRequest(pathname: string): boolean {
-  return pathname !== "/health" && pathname !== "/version" && pathname !== "/telemetry/client";
+  return !["/health", "/readyz", "/livez", "/version", "/telemetry/client"].includes(pathname);
 }
 
 async function recordTrace(db: BackendDb, record: PerformanceTraceRecord): Promise<void> {

@@ -1,21 +1,51 @@
 import { createApiServer } from "./server";
 import type { ApiConfig } from "./config";
 
-const api = createApiServer({
-  host: hostedHost(),
-  port: hostedPort(),
-  allowLocalGoogleStub: false,
+async function main(): Promise<void> {
+  const api = createApiServer({
+    host: hostedHost(),
+    port: hostedPort(),
+    allowLocalGoogleStub: false,
+  });
+
+  assertHostedServerConfig(api.config);
+  await api.db.readiness();
+  const { port } = await api.listen();
+
+  console.log("AI Story Teller hosted API is running.");
+  console.log(`Database: ${api.config.databaseUrl ? "postgres" : "local-json"}`);
+  console.log(`Bind URL: http://${api.config.host}:${port}`);
+  console.log(`Allowed origins: ${api.config.allowedOrigins.join(", ")}`);
+  console.log(`Policy mode: ${api.config.policyMode}`);
+
+  let shuttingDown = false;
+  for (const signal of ["SIGTERM", "SIGINT"] as const) {
+    process.on(signal, () => {
+      if (shuttingDown) return;
+      shuttingDown = true;
+      const forcedExit = setTimeout(() => {
+        console.error(`Hosted API did not shut down cleanly after ${signal}.`);
+        process.exit(1);
+      }, 10_000);
+      forcedExit.unref();
+      void api.close()
+        .then(() => {
+          clearTimeout(forcedExit);
+          process.exit(0);
+        })
+        .catch((error) => {
+          clearTimeout(forcedExit);
+          console.error("Hosted API shutdown failed:", error instanceof Error ? error.message : String(error));
+          process.exit(1);
+        });
+    });
+  }
+}
+
+void main().catch((error) => {
+  console.error("Hosted API failed to start:", error instanceof Error ? error.message : String(error));
+  process.exit(1);
 });
-
-assertHostedServerConfig(api.config);
-
-const { port } = await api.listen();
-
-console.log("AI Story Teller hosted API is running.");
-console.log(`Database: ${api.config.databaseUrl ? "postgres" : "local-json"}`);
-console.log(`Bind URL: http://${api.config.host}:${port}`);
-console.log(`Allowed origins: ${api.config.allowedOrigins.join(", ")}`);
-console.log(`Policy mode: ${api.config.policyMode}`);
 
 function hostedHost(): string {
   return process.env.AIST_API_HOST?.trim() || "0.0.0.0";

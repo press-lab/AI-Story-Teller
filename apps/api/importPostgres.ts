@@ -8,7 +8,7 @@ const force = process.argv.includes("--force");
 const config = loadApiConfig();
 
 if (!config.databaseUrl) {
-  console.error("AIST_DATABASE_URL or DATABASE_URL is required for Postgres migration.");
+  console.error("AIST_DATABASE_URL or DATABASE_URL is required for Postgres import.");
   process.exit(1);
 }
 
@@ -26,9 +26,9 @@ try {
     process.exit(1);
   }
   await target.write(sourceData);
-  const migrated = await target.read({ includeAdventureSnapshots: true });
-  console.log(`Migrated ${postgresSummary(migrated)} to Postgres.`);
-  console.log(`Source JSON: ${config.dataFile}${sourceExists ? "" : " (missing; migrated empty database)"}`);
+  const imported = await target.read({ includeAdventureSnapshots: true });
+  console.log(`Imported ${postgresSummary(imported)} to Postgres.`);
+  console.log(`Source JSON: ${config.dataFile}${sourceExists ? "" : " (missing; imported empty database)"}`);
 } finally {
   await source.close();
   await target.close();

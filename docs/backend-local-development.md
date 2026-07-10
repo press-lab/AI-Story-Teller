@@ -21,7 +21,7 @@ Default local database:
 .local-backend/aist-api-db.json
 ```
 
-For shared tester access, use Postgres instead. See [Local Postgres Backend](./postgres-local-development.md). Set `AIST_DATABASE_URL` and run `npm.cmd run api:postgres:migrate` before starting `api:serve`.
+For shared tester access, use Postgres instead. See [Local Postgres Backend](./postgres-local-development.md). Set `AIST_DATABASE_URL`, run `npm.cmd run api:db:migrate`, and use `npm.cmd run api:postgres:import` only when intentionally importing the local JSON database.
 
 The frontend now opens on an account-required welcome page. Profile is the combined home and adventure library. Browser Local remains an owner/testing runtime and keeps IndexedDB saves, browser provider settings, JSON backup/restore, and GitHub saves independent from backend adventure storage.
 

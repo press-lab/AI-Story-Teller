@@ -8,11 +8,17 @@ export interface BackendReadOptions {
   includeAdventureSnapshots?: boolean;
 }
 
+export interface DatabaseReadiness {
+  database: "postgres" | "local-json";
+  schemaVersion: number;
+}
+
 export interface BackendDb {
   read(options?: BackendReadOptions): Promise<LocalDbData>;
   write(data: LocalDbData): Promise<void>;
   update<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T>;
   updatePersistingOnError<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T>;
+  readiness(): Promise<DatabaseReadiness>;
   readProfileSummary?(userId: string): Promise<BackendProfileSummary>;
   readPublicProfileSummary?(userId: string): Promise<PublicProfileSummary>;
   readExploreScenarios?(): Promise<ExploreScenarioSummary[]>;

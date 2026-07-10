@@ -59,6 +59,11 @@ export class LocalDb implements BackendDb {
     return run;
   }
 
+  async readiness() {
+    const data = await this.read();
+    return { database: "local-json" as const, schemaVersion: data.schemaVersion };
+  }
+
   async recordPerformanceTrace(record: PerformanceTraceRecord): Promise<void> {
     const run = this.writeChain.then(async () => {
       const data = await this.read();

@@ -28,9 +28,19 @@ import {
   type PublicProfileSummary,
 } from "./profileReadModels";
 import { MAX_PERFORMANCE_TRACES } from "./performanceTrace";
+import { CURRENT_SQL_SCHEMA_VERSION } from "./sqlMigrations";
 
 const { Pool } = pg;
 const ADVISORY_LOCK_KEY = 4_263_117;
+
+export interface PostgresDbOptions {
+  max?: number;
+  connectionTimeoutMillis?: number;
+  idleTimeoutMillis?: number;
+  statementTimeoutMs?: number;
+  lockTimeoutMs?: number;
+  idleTransactionTimeoutMs?: number;
+}
 
 interface DbMetadata {
   schemaVersion: number;
@@ -82,8 +92,25 @@ export class PostgresDb implements BackendDb {
   private readonly pool: pg.Pool;
   private initPromise: Promise<void> | undefined;
 
-  constructor(connectionString: string) {
-    this.pool = new Pool({ connectionString });
+  constructor(connectionString: string, options: PostgresDbOptions = {}) {
+    const sessionOptions = [
+      options.statementTimeoutMs ? `-c statement_timeout=${Math.round(options.statementTimeoutMs)}` : "",
+      options.lockTimeoutMs ? `-c lock_timeout=${Math.round(options.lockTimeoutMs)}` : "",
+      options.idleTransactionTimeoutMs ? `-c idle_in_transaction_session_timeout=${Math.round(options.idleTransactionTimeoutMs)}` : "",
+    ].filter(Boolean).join(" ");
+    this.pool = new Pool({
+      connectionString,
+      max: options.max,
+      connectionTimeoutMillis: options.connectionTimeoutMillis,
+      idleTimeoutMillis: options.idleTimeoutMillis,
+      options: sessionOptions || undefined,
+    });
+  }
+
+  async readiness() {
+    await this.init();
+    const result = await this.pool.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
+    return { database: "postgres" as const, schemaVersion: result.rows[0]?.version ?? 0 };
   }
 
   async read(options: BackendReadOptions = {}): Promise<LocalDbData> {
@@ -335,7 +362,7 @@ export class PostgresDb implements BackendDb {
   }
 
   async init(): Promise<void> {
-    this.initPromise ??= this.createSchema();
+    this.initPromise ??= this.assertSchemaCompatible();
     await this.initPromise;
   }
 
@@ -360,29 +387,19 @@ export class PostgresDb implements BackendDb {
     }
   }
 
-  private async createSchema(): Promise<void> {
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS aist_meta (
-        key text PRIMARY KEY,
-        value jsonb NOT NULL,
-        updated_at timestamptz NOT NULL DEFAULT now()
-      );
-    `);
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS aist_records (
-        collection text NOT NULL,
-        id text NOT NULL,
-        data jsonb NOT NULL,
-        updated_at timestamptz NOT NULL DEFAULT now(),
-        PRIMARY KEY (collection, id)
-      );
-    `);
-    await this.pool.query("CREATE INDEX IF NOT EXISTS aist_records_collection_idx ON aist_records (collection);");
-    await this.pool.query(`
-      INSERT INTO aist_meta (key, value)
-      VALUES ('metadata', $1::jsonb)
-      ON CONFLICT (key) DO NOTHING;
-    `, [JSON.stringify(metadataFromDb(createEmptyDb()))]);
+  private async assertSchemaCompatible(): Promise<void> {
+    try {
+      const result = await this.pool.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
+      const version = result.rows[0]?.version ?? 0;
+      if (version !== CURRENT_SQL_SCHEMA_VERSION) {
+        throw new Error(`Postgres schema version ${version} is incompatible; expected ${CURRENT_SQL_SCHEMA_VERSION}. Run npm run api:db:migrate.`);
+      }
+    } catch (error) {
+      if (isMissingRelationError(error)) {
+        throw new Error("Postgres schema is missing. Run npm run api:db:migrate before starting the API.");
+      }
+      throw error;
+    }
   }
 
   private async readWithClient(
@@ -589,4 +606,8 @@ function toInt(value: number | string | null | undefined): number {
     if (Number.isFinite(parsed)) return parsed;
   }
   return 0;
+}
+
+function isMissingRelationError(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "42P01");
 }

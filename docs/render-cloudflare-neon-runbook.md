@@ -14,9 +14,10 @@ Name: storymode-api
 Runtime: Node
 Branch: backend-local-implementation
 Region: closest available region to the Neon project
-Build Command: npm ci --include=dev && npm run build
+Build Command: npm ci && npm run api:build
 Start Command: npm run api:hosted
-Health Check Path: /version
+Pre-Deploy Command: npm run api:db:migrate
+Health Check Path: /readyz
 Instance Type: Free for first UAT, paid Starter when cold starts become a problem
 ```
 
@@ -29,6 +30,7 @@ NODE_VERSION=24
 NODE_ENV=production
 AIST_API_HOST=0.0.0.0
 AIST_DATABASE_URL=<Neon connection string>
+DATABASE_DIRECT_URL=<Neon direct connection string for migrations>
 AIST_API_ALLOWED_ORIGINS=https://story.storymodeai.com
 AIST_WEB_APP_URL=https://story.storymodeai.com/
 AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com
@@ -56,7 +58,7 @@ longer expose tokens through HTTP responses.
 After Render deploys, verify the temporary Render URL first:
 
 ```text
-https://<render-service>.onrender.com/version
+https://<render-service>.onrender.com/readyz
 ```
 
 Then add the custom domain in Render:

@@ -70,7 +70,7 @@ Implemented evidence:
 
 ### H2. Versioned SQL migrations, readiness, and real Postgres CI
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Add ordered, repeat-safe SQL migrations and `schema_migrations`.
 - Rename the JSON-to-Postgres bulk importer so it is not called a schema
@@ -146,7 +146,7 @@ Status: **Not started**
 
 ### H8. Production API artifact and process lifecycle
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Add a dedicated API build that emits production JavaScript.
 - Production start must use `node`, not `tsx` or dev dependencies.

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import defaultRulePackJson from "./policy/rule-packs/manual-review-draft.json";
 import type { LocalDbData, PolicyAction, PolicyDecisionRecord, PolicyGate } from "./apiTypes";
 import type { PolicyMode } from "./config";
 import { applySafetyEventForDecision } from "./accountSafety";
@@ -63,14 +63,13 @@ export interface PolicyEvaluation {
   rationale: string;
 }
 
-const defaultRulePackPath = new URL("./policy/rule-packs/manual-review-draft.json", import.meta.url);
 const protectiveCueBeforePattern =
   /(?:\b(?:no|never|avoid(?:s|ed|ing)?|exclude(?:s|d|ing)?|without|prohibit(?:s|ed|ing)?|prevent(?:s|ed|ing)?|disallow(?:s|ed|ing)?|forbid(?:s|den|ding)?|ban(?:s|ned|ning)?|off[- ]limits?)\b|\b(?:must|should|do|does|did|is|are|was|were|be)\s+not\b|\bdon't\b|\bcannot\b|\bcan't\b)[^.!?\n;:]{0,80}$/i;
 const protectiveCueAfterPattern =
   /^[^.!?\n;:]{0,80}\b(?:is|are|must be|should be)\s+(?:not allowed|prohibited|forbidden|banned|off[- ]limits?)\b/i;
 
-export function loadPolicyRulePack(path = defaultRulePackPath): PolicyRulePack {
-  return JSON.parse(readFileSync(path, "utf8")) as PolicyRulePack;
+export function loadPolicyRulePack(): PolicyRulePack {
+  return defaultRulePackJson as PolicyRulePack;
 }
 
 export function evaluatePolicyText(input: PolicyEvaluationInput, rulePack = loadPolicyRulePack()): PolicyEvaluation {

@@ -3,13 +3,20 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "vite",
     "api:dev": "tsx apps/api/index.ts",
     "api:serve": "tsx apps/api/ownerServer.ts",
-    "api:hosted": "tsx apps/api/hostedServer.ts",
-    "api:postgres:migrate": "tsx apps/api/migratePostgres.ts",
+    "api:build": "tsc -p tsconfig.api.json && node scripts/prepare-api-dist.mjs",
+    "api:hosted": "node dist-api/apps/api/hostedServer.js",
+    "api:db:migrate": "tsx apps/api/migrateSchema.ts",
+    "api:postgres:import": "tsx apps/api/importPostgres.ts",
     "api:test": "vitest run apps/api",
+    "api:test:postgres": "vitest run apps/api/postgres.integration.test.ts",
+    "api:smoke": "node scripts/api-production-smoke.mjs",
     "owner:postgres:init": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 init",
     "owner:postgres:start": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 start",
     "owner:postgres:migrate-utf8": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 migrate-utf8",
