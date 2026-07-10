@@ -23,6 +23,28 @@ Complete one coherent workstream at a time. Each workstream must include its
 tests, documentation/config updates, full validation when feasible, a scoped
 commit, and a push. Update the status ledger below in the same commit.
 
+## Current Owner Deployment Constraint
+
+Render remains Free and Resend is intentionally deferred. The paid
+Starter/pre-deploy and Resend architecture remains the public-production target,
+but it is not the current operational mode.
+
+Before another live Render deployment, implement the explicit Free/no-email UAT
+architecture in `docs/render-free-no-email-context.md`. Do not weaken hosted
+token secrecy or silently accept signup/reset requests that cannot deliver
+email.
+
+### F0. Explicit Free Render and no-email UAT mode
+
+Status: **Planned; blocks the next Render deploy**
+
+- Add an explicit disabled-email capability mode with safe route and frontend
+  behavior.
+- Add a compiled Free startup path that serializes migrations before listening.
+- Reconcile branch, build, start, health-check, proxy, and auto-deploy settings.
+- Preserve existing-account UAT while keeping signup/reset visibly disabled.
+- Keep production Neon secrets out of GitHub Actions.
+
 ## P0 Workstreams
 
 ### H1. Secure verification, password reset, and session lifecycle

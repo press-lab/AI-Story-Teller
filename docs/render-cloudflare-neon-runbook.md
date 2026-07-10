@@ -3,6 +3,21 @@
 Use this runbook after Cloudflare DNS is active, Neon has a Postgres connection
 string, and Render is waiting for service configuration.
 
+## Current Free/No-Email Constraint
+
+The owner is not adding Render billing or Resend yet. Read
+`docs/render-free-no-email-context.md` before changing or redeploying the live
+Render service.
+
+The Starter + Resend configuration below remains the later production target.
+It is not the current deployable configuration. The existing hosted server
+intentionally refuses missing email delivery, and Render Free cannot run the
+pre-deploy migration command. Do not work around either boundary with fake
+email credentials or an undocumented dashboard-only command.
+
+Until the explicit Free/no-email mode is implemented and tested, preserve the
+older live deployment and keep public signup disabled.
+
 ## Render Web Service
 
 Create a Render **Web Service** from the private GitHub repository.

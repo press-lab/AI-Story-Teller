@@ -24,6 +24,12 @@ This stack gets the public app off GitHub Pages and moves backend persistence,
 auth, model calls, admin tools, policy decisions, and scenario publishing off
 the owner's local machine while minimizing fixed monthly cost.
 
+Current owner constraint: Render billing and Resend are deferred. The immediate
+architecture is therefore controlled UAT for existing accounts on Render Free
+and Neon, with email-dependent signup, verification delivery, and password
+recovery explicitly unavailable. See `docs/render-free-no-email-context.md`.
+Do not present this temporary mode as public production.
+
 ## Cost-Minimized Starting Stack
 
 | Need | Service | Starting plan | Notes |
@@ -31,7 +37,7 @@ the owner's local machine while minimizing fixed monthly cost.
 | Web app | Cloudflare Pages | Free | Builds React/Vite with `npm run build`, serves `dist`, supports custom domains and preview deploys. |
 | API | Render Web Service | Free first | Good for UAT and low-traffic testing. Free service cold-starts after idle time, so upgrade when testers hit latency. |
 | Database | Neon Postgres | Free first | Better early persistence than Render free Postgres because Render free Postgres expires; Neon scales to zero and has no monthly minimum on paid usage. |
-| Email | Resend | Free first | Enough for invite, verification, and reset email while usage is small. |
+| Email | Deferred | None for current UAT | Signup, verification delivery, and password recovery must remain explicitly unavailable until a reviewed provider is configured. |
 | DNS | Cloudflare | Free | Use `story.storymodeai.com` for web and `api.storymodeai.com` for API. |
 | Error tracking | Sentry | Free first | Add frontend and backend error capture before public testers depend on the service. |
 

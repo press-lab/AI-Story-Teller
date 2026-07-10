@@ -27,6 +27,9 @@ or backend API key incidents, read
 
 For production hosting, managed deployment, Neon migrations, or Cloudflare
 Pages configuration, read `docs/render-cloudflare-neon-runbook.md` first.
+While Render remains Free and Resend is intentionally deferred, also read
+`docs/render-free-no-email-context.md` before changing hosted startup, auth
+capabilities, migrations, or live Render settings.
 
 After the owner PC restarts, use `docs/restart-owner-server.md`. The normal
 recovery is app-owned Postgres first, then the owner watchdog; the watchdog
