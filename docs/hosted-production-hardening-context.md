@@ -204,7 +204,7 @@ Implemented evidence:
 
 ### H8. Production API artifact and process lifecycle
 
-Status: **Implemented July 10, 2026; awaiting deployment-parity CI**
+Status: **Completed July 10, 2026**
 
 Implementation context:
 
@@ -231,6 +231,9 @@ Implemented evidence:
   shutdown, and rejection of an incompatible future schema before startup.
 - `.github/workflows/ci.yml` runs that exact clean-build and parity sequence on
   Node 24 with Postgres 16.
+- GitHub Actions run `29118794855` passed `render-deployment-parity` and the
+  complete `test-build-smoke` job at implementation commit
+  `d59ef412a82fa6a8164ab6a706ad8b8e95562bff`.
 
 ### H9. Production policy approval and enforcement
 
@@ -300,7 +303,7 @@ GitHub Pages is manual-only, and committed Vite logs were removed and ignored.
 
 ## ChatGPT Pro Recommendation Completion Map
 
-1. Render production build/process: **implemented; CI confirmation pending (H8)**
+1. Render production build/process: **complete (H8)**
 2. Verification/reset disclosure: **complete (H1)**
 3. Targeted session authorization: **complete (H3)**
 4. Revisioned targeted adventure writes: **complete (H3)**

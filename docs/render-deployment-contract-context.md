@@ -4,8 +4,10 @@ Use this file for the next hosted-production implementation: make the Render
 API deployable from a clean checkout against an empty Neon database, using the
 same commands and runtime artifact that CI verifies.
 
-Implementation status: **implemented and locally validated July 10, 2026;
-awaiting the first successful `render-deployment-parity` GitHub Actions run.**
+Implementation status: **completed and validated July 10, 2026.** GitHub
+Actions run `29118794855` passed both `render-deployment-parity` and the full
+`test-build-smoke` job on Node 24 at implementation commit
+`d59ef412a82fa6a8164ab6a706ad8b8e95562bff`.
 
 This is a deployment-integrity workstream. Do not combine it with telemetry,
 authentication, adventure-revision, quota, or persistence refactors. Those
