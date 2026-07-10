@@ -204,7 +204,11 @@ Implemented evidence:
 
 ### H8. Production API artifact and process lifecycle
 
-Status: **Completed July 10, 2026**
+Status: **Partial; Render deployment-contract repair is next**
+
+Implementation context:
+
+- `docs/render-deployment-contract-context.md`
 
 - Add a dedicated API build that emits production JavaScript.
 - Production start must use `node`, not `tsx` or dev dependencies.
@@ -281,7 +285,7 @@ GitHub Pages is manual-only, and committed Vite logs were removed and ignored.
 
 ## ChatGPT Pro Recommendation Completion Map
 
-1. Render production build/process: **complete (H8)**
+1. Render production build/process: **partial (H8)**
 2. Verification/reset disclosure: **complete (H1)**
 3. Targeted session authorization: **complete (H3)**
 4. Revisioned targeted adventure writes: **complete (H3)**
