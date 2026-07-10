@@ -9,6 +9,7 @@ Companion docs:
 - `docs/backend-architecture.md`: target backend architecture, including parallel local/backend modes, invite-gated Google and email/password auth, JSON import compatibility, local backend hosting, sharing, deterministic content policy, account safety restrictions, and prompt-injection defenses.
 - `docs/backend-implementation-plan.md`: phased implementation plan with validation gates and current-local-workflow preservation.
 - `docs/backend-local-development.md`: current branch local backend startup, environment, endpoints, and policy-mode notes.
+- `docs/production-hosting-context.md`: cost-minimized hosting decision for moving the frontend off GitHub Pages and the backend off the owner's local machine.
 
 ## Current State
 

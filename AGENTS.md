@@ -19,6 +19,10 @@ For owner-hosted backend, Cloudflare Quick Tunnel, GitHub Pages API URL,
 or backend API key incidents, read
 `docs/agent-cloudflare-owner-backend-context.md` first.
 
+For production hosting migration work that moves the frontend off GitHub Pages
+or moves the backend off the owner's local machine, read
+`docs/production-hosting-context.md` first.
+
 After the owner PC restarts, use `docs/restart-owner-server.md`. The normal
 recovery is app-owned Postgres first, then the owner watchdog; the watchdog
 repairs the local API, Cloudflare Quick Tunnel, Pages API URL, and Pages redeploy
