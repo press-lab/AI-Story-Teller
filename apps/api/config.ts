@@ -34,7 +34,9 @@ function stringEnv(name: string, fallback: string): string {
 }
 
 function numberEnv(name: string, fallback: number): number {
-  const value = Number(process.env[name]);
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const value = Number(raw);
   return Number.isFinite(value) ? value : fallback;
 }
 
@@ -74,7 +76,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   const policyMode: PolicyMode = policyModeRaw === "enforce" ? "enforce" : "reviewOnly";
   const config: ApiConfig = {
     host: stringEnv("AIST_API_HOST", "127.0.0.1"),
-    port: numberEnv("AIST_API_PORT", 8787),
+    port: numberEnv("AIST_API_PORT", numberEnv("PORT", 8787)),
     dataFile: stringEnv("AIST_API_DATA_FILE", ".local-backend/aist-api-db.json"),
     databaseUrl: process.env.AIST_DATABASE_URL?.trim() || process.env.DATABASE_URL?.trim() || undefined,
     allowedOrigins: stringEnv(

@@ -96,10 +96,11 @@ Use:
 - `https://story.storymodeai.com` -> Cloudflare Pages frontend.
 - `https://api.storymodeai.com` -> Render Web Service backend.
 
-The frontend build should set:
+The Cloudflare Pages frontend build should set Vite-visible variables:
 
 ```text
-AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com
+VITE_AIST_RUNTIME_MODE=hostedBackend
+VITE_AIST_API_BASE_URL=https://api.storymodeai.com
 ```
 
 The backend should allow only the real frontend origins in CORS:
@@ -133,7 +134,6 @@ Render API:
 ```text
 NODE_ENV=production
 AIST_API_HOST=0.0.0.0
-AIST_API_PORT=<use PORT in code when present>
 AIST_DATABASE_URL=<Neon pooled or direct connection URL>
 AIST_API_ALLOWED_ORIGINS=https://story.storymodeai.com
 AIST_WEB_APP_URL=https://story.storymodeai.com/
@@ -152,7 +152,8 @@ AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
 Cloudflare Pages:
 
 ```text
-AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com
+VITE_AIST_RUNTIME_MODE=hostedBackend
+VITE_AIST_API_BASE_URL=https://api.storymodeai.com
 ```
 
 Resend:
@@ -176,7 +177,8 @@ new variables, document them in `.env.example`.
 7. Configure `api.storymodeai.com`.
 8. Configure Google OAuth hosted redirect URI.
 9. Configure Cloudflare Pages for the frontend.
-10. Set `AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com`.
+10. Set `VITE_AIST_RUNTIME_MODE=hostedBackend` and
+    `VITE_AIST_API_BASE_URL=https://api.storymodeai.com`.
 11. Deploy Cloudflare Pages to `story.storymodeai.com`.
 12. Smoke test auth, Profile, Explore, adventure save/load, generation, Context
     Preview, Admin Console, publish/fork, and policy logging.

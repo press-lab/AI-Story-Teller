@@ -10,6 +10,7 @@ Companion docs:
 - `docs/backend-implementation-plan.md`: phased implementation plan with validation gates and current-local-workflow preservation.
 - `docs/backend-local-development.md`: current branch local backend startup, environment, endpoints, and policy-mode notes.
 - `docs/production-hosting-context.md`: cost-minimized hosting decision for moving the frontend off GitHub Pages and the backend off the owner's local machine.
+- `docs/render-cloudflare-neon-runbook.md`: concrete Render, Cloudflare Pages, Neon, and Google OAuth setup fields for the hosted migration.
 
 ## Current State
 

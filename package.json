@@ -7,6 +7,7 @@
     "dev": "vite",
     "api:dev": "tsx apps/api/index.ts",
     "api:serve": "tsx apps/api/ownerServer.ts",
+    "api:hosted": "tsx apps/api/hostedServer.ts",
     "api:postgres:migrate": "tsx apps/api/migratePostgres.ts",
     "api:test": "vitest run apps/api",
     "owner:postgres:init": "powershell.exe -ExecutionPolicy Bypass -File scripts/owner-postgres.ps1 init",
