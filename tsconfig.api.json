@@ -14,5 +14,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "files": ["apps/api/hostedServer.ts"]
+  "files": ["apps/api/hostedServer.ts", "apps/api/migrateSchema.ts"]
 }

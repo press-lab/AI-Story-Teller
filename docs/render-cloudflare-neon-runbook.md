@@ -14,14 +14,18 @@ Name: storymode-api
 Runtime: Node
 Branch: backend-local-implementation
 Region: closest available region to the Neon project
-Build Command: npm ci && npm run api:build
+Build Command: npm run api:render:build
 Start Command: npm run api:hosted
 Pre-Deploy Command: npm run api:db:migrate
 Health Check Path: /readyz
-Instance Type: Free for first UAT, paid Starter when cold starts become a problem
+Instance Type: Starter or higher (pre-deploy migrations require a paid service)
 ```
 
 Do not use `npm.cmd` in Render. Render runs Linux, so use `npm`.
+The Render build explicitly installs build dependencies, compiles the hosted
+server and migration entrypoints, and prunes development dependencies. Both the
+pre-deploy migration and start commands then execute compiled JavaScript with
+Node.
 
 Render environment variables:
 

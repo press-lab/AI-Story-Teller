@@ -62,3 +62,42 @@ jobs:
 
       - name: Production smoke
         run: npm run smoke:prod
+
+  render-deployment-parity:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: aist
+          POSTGRES_PASSWORD: aist
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U aist -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Run exact Render build
+        env:
+          NODE_ENV: production
+        run: npm run api:render:build
+
+      - name: Verify Render deployment parity
+        env:
+          NODE_ENV: production
+          TEST_POSTGRES_ADMIN_URL: postgres://aist:aist@127.0.0.1:5432/postgres
+        run: npm run api:deploy:parity

@@ -2,13 +2,13 @@ services:
   - type: web
     name: storymode-api
     runtime: node
-    plan: free
+    plan: starter
     branch: backend-local-implementation
-    buildCommand: npm ci && npm run api:build
+    buildCommand: npm run api:render:build
     preDeployCommand: npm run api:db:migrate
     startCommand: npm run api:hosted
     healthCheckPath: /readyz
-    autoDeploy: true
+    autoDeployTrigger: checksPass
     envVars:
       - key: NODE_VERSION
         value: 24

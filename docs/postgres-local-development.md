@@ -107,7 +107,7 @@ Back up the JSON file first:
 Set `AIST_DATABASE_URL` in `.env`, or run `npm.cmd run owner:postgres:init` to set it automatically, then run:
 
 ```sh
-npm.cmd run api:db:migrate
+npm.cmd run api:db:migrate:dev
 npm.cmd run api:postgres:import
 ```
 

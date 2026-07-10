@@ -204,7 +204,7 @@ Implemented evidence:
 
 ### H8. Production API artifact and process lifecycle
 
-Status: **Partial; Render deployment-contract repair is next**
+Status: **Implemented July 10, 2026; awaiting deployment-parity CI**
 
 Implementation context:
 
@@ -216,6 +216,21 @@ Implementation context:
 - Handle `SIGTERM`/`SIGINT`, stop accepting requests, close HTTP and Postgres,
   and fail nonzero on unsuccessful shutdown.
 - CI must start and probe the exact production command.
+
+Implemented evidence:
+
+- `render.yaml` uses a paid Starter service, `autoDeployTrigger: checksPass`,
+  `/readyz`, and the canonical `api:render:build` entrypoint.
+- The Render build explicitly includes build dependencies, emits both hosted
+  server and migration entrypoints, copies SQL migrations, then prunes
+  development dependencies.
+- Production migration and startup execute compiled `dist-api` JavaScript with
+  Node; local development retains the explicit `api:db:migrate:dev` command.
+- `scripts/api-deployment-parity.mjs` creates disposable databases and verifies
+  empty migration, repeat migration, schema version, readiness, graceful
+  shutdown, and rejection of an incompatible future schema before startup.
+- `.github/workflows/ci.yml` runs that exact clean-build and parity sequence on
+  Node 24 with Postgres 16.
 
 ### H9. Production policy approval and enforcement
 
@@ -285,7 +300,7 @@ GitHub Pages is manual-only, and committed Vite logs were removed and ignored.
 
 ## ChatGPT Pro Recommendation Completion Map
 
-1. Render production build/process: **partial (H8)**
+1. Render production build/process: **implemented; CI confirmation pending (H8)**
 2. Verification/reset disclosure: **complete (H1)**
 3. Targeted session authorization: **complete (H3)**
 4. Revisioned targeted adventure writes: **complete (H3)**

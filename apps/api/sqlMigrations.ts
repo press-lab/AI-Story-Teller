@@ -12,7 +12,7 @@ export interface SqlMigration {
   sql: string;
 }
 
-export async function loadSqlMigrations(directory = resolve("apps/api/migrations")): Promise<SqlMigration[]> {
+export async function loadSqlMigrations(directory = resolve(__dirname, "migrations")): Promise<SqlMigration[]> {
   const files = (await readdir(directory))
     .filter((file) => /^\d{3}_[a-z0-9_]+\.sql$/i.test(file))
     .sort();
@@ -42,6 +42,15 @@ export async function runSqlMigrations(connectionString: string, directory?: str
             applied_at timestamptz NOT NULL DEFAULT now()
           )
         `);
+        const latest = await client.query<{ version: number | null }>(
+          "SELECT max(version)::int AS version FROM schema_migrations",
+        );
+        const latestVersion = latest.rows[0]?.version ?? 0;
+        if (latestVersion > CURRENT_SQL_SCHEMA_VERSION) {
+          throw new Error(
+            `Postgres schema version ${latestVersion} is newer than this application supports (${CURRENT_SQL_SCHEMA_VERSION}).`,
+          );
+        }
         const existing = await client.query("SELECT 1 FROM schema_migrations WHERE version = $1", [migration.version]);
         if (existing.rowCount === 0) {
           await client.query(migration.sql);
@@ -58,6 +67,15 @@ export async function runSqlMigrations(connectionString: string, directory?: str
       } finally {
         client.release();
       }
+    }
+    const result = await pool.query<{ version: number | null }>(
+      "SELECT max(version)::int AS version FROM schema_migrations",
+    );
+    const version = result.rows[0]?.version ?? 0;
+    if (version !== CURRENT_SQL_SCHEMA_VERSION) {
+      throw new Error(
+        `Postgres schema migration finished at version ${version}; expected ${CURRENT_SQL_SCHEMA_VERSION}.`,
+      );
     }
     return applied;
   } finally {

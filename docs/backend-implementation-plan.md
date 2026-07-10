@@ -195,7 +195,7 @@ This branch implements a local owner-testable backend slice for steps 1-13:
 - Backend mode frontend wiring: `src/App.tsx`, `src/hooks/useAdventureLibrary.ts`, `src/hooks/useAdventureRuntime.ts`, `src/hooks/useAdventureAutosave.ts`.
 - Local API service: `apps/api/server.ts`, `apps/api/index.ts`, `apps/api/ownerServer.ts`.
 - Local file database and migration metadata: `apps/api/localDb.ts`, default `.local-backend/aist-api-db.json`.
-- Local Postgres support, versioned SQL migration, and explicit JSON import: `apps/api/postgresDb.ts`, `apps/api/migrateSchema.ts`, `apps/api/importPostgres.ts`, `npm.cmd run api:db:migrate`, `npm.cmd run api:postgres:import`, and `docs/postgres-local-development.md`.
+- Local Postgres support, versioned SQL migration, and explicit JSON import: `apps/api/postgresDb.ts`, `apps/api/migrateSchema.ts`, `apps/api/importPostgres.ts`, `npm.cmd run api:db:migrate:dev`, `npm.cmd run api:postgres:import`, and `docs/postgres-local-development.md`.
 - Owner-hosted UAT deployment: `npm.cmd run api:serve`, `npm.cmd run pages:set-api`, `.github/workflows/deploy.yml`, and `docs/owner-local-server-deployment.md`.
 - Auth/invite gate: `apps/api/auth.ts`.
 - Backend adventure persistence/import/context/turn: `apps/api/adventureStore.ts`.

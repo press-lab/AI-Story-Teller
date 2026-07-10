@@ -150,7 +150,7 @@ If Postgres was never initialized on this machine:
 
 ```powershell
 npm.cmd run owner:postgres:init
-npm.cmd run api:db:migrate
+npm.cmd run api:db:migrate:dev
 npm.cmd run owner:watch:start
 ```
 
