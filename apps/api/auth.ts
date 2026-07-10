@@ -5,6 +5,7 @@ import type {
   BackendUser,
   InviteLink,
   LocalDbData,
+  OAuthExchangeRecord,
   OAuthStateRecord,
   PasswordCredential,
   SessionRecord,
@@ -14,7 +15,6 @@ import type {
 } from "./apiTypes";
 import type { ApiConfig } from "./config";
 import { addDays, addHours, createId, hashToken, isPast, nowIso, randomToken } from "./ids";
-import { assertRateLimit } from "./rateLimit";
 
 const scrypt = promisify(scryptCallback);
 const PASSWORD_KEY_BYTES = 64;
@@ -55,6 +55,12 @@ export interface GoogleOAuthProfile {
 }
 
 export interface GoogleOAuthCompleteResult extends AuthSessionResult {
+  returnTo?: string;
+}
+
+export interface OAuthExchangeResult {
+  exchangeCode: string;
+  expiresAt: string;
   returnTo?: string;
 }
 
@@ -204,22 +210,51 @@ export function createGoogleOAuthStart(
 
 export async function completeGoogleOAuth(
   data: LocalDbData,
-  input: { code: string; state: string; remoteKey?: string },
+  input: { code: string; state: string },
   config: ApiConfig,
 ): Promise<GoogleOAuthCompleteResult> {
-  assertRateLimit(`google-oauth:${input.remoteKey ?? "unknown"}`, 24, 60_000);
   const record = consumeOAuthState(data, input.state);
   const googleProfile = await fetchGoogleOAuthProfile(input.code, config);
   const result = completeGoogleSignin(data, googleProfile, record.inviteId);
   return { ...result, returnTo: record.returnTo };
 }
 
+export function createOAuthExchange(
+  data: LocalDbData,
+  session: AuthSessionResult,
+  returnTo?: string,
+): OAuthExchangeResult {
+  data.sessions = data.sessions.filter((entry) => entry.id !== session.session.id);
+  data.oauthExchangeCodes = data.oauthExchangeCodes.filter((entry) => !entry.consumedAt && !isPast(entry.expiresAt));
+  const exchangeCode = randomToken(32);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const record: OAuthExchangeRecord = {
+    id: createId("oauth_exchange"),
+    codeHash: hashToken(exchangeCode),
+    userId: session.user.id,
+    returnTo,
+    createdAt: nowIso(),
+    expiresAt,
+  };
+  data.oauthExchangeCodes.push(record);
+  return { exchangeCode, expiresAt, returnTo };
+}
+
+export function consumeOAuthExchange(data: LocalDbData, exchangeCode: string): AuthSessionResult {
+  const record = data.oauthExchangeCodes.find((entry) => entry.codeHash === hashToken(exchangeCode));
+  if (!record || record.consumedAt || isPast(record.expiresAt)) throw new Error("OAuth exchange code is invalid or expired.");
+  record.consumedAt = nowIso();
+  const user = data.users.find((entry) => entry.id === record.userId);
+  const profile = data.profiles.find((entry) => entry.userId === record.userId);
+  if (!user || !profile || user.status !== "active") throw new Error("OAuth account is not active.");
+  return createSession(data, user, profile);
+}
+
 export async function signupWithPassword(
   data: LocalDbData,
-  input: { inviteToken: string; email: string; password: string; displayName?: string; remoteKey?: string },
+  input: { inviteToken: string; email: string; password: string; displayName?: string },
 ): Promise<PasswordSignupResult> {
   const email = normalizeEmail(input.email);
-  assertRateLimit(`signup:${input.remoteKey ?? email}`, 8, 60_000);
   if (!email.includes("@")) throw new Error("Enter a valid email address.");
   if (input.password.length < 10) throw new Error("Password must be at least 10 characters.");
   assertUniqueEmail(data, email);
@@ -249,10 +284,9 @@ export async function signupWithPassword(
 
 export function signupWithLocalGoogle(
   data: LocalDbData,
-  input: { inviteToken: string; email: string; googleSubject: string; displayName?: string; remoteKey?: string },
+  input: { inviteToken: string; email: string; googleSubject: string; displayName?: string },
 ): AuthSessionResult {
   const email = normalizeEmail(input.email);
-  assertRateLimit(`google:${input.remoteKey ?? email}`, 12, 60_000);
   if (!email.includes("@")) throw new Error("Enter a valid email address.");
   if (!input.googleSubject.trim()) throw new Error("Google subject is required.");
   const existingIdentity = data.authIdentities.find((identity) => identity.provider === "google" && identity.providerSubject === input.googleSubject);
@@ -283,7 +317,7 @@ export function signupWithLocalGoogle(
   return createSession(data, user, profile);
 }
 
-function completeGoogleSignin(data: LocalDbData, googleProfile: GoogleOAuthProfile, inviteId?: string): AuthSessionResult {
+export function completeGoogleSignin(data: LocalDbData, googleProfile: GoogleOAuthProfile, inviteId?: string): AuthSessionResult {
   const email = normalizeEmail(googleProfile.email);
   if (!email.includes("@")) throw new Error("Google did not return a valid email address.");
   if (!googleProfile.emailVerified) throw new Error("Google email must be verified.");
@@ -336,9 +370,8 @@ function completeGoogleSignin(data: LocalDbData, googleProfile: GoogleOAuthProfi
   return createSession(data, user, profile);
 }
 
-export async function loginWithPassword(data: LocalDbData, input: { email: string; password: string; remoteKey?: string }): Promise<AuthSessionResult> {
+export async function loginWithPassword(data: LocalDbData, input: { email: string; password: string }): Promise<AuthSessionResult> {
   const email = normalizeEmail(input.email);
-  assertRateLimit(`login:${input.remoteKey ?? email}`, 12, 60_000);
   const user = data.users.find((entry) => entry.email === email);
   if (!user) throw new Error("Invalid email or password.");
   if (user.status !== "active" || !user.emailVerified) {
@@ -410,7 +443,6 @@ export function verifyEmailToken(data: LocalDbData, token: string): AuthSessionR
 
 export function requestPasswordReset(data: LocalDbData, emailInput: string): { email: string; reset?: IssuedAuthToken } {
   const email = normalizeEmail(emailInput);
-  assertRateLimit(`reset:${email}`, 5, 60_000);
   const user = data.users.find((entry) => entry.email === email);
   if (!user) return { email };
   const reset = createVerificationToken(data, user.id, "passwordReset", 2);
@@ -456,7 +488,7 @@ function consumeVerificationToken(data: LocalDbData, token: string, purpose: Ver
   return record;
 }
 
-function consumeOAuthState(data: LocalDbData, state: string): OAuthStateRecord {
+export function consumeOAuthState(data: LocalDbData, state: string): OAuthStateRecord {
   const tokenHash = hashToken(state);
   const record = data.oauthStates.find((entry) => entry.provider === "google" && entry.tokenHash === tokenHash);
   if (!record || record.usedAt || isPast(record.expiresAt)) {
@@ -466,7 +498,7 @@ function consumeOAuthState(data: LocalDbData, state: string): OAuthStateRecord {
   return record;
 }
 
-async function fetchGoogleOAuthProfile(code: string, config: ApiConfig): Promise<GoogleOAuthProfile> {
+export async function fetchGoogleOAuthProfile(code: string, config: ApiConfig): Promise<GoogleOAuthProfile> {
   if (!config.googleOAuth.clientId || !config.googleOAuth.clientSecret) {
     throw new Error("Google OAuth client id and secret are not configured.");
   }

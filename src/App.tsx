@@ -58,6 +58,7 @@ import {
   createBackendAdminRestriction,
   deleteBackendScenario,
   disableBackendInvite,
+  exchangeBackendGoogleOAuth,
   forkBackendScenarioRevision,
   generateBackendAdventureSetup,
   generateBackendBrain,
@@ -70,6 +71,7 @@ import {
   loadBackendPublicProfile,
   loadBackendScenarioRevisionEditorCopy,
   loadBackendSession,
+  logoutBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   confirmBackendPasswordReset,
@@ -371,6 +373,13 @@ export default function App() {
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
   const backendAdminRefreshIdRef = useRef(0);
   const normalizedRuntimeConfig = useMemo(() => applyConfiguredBackendDefault(runtimeConfig), [runtimeConfig]);
+  const logoutBackend = useCallback(async () => {
+    try {
+      if (backendSession?.sessionToken) await logoutBackendSession(normalizedRuntimeConfig, backendSession);
+    } finally {
+      setBackendSession(null);
+    }
+  }, [backendSession, normalizedRuntimeConfig, setBackendSession]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
   const accountReady = Boolean(backendSession?.sessionToken);
   const backendReady = backendMode && accountReady;
@@ -538,6 +547,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (window.location.hash.includes("oauthExchange=")) {
+      const params = new URLSearchParams(window.location.hash.slice(1));
+      const exchangeCode = params.get("oauthExchange");
+      history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
+      if (exchangeCode) {
+        void exchangeBackendGoogleOAuth(normalizedRuntimeConfig, exchangeCode)
+          .then((session) => setBackendSession(session))
+          .catch((error) => console.error("OAuth exchange failed:", error));
+      }
+      return;
+    }
     if (!window.location.hash.includes("backendSession=")) return;
     const params = new URLSearchParams(window.location.hash.slice(1));
     const rawSession = params.get("backendSession");
@@ -550,7 +570,7 @@ export default function App() {
     } catch {
       // Ignore malformed OAuth callback fragments.
     }
-  }, [setBackendSession]);
+  }, [normalizedRuntimeConfig, setBackendSession]);
 
   useEffect(() => {
     if (backendSession || normalizedRuntimeConfig.mode !== "local") return;
@@ -566,7 +586,7 @@ export default function App() {
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : "";
-        if (!cancelled && /unauthorized|account is not active/i.test(message)) setBackendSession(null);
+        if (!cancelled && /unauthorized|authentication is required|account is not active/i.test(message)) setBackendSession(null);
       });
     return () => {
       cancelled = true;
@@ -1485,7 +1505,7 @@ export default function App() {
               return session;
             }}
             onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
-            onLogoutBackend={() => setBackendSession(null)}
+            onLogoutBackend={() => void logoutBackend()}
             onBackendImport={importToBackend}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
@@ -1648,7 +1668,7 @@ export default function App() {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
             setBackendProfile(undefined);
-            setBackendSession(null);
+            void logoutBackend();
           }}
           adventureLibrary={showingPublicProfile ? undefined : renderAdventureLibrary(true)}
         />
@@ -1708,7 +1728,7 @@ export default function App() {
             return session;
           }}
           onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
-          onLogoutBackend={() => setBackendSession(null)}
+          onLogoutBackend={() => void logoutBackend()}
           onBackendImport={importToBackend}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}

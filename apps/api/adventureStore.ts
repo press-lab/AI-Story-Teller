@@ -29,6 +29,7 @@ import { assertPolicyAllowed, PolicyBlockedError, recordPolicyDecision } from ".
 import { effectiveProviderConfig } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 import { appendPerformanceTrace, createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
+import { adventureServerRevision, StaleAdventureRevisionError, withAdventureServerRevision } from "./adventureRevision";
 
 export interface ImportAdventureInput {
   sourceType: "aist" | "githubSave";
@@ -116,24 +117,32 @@ export function saveBackendAdventure(
   const now = nowIso();
   const cleanAdventure = normalizeAdventure(sanitizeAdventureForPersistence(adventure));
   const existing = data.adventures.find((entry) => entry.id === cleanAdventure.id && entry.ownerUserId === ownerUserId);
+  const expectedRevision = adventureServerRevision(cleanAdventure);
   if (existing) {
-    existing.adventure = cleanAdventure;
+    if (expectedRevision !== undefined && expectedRevision !== existing.revision) {
+      throw new StaleAdventureRevisionError(expectedRevision, existing.revision);
+    }
+    existing.revision += 1;
+    existing.adventure = withAdventureServerRevision(cleanAdventure, existing.revision);
     existing.updatedAt = now;
   } else {
+    const revision = 1;
     data.adventures.push({
       id: cleanAdventure.id,
       ownerUserId,
-      adventure: cleanAdventure,
+      adventure: withAdventureServerRevision(cleanAdventure, revision),
       createdAt: now,
       updatedAt: now,
+      revision,
     });
   }
+  const savedAdventure = data.adventures.find((entry) => entry.id === cleanAdventure.id && entry.ownerUserId === ownerUserId)!.adventure;
   data.adventureSnapshots.push({
     id: createId("snapshot"),
     adventureId: cleanAdventure.id,
     userId: ownerUserId,
     source,
-    adventure: cleanAdventure,
+    adventure: savedAdventure,
     createdAt: now,
   });
   pruneAdventureSnapshots(data, ownerUserId, cleanAdventure.id);
@@ -158,15 +167,15 @@ export function restoreAdventureSnapshot(
   adventureId: string,
   snapshotId: string,
 ): Adventure {
-  getOwnedAdventureRecord(data, ownerUserId, adventureId);
+  const current = getOwnedAdventureRecord(data, ownerUserId, adventureId);
   const snapshot = data.adventureSnapshots.find(
     (entry) => entry.id === snapshotId && entry.userId === ownerUserId && entry.adventureId === adventureId,
   );
   if (!snapshot) throw new Error("Adventure backup not found.");
-  const restored = normalizeAdventure({
+  const restored = withAdventureServerRevision(normalizeAdventure({
     ...snapshot.adventure,
     updatedAt: nowIso(),
-  });
+  }), current.revision);
   return saveBackendAdventure(data, ownerUserId, restored, "restore").adventure;
 }
 

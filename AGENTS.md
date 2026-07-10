@@ -2,7 +2,13 @@
 
 ## Architecture
 
-This is a browser-only React + TypeScript + Vite app. There is no backend. Adventure data is persisted in IndexedDB through `src/db/adventureDb.ts`. Tiny user configuration, including the runtime API key, is stored in localStorage through `src/hooks/useLocalStorage.ts`.
+This repository supports three explicit modes:
+
+- **Hosted Production:** Cloudflare Pages serves React/Vite, Render runs the compiled Node API in `apps/api/hostedServer.ts`, and Neon provides Postgres. The provider key and account secrets are backend-only.
+- **Owner/UAT Rollback:** the owner API/Postgres/Cloudflare tunnel and optional GitHub Pages frontend remain a recovery path. They are not the production topology.
+- **Browser Local:** no backend is required. Adventures persist in IndexedDB through `src/db/adventureDb.ts`; small settings and a user-supplied provider key remain in localStorage through `src/hooks/useLocalStorage.ts`.
+
+For hosted deployment or production incidents, read `docs/render-cloudflare-neon-runbook.md` and `docs/hosted-production-hardening-context.md` first. For owner rollback incidents, read `docs/agent-cloudflare-owner-backend-context.md` first. Do not route hosted production through an owner laptop or Quick Tunnel.
 
 The core rule is that adventure state changes go through:
 
@@ -19,9 +25,8 @@ For owner-hosted backend, Cloudflare Quick Tunnel, GitHub Pages API URL,
 or backend API key incidents, read
 `docs/agent-cloudflare-owner-backend-context.md` first.
 
-For production hosting migration work that moves the frontend off GitHub Pages
-or moves the backend off the owner's local machine, read
-`docs/production-hosting-context.md` first.
+For production hosting, managed deployment, Neon migrations, or Cloudflare
+Pages configuration, read `docs/render-cloudflare-neon-runbook.md` first.
 
 After the owner PC restarts, use `docs/restart-owner-server.md`. The normal
 recovery is app-owned Postgres first, then the owner watchdog; the watchdog

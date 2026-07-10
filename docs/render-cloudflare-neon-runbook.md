@@ -31,6 +31,7 @@ NODE_ENV=production
 AIST_API_HOST=0.0.0.0
 AIST_DATABASE_URL=<Neon connection string>
 DATABASE_DIRECT_URL=<Neon direct connection string for migrations>
+AIST_TRUST_PROXY_HOPS=1
 AIST_API_ALLOWED_ORIGINS=https://story.storymodeai.com
 AIST_WEB_APP_URL=https://story.storymodeai.com/
 AIST_PUBLIC_API_BASE_URL=https://api.storymodeai.com
@@ -47,6 +48,60 @@ AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
 RESEND_API_KEY=<Resend API key>
 AIST_EMAIL_FROM=AI Story Teller <accounts@storymodeai.com>
 ```
+
+`AIST_TRUST_PROXY_HOPS=1` trusts exactly Render's final reverse-proxy hop. Do
+not increase it to accept arbitrary client-supplied forwarding chains.
+
+### API environment-variable ownership
+
+| Variable | Owner/location | Secret | Required / default |
+| --- | --- | --- | --- |
+| `NODE_ENV` | Render | No | Required: `production` |
+| `NODE_VERSION` | Render | No | Required: `24` |
+| `PORT` | Render platform | No | Injected by Render |
+| `AIST_API_HOST` | Render | No | `0.0.0.0` |
+| `AIST_API_PORT` | Local only | No | Leave unset on Render |
+| `AIST_API_DATA_FILE` | Local only | No | JSON fallback path; unused with Neon |
+| `AIST_DATABASE_URL` or `DATABASE_URL` | Render/Neon | Yes | Neon pooled runtime URL; one is required |
+| `DATABASE_DIRECT_URL` | Render/Neon | Yes | Neon direct migration URL; required for pre-deploy migrations |
+| `AIST_DATABASE_POOL_MAX` | Render | No | Optional, default `10` |
+| `AIST_DATABASE_CONNECTION_TIMEOUT_MS` | Render | No | Optional, default `5000` |
+| `AIST_DATABASE_IDLE_TIMEOUT_MS` | Render | No | Optional, default `30000` |
+| `AIST_DATABASE_STATEMENT_TIMEOUT_MS` | Render | No | Optional, default `30000` |
+| `AIST_DATABASE_LOCK_TIMEOUT_MS` | Render | No | Optional, default `5000` |
+| `AIST_DATABASE_IDLE_TRANSACTION_TIMEOUT_MS` | Render | No | Optional, default `15000` |
+| `AIST_TRUST_PROXY_HOPS` | Render | No | Required: `1` |
+| `AIST_API_ALLOWED_ORIGINS` | Render | No | Required exact comma-separated Pages origins; no wildcards |
+| `AIST_WEB_APP_URL` | Render | No | Required canonical Pages URL for auth links/redirects |
+| `AIST_API_ADMIN_KEY` | Render | Yes | Optional break-glass admin credential |
+| `AIST_ADMIN_EMAILS` | Render | Sensitive | Required owner/admin email allowlist |
+| `AIST_API_ALLOW_LOCAL_GOOGLE_STUB` | Render | No | Required: `false` |
+| `AIST_GOOGLE_CLIENT_ID` | Render/Google | Sensitive | Required for Google sign-in |
+| `AIST_GOOGLE_CLIENT_SECRET` | Render/Google | Yes | Required for Google sign-in |
+| `AIST_GOOGLE_REDIRECT_URI` | Render/Google | No | Required exact hosted API callback |
+| `AIST_GOOGLE_AUTH_URL` | Render | No | Optional Google default |
+| `AIST_GOOGLE_TOKEN_URL` | Render | No | Optional Google default |
+| `AIST_GOOGLE_TOKEN_INFO_URL` | Render | No | Optional Google default |
+| `AIST_PROVIDER_NAME` | Render | No | Required provider label |
+| `AIST_PROVIDER_BASE_URL` | Render | No | Required HTTPS provider endpoint |
+| `AIST_PROVIDER_MODEL` | Render | No | Required model identifier |
+| `AIST_PROVIDER_API_KEY` | Render/provider | Yes | Required hosted generation credential |
+| `AIST_PROVIDER_TEMPERATURE` | Render | No | Optional, default `0.7` |
+| `AIST_PROVIDER_MAX_OUTPUT_TOKENS` | Render | No | Optional, default `1200` |
+| `AIST_PROVIDER_TOP_P` | Render | No | Optional, default `0.95` |
+| `AIST_PROVIDER_PRESENCE_PENALTY` | Render | No | Optional, default `0.8` |
+| `AIST_PROVIDER_FREQUENCY_PENALTY` | Render | No | Optional, default `0` |
+| `AIST_PROVIDER_PROMPT_CACHING` | Render | No | Optional, default `true` |
+| `AIST_PROVIDER_OPENROUTER_SORT` | Render | No | Optional: `price`, `latency`, or `throughput` |
+| `AIST_PROVIDER_OPENROUTER_DATA_COLLECTION` | Render | No | Optional: `allow` or `deny` |
+| `AIST_POLICY_MODE` | Render | No | `reviewOnly` until owner approval, then `enforce` |
+| `RESEND_API_KEY` | Render/Resend | Yes | Required for hosted verification/reset email |
+| `AIST_EMAIL_FROM` | Render/Resend | No | Required verified sender |
+
+Cloudflare Pages owns only `VITE_AIST_RUNTIME_MODE` (set to
+`hostedBackend`) and `VITE_AIST_API_BASE_URL` (the public Render API URL).
+Production and preview Pages origins must also be listed explicitly in
+`AIST_API_ALLOWED_ORIGINS` on Render.
 
 Leave `AIST_API_PORT` unset on Render. Render provides `PORT`, and
 `api:hosted` uses it.

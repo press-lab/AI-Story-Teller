@@ -6,7 +6,6 @@ import { buildContext } from "../../src/contextBuilder/contextBuilder";
 import { createDefaultAdventure, makeComponent, makeStoryCard } from "../../src/state/defaults";
 import { exportAdventureJson } from "../../src/utils/json";
 import { thumbnailMetadataPatch } from "../../src/utils/adventureImages";
-import { clearRateLimitsForTests } from "./rateLimit";
 import { createApiServer, type ApiServer } from "./server";
 import type { EmailDelivery, PasswordResetEmailInput, VerificationEmailInput } from "./emailDelivery";
 
@@ -17,6 +16,7 @@ let deliveredEmails: Array<
   | ({ kind: "verification" } & VerificationEmailInput)
   | ({ kind: "passwordReset" } & PasswordResetEmailInput)
 > = [];
+let requestSequence = 0;
 
 const fakeEmailDelivery: EmailDelivery = {
   async sendVerificationEmail(input) {
@@ -42,6 +42,7 @@ async function requestJson<T>(path: string, init: RequestInit = {}): Promise<{ s
     ...init,
     headers: {
       "Content-Type": "application/json",
+      "Idempotency-Key": `test-operation-${++requestSequence}`,
       ...(init.headers ?? {}),
     },
   });
@@ -79,8 +80,8 @@ async function passwordSession(email = "player@example.com"): Promise<string> {
 }
 
 beforeEach(async () => {
-  clearRateLimitsForTests();
   deliveredEmails = [];
+  requestSequence = 0;
   tempDir = await mkdtemp(join(tmpdir(), "aist-api-"));
   api = createApiServer({
     host: "127.0.0.1",
@@ -143,6 +144,51 @@ describe("local API auth and invite gate", () => {
     expect(health.status).toBe(200);
     expect(health.body.ok).toBe(true);
     expect(health.body.database).toBe("local-json");
+  });
+
+  it("exposes separate liveness and database-aware readiness probes", async () => {
+    const live = await requestJson<{ ok: boolean }>("/livez");
+    const ready = await requestJson<{ ok: boolean; schemaVersion: number }>("/readyz");
+    expect(live).toEqual({ status: 200, body: { ok: true } });
+    expect(ready.status).toBe(200);
+    expect(ready.body).toMatchObject({ ok: true, schemaVersion: 1 });
+  });
+
+  it("rejects disallowed CORS preflights without granting an origin", async () => {
+    const response = await fetch(`${baseUrl}/auth/session`, {
+      method: "OPTIONS",
+      headers: { Origin: "https://attacker.example" },
+    });
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+
+  it("returns typed validation errors with trace ids", async () => {
+    const response = await fetch(`${baseUrl}/auth/login/password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "[]",
+    });
+    const body = await response.json() as { code: string; traceId: string; error: string };
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("invalid_request");
+    expect(body.traceId).toBeTruthy();
+    expect(body.error).not.toContain("stack");
+  });
+
+  it("shares stable authentication rate-limit responses without account disclosure", async () => {
+    let last: Response | undefined;
+    for (let index = 0; index < 13; index += 1) {
+      last = await fetch(`${baseUrl}/auth/login/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Forwarded-For": `203.0.113.${index + 1}` },
+        body: JSON.stringify({ email: "rate-limit@example.com", password: "wrong password" }),
+      });
+    }
+    expect(last?.status).toBe(429);
+    expect(last?.headers.get("Retry-After")).toBeTruthy();
+    const body = await last!.json() as { code: string; error: string };
+    expect(body).toMatchObject({ code: "rate_limited", error: "Too many requests. Wait briefly and try again." });
   });
 
   it("does not activate password accounts without an invite and requires email verification", async () => {
@@ -283,6 +329,53 @@ describe("local API auth and invite gate", () => {
     expect(expired.body.error).toMatch(/invalid or expired/i);
   });
 
+  it("rejects expired, revoked, and orphaned sessions through targeted lookup", async () => {
+    const email = "session-lifecycle@example.com";
+    const expiredToken = await passwordSession(email);
+    const second = await requestJson<{ sessionToken: string }>("/auth/login/password", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "correct horse battery staple" }),
+    });
+    const third = await requestJson<{ sessionToken: string }>("/auth/login/password", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "correct horse battery staple" }),
+    });
+    const data = await api.db.read();
+    data.sessions.find((entry) => entry.id === data.sessions.at(-3)?.id)!.expiresAt = "2000-01-01T00:00:00.000Z";
+    data.sessions.find((entry) => entry.id === data.sessions.at(-2)?.id)!.revokedAt = new Date().toISOString();
+    await api.db.write(data);
+
+    for (const token of [expiredToken, second.body.sessionToken]) {
+      const blocked = await requestJson<{ code: string }>("/auth/session", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(blocked.status).toBe(401);
+      expect(blocked.body.code).toBe("unauthenticated");
+    }
+
+    const withoutUser = await api.db.read();
+    const userId = withoutUser.users.find((entry) => entry.email === email)!.id;
+    withoutUser.users = withoutUser.users.filter((entry) => entry.id !== userId);
+    await api.db.write(withoutUser);
+    const orphaned = await requestJson<{ code: string }>("/auth/session", {
+      headers: { Authorization: `Bearer ${third.body.sessionToken}` },
+    });
+    expect(orphaned.status).toBe(401);
+  });
+
+  it("revokes the current bearer session on logout", async () => {
+    const sessionToken = await passwordSession("logout@example.com");
+    const logout = await requestJson<{ ok: true }>("/auth/logout", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(logout).toEqual({ status: 200, body: { ok: true } });
+    const replay = await requestJson<{ code: string }>("/auth/session", {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(replay.status).toBe(401);
+  });
+
   it("lets admins deactivate invite links before signup", async () => {
     const created = await requestJson<{ token: string; invite: { id: string } }>("/admin/invites", {
       method: "POST",
@@ -337,29 +430,87 @@ describe("local API auth and invite gate", () => {
     const state = authUrl.searchParams.get("state");
     expect(state).toBeTruthy();
 
-    const callback = await requestJson<{ sessionToken: string; user: { email: string; emailVerified: boolean } }>(
+    const callback = await requestJson<{ exchangeCode: string }>(
       `/auth/google/callback?code=google-code&state=${encodeURIComponent(state!)}`,
       { headers: { Accept: "application/json" } },
     );
     expect(callback.status).toBe(200);
-    expect(callback.body.sessionToken).toBeTruthy();
-    expect(callback.body.user.email).toBe("real-google@example.com");
-    expect(callback.body.user.emailVerified).toBe(true);
+    expect(callback.body.exchangeCode).toBeTruthy();
+    const exchanged = await requestJson<{ sessionToken: string; user: { email: string; emailVerified: boolean } }>("/auth/google/exchange", {
+      method: "POST",
+      body: JSON.stringify({ exchangeCode: callback.body.exchangeCode }),
+    });
+    expect(exchanged.status).toBe(200);
+    expect(exchanged.body.sessionToken).toBeTruthy();
+    expect(exchanged.body.user.email).toBe("real-google@example.com");
+    expect(exchanged.body.user.emailVerified).toBe(true);
+    const replay = await requestJson<{ error: string }>("/auth/google/exchange", {
+      method: "POST",
+      body: JSON.stringify({ exchangeCode: callback.body.exchangeCode }),
+    });
+    expect(replay.status).toBe(400);
 
     const loginStart = await requestJson<{ authUrl: string }>("/auth/google/start", {
       method: "POST",
       body: JSON.stringify({ returnTo: "http://localhost:5173/settings" }),
     });
     const loginState = new URL(loginStart.body.authUrl).searchParams.get("state");
-    const loginCallback = await requestJson<{ sessionToken: string }>(
-      `/auth/google/callback?code=google-code&state=${encodeURIComponent(loginState!)}`,
-      { headers: { Accept: "application/json" } },
+    const loginCallback = await fetch(
+      `${baseUrl}/auth/google/callback?code=google-code&state=${encodeURIComponent(loginState!)}`,
+      { redirect: "manual" },
     );
     expect(loginCallback.status).toBe(200);
-    expect(loginCallback.body.sessionToken).toBeTruthy();
+    const html = await loginCallback.text();
+    expect(html).toContain("oauthExchange=");
+    expect(html).not.toContain("backendSession=");
+    expect(html).not.toContain("sessionToken");
+    const redirectLiteral = /location\.replace\((.+)\);/.exec(html)?.[1];
+    expect(redirectLiteral).toBeTruthy();
+    const redirectUrl = new URL(JSON.parse(redirectLiteral!) as string);
+    const expiringCode = new URLSearchParams(redirectUrl.hash.slice(1)).get("oauthExchange");
+    expect(expiringCode).toBeTruthy();
+    const data = await api.db.read();
+    data.oauthExchangeCodes.at(-1)!.expiresAt = "2000-01-01T00:00:00.000Z";
+    await api.db.write(data);
+    const expired = await requestJson<{ code: string }>("/auth/google/exchange", {
+      method: "POST",
+      body: JSON.stringify({ exchangeCode: expiringCode }),
+    });
+    expect(expired.status).toBe(400);
   });
 });
 describe("local API adventure persistence", () => {
+  it("rejects stale adventure writes with a stable revision conflict", async () => {
+    const sessionToken = await passwordSession("revision-conflict@example.com");
+    const original = createDefaultAdventure("Revisioned Adventure");
+    const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(original) }),
+    });
+    const adventureId = imported.body.adventures[0].id;
+    const loaded = await requestJson<typeof original>(`/adventures/${adventureId}`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(loaded.body.metadata.serverRevision).toBe(1);
+
+    const first = await requestJson<typeof original>(`/adventures/${adventureId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ adventure: { ...loaded.body, title: "First Writer" } }),
+    });
+    expect(first.status).toBe(200);
+    expect(first.body.metadata.serverRevision).toBe(2);
+
+    const stale = await requestJson<{ code: string; error: string }>(`/adventures/${adventureId}`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ adventure: { ...loaded.body, title: "Stale Writer" } }),
+    });
+    expect(stale.status).toBe(409);
+    expect(stale.body.code).toBe("stale_adventure_revision");
+  });
+
   it("imports AIST JSON as a sanitized restorable backup and previews context with the shared builder", async () => {
     const sessionToken = await passwordSession();
     const original = createDefaultAdventure("Import Source");
@@ -601,12 +752,13 @@ describe("local API policy gates and sharing", () => {
     });
     const adventureId = imported.body.adventures[0].id;
 
+    const idempotencyKey = "guarded-turn-operation-1";
     const turn = await requestJson<{
       adventure: ReturnType<typeof createDefaultAdventure>;
       responseContent: string;
     }>(`/adventures/${adventureId}/turn`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${sessionToken}` },
+      headers: { Authorization: `Bearer ${sessionToken}`, "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({ input: "I follow Nyxa.", mode: "story" }),
     });
 
@@ -620,6 +772,23 @@ describe("local API policy gates and sharing", () => {
     expect(turn.body.responseContent).not.toContain("you arrive");
     expect(turn.body.adventure.messages.at(-1)?.content).toBe(turn.body.responseContent);
     expect(turn.body.adventure.messages.at(-1)?.usage?.totalTokens).toBe(30);
+
+    const replay = await requestJson<typeof turn.body>(`/adventures/${adventureId}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}`, "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ input: "I follow Nyxa.", mode: "story" }),
+    });
+    expect(replay.status).toBe(200);
+    expect(replay.body).toEqual(turn.body);
+    expect(providerBodies).toHaveLength(2);
+
+    const mismatchedReplay = await requestJson<{ code: string }>(`/adventures/${adventureId}/turn`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}`, "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ input: "I do something else.", mode: "story" }),
+    });
+    expect(mismatchedReplay.status).toBe(409);
+    expect(mismatchedReplay.body.code).toBe("idempotency_key_reused");
   });
 
   it("saves a coerced assistant entry when backend guard correction still fails", async () => {
@@ -996,7 +1165,7 @@ describe("local API policy gates and sharing", () => {
     const memberBlocked = await requestJson<{ error: string }>("/admin/console", {
       headers: { Authorization: `Bearer ${memberSession}` },
     });
-    expect(memberBlocked.status).toBe(401);
+    expect(memberBlocked.status).toBe(403);
 
     const consoleData = await requestJson<{
       totals: { users: number; openSafetyEvents: number };

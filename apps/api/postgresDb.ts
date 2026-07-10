@@ -29,9 +29,14 @@ import {
 } from "./profileReadModels";
 import { MAX_PERFORMANCE_TRACES } from "./performanceTrace";
 import { CURRENT_SQL_SCHEMA_VERSION } from "./sqlMigrations";
+import type { Adventure } from "../../src/types/adventure";
+import { normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
+import { adventureServerRevision, StaleAdventureRevisionError, withAdventureServerRevision } from "./adventureRevision";
+import { createId, nowIso } from "./ids";
 
 const { Pool } = pg;
 const ADVISORY_LOCK_KEY = 4_263_117;
+const MAX_SNAPSHOTS_PER_ADVENTURE = 100;
 
 export interface PostgresDbOptions {
   max?: number;
@@ -113,6 +118,421 @@ export class PostgresDb implements BackendDb {
     return { database: "postgres" as const, schemaVersion: result.rows[0]?.version ?? 0 };
   }
 
+  async resolveSessionByTokenHash(tokenHash: string) {
+    await this.init();
+    const result = await this.pool.query<{
+      session: LocalDbData["sessions"][number];
+      user: LocalDbData["users"][number];
+      profile: LocalDbData["profiles"][number];
+    }>(`
+      SELECT session.data AS session, app_user.data AS "user", profile.data AS profile
+      FROM aist_records session
+      JOIN aist_records app_user
+        ON app_user.collection = 'users' AND app_user.id = session.data->>'userId'
+      JOIN aist_records profile
+        ON profile.collection = 'profiles' AND profile.id = session.data->>'userId'
+      WHERE session.collection = 'sessions'
+        AND session.data->>'tokenHash' = $1
+        AND NOT (session.data ? 'revokedAt')
+        AND (session.data->>'expiresAt')::timestamptz > now()
+      LIMIT 1
+    `, [tokenHash]);
+    return result.rows[0];
+  }
+
+  async revokeSessionByTokenHash(tokenHash: string) {
+    await this.init();
+    const result = await this.pool.query(`
+      UPDATE aist_records
+      SET data = jsonb_set(data, '{revokedAt}', to_jsonb(now()::text), true), updated_at = now()
+      WHERE collection = 'sessions' AND data->>'tokenHash' = $1 AND NOT (data ? 'revokedAt')
+    `, [tokenHash]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async loadPasswordLoginWorkspace(normalizedEmail: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      const users = await this.readRows(
+        client,
+        "users",
+        "AND lower(data->>'email') = $2",
+        [normalizedEmail],
+        { limit: 1 },
+      );
+      const user = users[0];
+      if (!user) return createEmptyDb();
+      return normalizeDbData({
+        users,
+        profiles: await this.readRows(client, "profiles", "AND data->>'userId' = $2", [user.id], { limit: 1 }),
+        passwordCredentials: await this.readRows(client, "passwordCredentials", "AND data->>'userId' = $2", [user.id], { limit: 1 }),
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async savePasswordLoginWorkspace(userId: string, data: LocalDbData) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const user of data.users.filter((entry) => entry.id === userId)) await upsertRecord(client, "users", user.id, user);
+      for (const profile of data.profiles.filter((entry) => entry.userId === userId)) await upsertRecord(client, "profiles", profile.userId, profile);
+      for (const credential of data.passwordCredentials.filter((entry) => entry.userId === userId)) await upsertRecord(client, "passwordCredentials", credential.userId, credential);
+      for (const session of data.sessions.filter((entry) => entry.userId === userId)) await upsertRecord(client, "sessions", session.id, session);
+      await client.query("COMMIT");
+    } catch (error) {
+      await rollbackQuietly(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async readAccountRestrictions(userId: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      return await this.readRows(client, "accountRestrictions", "AND data->>'userId' = $2", [userId]);
+    } finally {
+      client.release();
+    }
+  }
+
+  async listAdventureRecords(ownerUserId: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      const records = await this.readRows(client, "adventures", "AND data->>'ownerUserId' = $2", [ownerUserId]);
+      return records.map(normalizeAdventureRecord);
+    } finally {
+      client.release();
+    }
+  }
+
+  async readAdventureRecord(ownerUserId: string, adventureId: string) {
+    await this.init();
+    const result = await this.pool.query<{ data: LocalDbData["adventures"][number] }>(`
+      SELECT data FROM aist_records
+      WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2
+      LIMIT 1
+    `, [adventureId, ownerUserId]);
+    return result.rows[0] ? normalizeAdventureRecord(result.rows[0].data) : undefined;
+  }
+
+  async saveAdventureRecord(ownerUserId: string, adventure: Adventure, source: "import" | "turn" | "manualSave" | "restore") {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const existingResult = await client.query<{ data: LocalDbData["adventures"][number] }>(`
+        SELECT data FROM aist_records
+        WHERE collection = 'adventures' AND id = $1
+        FOR UPDATE
+      `, [adventure.id]);
+      const existing = existingResult.rows[0]?.data ? normalizeAdventureRecord(existingResult.rows[0].data) : undefined;
+      if (existing && existing.ownerUserId !== ownerUserId) throw new Error("Adventure not found.");
+      const expectedRevision = adventureServerRevision(adventure);
+      const currentRevision = existing?.revision ?? 0;
+      if (existing && expectedRevision !== undefined && expectedRevision !== currentRevision) {
+        throw new StaleAdventureRevisionError(expectedRevision, currentRevision);
+      }
+      const revision = currentRevision + 1;
+      const now = nowIso();
+      const cleanAdventure = withAdventureServerRevision(
+        normalizeAdventure(sanitizeAdventureForPersistence(adventure)),
+        revision,
+      );
+      const record: LocalDbData["adventures"][number] = {
+        id: cleanAdventure.id,
+        ownerUserId,
+        adventure: cleanAdventure,
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        revision,
+      };
+      await client.query(`
+        INSERT INTO aist_records (collection, id, data, updated_at)
+        VALUES ('adventures', $1, $2::jsonb, now())
+        ON CONFLICT (collection, id) DO UPDATE SET data = excluded.data, updated_at = now()
+      `, [record.id, JSON.stringify(record)]);
+      const snapshot = {
+        id: createId("snapshot"),
+        adventureId: record.id,
+        userId: ownerUserId,
+        source,
+        adventure: cleanAdventure,
+        createdAt: now,
+      };
+      await client.query(`
+        INSERT INTO aist_records (collection, id, data, updated_at)
+        VALUES ('adventureSnapshots', $1, $2::jsonb, now())
+      `, [snapshot.id, JSON.stringify(snapshot)]);
+      await client.query(`
+        DELETE FROM aist_records
+        WHERE collection = 'adventureSnapshots'
+          AND data->>'userId' = $1
+          AND data->>'adventureId' = $2
+          AND id NOT IN (
+            SELECT id FROM aist_records
+            WHERE collection = 'adventureSnapshots'
+              AND data->>'userId' = $1
+              AND data->>'adventureId' = $2
+            ORDER BY data->>'createdAt' DESC, id DESC
+            LIMIT $3
+          )
+      `, [ownerUserId, record.id, MAX_SNAPSHOTS_PER_ADVENTURE]);
+      await client.query("COMMIT");
+      return record;
+    } catch (error) {
+      await rollbackQuietly(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async deleteAdventureRecord(ownerUserId: string, adventureId: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const deleted = await client.query(
+        "DELETE FROM aist_records WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2",
+        [adventureId, ownerUserId],
+      );
+      if ((deleted.rowCount ?? 0) > 0) {
+        await client.query(
+          "DELETE FROM aist_records WHERE collection = 'adventureSnapshots' AND data->>'userId' = $1 AND data->>'adventureId' = $2",
+          [ownerUserId, adventureId],
+        );
+      }
+      await client.query("COMMIT");
+      return (deleted.rowCount ?? 0) > 0;
+    } catch (error) {
+      await rollbackQuietly(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async loadAdventureWorkspace(ownerUserId: string, adventureId: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      const adventureRows = await this.readRows(
+        client,
+        "adventures",
+        "AND id = $2 AND data->>'ownerUserId' = $3",
+        [adventureId, ownerUserId],
+        { limit: 1 },
+      );
+      const adventure = adventureRows[0] ? normalizeAdventureRecord(adventureRows[0]) : undefined;
+      if (!adventure) throw new Error("Adventure not found.");
+      const data = normalizeDbData({
+        users: await this.readRows(client, "users", "AND id = $2", [ownerUserId]),
+        profiles: await this.readRows(client, "profiles", "AND id = $2", [ownerUserId]),
+        adventures: [adventure],
+        adventureSnapshots: await this.readRows(
+          client,
+          "adventureSnapshots",
+          "AND data->>'userId' = $2 AND data->>'adventureId' = $3",
+          [ownerUserId, adventureId],
+          { orderByCreatedDesc: true, limit: MAX_SNAPSHOTS_PER_ADVENTURE },
+        ),
+        accountSafetyEvents: await this.readRows(
+          client,
+          "accountSafetyEvents",
+          "AND data->>'userId' = $2 AND data->>'status' = 'open' AND COALESCE((data->>'severity')::int, 0) >= 4",
+          [ownerUserId],
+          { orderByCreatedDesc: true, limit: 3 },
+        ),
+        accountRestrictions: await this.readRows(
+          client,
+          "accountRestrictions",
+          "AND data->>'userId' = $2",
+          [ownerUserId],
+          { orderByCreatedDesc: true, limit: 1 },
+        ),
+        platformSettings: await this.readRows(client, "platformSettings"),
+      });
+      return { data, baseRevision: adventure.revision };
+    } finally {
+      client.release();
+    }
+  }
+
+  async saveAdventureWorkspace(ownerUserId: string, adventureId: string, baseRevision: number, data: LocalDbData) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const currentResult = await client.query<{ data: LocalDbData["adventures"][number] }>(`
+        SELECT data FROM aist_records
+        WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2
+        FOR UPDATE
+      `, [adventureId, ownerUserId]);
+      const current = currentResult.rows[0]?.data ? normalizeAdventureRecord(currentResult.rows[0].data) : undefined;
+      if (!current) throw new Error("Adventure not found.");
+      const next = data.adventures.find((entry) => entry.id === adventureId && entry.ownerUserId === ownerUserId);
+      if (!next) throw new Error("Adventure operation removed its source adventure unexpectedly.");
+      if (current.revision !== baseRevision && next.revision !== baseRevision) {
+        throw new StaleAdventureRevisionError(baseRevision, current.revision);
+      }
+      if (next.revision !== baseRevision) {
+        if (current.revision !== baseRevision) throw new StaleAdventureRevisionError(baseRevision, current.revision);
+        await upsertRecord(client, "adventures", next.id, next);
+      }
+      const existingSnapshots = await this.readRows(
+        client,
+        "adventureSnapshots",
+        "AND data->>'userId' = $2 AND data->>'adventureId' = $3",
+        [ownerUserId, adventureId],
+        { orderByCreatedDesc: true, limit: MAX_SNAPSHOTS_PER_ADVENTURE },
+      );
+      const existingSnapshotsById = new Map(existingSnapshots.map((snapshot) => [snapshot.id, snapshot]));
+      for (const snapshot of data.adventureSnapshots.filter((entry) => entry.userId === ownerUserId && entry.adventureId === adventureId)) {
+        if (JSON.stringify(existingSnapshotsById.get(snapshot.id)) === JSON.stringify(snapshot)) continue;
+        await upsertRecord(client, "adventureSnapshots", snapshot.id, snapshot);
+      }
+      for (const collection of [
+        "contextBuildEvents",
+        "policyDecisions",
+        "accountSafetyEvents",
+        "accountRestrictions",
+        "accountStatusHistory",
+        "usageLogs",
+        "performanceTraces",
+      ] as const) {
+        for (const record of data[collection]) {
+          await upsertRecord(client, collection, recordIdForCollection(collection, record as never), record);
+        }
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await rollbackQuietly(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async loadAccountWorkspace(userId: string) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      return normalizeDbData({
+        users: await this.readRows(client, "users", "AND id = $2", [userId]),
+        profiles: await this.readRows(client, "profiles", "AND id = $2", [userId]),
+        accountSafetyEvents: await this.readRows(
+          client,
+          "accountSafetyEvents",
+          "AND data->>'userId' = $2 AND data->>'status' = 'open' AND COALESCE((data->>'severity')::int, 0) >= 4",
+          [userId],
+          { orderByCreatedDesc: true, limit: 3 },
+        ),
+        accountRestrictions: await this.readRows(
+          client,
+          "accountRestrictions",
+          "AND data->>'userId' = $2",
+          [userId],
+          { orderByCreatedDesc: true, limit: 1 },
+        ),
+        platformSettings: await this.readRows(client, "platformSettings"),
+      });
+    } finally {
+      client.release();
+    }
+  }
+
+  async saveAccountWorkspace(_userId: string, data: LocalDbData) {
+    await this.init();
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      for (const collection of [
+        "policyDecisions",
+        "accountSafetyEvents",
+        "accountRestrictions",
+        "accountStatusHistory",
+        "usageLogs",
+        "performanceTraces",
+      ] as const) {
+        for (const record of data[collection]) {
+          await upsertRecord(client, collection, recordIdForCollection(collection, record as never), record);
+        }
+      }
+      await client.query("COMMIT");
+    } catch (error) {
+      await rollbackQuietly(client);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async claimIdempotency(userId: string, operation: string, key: string, requestHash: string, expiresAt: string) {
+    await this.init();
+    await this.pool.query("DELETE FROM aist_idempotency WHERE expires_at <= now()");
+    const inserted = await this.pool.query(`
+      INSERT INTO aist_idempotency (user_id, operation, idempotency_key, request_hash, state, expires_at)
+      VALUES ($1, $2, $3, $4, 'pending', $5::timestamptz)
+      ON CONFLICT DO NOTHING
+      RETURNING state
+    `, [userId, operation, key, requestHash, expiresAt]);
+    if ((inserted.rowCount ?? 0) > 0) return { state: "claimed" as const };
+    const existing = await this.pool.query<{
+      requestHash: string;
+      state: "pending" | "succeeded" | "failed";
+      responseStatus: number | null;
+      responseBody: unknown;
+    }>(`
+      SELECT request_hash AS "requestHash", state, response_status AS "responseStatus", response_body AS "responseBody"
+      FROM aist_idempotency
+      WHERE user_id = $1 AND operation = $2 AND idempotency_key = $3
+    `, [userId, operation, key]);
+    const row = existing.rows[0];
+    if (!row) throw new Error("Idempotency claim disappeared unexpectedly.");
+    if (row.requestHash !== requestHash) throw new Error("Idempotency key was already used with a different request body.");
+    return {
+      state: row.state,
+      responseStatus: row.responseStatus ?? undefined,
+      responseBody: row.responseBody,
+    };
+  }
+
+  async completeIdempotency(userId: string, operation: string, key: string, state: "succeeded" | "failed", responseStatus: number, responseBody: unknown) {
+    await this.init();
+    await this.pool.query(`
+      UPDATE aist_idempotency
+      SET state = $4, response_status = $5, response_body = $6::jsonb, updated_at = now()
+      WHERE user_id = $1 AND operation = $2 AND idempotency_key = $3
+    `, [userId, operation, key, state, responseStatus, JSON.stringify(responseBody)]);
+  }
+
+  async consumeRateLimit(bucketKey: string, limit: number, windowMs: number) {
+    await this.init();
+    const now = Date.now();
+    const windowStartedAt = new Date(Math.floor(now / windowMs) * windowMs).toISOString();
+    const expiresAt = new Date(Math.floor(now / windowMs) * windowMs + windowMs).toISOString();
+    const result = await this.pool.query<{ requestCount: number }>(`
+      INSERT INTO aist_rate_limits (bucket_key, window_started_at, request_count, expires_at)
+      VALUES ($1, $2::timestamptz, 1, $3::timestamptz)
+      ON CONFLICT (bucket_key, window_started_at) DO UPDATE
+        SET request_count = aist_rate_limits.request_count + 1
+        WHERE aist_rate_limits.request_count < $4
+      RETURNING request_count AS "requestCount"
+    `, [bucketKey, windowStartedAt, expiresAt, limit]);
+    await this.pool.query("DELETE FROM aist_rate_limits WHERE expires_at <= now()");
+    return {
+      allowed: (result.rowCount ?? 0) > 0,
+      retryAfterSeconds: Math.max(1, Math.ceil((new Date(expiresAt).getTime() - now) / 1000)),
+    };
+  }
+
   async read(options: BackendReadOptions = {}): Promise<LocalDbData> {
     await this.init();
     const client = await this.pool.connect();
@@ -153,15 +573,15 @@ export class PostgresDb implements BackendDb {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await this.lock(client);
       const data = await this.readWithClient(client);
+      const before = structuredClone(data);
       try {
         const result = await mutate(data);
-        await this.writeWithClient(client, normalizeDbData(data));
+        await this.writeDiffWithClient(client, before, normalizeDbData(data));
         await client.query("COMMIT");
         return result;
       } catch (error) {
-        await this.writeWithClient(client, normalizeDbData(data));
+        await this.writeDiffWithClient(client, before, normalizeDbData(data));
         await client.query("COMMIT");
         throw error;
       }
@@ -373,10 +793,10 @@ export class PostgresDb implements BackendDb {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
-      await this.lock(client);
       const data = await this.readWithClient(client);
+      const before = structuredClone(data);
       const { result, data: nextData } = await run(data);
-      await this.writeWithClient(client, normalizeDbData(nextData));
+      await this.writeDiffWithClient(client, before, normalizeDbData(nextData));
       await client.query("COMMIT");
       return result;
     } catch (error) {
@@ -445,6 +865,40 @@ export class PostgresDb implements BackendDb {
           VALUES ($1, $2, $3::jsonb, now());
           `,
           [collection, recordIdForCollection(collection, record as never), JSON.stringify(record)],
+        );
+      }
+    }
+  }
+
+  private async writeDiffWithClient(client: pg.PoolClient, before: LocalDbData, after: LocalDbData): Promise<void> {
+    if (JSON.stringify(metadataFromDb(before)) !== JSON.stringify(metadataFromDb(after))) {
+      await client.query(
+        `
+        INSERT INTO aist_meta (key, value, updated_at)
+        VALUES ('metadata', $1::jsonb, now())
+        ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = now();
+        `,
+        [JSON.stringify(metadataFromDb(after))],
+      );
+    }
+    for (const collection of dbCollectionKeys) {
+      const beforeById = new Map(before[collection].map((record) => [
+        recordIdForCollection(collection, record as never),
+        record,
+      ]));
+      const afterById = new Map(after[collection].map((record) => [
+        recordIdForCollection(collection, record as never),
+        record,
+      ]));
+      for (const [id, record] of afterById) {
+        if (JSON.stringify(beforeById.get(id)) === JSON.stringify(record)) continue;
+        await upsertRecord(client, collection, id, record);
+      }
+      const removedIds = [...beforeById.keys()].filter((id) => !afterById.has(id));
+      if (removedIds.length > 0) {
+        await client.query(
+          "DELETE FROM aist_records WHERE collection = $1 AND id = ANY($2::text[])",
+          [collection, removedIds],
         );
       }
     }
@@ -610,4 +1064,26 @@ function toInt(value: number | string | null | undefined): number {
 
 function isMissingRelationError(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: string }).code === "42P01");
+}
+
+function normalizeAdventureRecord(record: LocalDbData["adventures"][number]): LocalDbData["adventures"][number] {
+  const revision = record.revision ?? 0;
+  return {
+    ...record,
+    revision,
+    adventure: withAdventureServerRevision(normalizeAdventure(record.adventure), revision),
+  };
+}
+
+async function upsertRecord(
+  client: pg.PoolClient,
+  collection: DbCollectionKey,
+  id: string,
+  record: unknown,
+): Promise<void> {
+  await client.query(`
+    INSERT INTO aist_records (collection, id, data, updated_at)
+    VALUES ($1, $2, $3::jsonb, now())
+    ON CONFLICT (collection, id) DO UPDATE SET data = excluded.data, updated_at = now()
+  `, [collection, id, JSON.stringify(record)]);
 }

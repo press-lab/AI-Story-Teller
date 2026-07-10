@@ -11,6 +11,7 @@ import {
   isRecoveredBackendTurn,
   saveDeviceAdventureBeforeBackendTurn,
   shouldAttemptBackendReconnect,
+  type BackendAiTools,
   useAdventureRuntime,
 } from "./useAdventureRuntime";
 import type { RuntimeProviderSettings } from "../pages/pageTypes";
@@ -170,6 +171,58 @@ describe("backend offline local fallback", () => {
     ]));
     expect(result.current.error).toBe(BACKEND_OFFLINE_LOCAL_MODE_MESSAGE);
     expect(setSaveStatus).toHaveBeenLastCalledWith("Cloud save failed; playing from this device. Changes will sync when the backend reconnects.");
+  });
+});
+
+describe("adventure-scoped async results", () => {
+  it("discards a backend result when the user switched adventures before completion", async () => {
+    const adventureA = createDefaultAdventure("Adventure A");
+    adventureA.id = "adv-a";
+    const adventureB = createDefaultAdventure("Adventure B");
+    adventureB.id = "adv-b";
+    let resolveUpdate!: (value: { adventure: Adventure }) => void;
+    const delayedUpdate = new Promise<{ adventure: Adventure }>((resolve) => { resolveUpdate = resolve; });
+    const backendAiTools = {
+      updateBrain: vi.fn(() => delayedUpdate),
+    } as unknown as BackendAiTools;
+    const store: AdventureStore = {
+      list: vi.fn(async () => []),
+      get: vi.fn(),
+      save: vi.fn(async () => undefined),
+      saveForGeneration: vi.fn(async (next) => next),
+      delete: vi.fn(),
+    };
+
+    const { result } = renderHook(() => {
+      const [current, setCurrent] = useState<Adventure | undefined>(adventureA);
+      const runtime = useAdventureRuntime(
+        current,
+        setCurrent,
+        baseConfig,
+        store,
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+        vi.fn(async () => undefined),
+        { enabled: false, generateContent: false, everyNTurns: 1 },
+        undefined,
+        undefined,
+        backendAiTools,
+      );
+      return { current, setCurrent, runtime };
+    });
+
+    let pending!: Promise<void>;
+    await act(async () => {
+      pending = result.current.runtime.updateBrainNow("brain-a");
+      await Promise.resolve();
+    });
+    act(() => result.current.setCurrent(adventureB));
+    resolveUpdate({ adventure: { ...adventureA, title: "Late Adventure A Result" } });
+    await act(async () => pending);
+
+    expect(result.current.current?.id).toBe("adv-b");
+    expect(result.current.current?.title).toBe("Adventure B");
   });
 });
 

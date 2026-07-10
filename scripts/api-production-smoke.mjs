@@ -1,9 +1,9 @@
 import { spawn } from "node:child_process";
 
 const port = 18_000 + Math.floor(Math.random() * 1_000);
-const npm = process.platform === "win32" ? "npm.cmd" : "npm";
-const child = spawn(npm, ["run", "api:hosted"], {
+const child = spawn(process.execPath, ["dist-api/apps/api/hostedServer.js"], {
   cwd: process.cwd(),
+  windowsHide: true,
   env: {
     ...process.env,
     PORT: String(port),
@@ -40,8 +40,11 @@ try {
   }
   if (!ready) throw new Error(`Hosted API did not become ready.\n${output}`);
   child.kill("SIGTERM");
-  const exitCode = await new Promise((resolve) => child.once("exit", resolve));
-  if (exitCode !== 0) throw new Error(`Hosted API exited with ${exitCode}.\n${output}`);
+  const exit = await new Promise((resolve) => child.once("exit", (code, signal) => resolve({ code, signal })));
+  const windowsSignalExit = process.platform === "win32" && exit.code === null && exit.signal === "SIGTERM";
+  if (exit.code !== 0 && !windowsSignalExit) {
+    throw new Error(`Hosted API exited with code ${exit.code} and signal ${exit.signal}.\n${output}`);
+  }
   console.log(`Hosted API production smoke passed on port ${port}.`);
 } finally {
   if (child.exitCode === null) child.kill("SIGKILL");

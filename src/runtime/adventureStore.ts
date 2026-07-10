@@ -255,25 +255,47 @@ function recordAndSubmitDeviceTrace(config: RuntimeConfig, trace: ClientPerforma
 
 export function createBackendAdventureStore(config: RuntimeConfig, authToken?: string): AdventureStore {
   const authHeaders: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  const revisions = new Map<string, number>();
+  const saveChains = new Map<string, Promise<void>>();
+  function rememberRevision(adventure: Adventure | undefined): Adventure | undefined {
+    const revision = adventure?.metadata?.serverRevision;
+    if (adventure && typeof revision === "number") revisions.set(adventure.id, revision);
+    return adventure;
+  }
   return {
     async list() {
       return apiJson<AdventureSummary[]>(config, "/adventures", { headers: authHeaders });
     },
     async get(id) {
-      return apiJson<Adventure | undefined>(config, `/adventures/${encodeURIComponent(id)}`, { headers: authHeaders });
+      return rememberRevision(await apiJson<Adventure | undefined>(config, `/adventures/${encodeURIComponent(id)}`, { headers: authHeaders }));
     },
     async save(adventure) {
-      await apiJson(config, `/adventures/${encodeURIComponent(adventure.id)}`, {
-        method: "PUT",
-        headers: authHeaders,
-        body: JSON.stringify({ adventure }),
+      const previous = saveChains.get(adventure.id) ?? Promise.resolve();
+      const run = previous.catch(() => undefined).then(async () => {
+        const expectedRevision = revisions.get(adventure.id);
+        const revisionScoped = expectedRevision === undefined
+          ? adventure
+          : { ...adventure, metadata: { ...adventure.metadata, serverRevision: expectedRevision } };
+        const saved = await apiJson<Adventure>(config, `/adventures/${encodeURIComponent(adventure.id)}`, {
+          method: "PUT",
+          headers: authHeaders,
+          body: JSON.stringify({ adventure: revisionScoped }),
+        });
+        rememberRevision(saved);
       });
+      saveChains.set(adventure.id, run);
+      try {
+        await run;
+      } finally {
+        if (saveChains.get(adventure.id) === run) saveChains.delete(adventure.id);
+      }
     },
     async delete(id) {
       await apiJson(config, `/adventures/${encodeURIComponent(id)}`, {
         method: "DELETE",
         headers: authHeaders,
       });
+      revisions.delete(id);
     },
   };
 }
@@ -370,6 +392,11 @@ export function createCachedBackendAdventureStore(
       await cacheCleanAdventure(adventure);
       return adventure;
     } catch (error) {
+      if (isStaleAdventureRevisionError(error)) {
+        const backup = await getAccountAdventureBackup(ownerUserId, adventure.id);
+        if (backup) await markBackupConflict(backup, undefined, "Server save revision changed. This device's local backup was kept; choose which save should win before syncing.");
+        throw new Error("Local backup conflict. Server save revision changed; choose which save should win before generating.");
+      }
       await markBackupFailed(adventure, error);
       if (isRetryableBackendSyncError(error)) {
         schedulePendingFlush();
@@ -451,6 +478,10 @@ export function createCachedBackendAdventureStore(
         await backend.save(backup.adventure);
         await cacheCleanAdventure(backup.adventure);
       } catch (error) {
+        if (isStaleAdventureRevisionError(error)) {
+          await markBackupConflict(backup, undefined, "Server save revision changed. This device's local backup was kept; choose which save should win before syncing.");
+          continue;
+        }
         await markBackupFailed(backup.adventure, error);
         if (isRetryableBackendSyncError(error)) schedulePendingFlush();
       }
@@ -547,6 +578,11 @@ export function createCachedBackendAdventureStore(
         await backend.save(adventure);
         await cacheCleanAdventure(adventure);
       } catch (error) {
+        if (isStaleAdventureRevisionError(error)) {
+          const backup = await getAccountAdventureBackup(ownerUserId, adventure.id);
+          if (backup) await markBackupConflict(backup, undefined, "Server save revision changed. This device's local backup was kept; choose which save should win before syncing.");
+          throw new Error("Local backup conflict. Server save revision changed; choose which save should win before syncing.");
+        }
         await markBackupFailed(adventure, error);
         if (isRetryableBackendSyncError(error)) {
           schedulePendingFlush();
@@ -587,13 +623,21 @@ function isBackendNotFoundError(error: unknown): boolean {
   return /(?:HTTP 404|not found)/i.test(message) && !/route not found/i.test(message);
 }
 
+function isStaleAdventureRevisionError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /adventure changed on the server|stale_adventure_revision|server save revision/i.test(message);
+}
+
 export function createBackendTurnRunner(config: RuntimeConfig, authToken: string, providerOverride?: Partial<ProviderConfig>): TurnRunner {
   return {
     runTurn(request) {
       return apiJson<TurnResult>(config, `/adventures/${encodeURIComponent(request.adventureId)}/turn`, {
         method: "POST",
         keepalive: true,
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({
           input: request.input,
           mode: request.mode,

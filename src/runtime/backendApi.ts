@@ -317,6 +317,10 @@ function authHeaders(session?: BackendSessionState): Record<string, string> {
   return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
 }
 
+function providerMutationHeaders(session: BackendSessionState): Record<string, string> {
+  return { ...authHeaders(session), "Idempotency-Key": crypto.randomUUID() };
+}
+
 export function createBackendInvite(config: RuntimeConfig, session: BackendSessionState, input: { note?: string; maxUses?: number; expiresInDays?: number }) {
   return apiJson<{ token: string; invite: unknown }>(config, "/admin/invites", {
     method: "POST",
@@ -390,8 +394,22 @@ export function startBackendGoogleOAuth(
   });
 }
 
+export function exchangeBackendGoogleOAuth(config: RuntimeConfig, exchangeCode: string) {
+  return apiJson<BackendSessionState>(config, "/auth/google/exchange", {
+    method: "POST",
+    body: JSON.stringify({ exchangeCode }),
+  });
+}
+
 export function loadBackendSession(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<BackendSessionState & { restriction?: BackendRestriction }>(config, "/auth/session", {
+    headers: authHeaders(session),
+  });
+}
+
+export function logoutBackendSession(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<{ ok: true }>(config, "/auth/logout", {
+    method: "POST",
     headers: authHeaders(session),
   });
 }
@@ -425,7 +443,7 @@ export function generateBackendAdventureSetup(
 ) {
   return apiJson<AdventureGenResult>(config, "/ai/adventure-generation", {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify(input),
   });
 }
@@ -559,7 +577,7 @@ export function buildBackendStoryCardMemory(
 ) {
   return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-builder`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify({ request, providerOverride }),
   });
 }
@@ -572,7 +590,7 @@ export function suggestBackendStoryCardUpdates(
 ) {
   return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-updates`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify({ providerOverride }),
   });
 }
@@ -586,7 +604,7 @@ export function reconcileBackendMemory(
 ) {
   return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/memory-reconcile`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify({ request, providerOverride }),
   });
 }
@@ -599,7 +617,7 @@ export function auditBackendStoryCards(
 ) {
   return apiJson<{ recommendations: AuditRecommendation[] }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/story-card-audit`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify(input),
   });
 }
@@ -613,7 +631,7 @@ export function generateBackendBrain(
 ) {
   return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/generate-brain`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify({ name, providerOverride }),
   });
 }
@@ -627,7 +645,7 @@ export function updateBackendBrain(
 ) {
   return apiJson<{ adventure: Adventure }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/update-brain`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify({ brainId, providerOverride }),
   });
 }
@@ -640,7 +658,7 @@ export function auditBackendBrains(
 ) {
   return apiJson<{ recommendations: BrainAuditRecommendation[] }>(config, `/adventures/${encodeURIComponent(adventureId)}/ai/brain-audit`, {
     method: "POST",
-    headers: authHeaders(session),
+    headers: providerMutationHeaders(session),
     body: JSON.stringify(input),
   });
 }

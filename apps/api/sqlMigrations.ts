@@ -4,7 +4,7 @@ import pg from "pg";
 
 const { Pool } = pg;
 
-export const CURRENT_SQL_SCHEMA_VERSION = 2;
+export const CURRENT_SQL_SCHEMA_VERSION = 3;
 
 export interface SqlMigration {
   version: number;

@@ -4,10 +4,12 @@
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
+import type { Adventure } from "../types/adventure";
 import { getAccountAdventureBackup, saveAccountAdventureBackup } from "../db/accountAdventureBackupDb";
 import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import {
   apiJson,
+  createBackendAdventureStore,
   createBackendTurnRunner,
   createCachedBackendAdventureStore,
   isRetryableBackendSyncError,
@@ -41,6 +43,37 @@ describe("cached backend adventure store", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("carries the latest server revision into sequential saves", async () => {
+    const loaded = createDefaultAdventure("Revisioned Client");
+    loaded.id = "adv-revisioned-client";
+    loaded.metadata.serverRevision = 4;
+    const saved = { ...loaded, metadata: { ...loaded.metadata, serverRevision: 5 } };
+    const requestBodies: Array<{ adventure: Adventure }> = [];
+    const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      if (!init?.method || init.method === "GET") {
+        return new Response(JSON.stringify(loaded), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      if (init.method === "PUT" && url.includes("/adventures/")) {
+        requestBodies.push(JSON.parse(String(init.body)) as { adventure: Adventure });
+        return new Response(JSON.stringify(saved), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const store = createBackendAdventureStore(
+      { mode: "backendLocal", apiBaseUrl: "http://backend.test" },
+      "session-token",
+    );
+    const first = await store.get(loaded.id);
+    expect(first?.metadata.serverRevision).toBe(4);
+    await store.save({ ...loaded, metadata: { ...loaded.metadata, serverRevision: 0 } });
+    await store.save({ ...loaded, title: "Second Save", metadata: { ...loaded.metadata, serverRevision: 0 } });
+
+    expect(requestBodies.map((body) => body.adventure.metadata.serverRevision)).toEqual([4, 5]);
   });
 
   it("fills missing server-summary thumbnails from the clean local account backup", async () => {

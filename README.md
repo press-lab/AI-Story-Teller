@@ -1,51 +1,57 @@
 # AI Story Teller
 
-A browser-only MVP for building and playing local AI adventure sessions. It uses React, TypeScript, Vite, IndexedDB persistence, and an OpenAI-compatible provider call. Users supply their own API key in Settings.
+AI Story Teller is a React/Vite interactive-fiction application with three supported runtime modes. The production topology is Cloudflare Pages (web), Render (Node API), Neon (Postgres), and a backend-owned model provider key. Browser Local remains available for private, device-only play; the owner-hosted API is a UAT/rollback path, not the production service.
 
-## Setup
+## Runtime modes
 
-```sh
-npm.cmd install
-npm.cmd run dev
+| Mode | Web | API and data | Provider credentials | Intended use |
+| --- | --- | --- | --- | --- |
+| Hosted Production | Cloudflare Pages | Render API + Neon Postgres | Render secret | Production and invited testers |
+| Owner/UAT Rollback | GitHub Pages or local Vite | Owner Node API + local Postgres/JSON | Owner backend secret | Recovery and controlled UAT |
+| Browser Local | Any static build or local Vite | IndexedDB only; no backend | User-supplied key in localStorage | Private device-only play |
+
+```mermaid
+flowchart LR
+  B["Browser"] --> P["Cloudflare Pages"]
+  B --> A["Render Node API"]
+  A --> N["Neon Postgres"]
+  A --> M["Model provider"]
+  A --> E["Resend email"]
 ```
 
-Build for production:
+## Local development
+
+Use platform-neutral `npm` commands on Linux/macOS and `npm.cmd` equivalents in PowerShell:
 
 ```sh
-npm.cmd run build
+npm install
+npm run dev
+npm test
+npm run build
 ```
 
-Preview the production build:
+Browser Local works without an API. To run the development API, use `npm run api:dev`; owner/UAT recovery remains documented in `docs/restart-owner-server.md`.
+
+## Hosted deployment
+
+The reproducible service definition is in `render.yaml`. The complete Cloudflare Pages, Render, Neon, Google OAuth, Resend, environment-variable, migration, verification, and rollback procedure is in `docs/render-cloudflare-neon-runbook.md`.
+
+Production commands are:
 
 ```sh
-npm.cmd run preview
+npm ci
+npm run api:build
+npm run api:db:migrate
+npm run api:hosted
 ```
 
-## GitHub Pages Deploy
+Render must health-check `/readyz`; `/livez` only proves the Node process is alive. Cloudflare Pages builds with `npm run build`, publishes `dist`, and sets `VITE_AIST_RUNTIME_MODE=hostedBackend` plus `VITE_AIST_API_BASE_URL=https://api.storymodeai.com`.
 
-The Vite config uses `base: "./"` so the built app can be served from a GitHub Pages project path.
-
-For account-backed UAT, GitHub Pages is only the frontend. The backend runs on the owner's machine and must be exposed through an HTTPS tunnel/domain. Set the Pages backend URL and trigger deployment with:
-
-```sh
-npm.cmd run pages:set-api -- https://your-public-api-domain.example
-```
-
-Then keep the owner backend running with:
-
-```sh
-npm.cmd run api:serve
-```
-
-1. Run `npm.cmd run build`.
-2. Publish the `dist/` folder with your preferred Pages workflow.
-3. For browser-only static use, no backend is required. For account-backed UAT, keep `npm.cmd run api:serve` running and point Pages at the public HTTPS API URL.
+The GitHub Pages workflow is manual-only and retained as rollback. It is not the production deployment path.
 
 ## Architecture
 
-All adventure state mutations go through `src/state/adventureReducer.ts` using the full `AdventureAction` union from `src/types/adventure.ts`.
-
-IndexedDB stores adventures in `src/db/adventureDb.ts`. localStorage stores only small runtime settings, including API key and provider preferences. Exported adventure JSON strips API keys.
+All adventure state mutations go through `src/state/adventureReducer.ts` using the `AdventureAction` union from `src/types/adventure.ts`. Hosted persistence is revisioned and stored by the API in Postgres; Browser Local persists adventures in IndexedDB. Small browser configuration remains in localStorage. API keys are stripped from adventure exports and hosted provider keys never enter the frontend bundle.
 
 ## Context Assembly Contract
 

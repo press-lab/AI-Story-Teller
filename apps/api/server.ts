@@ -7,7 +7,10 @@ import { createBackendDb } from "./db";
 import { createEmptyDb } from "./dbShape";
 import {
   confirmPasswordReset,
-  completeGoogleOAuth,
+  completeGoogleSignin,
+  consumeOAuthExchange,
+  consumeOAuthState,
+  createOAuthExchange,
   createInvite,
   createGoogleOAuthStart,
   loginWithPassword,
@@ -16,6 +19,7 @@ import {
   resolveSession,
   signupWithLocalGoogle,
   signupWithPassword,
+  fetchGoogleOAuthProfile,
   verifyEmailToken,
   type AuthSessionResult,
 } from "./auth";
@@ -51,10 +55,11 @@ import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } 
 import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
-import { PolicyBlockedError } from "./policy";
-import { createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
-import type { PerformanceTraceRecord } from "./apiTypes";
+import { createTraceId, elapsedMs, performanceTrace, sanitizeErrorMessage } from "./performanceTrace";
+import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import { configuredEmailDelivery, type EmailDelivery } from "./emailDelivery";
+import { hashToken } from "./ids";
+import { ApiError, normalizeApiError } from "./apiError";
 
 export interface ApiServer {
   server: Server;
@@ -97,6 +102,10 @@ async function handleRequest(
 ): Promise<void> {
   const corsHeaders = corsFor(request, config);
   if (request.method === "OPTIONS") {
+    if (request.headers.origin && !corsHeaders["Access-Control-Allow-Origin"]) {
+      sendJson(response, 403, { error: "Origin is not allowed.", code: "cors_forbidden" }, {});
+      return;
+    }
     response.writeHead(204, corsHeaders);
     response.end();
     return;
@@ -115,7 +124,11 @@ async function handleRequest(
       }, corsHeaders);
       return;
     }
-    if (request.method === "GET" && (route.pathname === "/livez" || route.pathname === "/version")) {
+    if (request.method === "GET" && route.pathname === "/livez") {
+      sendJson(response, 200, { ok: true }, corsHeaders);
+      return;
+    }
+    if (request.method === "GET" && route.pathname === "/version") {
       sendJson(response, 200, {
         app: "ai-story-teller-api",
         mode: "local",
@@ -151,9 +164,11 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/auth/signup/password") {
-      const { body, remoteKey } = await readJsonBody<{ inviteToken: string; email: string; password: string; displayName?: string }>(request);
+      const { body } = await readJsonBody<{ inviteToken: string; email: string; password: string; displayName?: string }>(request);
+      requireStringFields(body, ["inviteToken", "email", "password"]);
+      await enforceRateLimit(db, config, request, "signup", body.email, 8, 60_000);
       const result = await db.update(async (data) => {
-        const signup = await signupWithPassword(data, { ...body, remoteKey });
+        const signup = await signupWithPassword(data, body);
         applyConfiguredAdminRole(data, signup.user, config);
         return signup;
       });
@@ -173,6 +188,7 @@ async function handleRequest(
 
     if (request.method === "POST" && route.pathname === "/auth/email/verify") {
       const { body } = await readJsonBody<{ token: string }>(request);
+      requireStringFields(body, ["token"]);
       const result = await db.update((data) => {
         const session = verifyEmailToken(data, body.token);
         applyConfiguredAdminRole(data, session.user, config);
@@ -183,18 +199,30 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/auth/login/password") {
-      const { body, remoteKey } = await readJsonBody<{ email: string; password: string }>(request);
-      const result = await db.update(async (data) => {
-        const session = await loginWithPassword(data, { ...body, remoteKey });
-        applyConfiguredAdminRole(data, session.user, config);
-        return session;
-      });
+      const { body } = await readJsonBody<{ email: string; password: string }>(request);
+      requireStringFields(body, ["email", "password"]);
+      await enforceRateLimit(db, config, request, "login", body.email, 12, 60_000);
+      const result = db.loadPasswordLoginWorkspace && db.savePasswordLoginWorkspace
+        ? await (async () => {
+          const data = await db.loadPasswordLoginWorkspace!(body.email.trim().toLowerCase());
+          const session = await loginWithPassword(data, body);
+          applyConfiguredAdminRole(data, session.user, config);
+          await db.savePasswordLoginWorkspace!(session.user.id, data);
+          return session;
+        })()
+        : await db.update(async (data) => {
+          const session = await loginWithPassword(data, body);
+          applyConfiguredAdminRole(data, session.user, config);
+          return session;
+        });
       sendJson(response, 200, publicSession(result, config), corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/password-reset/request") {
       const { body } = await readJsonBody<{ email: string }>(request);
+      requireStringFields(body, ["email"]);
+      await enforceRateLimit(db, config, request, "password-reset", body.email, 5, 60_000);
       const result = await db.update((data) => requestPasswordReset(data, body.email));
       if (result.reset) {
         try {
@@ -213,6 +241,7 @@ async function handleRequest(
 
     if (request.method === "POST" && route.pathname === "/auth/password-reset/confirm") {
       const { body } = await readJsonBody<{ token: string; password: string }>(request);
+      requireStringFields(body, ["token", "password"]);
       await db.update((data) => confirmPasswordReset(data, body));
       sendJson(response, 200, { ok: true }, corsHeaders);
       return;
@@ -220,9 +249,11 @@ async function handleRequest(
 
     if (request.method === "POST" && route.pathname === "/auth/google/local") {
       if (!config.allowLocalGoogleStub) throw new Error("Local Google stub is disabled.");
-      const { body, remoteKey } = await readJsonBody<{ inviteToken: string; email: string; googleSubject: string; displayName?: string }>(request);
+      const { body } = await readJsonBody<{ inviteToken: string; email: string; googleSubject: string; displayName?: string }>(request);
+      requireStringFields(body, ["inviteToken", "email", "googleSubject"]);
+      await enforceRateLimit(db, config, request, "google-local", body.email, 12, 60_000);
       const result = await db.update((data) => {
-        const session = signupWithLocalGoogle(data, { ...body, remoteKey });
+        const session = signupWithLocalGoogle(data, body);
         applyConfiguredAdminRole(data, session.user, config);
         return session;
       });
@@ -232,33 +263,62 @@ async function handleRequest(
 
     if (request.method === "POST" && route.pathname === "/auth/google/start") {
       const { body } = await readJsonBody<{ inviteToken?: string; returnTo?: string }>(request);
+      await enforceRateLimit(db, config, request, "google-start", undefined, 24, 60_000);
       const result = await db.update((data) => createGoogleOAuthStart(data, body, config));
       sendJson(response, 200, result, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/auth/google/exchange") {
+      const { body } = await readJsonBody<{ exchangeCode: string }>(request);
+      requireStringFields(body, ["exchangeCode"]);
+      const result = await db.update((data) => {
+        const session = consumeOAuthExchange(data, body.exchangeCode);
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      sendJson(response, 200, publicSession(result, config), corsHeaders);
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/auth/google/callback") {
       const code = route.url.searchParams.get("code") ?? "";
       const state = route.url.searchParams.get("state") ?? "";
-      const result = await db.update(async (data) => {
-        const session = await completeGoogleOAuth(data, { code, state, remoteKey: request.socket.remoteAddress }, config);
+      await enforceRateLimit(db, config, request, "google-callback", undefined, 24, 60_000);
+      const oauthState = await db.update((data) => consumeOAuthState(data, state));
+      const googleProfile = await fetchGoogleOAuthProfile(code, config);
+      const exchange = await db.update((data) => {
+        const session = completeGoogleSignin(data, googleProfile, oauthState.inviteId);
         applyConfiguredAdminRole(data, session.user, config);
-        return session;
+        return createOAuthExchange(data, session, oauthState.returnTo);
       });
-      const session = publicSession(result, config);
       if (request.headers.accept?.includes("application/json")) {
-        sendJson(response, 200, session, corsHeaders);
+        sendJson(response, 200, exchange, corsHeaders);
       } else {
-        sendOAuthRedirect(response, result.returnTo ?? config.googleOAuth.successRedirectUrl, session, corsHeaders);
+        sendOAuthRedirect(response, exchange.returnTo ?? config.googleOAuth.successRedirectUrl, exchange.exchangeCode, corsHeaders);
       }
       return;
     }
 
     if (request.method === "GET" && route.pathname === "/auth/session") {
       const session = await requireSession(request, db);
-      const data = await db.read();
-      applyConfiguredAdminRole(data, session.user, config);
+      applyConfiguredAdminRole({ users: [session.user] }, session.user, config);
+      const data = db.readAccountRestrictions
+        ? { ...createEmptyDb(), accountRestrictions: await db.readAccountRestrictions(session.user.id) }
+        : await db.read();
       sendJson(response, 200, { ...publicSession(session, config), restriction: currentRestriction(data, session.user.id) }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/auth/logout") {
+      const session = await requireSession(request, db);
+      const tokenHash = hashToken(session.sessionToken);
+      if (db.revokeSessionByTokenHash) await db.revokeSessionByTokenHash(tokenHash);
+      else await db.update((data) => {
+        const stored = data.sessions.find((entry) => entry.id === session.session.id);
+        if (stored) stored.revokedAt = new Date().toISOString();
+      });
+      sendJson(response, 200, { ok: true }, corsHeaders);
       return;
     }
 
@@ -349,16 +409,17 @@ async function handleRequest(
         preferences?: NonNullable<Parameters<typeof runBackendAdventureGeneration>[3]>;
         providerOverride?: NonNullable<Parameters<typeof runBackendAdventureGeneration>[5]>;
       }>(request);
-      const result = await db.updatePersistingOnError((data) =>
-        runBackendAdventureGeneration(
-          data,
-          session.user.id,
-          body.premise ?? "",
-          body.preferences ?? {},
-          config,
-          body.providerOverride,
-        ),
-      );
+      const result = await executeIdempotent(db, config, request, session.user.id, route.pathname, body, () =>
+        runAccountWorkspaceOperation(db, session.user.id, (data) =>
+          runBackendAdventureGeneration(
+            data,
+            session.user.id,
+            body.premise ?? "",
+            body.preferences ?? {},
+            config,
+            body.providerOverride,
+          ),
+        ));
       sendJson(response, 200, result, corsHeaders);
       return;
     }
@@ -492,10 +553,17 @@ async function handleRequest(
       return;
     }
 
-    sendJson(response, 404, { error: "Route not found." }, corsHeaders);
+    throw new ApiError(404, "route_not_found", "Route not found.");
   } catch (error) {
-    const status = error instanceof PolicyBlockedError ? 422 : /not found/i.test(errorMessage(error)) ? 404 : /unauthorized|forbidden|admin/i.test(errorMessage(error)) ? 401 : 400;
-    sendJson(response, status, { error: errorMessage(error) }, corsHeaders);
+    const apiError = normalizeApiError(error);
+    console.error(`[${traceId}] ${apiError.code}:`, sanitizeErrorMessage(apiError.cause ?? error));
+    const headers = apiError.retryAfterSeconds
+      ? { ...corsHeaders, "Retry-After": String(apiError.retryAfterSeconds) }
+      : corsHeaders;
+    sendJson(response, apiError.status, { error: apiError.message, code: apiError.code, traceId }, {
+      ...headers,
+      "X-AIST-Trace-Id": traceId,
+    });
   } finally {
     if (config.databaseUrl && shouldTraceRequest(route.pathname)) {
       await recordTrace(db, performanceTrace({
@@ -528,8 +596,10 @@ async function handleAdventureRoute(
   const userId = session.user.id;
   if (request.method === "GET" && segments.length === 1) {
     const dbStartedAt = performance.now();
-    const data = await db.read();
-    const summaries = data.adventures.filter((entry) => entry.ownerUserId === userId).map((entry) => summarizeAdventure(entry.adventure));
+    const records = db.listAdventureRecords
+      ? await db.listAdventureRecords(userId)
+      : (await db.read()).adventures.filter((entry) => entry.ownerUserId === userId);
+    const summaries = records.map((entry) => summarizeAdventure(entry.adventure));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "database",
@@ -563,11 +633,14 @@ async function handleAdventureRoute(
     return;
   }
   const adventureId = segments[1];
-  if (!adventureId) throw new Error("Adventure id is required.");
+  if (!adventureId) throw new ApiError(400, "adventure_id_required", "Adventure id is required.");
   if (request.method === "GET" && segments.length === 2) {
     const dbStartedAt = performance.now();
-    const data = await db.read();
-    const adventure = getOwnedAdventureRecord(data, userId, adventureId).adventure;
+    const record = db.readAdventureRecord
+      ? await db.readAdventureRecord(userId, adventureId)
+      : getOwnedAdventureRecord(await db.read(), userId, adventureId);
+    if (!record) throw new ApiError(404, "adventure_not_found", "Adventure not found.");
+    const adventure = record.adventure;
     await recordTrace(db, performanceTrace({
       traceId,
       source: "database",
@@ -596,8 +669,17 @@ async function handleAdventureRoute(
   }
   if (request.method === "PUT" && segments.length === 2) {
     const { body } = await readJsonBody<{ adventure: Adventure }>(request, 10_000_000);
+    if (!body.adventure || typeof body.adventure !== "object" || Array.isArray(body.adventure)) {
+      throw new ApiError(400, "invalid_adventure", "adventure must be an object.");
+    }
+    if (body.adventure.id !== adventureId) {
+      throw new ApiError(409, "adventure_id_mismatch", "Adventure id does not match the request path.");
+    }
     const dbStartedAt = performance.now();
-    const saved = await db.update((data) => saveBackendAdventure(data, userId, normalizeAdventure(sanitizeAdventureForPersistence(body.adventure)), "manualSave"));
+    const cleanAdventure = normalizeAdventure(sanitizeAdventureForPersistence(body.adventure));
+    const saved = db.saveAdventureRecord
+      ? await db.saveAdventureRecord(userId, cleanAdventure, "manualSave")
+      : await db.update((data) => saveBackendAdventure(data, userId, cleanAdventure, "manualSave"));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "database",
@@ -609,23 +691,27 @@ async function handleAdventureRoute(
       status: "ok",
       durationMs: elapsedMs(dbStartedAt),
     }));
-    sendJson(response, 200, summarizeAdventure(saved.adventure), corsHeaders);
+    sendJson(response, 200, saved.adventure, corsHeaders);
     return;
   }
   if (request.method === "DELETE" && segments.length === 2) {
-    await db.update((data) => {
+    if (db.deleteAdventureRecord) await db.deleteAdventureRecord(userId, adventureId);
+    else await db.update((data) => {
       data.adventures = data.adventures.filter((entry) => !(entry.ownerUserId === userId && entry.id === adventureId));
     });
     sendJson(response, 200, { ok: true }, corsHeaders);
     return;
   }
   if (request.method === "GET" && segments[2] === "export") {
-    const data = await db.read();
-    sendJson(response, 200, getOwnedAdventureRecord(data, userId, adventureId).adventure, corsHeaders);
+    const record = db.readAdventureRecord
+      ? await db.readAdventureRecord(userId, adventureId)
+      : getOwnedAdventureRecord(await db.read(), userId, adventureId);
+    if (!record) throw new ApiError(404, "adventure_not_found", "Adventure not found.");
+    sendJson(response, 200, record.adventure, corsHeaders);
     return;
   }
   if (request.method === "GET" && segments[2] === "context-preview") {
-    const context = await db.updatePersistingOnError((data) => buildServerContextPreview(data, userId, adventureId, config));
+    const context = await runAdventureWorkspaceOperation(db, userId, adventureId, (data) => buildServerContextPreview(data, userId, adventureId, config));
     sendJson(response, 200, context, corsHeaders);
     return;
   }
@@ -634,10 +720,12 @@ async function handleAdventureRoute(
       request: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[3]>;
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardBuilder>[5]>;
     }>(request, 2_000_000);
+    requireObjectField(body, "request");
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendStoryCardBuilder(data, userId, adventureId, body.request, config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendStoryCardBuilder(data, userId, adventureId, body.request, config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "ai",
@@ -657,9 +745,10 @@ async function handleAdventureRoute(
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardUpdates>[4]>;
     }>(request, 2_000_000);
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendStoryCardUpdates(data, userId, adventureId, config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendStoryCardUpdates(data, userId, adventureId, config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "ai",
@@ -679,10 +768,12 @@ async function handleAdventureRoute(
       request: NonNullable<Parameters<typeof runBackendMemoryReconcile>[3]>;
       providerOverride?: NonNullable<Parameters<typeof runBackendMemoryReconcile>[5]>;
     }>(request, 2_000_000);
+    requireObjectField(body, "request");
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendMemoryReconcile(data, userId, adventureId, body.request, config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendMemoryReconcile(data, userId, adventureId, body.request, config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "ai",
@@ -704,9 +795,10 @@ async function handleAdventureRoute(
       providerOverride?: NonNullable<Parameters<typeof runBackendStoryCardAudit>[6]>;
     }>(request, 2_000_000);
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendStoryCardAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendStoryCardAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: Boolean(body.includeAI) ? "ai" : "server",
@@ -727,10 +819,12 @@ async function handleAdventureRoute(
       name?: string;
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainGeneration>[5]>;
     }>(request, 2_000_000);
+    requireStringFields(body, ["name"]);
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendBrainGeneration(data, userId, adventureId, body.name ?? "", config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendBrainGeneration(data, userId, adventureId, body.name ?? "", config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "ai",
@@ -750,10 +844,12 @@ async function handleAdventureRoute(
       brainId?: string;
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainUpdate>[5]>;
     }>(request, 2_000_000);
+    requireStringFields(body, ["brainId"]);
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendBrainUpdate(data, userId, adventureId, body.brainId ?? "", config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendBrainUpdate(data, userId, adventureId, body.brainId ?? "", config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "ai",
@@ -775,9 +871,10 @@ async function handleAdventureRoute(
       providerOverride?: NonNullable<Parameters<typeof runBackendBrainAudit>[6]>;
     }>(request, 2_000_000);
     const aiStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendBrainAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendBrainAudit(data, userId, adventureId, body.nTurns ?? 6, Boolean(body.includeAI), config, body.providerOverride),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: Boolean(body.includeAI) ? "ai" : "server",
@@ -802,18 +899,20 @@ async function handleAdventureRoute(
       regenerateLastAssistant?: boolean;
       providerOverride?: NonNullable<Parameters<typeof runBackendTurn>[5]>["providerOverride"];
     }>(request);
+    requireStringFields(body, ["input"]);
     const turnStartedAt = performance.now();
-    const result = await db.updatePersistingOnError((data) =>
-      runBackendTurn(data, userId, adventureId, body.input ?? "", config, {
-        mode: body.mode,
-        recordUserInput: body.recordUserInput,
-        providerCue: body.providerCue,
-        regenerateLastAssistant: body.regenerateLastAssistant,
-        providerOverride: body.providerOverride,
-        traceId,
-        route: pathname,
-      }),
-    );
+    const result = await executeIdempotent(db, config, request, userId, pathname, body, () =>
+      runAdventureWorkspaceOperation(db, userId, adventureId, (data) =>
+        runBackendTurn(data, userId, adventureId, body.input ?? "", config, {
+          mode: body.mode,
+          recordUserInput: body.recordUserInput,
+          providerCue: body.providerCue,
+          regenerateLastAssistant: body.regenerateLastAssistant,
+          providerOverride: body.providerOverride,
+          traceId,
+          route: pathname,
+        }),
+      ));
     await recordTrace(db, performanceTrace({
       traceId,
       source: "server",
@@ -828,7 +927,7 @@ async function handleAdventureRoute(
     sendJson(response, 200, result, corsHeaders);
     return;
   }
-  throw new Error("Adventure route not found.");
+  throw new ApiError(404, "route_not_found", "Adventure route not found.");
 }
 
 async function handleScenarioRoute(
@@ -865,7 +964,7 @@ async function handleScenarioRoute(
     sendJson(response, 200, result, corsHeaders);
     return;
   }
-  throw new Error("Scenario route not found.");
+  throw new ApiError(404, "route_not_found", "Scenario route not found.");
 }
 
 async function handleScenarioRevisionRoute(
@@ -906,31 +1005,165 @@ async function handleScenarioRevisionRoute(
     sendJson(response, 201, saved.adventure, corsHeaders);
     return;
   }
-  throw new Error("Scenario revision route not found.");
+  throw new ApiError(404, "route_not_found", "Scenario revision route not found.");
 }
 
 async function requireSession(request: IncomingMessage, db: BackendDb): Promise<AuthSessionResult> {
   const token = bearerToken(request);
-  const data = await db.read();
-  const session = resolveSession(data, token);
-  if (!session) throw new Error("Unauthorized.");
-  if (session.user.status !== "active") throw new Error("Account is not active.");
+  let session: AuthSessionResult | undefined;
+  if (db.resolveSessionByTokenHash) {
+    const resolved = token ? await db.resolveSessionByTokenHash(hashToken(token)) : undefined;
+    session = resolved && token ? { ...resolved, sessionToken: token } : undefined;
+  } else {
+    session = resolveSession(await db.read(), token);
+  }
+  if (!session) throw new ApiError(401, "unauthenticated", "Authentication is required.");
+  if (session.user.status !== "active") throw new ApiError(403, "account_inactive", "Account is not active.");
   return session;
+}
+
+async function runAdventureWorkspaceOperation<T>(
+  db: BackendDb,
+  ownerUserId: string,
+  adventureId: string,
+  operation: (data: LocalDbData) => T | Promise<T>,
+): Promise<T> {
+  if (!db.loadAdventureWorkspace || !db.saveAdventureWorkspace) {
+    return db.updatePersistingOnError(operation);
+  }
+  const workspace = await db.loadAdventureWorkspace(ownerUserId, adventureId);
+  try {
+    const result = await operation(workspace.data);
+    await db.saveAdventureWorkspace(ownerUserId, adventureId, workspace.baseRevision, workspace.data);
+    return result;
+  } catch (error) {
+    await db.saveAdventureWorkspace(ownerUserId, adventureId, workspace.baseRevision, workspace.data);
+    throw error;
+  }
+}
+
+async function runAccountWorkspaceOperation<T>(
+  db: BackendDb,
+  userId: string,
+  operation: (data: LocalDbData) => T | Promise<T>,
+): Promise<T> {
+  if (!db.loadAccountWorkspace || !db.saveAccountWorkspace) return db.updatePersistingOnError(operation);
+  const workspace = await db.loadAccountWorkspace(userId);
+  try {
+    const result = await operation(workspace);
+    await db.saveAccountWorkspace(userId, workspace);
+    return result;
+  } catch (error) {
+    await db.saveAccountWorkspace(userId, workspace);
+    throw error;
+  }
+}
+
+async function executeIdempotent<T>(
+  db: BackendDb,
+  config: ApiConfig,
+  request: IncomingMessage,
+  userId: string,
+  operation: string,
+  requestBody: unknown,
+  run: () => Promise<T>,
+): Promise<T> {
+  await enforceRateLimit(db, config, request, "provider-operation", userId, 30, 60_000);
+  const header = request.headers["idempotency-key"];
+  const key = (Array.isArray(header) ? header[0] : header)?.trim();
+  if (!key || key.length < 8 || key.length > 200) {
+    throw new ApiError(400, "idempotency_key_required", "Idempotency-Key header is required for provider-backed operations.");
+  }
+  if (!db.claimIdempotency || !db.completeIdempotency) return run();
+  const requestHash = hashToken(canonicalJson(requestBody ?? null));
+  let claim;
+  try {
+    claim = await db.claimIdempotency(
+      userId,
+      operation,
+      key,
+      requestHash,
+      new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Idempotency key")) {
+      throw new ApiError(409, "idempotency_key_reused", "This idempotency key was already used for a different request.", error);
+    }
+    throw error;
+  }
+  if (claim.state === "succeeded") return claim.responseBody as T;
+  if (claim.state === "failed") throw new ApiError(409, "idempotency_failed", "The previous attempt for this idempotency key failed.");
+  if (claim.state === "pending") throw new ApiError(409, "idempotency_pending", "An operation with this idempotency key is still pending.");
+  try {
+    const result = await run();
+    await db.completeIdempotency(userId, operation, key, "succeeded", 200, result);
+    return result;
+  } catch (error) {
+    await db.completeIdempotency(userId, operation, key, "failed", 500, { error: "Provider-backed operation failed." });
+    throw error;
+  }
+}
+
+async function enforceRateLimit(
+  db: BackendDb,
+  config: ApiConfig,
+  request: IncomingMessage,
+  route: string,
+  identity: string | undefined,
+  limit: number,
+  windowMs: number,
+): Promise<void> {
+  if (!db.consumeRateLimit) return;
+  const ipHash = hashToken(trustedClientIp(request, config));
+  const identityHash = identity?.trim().toLowerCase() ? hashToken(identity.trim().toLowerCase()) : "none";
+  const result = await db.consumeRateLimit(`${route}:${ipHash}:${identityHash}`, limit, windowMs);
+  if (!result.allowed) throw new ApiError(429, "rate_limited", "Too many requests. Wait briefly and try again.", undefined, result.retryAfterSeconds);
+}
+
+function trustedClientIp(request: IncomingMessage, config: ApiConfig): string {
+  if (config.trustedProxyHops > 0) {
+    const raw = request.headers["x-forwarded-for"];
+    const forwarded = (Array.isArray(raw) ? raw[0] : raw)?.split(",").map((value) => value.trim()).filter(Boolean) ?? [];
+    const index = forwarded.length - config.trustedProxyHops;
+    if (index >= 0 && forwarded[index]) return forwarded[index];
+  }
+  return request.socket.remoteAddress ?? "unknown";
+}
+
+function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(",")}}`;
+}
+
+function requireStringFields(body: object, fields: string[]): void {
+  const record = body as Record<string, unknown>;
+  for (const field of fields) {
+    if (typeof record[field] !== "string" || !record[field].trim()) {
+      throw new ApiError(400, "invalid_request", `${field} must be a non-empty string.`);
+    }
+  }
+}
+
+function requireObjectField(body: object, field: string): void {
+  const value = (body as Record<string, unknown>)[field];
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new ApiError(400, "invalid_request", `${field} must be an object.`);
+  }
 }
 
 async function assertAdmin(request: IncomingMessage, config: ApiConfig, db: BackendDb): Promise<string | undefined> {
   if (config.adminKey && request.headers["x-admin-key"] === config.adminKey) return undefined;
-  const data = await db.read();
-  const session = resolveSession(data, bearerToken(request));
+  const session = await requireSession(request, db).catch(() => undefined);
   if (session) {
-    applyConfiguredAdminRole(data, session.user, config);
+    applyConfiguredAdminRole({ users: [session.user] }, session.user, config);
     if (isAdminUser(session.user, config)) {
-      await db.write(data);
       return session.user.id;
     }
   }
   if (!config.adminKey && config.adminEmails.length === 0) return undefined;
-  throw new Error("Admin access required.");
+  throw new ApiError(403, "admin_required", "Admin access is required.");
 }
 
 function publicSession(result: AuthSessionResult, config: ApiConfig) {
@@ -969,11 +1202,11 @@ function assertScenarioPublishingEnabled(data: Parameters<typeof getPlatformSett
 function sendOAuthRedirect(
   response: ServerResponse,
   returnTo: string,
-  session: ReturnType<typeof publicSession>,
+  exchangeCode: string,
   extraHeaders: Record<string, string>,
 ): void {
   const target = new URL(returnTo);
-  target.hash = `backendSession=${encodeURIComponent(JSON.stringify(session))}`;
+  target.hash = `oauthExchange=${encodeURIComponent(exchangeCode)}`;
   response.writeHead(200, {
     "Content-Type": "text/html; charset=utf-8",
     ...extraHeaders,
@@ -996,10 +1229,10 @@ function genericPasswordResetResponse(): { ok: true; message: string } {
 
 function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, string> {
   const origin = request.headers.origin;
-  const allowOrigin = typeof origin === "string" && config.allowedOrigins.includes(origin) ? origin : config.allowedOrigins[0] ?? "*";
+  const allowOrigin = typeof origin === "string" && config.allowedOrigins.includes(origin) ? origin : undefined;
   return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Admin-Key, X-AIST-Trace-Id, X-AIST-Client-Sent-At, X-AIST-Client-Path",
+    ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-AIST-Trace-Id, X-AIST-Client-Sent-At, X-AIST-Client-Path",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
   };

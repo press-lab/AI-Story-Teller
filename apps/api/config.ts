@@ -26,6 +26,7 @@ export interface ApiConfig {
   databaseStatementTimeoutMs: number;
   databaseLockTimeoutMs: number;
   databaseIdleTransactionTimeoutMs: number;
+  trustedProxyHops: number;
   allowedOrigins: string[];
   adminKey?: string;
   adminEmails: string[];
@@ -97,6 +98,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     databaseStatementTimeoutMs: numberEnv("AIST_DATABASE_STATEMENT_TIMEOUT_MS", 30_000),
     databaseLockTimeoutMs: numberEnv("AIST_DATABASE_LOCK_TIMEOUT_MS", 5_000),
     databaseIdleTransactionTimeoutMs: numberEnv("AIST_DATABASE_IDLE_TRANSACTION_TIMEOUT_MS", 15_000),
+    trustedProxyHops: Math.max(0, Math.floor(numberEnv("AIST_TRUST_PROXY_HOPS", 0))),
     allowedOrigins: stringEnv(
       "AIST_API_ALLOWED_ORIGINS",
       "http://localhost:5173,http://127.0.0.1:5173,https://press-lab.github.io",

@@ -95,12 +95,23 @@ export interface OAuthStateRecord {
   usedAt?: string;
 }
 
+export interface OAuthExchangeRecord {
+  id: string;
+  codeHash: string;
+  userId: string;
+  returnTo?: string;
+  createdAt: string;
+  expiresAt: string;
+  consumedAt?: string;
+}
+
 export interface BackendAdventureRecord {
   id: string;
   ownerUserId: string;
   adventure: Adventure;
   createdAt: string;
   updatedAt: string;
+  revision: number;
 }
 
 export interface AdventureSnapshotRecord {
@@ -283,6 +294,7 @@ export interface LocalDbData {
   sessions: SessionRecord[];
   verificationTokens: VerificationToken[];
   oauthStates: OAuthStateRecord[];
+  oauthExchangeCodes: OAuthExchangeRecord[];
   adventures: BackendAdventureRecord[];
   adventureSnapshots: AdventureSnapshotRecord[];
   contextBuildEvents: ContextBuildEvent[];

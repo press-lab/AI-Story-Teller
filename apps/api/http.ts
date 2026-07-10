@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { ApiError } from "./apiError";
 
 export interface JsonRequest<T = unknown> {
   body: T;
-  remoteKey: string;
 }
 
 export function sendJson(response: ServerResponse, status: number, body: unknown, extraHeaders: Record<string, string> = {}): void {
@@ -24,13 +24,15 @@ export async function readJsonBody<T = unknown>(request: IncomingMessage, limitB
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     size += buffer.length;
-    if (size > limitBytes) throw new Error("Request body is too large.");
+    if (size > limitBytes) throw new ApiError(413, "payload_too_large", "Request body is too large.");
     chunks.push(buffer);
   }
   const raw = Buffer.concat(chunks).toString("utf8");
   const body = raw.trim() ? JSON.parse(raw) as T : {} as T;
-  const remoteKey = `${request.socket.remoteAddress ?? "local"}:${request.headers["user-agent"] ?? "unknown"}`;
-  return { body, remoteKey };
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    throw new ApiError(400, "invalid_request", "Request body must be a JSON object.");
+  }
+  return { body };
 }
 
 export function bearerToken(request: IncomingMessage): string | undefined {

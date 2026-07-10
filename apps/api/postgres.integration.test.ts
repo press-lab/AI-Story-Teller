@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEmptyDb } from "./dbShape";
 import { PostgresDb } from "./postgresDb";
 import { CURRENT_SQL_SCHEMA_VERSION, runSqlMigrations } from "./sqlMigrations";
+import { createDefaultAdventure } from "../../src/state/defaults";
 
 const connectionString = process.env.TEST_POSTGRES_URL;
 const suite = connectionString ? describe : describe.skip;
@@ -50,5 +51,35 @@ suite("Postgres production integration", () => {
     } finally {
       await pool.end();
     }
+  });
+
+  it("shares rate limits and idempotency claims across API instances", async () => {
+    const second = new PostgresDb(connectionString!, { max: 2, statementTimeoutMs: 5_000, lockTimeoutMs: 2_000 });
+    const suffix = Date.now().toString(36);
+    try {
+      expect((await db.consumeRateLimit(`integration-rate-${suffix}`, 1, 60_000)).allowed).toBe(true);
+      expect((await second.consumeRateLimit(`integration-rate-${suffix}`, 1, 60_000)).allowed).toBe(false);
+
+      expect((await db.claimIdempotency("integration-user", "turn", `key-${suffix}`, "hash-a", new Date(Date.now() + 60_000).toISOString())).state).toBe("claimed");
+      await db.completeIdempotency("integration-user", "turn", `key-${suffix}`, "succeeded", 200, { ok: true });
+      expect(await second.claimIdempotency("integration-user", "turn", `key-${suffix}`, "hash-a", new Date(Date.now() + 60_000).toISOString()))
+        .toMatchObject({ state: "succeeded", responseStatus: 200, responseBody: { ok: true } });
+    } finally {
+      await second.close();
+    }
+  });
+
+  it("allows only one writer to commit a shared adventure revision", async () => {
+    const adventure = createDefaultAdventure("Concurrent Revision");
+    adventure.id = `integration-adventure-${Date.now().toString(36)}`;
+    const inserted = await db.saveAdventureRecord("integration-user", adventure, "import");
+    const first = { ...inserted.adventure, title: "Writer One" };
+    const second = { ...inserted.adventure, title: "Writer Two" };
+    const results = await Promise.allSettled([
+      db.saveAdventureRecord("integration-user", first, "manualSave"),
+      db.saveAdventureRecord("integration-user", second, "manualSave"),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
   });
 });

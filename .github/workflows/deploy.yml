@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [main, backend-local-implementation]
+  # Rollback-only. Cloudflare Pages is the production frontend deployment.
   workflow_dispatch:
 
 permissions:

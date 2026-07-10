@@ -84,7 +84,7 @@ Status: **Completed July 10, 2026**
 
 ### H3. Targeted repositories and revisioned adventure writes
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Add bounded queries for sessions, users, profiles, admin status, adventures,
   usage, and audit records.
@@ -96,9 +96,20 @@ Status: **Not started**
 - Provider/network calls must occur outside database transactions.
 - Keep bulk read/write only for named import, export, backup, and migration tools.
 
+Implemented evidence:
+
+- Session resolution, restrictions, profile/explore reads, and adventure
+  list/get/save/delete use bounded repository methods in Postgres.
+- Adventure writes carry `metadata.serverRevision`; stale writes return
+  `409 stale_adventure_revision`.
+- Provider work runs between short workspace load/commit phases, outside a
+  database transaction. Ordinary broad mutations use record diffs rather than
+  collection replacement and no longer take the global advisory lock.
+- Postgres integration coverage races two writers against one revision.
+
 ### H4. Durable idempotency and usage reservation
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Require an idempotency key for every provider-backed mutation.
 - Persist user, operation, key, canonical request hash, state, response, and
@@ -109,9 +120,23 @@ Status: **Not started**
   operation completion atomically.
 - Frontend retries must reuse the original operation ID.
 
+Implemented evidence:
+
+- Every provider-backed route requires `Idempotency-Key`; the durable Postgres
+  claim stores the canonical request hash, state, response, timestamps, and
+  expiry before provider dispatch.
+- Same-key replays return the stored response, body mismatches return stable
+  `409`, and pending/failed operations have explicit conflict behavior.
+- The pending claim is the durable request/usage reservation. Transcript and
+  usage commit through the revisioned adventure workspace; a crash cannot
+  cause an automatic duplicate provider dispatch because the claim remains
+  pending.
+- Client operations generate one UUID per POST. Turn recovery reads the saved
+  adventure rather than issuing a second paid POST.
+
 ### H5. Adventure-scoped asynchronous frontend operations
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Capture `adventureId`, base revision, and operation ID for every async action.
 - Queue background work per adventure, not in one global queue.
@@ -121,9 +146,21 @@ Status: **Not started**
 - Add deferred-promise tests for switching adventures and overlapping work.
 - Prevent out-of-order autosaves from overwriting newer revisions.
 
+Implemented evidence:
+
+- Background queues carry their originating adventure id and never apply an
+  Adventure A update to the currently visible Adventure B.
+- Backend whole-adventure results, recovery, continue/regenerate, memory,
+  semantic, arc, builder, and audit flows verify the origin before UI apply.
+- Autosave reads the latest adventure through a ref and serializes writes;
+  the backend adapter also serializes per-adventure saves and advances the
+  expected server revision.
+- Deferred-promise and fake-timer tests cover adventure switching and latest
+  autosave selection.
+
 ### H6. Typed HTTP boundary and runtime request validation
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Validate every request body at runtime; TypeScript generics are not validation.
 - Add typed API errors with safe public codes/messages and internal causes.
@@ -133,9 +170,20 @@ Status: **Not started**
   responses.
 - Reject or omit CORS permission for disallowed origins and validate preflights.
 
+Implemented evidence:
+
+- `ApiError` owns stable public status/code/message values and keeps internal
+  causes server-side. Error responses include a trace id and never echo raw
+  provider/SQL details.
+- JSON shape and required auth/adventure/provider fields are runtime-checked;
+  payload, auth, authorization, not-found, revision, policy, rate, internal,
+  provider, and timeout failures map to their explicit statuses.
+- Exact-origin CORS omits permission for unknown origins and rejects unknown
+  preflights. `Idempotency-Key` is allowed.
+
 ### H7. Shared rate limiting and trusted proxy handling
 
-Status: **Not started**
+Status: **Completed July 10, 2026**
 
 - Replace the module-global limiter with a shared atomic store.
 - Configure the exact trusted Render proxy boundary.
@@ -143,6 +191,16 @@ Status: **Not started**
   applicable, and route.
 - Do not use User-Agent as an identity boundary.
 - Return stable `429` responses with `Retry-After` and bounded retention.
+
+Implemented evidence:
+
+- Hosted counters are atomic Postgres rows shared by instances and cleaned at
+  expiry. Local JSON mode uses its own development-only fallback.
+- Buckets use route plus hashed trusted client IP and normalized identity; User
+  Agent is not part of the boundary.
+- Render is configured with exactly one trusted proxy hop. Tests prove spoofed
+  forwarding headers are ignored when no proxy is trusted and verify stable
+  `429` plus `Retry-After`.
 
 ### H8. Production API artifact and process lifecycle
 
@@ -169,12 +227,19 @@ Status: **Awaiting owner policy review**
 
 ### A1. OAuth exchange and browser session hardening
 
+Status: **Completed July 10, 2026**
+
 - Replace long-lived session data in OAuth fragments with a five-minute,
   one-use exchange code.
 - Prefer an HttpOnly, Secure, SameSite session cookie; if bearer tokens remain,
   return them only from the POST exchange response.
 - Add server-side logout/revocation and CSRF protections appropriate to the
   final cookie strategy.
+
+The current bearer-token strategy is retained. The callback now redirects with
+only a hash-stored, five-minute, one-use exchange code; the SPA removes it from
+the URL before POSTing it for a bearer session. Google network calls occur
+outside database transactions. Tests cover replay, expiry, and URL leakage.
 
 ### A2. Module and shared-contract boundaries
 
@@ -200,12 +265,36 @@ Status: **Awaiting owner policy review**
 
 ### A5. Documentation and cutover cleanup
 
+Status: **Completed July 10, 2026**
+
 - Rewrite README and AGENTS around explicit Hosted Production, Owner/UAT
   Rollback, and Browser Local modes.
 - Document every environment variable, owner, secrecy, and deployment location.
 - Remove committed Vite logs and ignore runtime log artifacts.
 - Disable GitHub Pages production deployment only after Cloudflare cutover is
   verified; keep the workflow available as rollback until then.
+
+README and AGENTS now define Hosted Production, Owner/UAT Rollback, and Browser
+Local separately. `render.yaml` and the hosted runbook document Render,
+Cloudflare Pages, Neon, secrets, variables, migrations, probes, and rollback.
+GitHub Pages is manual-only, and committed Vite logs were removed and ignored.
+
+## ChatGPT Pro Recommendation Completion Map
+
+1. Render production build/process: **complete (H8)**
+2. Verification/reset disclosure: **complete (H1)**
+3. Targeted session authorization: **complete (H3)**
+4. Revisioned targeted adventure writes: **complete (H3)**
+5. Paid-operation idempotency: **complete (H4)**
+6. Shared rate limiter: **complete (H7)**
+7. SQL migrations/readiness: **complete (H2)**
+8. Adventure-scoped async work/autosave: **complete (H5)**
+9. One-use OAuth exchange: **complete (A1)**
+10. Typed errors/runtime validation/CORS: **complete (H6)**
+11. Deployment documentation/config cleanup: **complete (A5)**
+
+The separate A2-A4 entries below are additional architecture improvements from
+the repo review, not part of the Pro review's numbered eleven.
 
 ## Validation Baseline
 
@@ -217,7 +306,13 @@ Verified before hardening began on July 10, 2026:
 
 Latest completed workstream validation:
 
-- H1 targeted tests: passed.
-- `npm.cmd test`: 56 files, 414 tests passed.
+- Focused hardening suite: 66 tests passed.
+- `npm.cmd test`: 59 files passed, 1 Postgres-only file skipped; 428 tests
+  passed and 5 skipped.
+- Real local Postgres integration: 5 tests passed, including shared limiter,
+  durable idempotency, migrations/readiness, and same-revision concurrency.
 - `npm.cmd run build`: passed with the existing large-chunk warning.
+- `npm.cmd run api:build`: passed.
+- `npm.cmd run api:smoke`: passed against the compiled hosted entrypoint and
+  Postgres-aware `/readyz`.
 - `npm.cmd run smoke:prod`: passed.

@@ -298,7 +298,7 @@ export function useAdventureRuntime(
   const providerSettingsRef = useRef(providerSettings);
   const globalMemorySettingsRef = useRef(globalMemorySettings);
   const isSubmittingRef = useRef(false);
-  const queuedUpdatesRef = useRef<PendingAdventureUpdate[]>([]);
+  const queuedUpdatesRef = useRef<Array<{ adventureId: string; update: PendingAdventureUpdate }>>([]);
   const wasHiddenRef = useRef(false);
   const pendingRetryRef = useRef(false);
   const continueTurnRef = useRef<(() => Promise<void>) | undefined>(undefined);
@@ -329,9 +329,9 @@ export function useAdventureRuntime(
     [adventure, providerSettings],
   );
 
-  const applyActionsAndPersist = useCallback((actions: AdventureAction[]) => {
+  const applyActionsAndPersist = useCallback((actions: AdventureAction[], sourceAdventureId = adventureRef.current?.id) => {
     setAdventure((current) => {
-      if (!current) return current;
+      if (!current || !sourceAdventureId || current.id !== sourceAdventureId) return current;
       const next = reduceActions(current, actions);
       adventureRef.current = next;
       void adventureStore.save(next).then(() => {
@@ -345,9 +345,18 @@ export function useAdventureRuntime(
     });
   }, [adventureStore, setAdventure, setSaveStatus, refreshAdventures]);
 
-  async function applyBackendAdventureResult(next: Adventure) {
+  function applyAdventureIfCurrent(next: Adventure, sourceAdventureId = next.id): boolean {
+    if (!adventureRef.current || adventureRef.current.id !== sourceAdventureId) return false;
     adventureRef.current = next;
     setAdventure(next);
+    return true;
+  }
+
+  async function applyBackendAdventureResult(next: Adventure) {
+    if (!applyAdventureIfCurrent(next, next.id)) {
+      await refreshAdventures();
+      return;
+    }
     setContextResult(undefined);
     setSaveStatus("saved");
     await refreshAdventures();
@@ -406,22 +415,22 @@ export function useAdventureRuntime(
     }
   }
 
-  function queuePendingUpdate(actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
+  function queuePendingUpdate(adventureId: string, actions: AdventureAction[], source: PendingAdventureUpdate["source"]) {
     const update: PendingAdventureUpdate = {
       id: createId("pending"),
       createdAt: nowIso(),
       source,
       actions,
     };
-    queuedUpdatesRef.current = [...queuedUpdatesRef.current, update];
-    setAdventure((current) => current ? adventureReducer(current, { type: "QUEUE_PENDING_UPDATE", update }) : current);
+    queuedUpdatesRef.current = [...queuedUpdatesRef.current, { adventureId, update }];
+    setAdventure((current) => current?.id === adventureId ? adventureReducer(current, { type: "QUEUE_PENDING_UPDATE", update }) : current);
   }
 
   function mergeQueuedUpdates(adventureState: Adventure): Adventure {
     if (queuedUpdatesRef.current.length === 0) return adventureState;
     let next = adventureState;
-    for (const update of queuedUpdatesRef.current) {
-      next = adventureReducer(next, { type: "QUEUE_PENDING_UPDATE", update });
+    for (const queued of queuedUpdatesRef.current) {
+      if (queued.adventureId === adventureState.id) next = adventureReducer(next, { type: "QUEUE_PENDING_UPDATE", update: queued.update });
     }
     queuedUpdatesRef.current = [];
     return next;
@@ -444,10 +453,10 @@ export function useAdventureRuntime(
     try {
       const result = await runMemoryCycle(adventureState, buildBackgroundConfig(adventureState, providerSettingsRef.current));
       if (isSubmittingRef.current) {
-        queuePendingUpdate(result.actions, "memoryCycle");
+        queuePendingUpdate(adventureState.id, result.actions, "memoryCycle");
         return;
       }
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventureState.id);
     } catch {
       // silent — memory cycle is best-effort
     }
@@ -469,10 +478,10 @@ export function useAdventureRuntime(
       : undefined;
     const allActions = [...result.actions, stampAction, ...(tokenAction ? [tokenAction] : [])];
     if (isSubmittingRef.current) {
-      queuePendingUpdate(allActions, "semanticEvaluation");
+      queuePendingUpdate(snapshot.id, allActions, "semanticEvaluation");
       return;
     }
-    applyActionsAndPersist(allActions);
+    applyActionsAndPersist(allActions, snapshot.id);
   }
 
 
@@ -513,10 +522,10 @@ export function useAdventureRuntime(
         // Silent auto-continue: the Director picks the most convergent direction and seeds it
         // itself — no chooser, no spoiler. The new threat surfaces through play.
         const pick = pickConvergentContinuation(options, arc.arcState?.threadEngagement ?? {});
-        if (pick) applyActionsAndPersist([{ type: "APPLY_ARC_CONTINUATION", componentId: arc.id, option: pick }]);
-        else applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options: [] }]);
+        if (pick) applyActionsAndPersist([{ type: "APPLY_ARC_CONTINUATION", componentId: arc.id, option: pick }], snapshot.id);
+        else applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options: [] }], snapshot.id);
       } else {
-        applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options }]);
+        applyActionsAndPersist([{ type: "SET_ARC_CONTINUATIONS", componentId: arc.id, options }], snapshot.id);
       }
     } catch {
       // non-fatal — options stay ungenerated and we retry next turn
@@ -529,7 +538,7 @@ export function useAdventureRuntime(
       try {
         const recovered = await adventureStore.get(before.id);
         if (!isRecoveredBackendTurn(before, recovered, submittedText)) continue;
-        setAdventure(recovered);
+        if (!applyAdventureIfCurrent(recovered, before.id)) return false;
         setContextResult(undefined);
         setSaveStatus("saved");
         await refreshAdventures();
@@ -550,9 +559,9 @@ export function useAdventureRuntime(
 
     try {
       const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-      setAdventure(syncedAdventure);
+      if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return true;
       const result = await backendTurnRunner.runTurn({ adventureId: syncedAdventure.id, input: text, mode });
-      setAdventure(result.adventure);
+      if (!applyAdventureIfCurrent(result.adventure, syncedAdventure.id)) return true;
       setContextResult(result.postTurnContext ?? result.preProviderContext);
       setSaveStatus("saved");
       markBackendActionSucceeded();
@@ -590,7 +599,7 @@ export function useAdventureRuntime(
         providerConfig: mergeProviderConfig(base, providerSettings),
         sendChatCompletion: async (messages, snapshot, context) => {
           snapshotWithUserMsg = snapshot;
-          setAdventure(snapshot);
+          applyAdventureIfCurrent(snapshot, base.id);
           setContextResult(context);
           const storyConfig = applyResponseLengthHint(
             mergeProviderConfig(snapshot, providerSettings),
@@ -610,8 +619,8 @@ export function useAdventureRuntime(
       });
 
       let next = mergeQueuedUpdates(result.adventure);
-      setAdventure(next);
-      setContextResult(result.postTurnContext);
+      const appliedToVisibleAdventure = applyAdventureIfCurrent(next, base.id);
+      if (appliedToVisibleAdventure) setContextResult(result.postTurnContext);
       await persistAdventure(next);
       isSubmittingRef.current = false;
       if (mode !== "comms") {
@@ -637,7 +646,7 @@ export function useAdventureRuntime(
         setError(errMsg);
       }
       const errorState = snapshotWithUserMsg ?? base;
-      setAdventure(errorState);
+      applyAdventureIfCurrent(errorState, base.id);
       await persistFailureState(errorState);
       throw providerError;
     }
@@ -668,7 +677,7 @@ export function useAdventureRuntime(
 
     try {
       const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-      setAdventure(syncedAdventure);
+      if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return true;
       const result = await backendTurnRunner.runTurn({
         adventureId: syncedAdventure.id,
         input: "[continue]",
@@ -678,8 +687,9 @@ export function useAdventureRuntime(
       });
       setSaveStatus("saved");
       markBackendActionSucceeded();
-      setAdventure(result.adventure);
-      setContextResult(result.postTurnContext ?? result.preProviderContext);
+      if (applyAdventureIfCurrent(result.adventure, syncedAdventure.id)) {
+        setContextResult(result.postTurnContext ?? result.preProviderContext);
+      }
       await refreshAdventures();
       return true;
     } catch (backendError) {
@@ -706,7 +716,7 @@ export function useAdventureRuntime(
         providerCue: "[continue]",
         providerConfig: mergeProviderConfig(base, providerSettings),
         sendChatCompletion: async (messages, snapshot, context) => {
-          setAdventure(snapshot);
+          applyAdventureIfCurrent(snapshot, base.id);
           setContextResult(context);
           const continueConfig = applyResponseLengthHint(
             mergeProviderConfig(snapshot, providerSettings),
@@ -723,8 +733,8 @@ export function useAdventureRuntime(
       });
       let next = result.adventure;
       next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(result.postTurnContext);
+      const appliedToVisibleAdventure = applyAdventureIfCurrent(next, base.id);
+      if (appliedToVisibleAdventure) setContextResult(result.postTurnContext);
       await persistAdventure(next);
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
@@ -732,7 +742,7 @@ export function useAdventureRuntime(
       void checkArcContinuation(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Continue failed.");
-      setAdventure(adventure);
+      applyAdventureIfCurrent(adventure, adventure.id);
       await persistFailureState(adventure);
     }
   }
@@ -762,7 +772,7 @@ export function useAdventureRuntime(
 
     try {
       const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-      setAdventure(syncedAdventure);
+      if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return true;
       const result = await backendTurnRunner.runTurn({
         adventureId: syncedAdventure.id,
         input: "[regenerate]",
@@ -770,8 +780,9 @@ export function useAdventureRuntime(
         recordUserInput: false,
         regenerateLastAssistant: true,
       });
-      setAdventure(result.adventure);
-      setContextResult(result.postTurnContext ?? result.preProviderContext);
+      if (applyAdventureIfCurrent(result.adventure, syncedAdventure.id)) {
+        setContextResult(result.postTurnContext ?? result.preProviderContext);
+      }
       setSaveStatus("saved");
       markBackendActionSucceeded();
       await refreshAdventures();
@@ -819,14 +830,14 @@ export function useAdventureRuntime(
       });
       next = applied.adventure;
       next = mergeQueuedUpdates(next);
-      setAdventure(next);
-      setContextResult(buildContext(next, { latestModelOutput: applied.responseContent }));
+      const appliedToVisibleAdventure = applyAdventureIfCurrent(next, adventure.id);
+      if (appliedToVisibleAdventure) setContextResult(buildContext(next, { latestModelOutput: applied.responseContent }));
       await persistAdventure(next);
       isSubmittingRef.current = false;
       void startSemanticEvaluation(next);
     } catch (providerError) {
       setError(providerError instanceof Error ? providerError.message : "Regeneration failed.");
-      setAdventure(next);
+      applyAdventureIfCurrent(next, adventure.id);
     }
   }
 
@@ -855,7 +866,7 @@ export function useAdventureRuntime(
       if (proposalCount === 0) {
         throw new Error(result.logEntry.errors[0] ?? "The AI did not produce a Reference Card suggestion.");
       }
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (rememberError) {
       setError(rememberError instanceof Error ? rememberError.message : "Remember This failed.");
@@ -871,13 +882,13 @@ export function useAdventureRuntime(
     try {
       if (backendAiTools) {
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
+        if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return;
         const result = await backendAiTools.updateBrain(syncedAdventure.id, brainId);
         await applyBackendAdventureResult(result.adventure);
         return;
       }
       const result = await runManualBrainUpdate(adventure, activeProviderConfig, brainId);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
     } catch (manualError) {
       setError(manualError instanceof Error ? manualError.message : "Manual brain update failed.");
     } finally {
@@ -891,7 +902,7 @@ export function useAdventureRuntime(
     setError(undefined);
     try {
       const result = await runManualPEComponentUpdate(adventure, activeProviderConfig, componentId);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Manual PE update failed.");
@@ -906,7 +917,7 @@ export function useAdventureRuntime(
     setError(undefined);
     try {
       const result = await runManualPlotEssentialsUpdate(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Plot update suggestions failed.");
@@ -922,14 +933,14 @@ export function useAdventureRuntime(
     try {
       if (backendAiTools) {
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
+        if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return;
         const result = await backendAiTools.suggestStoryCardUpdates(syncedAdventure.id);
         await applyBackendAdventureResult(result.adventure);
         openTab("memoryInbox");
         return;
       }
       const result = await runManualStoryCardsUpdate(adventure, activeProviderConfig);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Story card update suggestions failed.");
@@ -945,14 +956,14 @@ export function useAdventureRuntime(
     try {
       if (backendAiTools) {
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
+        if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return;
         const result = await backendAiTools.buildStoryCardMemory(syncedAdventure.id, request);
         await applyBackendAdventureResult(result.adventure);
         openTab("memoryInbox");
         return;
       }
       const result = await runStoryCardAIBuilder(adventure, activeProviderConfig, request);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reference Card builder failed.");
@@ -967,7 +978,7 @@ export function useAdventureRuntime(
     setError(undefined);
     try {
       const result = await runPlotAIBuilder(adventure, activeProviderConfig, request);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Plot builder failed.");
@@ -983,7 +994,7 @@ export function useAdventureRuntime(
     try {
       if (backendAiTools) {
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
+        if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return undefined;
         const result = await backendAiTools.reconcileMemory(syncedAdventure.id, request);
         const latestLog = result.adventure.activeState.evaluationLog[0];
         const issue = latestLog?.errors[0];
@@ -999,7 +1010,7 @@ export function useAdventureRuntime(
       const proposalCount = result.actions.filter((action) => action.type === "ADD_MEMORY_PROPOSAL").length;
       const next = reduceActions(adventure, result.actions);
       const summary = summarizeMemoryReconcile(adventure, next, proposalCount, result.logEntry.errors[0]);
-      applyActionsAndPersist(result.actions);
+      applyActionsAndPersist(result.actions, adventure.id);
       openTab("memoryInbox");
       if (proposalCount === 0 && result.logEntry.errors.length > 0) {
         setError(result.logEntry.errors[0]);
@@ -1018,7 +1029,7 @@ export function useAdventureRuntime(
     if (!adventure) return [];
     if (backendAiTools) {
       const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-      setAdventure(syncedAdventure);
+      if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return [];
       return backendAiTools.auditStoryCards(syncedAdventure.id, nTurns, includeAI);
     }
     return runStoryCardAudit(adventure, activeProviderConfig, nTurns, { includeAI });
@@ -1033,7 +1044,7 @@ export function useAdventureRuntime(
     if (!adventure) return [];
     if (backendAiTools) {
       const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-      setAdventure(syncedAdventure);
+      if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return [];
       return backendAiTools.auditBrains(syncedAdventure.id, nTurns, includeAI);
     }
     return runBrainAudit(adventure, activeProviderConfig, nTurns, { includeAI });
@@ -1046,7 +1057,7 @@ export function useAdventureRuntime(
     const newContent = await regenerateProposalContent(proposal, adventure, activeProviderConfig);
     if (!newContent) return;
     const appendContent = proposal.appendContent ?? (proposal.proposedType === "plotEssentialsUpdate" ? false : undefined);
-    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent } }]);
+    applyActionsAndPersist([{ type: "UPDATE_MEMORY_PROPOSAL", proposalId, patch: { content: newContent, appendContent } }], adventure.id);
   }
 
   async function regeneratePlotEssentials(componentId: string): Promise<string> {
@@ -1094,7 +1105,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     setError(undefined);
     try {
       const arc = await generateArcDirector(adventure, activeProviderConfig, concept);
-      applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: arc }]);
+      applyActionsAndPersist([{ type: "UPDATE_COMPONENT", componentId, patch: arc }], adventure.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Arc generation failed.");
     } finally {
@@ -1143,7 +1154,7 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
             updatedAt: timestamp,
           },
         },
-      ]);
+      ], adventure.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Arc suggestion failed.");
     } finally {
@@ -1159,13 +1170,13 @@ Respond with ONLY the new content — no preamble, no labels, no explanation.`;
     try {
       if (backendAiTools) {
         const syncedAdventure = await saveDeviceAdventureBeforeBackendTurn(adventure, adventureStore, setSaveStatus, refreshAdventures);
-        setAdventure(syncedAdventure);
+        if (!applyAdventureIfCurrent(syncedAdventure, adventure.id)) return;
         const result = await backendAiTools.generateBrain(syncedAdventure.id, name);
         await applyBackendAdventureResult(result.adventure);
         return;
       }
       const brain = await generateBrainEntry(adventure, activeProviderConfig, name);
-      applyActionsAndPersist([{ type: "UPSERT_BRAIN", brain }]);
+      applyActionsAndPersist([{ type: "UPSERT_BRAIN", brain }], adventure.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Character generation failed.");
     } finally {

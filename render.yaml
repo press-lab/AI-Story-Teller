@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: storymode-api
+    runtime: node
+    plan: free
+    branch: backend-local-implementation
+    buildCommand: npm ci && npm run api:build
+    preDeployCommand: npm run api:db:migrate
+    startCommand: npm run api:hosted
+    healthCheckPath: /readyz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NODE_ENV
+        value: production
+      - key: AIST_API_HOST
+        value: 0.0.0.0
+      - key: AIST_TRUST_PROXY_HOPS
+        value: 1
+      - key: AIST_API_ALLOW_LOCAL_GOOGLE_STUB
+        value: "false"
+      - key: AIST_POLICY_MODE
+        value: reviewOnly
+      - key: AIST_DATABASE_URL
+        sync: false
+      - key: DATABASE_DIRECT_URL
+        sync: false
+      - key: AIST_API_ALLOWED_ORIGINS
+        sync: false
+      - key: AIST_WEB_APP_URL
+        sync: false
+      - key: AIST_ADMIN_EMAILS
+        sync: false
+      - key: AIST_PROVIDER_API_KEY
+        sync: false
+      - key: AIST_GOOGLE_CLIENT_ID
+        sync: false
+      - key: AIST_GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: AIST_GOOGLE_REDIRECT_URI
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: AIST_EMAIL_FROM
+        sync: false

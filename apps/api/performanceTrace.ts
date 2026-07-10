@@ -89,8 +89,12 @@ export function sanitizeErrorMessage(error: unknown): string | undefined {
   if (!message) return undefined;
   return message
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/\b(?:api[_-]?key|token|password|client[_-]?secret)\s*[=:]\s*[^\s,;]+/gi, "$1=[redacted]")
+    .replace(/\b(?:postgres|postgresql):\/\/[^\s]+/gi, "[redacted-database-url]")
     .replace(/sk-or-v1-[A-Za-z0-9]+/gi, "[redacted-openrouter-key]")
+    .replace(/\bsk-[A-Za-z0-9_-]{12,}/gi, "[redacted-provider-key]")
     .replace(/https:\/\/openrouter\.ai\/workspaces\/[^\s"')]+\/keys\/[A-Za-z0-9]+/gi, "the OpenRouter key settings page")
+    .replace(/\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b[\s\S]*/gi, "[redacted-sql]")
     .slice(0, 500);
 }
 
