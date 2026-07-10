@@ -72,6 +72,8 @@ import {
   loadBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
+  confirmBackendPasswordReset,
+  requestBackendPasswordReset,
   restoreBackendAdventureSnapshot,
   reconcileBackendMemory,
   saveBackendPlatformSettings,
@@ -1861,6 +1863,8 @@ export default function App() {
           navigateTo("profile");
           return session;
         }}
+        onRequestPasswordReset={(email) => requestBackendPasswordReset(normalizedRuntimeConfig, email)}
+        onConfirmPasswordReset={(token, password) => confirmBackendPasswordReset(normalizedRuntimeConfig, token, password)}
         onStartGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
       />
     );

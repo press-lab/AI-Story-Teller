@@ -8,10 +8,34 @@ import { exportAdventureJson } from "../../src/utils/json";
 import { thumbnailMetadataPatch } from "../../src/utils/adventureImages";
 import { clearRateLimitsForTests } from "./rateLimit";
 import { createApiServer, type ApiServer } from "./server";
+import type { EmailDelivery, PasswordResetEmailInput, VerificationEmailInput } from "./emailDelivery";
 
 let tempDir = "";
 let api: ApiServer;
 let baseUrl = "";
+let deliveredEmails: Array<
+  | ({ kind: "verification" } & VerificationEmailInput)
+  | ({ kind: "passwordReset" } & PasswordResetEmailInput)
+> = [];
+
+const fakeEmailDelivery: EmailDelivery = {
+  async sendVerificationEmail(input) {
+    deliveredEmails.push({ kind: "verification", ...input });
+  },
+  async sendPasswordResetEmail(input) {
+    deliveredEmails.push({ kind: "passwordReset", ...input });
+  },
+};
+
+function deliveredToken(kind: "verification" | "passwordReset", to: string): string {
+  const delivery = [...deliveredEmails].reverse().find((entry) => entry.kind === kind && entry.to === to);
+  expect(delivery).toBeTruthy();
+  const url = new URL(delivery!.kind === "verification" ? delivery!.verificationUrl : delivery!.resetUrl);
+  const key = kind === "verification" ? "verifyEmail" : "passwordReset";
+  const token = new URLSearchParams(url.hash.slice(1)).get(key);
+  expect(token).toBeTruthy();
+  return token!;
+}
 
 async function requestJson<T>(path: string, init: RequestInit = {}): Promise<{ status: number; body: T }> {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -36,7 +60,7 @@ async function createInvite(): Promise<string> {
 
 async function passwordSession(email = "player@example.com"): Promise<string> {
   const inviteToken = await createInvite();
-  const signup = await requestJson<{ verificationToken: string }>("/auth/signup/password", {
+  const signup = await requestJson<{ verificationRequired: true }>("/auth/signup/password", {
     method: "POST",
     body: JSON.stringify({
       inviteToken,
@@ -48,7 +72,7 @@ async function passwordSession(email = "player@example.com"): Promise<string> {
   expect(signup.status).toBe(201);
   const verified = await requestJson<{ sessionToken: string }>("/auth/email/verify", {
     method: "POST",
-    body: JSON.stringify({ token: signup.body.verificationToken }),
+    body: JSON.stringify({ token: deliveredToken("verification", email) }),
   });
   expect(verified.status).toBe(200);
   return verified.body.sessionToken;
@@ -56,6 +80,7 @@ async function passwordSession(email = "player@example.com"): Promise<string> {
 
 beforeEach(async () => {
   clearRateLimitsForTests();
+  deliveredEmails = [];
   tempDir = await mkdtemp(join(tmpdir(), "aist-api-"));
   api = createApiServer({
     host: "127.0.0.1",
@@ -66,6 +91,7 @@ beforeEach(async () => {
     adminEmails: [],
     allowLocalGoogleStub: true,
     allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    emailDelivery: fakeEmailDelivery,
     policyMode: "enforce",
     googleOAuth: {
       clientId: "test-google-client",
@@ -132,7 +158,7 @@ describe("local API auth and invite gate", () => {
     expect(noInvite.body.error).toMatch(/invite/i);
 
     const inviteToken = await createInvite();
-    const signup = await requestJson<{ user: { status: string }; verificationToken: string }>("/auth/signup/password", {
+    const signup = await requestJson<{ user: { status: string }; verificationRequired: true; message: string }>("/auth/signup/password", {
       method: "POST",
       body: JSON.stringify({
         inviteToken,
@@ -143,6 +169,8 @@ describe("local API auth and invite gate", () => {
     });
     expect(signup.status).toBe(201);
     expect(signup.body.user.status).toBe("pending_verification");
+    expect(signup.body.verificationRequired).toBe(true);
+    expect(signup.body).not.toHaveProperty("verificationToken");
 
     const blockedLogin = await requestJson<{ error: string }>("/auth/login/password", {
       method: "POST",
@@ -153,7 +181,7 @@ describe("local API auth and invite gate", () => {
 
     const verified = await requestJson<{ sessionToken: string }>("/auth/email/verify", {
       method: "POST",
-      body: JSON.stringify({ token: signup.body.verificationToken }),
+      body: JSON.stringify({ token: deliveredToken("verification", "player@example.com") }),
     });
     expect(verified.status).toBe(200);
     expect(verified.body.sessionToken).toBeTruthy();
@@ -168,6 +196,91 @@ describe("local API auth and invite gate", () => {
     });
     expect(reused.status).toBe(400);
     expect(reused.body.error).toMatch(/used/i);
+  });
+
+  it("keeps password-reset requests generic and revokes every session after a one-use reset", async () => {
+    const email = "reset-player@example.com";
+    const firstSession = await passwordSession(email);
+    const secondLogin = await requestJson<{ sessionToken: string }>("/auth/login/password", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "correct horse battery staple" }),
+    });
+    expect(secondLogin.status).toBe(200);
+
+    const existing = await requestJson<{ ok: true; message: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    const missing = await requestJson<{ ok: true; message: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email: "missing-reset@example.com" }),
+    });
+    expect(existing.status).toBe(202);
+    expect(missing.status).toBe(202);
+    expect(existing.body).toEqual(missing.body);
+    expect(existing.body).not.toHaveProperty("resetToken");
+
+    const olderResetToken = deliveredToken("passwordReset", email);
+    await requestJson("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    const resetToken = deliveredToken("passwordReset", email);
+    expect(resetToken).not.toBe(olderResetToken);
+    const confirmed = await requestJson<{ ok: true }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token: resetToken, password: "new correct horse battery staple" }),
+    });
+    expect(confirmed.status).toBe(200);
+
+    for (const sessionToken of [firstSession, secondLogin.body.sessionToken]) {
+      const oldSession = await requestJson<{ error: string }>("/auth/session", {
+        headers: { Authorization: `Bearer ${sessionToken}` },
+      });
+      expect(oldSession.status).toBe(401);
+    }
+
+    const replay = await requestJson<{ error: string }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token: resetToken, password: "another correct horse battery staple" }),
+    });
+    expect(replay.status).toBe(400);
+    expect(replay.body.error).toMatch(/invalid or expired/i);
+
+    const olderTokenReplay = await requestJson<{ error: string }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token: olderResetToken, password: "another correct horse battery staple" }),
+    });
+    expect(olderTokenReplay.status).toBe(400);
+    expect(olderTokenReplay.body.error).toMatch(/invalid or expired/i);
+
+    const newLogin = await requestJson<{ sessionToken: string }>("/auth/login/password", {
+      method: "POST",
+      body: JSON.stringify({ email, password: "new correct horse battery staple" }),
+    });
+    expect(newLogin.status).toBe(200);
+  });
+
+  it("rejects expired password-reset tokens", async () => {
+    const email = "expired-reset@example.com";
+    await passwordSession(email);
+    await requestJson("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+    const resetToken = deliveredToken("passwordReset", email);
+    const data = await api.db.read();
+    const resetRecord = data.verificationTokens.find((entry) => entry.purpose === "passwordReset" && entry.userId === data.users.find((user) => user.email === email)?.id);
+    expect(resetRecord).toBeTruthy();
+    resetRecord!.expiresAt = "2000-01-01T00:00:00.000Z";
+    await api.db.write(data);
+
+    const expired = await requestJson<{ error: string }>("/auth/password-reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token: resetToken, password: "new correct horse battery staple" }),
+    });
+    expect(expired.status).toBe(400);
+    expect(expired.body.error).toMatch(/invalid or expired/i);
   });
 
   it("lets admins deactivate invite links before signup", async () => {
@@ -863,7 +976,7 @@ describe("local API policy gates and sharing", () => {
 
     const adminInvite = await createInvite();
     api.config.adminEmails.push("backend-admin@example.com");
-    const signup = await requestJson<{ verificationToken: string }>("/auth/signup/password", {
+    const signup = await requestJson<{ verificationRequired: true }>("/auth/signup/password", {
       method: "POST",
       body: JSON.stringify({
         inviteToken: adminInvite,
@@ -875,7 +988,7 @@ describe("local API policy gates and sharing", () => {
     expect(signup.status).toBe(201);
     const verified = await requestJson<{ sessionToken: string; user: { role: string } }>("/auth/email/verify", {
       method: "POST",
-      body: JSON.stringify({ token: signup.body.verificationToken }),
+      body: JSON.stringify({ token: deliveredToken("verification", "backend-admin@example.com") }),
     });
     expect(verified.status).toBe(200);
     expect(verified.body.user.role).toBe("admin");

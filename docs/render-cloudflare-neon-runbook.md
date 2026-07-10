@@ -42,10 +42,16 @@ AIST_API_ALLOW_LOCAL_GOOGLE_STUB=false
 AIST_GOOGLE_CLIENT_ID=<Google OAuth client id>
 AIST_GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
 AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
+RESEND_API_KEY=<Resend API key>
+AIST_EMAIL_FROM=AI Story Teller <accounts@storymodeai.com>
 ```
 
 Leave `AIST_API_PORT` unset on Render. Render provides `PORT`, and
 `api:hosted` uses it.
+
+`AIST_EMAIL_FROM` must use a sender/domain verified in Resend. Hosted startup
+refuses to run without both email variables because password signup and reset no
+longer expose tokens through HTTP responses.
 
 After Render deploys, verify the temporary Render URL first:
 

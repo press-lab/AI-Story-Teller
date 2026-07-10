@@ -32,6 +32,13 @@ export interface BackendSessionState {
   expiresAt?: string;
 }
 
+export interface BackendPasswordSignupResult {
+  user: BackendUser;
+  profile: BackendProfile;
+  verificationRequired: true;
+  message: string;
+}
+
 export interface BackendImportRequest {
   sourceType: "aist" | "githubSave";
   text?: string;
@@ -329,9 +336,23 @@ export function signupBackendPassword(
   config: RuntimeConfig,
   input: { inviteToken: string; email: string; password: string; displayName?: string },
 ) {
-  return apiJson<{ user: BackendUser; profile: BackendProfile; verificationToken: string }>(config, "/auth/signup/password", {
+  return apiJson<BackendPasswordSignupResult>(config, "/auth/signup/password", {
     method: "POST",
     body: JSON.stringify(input),
+  });
+}
+
+export function requestBackendPasswordReset(config: RuntimeConfig, email: string) {
+  return apiJson<{ ok: true; message: string }>(config, "/auth/password-reset/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function confirmBackendPasswordReset(config: RuntimeConfig, token: string, password: string) {
+  return apiJson<{ ok: true }>(config, "/auth/password-reset/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
   });
 }
 

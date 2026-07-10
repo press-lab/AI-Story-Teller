@@ -53,6 +53,9 @@ function assertHostedServerConfig(config: ApiConfig): void {
   if (!config.providerConfig.apiKey) {
     errors.push("Set AIST_PROVIDER_API_KEY so hosted backend generation can use the platform provider key.");
   }
+  if (!config.emailDelivery && (!config.resendApiKey || !config.emailFrom)) {
+    errors.push("Set RESEND_API_KEY and AIST_EMAIL_FROM so hosted verification and password reset email can be delivered.");
+  }
   if (config.googleOAuth.redirectUri && !config.googleOAuth.redirectUri.startsWith("https://")) {
     errors.push("Set AIST_GOOGLE_REDIRECT_URI to the hosted HTTPS callback URL.");
   }

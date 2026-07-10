@@ -54,6 +54,7 @@ import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { PolicyBlockedError } from "./policy";
 import { createTraceId, elapsedMs, performanceTrace } from "./performanceTrace";
 import type { PerformanceTraceRecord } from "./apiTypes";
+import { configuredEmailDelivery, type EmailDelivery } from "./emailDelivery";
 
 export interface ApiServer {
   server: Server;
@@ -66,8 +67,9 @@ export interface ApiServer {
 export function createApiServer(overrides: Partial<ApiConfig> = {}): ApiServer {
   const config = loadApiConfig(overrides);
   const db = createBackendDb(config);
+  const emailDelivery = configuredEmailDelivery(config);
   const server = createServer((request, response) => {
-    void handleRequest(request, response, config, db);
+    void handleRequest(request, response, config, db, emailDelivery);
   });
   return {
     server,
@@ -86,7 +88,13 @@ export function createApiServer(overrides: Partial<ApiConfig> = {}): ApiServer {
   };
 }
 
-async function handleRequest(request: IncomingMessage, response: ServerResponse, config: ApiConfig, db: BackendDb): Promise<void> {
+async function handleRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  config: ApiConfig,
+  db: BackendDb,
+  emailDelivery: EmailDelivery,
+): Promise<void> {
   const corsHeaders = corsFor(request, config);
   if (request.method === "OPTIONS") {
     response.writeHead(204, corsHeaders);
@@ -151,7 +159,17 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
         applyConfiguredAdminRole(data, signup.user, config);
         return signup;
       });
-      sendJson(response, 201, result, corsHeaders);
+      await emailDelivery.sendVerificationEmail({
+        to: result.user.email,
+        verificationUrl: authActionUrl(config.googleOAuth.successRedirectUrl, "verifyEmail", result.verification.token),
+        expiresAt: result.verification.expiresAt,
+      });
+      sendJson(response, 201, {
+        user: publicUser(result.user, config),
+        profile: result.profile,
+        verificationRequired: true,
+        message: "Check your email for a verification link.",
+      }, corsHeaders);
       return;
     }
 
@@ -180,7 +198,18 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse,
     if (request.method === "POST" && route.pathname === "/auth/password-reset/request") {
       const { body } = await readJsonBody<{ email: string }>(request);
       const result = await db.update((data) => requestPasswordReset(data, body.email));
-      sendJson(response, 200, result, corsHeaders);
+      if (result.reset) {
+        try {
+          await emailDelivery.sendPasswordResetEmail({
+            to: result.email,
+            resetUrl: authActionUrl(config.googleOAuth.successRedirectUrl, "passwordReset", result.reset.token),
+            expiresAt: result.reset.expiresAt,
+          });
+        } catch (deliveryError) {
+          console.warn("Password reset email delivery failed:", errorMessage(deliveryError));
+        }
+      }
+      sendJson(response, 202, genericPasswordResetResponse(), corsHeaders);
       return;
     }
 
@@ -952,6 +981,19 @@ function sendOAuthRedirect(
     ...extraHeaders,
   });
   response.end(`<!doctype html><meta charset="utf-8"><script>location.replace(${JSON.stringify(target.toString())});</script>`);
+}
+
+function authActionUrl(baseUrl: string, action: "verifyEmail" | "passwordReset", token: string): string {
+  const target = new URL(baseUrl);
+  target.hash = `${action}=${encodeURIComponent(token)}`;
+  return target.toString();
+}
+
+function genericPasswordResetResponse(): { ok: true; message: string } {
+  return {
+    ok: true,
+    message: "If an account exists for that email, a password-reset link has been sent.",
+  };
 }
 
 function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, string> {

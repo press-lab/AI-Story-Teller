@@ -1,13 +1,15 @@
-import { useState } from "react";
-import type { BackendSessionState } from "../runtime/backendApi";
+import { useEffect, useState } from "react";
+import type { BackendPasswordSignupResult, BackendSessionState } from "../runtime/backendApi";
 import { Field } from "./shared";
 
-type AuthMode = "start" | "signup" | "login";
+type AuthMode = "start" | "signup" | "login" | "forgot" | "reset";
 
 interface WelcomePageProps {
-  onSignupPassword: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
+  onSignupPassword: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<BackendPasswordSignupResult>;
   onVerifyEmail: (token: string) => Promise<BackendSessionState>;
   onLoginPassword: (input: { email: string; password: string }) => Promise<BackendSessionState>;
+  onRequestPasswordReset: (email: string) => Promise<{ ok: true; message: string }>;
+  onConfirmPasswordReset: (token: string, password: string) => Promise<{ ok: true }>;
   onStartGoogleOAuth: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
 }
 
@@ -15,6 +17,8 @@ export function WelcomePage({
   onSignupPassword,
   onVerifyEmail,
   onLoginPassword,
+  onRequestPasswordReset,
+  onConfirmPasswordReset,
   onStartGoogleOAuth,
 }: WelcomePageProps) {
   const [inviteToken, setInviteToken] = useState("");
@@ -24,6 +28,28 @@ export function WelcomePage({
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<AuthMode>("start");
+  const [passwordResetToken, setPasswordResetToken] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const verificationToken = params.get("verifyEmail");
+    const resetToken = params.get("passwordReset");
+    if (!verificationToken && !resetToken) return;
+    history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
+    if (verificationToken) {
+      void run("Verifying email", async () => {
+        await onVerifyEmail(verificationToken);
+        setStatus("Email verified. Signed in.");
+      });
+      return;
+    }
+    setPasswordResetToken(resetToken ?? "");
+    setPassword("");
+    setMode("reset");
+    setStatus("Enter a new password for your account.");
+  // The auth action fragment is consumed once when the welcome screen mounts.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function run(label: string, action: () => Promise<void>) {
     setBusy(true);
@@ -70,12 +96,16 @@ export function WelcomePage({
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Account</p>
-              <h2>{mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : "Welcome"}</h2>
+              <h2>{mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : mode === "forgot" ? "Reset Password" : mode === "reset" ? "Choose New Password" : "Welcome"}</h2>
               <p className="muted">
                 {mode === "login"
                   ? "Use your existing account email and password, or continue with Google."
                   : mode === "signup"
                     ? "Create an invited account with email and password, or use the invite token with Google."
+                    : mode === "forgot"
+                      ? "Enter your account email. The response is the same whether or not an account exists."
+                    : mode === "reset"
+                      ? "Choose a new password. Completing the reset signs out every existing session."
                     : "Log in to an existing account or create a new account with an invite token."}
               </p>
             </div>
@@ -100,15 +130,23 @@ export function WelcomePage({
             </div>
           )}
 
-          {mode === "login" && (
+          {(mode === "login" || mode === "forgot") && (
             <div className="grid two">
               <Field label="Email">
                 <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
               </Field>
-              <Field label="Password">
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              </Field>
+              {mode === "login" && (
+                <Field label="Password">
+                  <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                </Field>
+              )}
             </div>
+          )}
+
+          {mode === "reset" && (
+            <Field label="New password">
+              <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+            </Field>
           )}
 
           <div className="welcome-actions">
@@ -147,8 +185,7 @@ export function WelcomePage({
                       password,
                       displayName: displayName.trim() || undefined,
                     });
-                    await onVerifyEmail(result.verificationToken);
-                    setStatus("Signed in.");
+                    setStatus(result.message);
                   })}
                 >
                   Create account
@@ -187,6 +224,9 @@ export function WelcomePage({
                 >
                   Log in
                 </button>
+                <button type="button" disabled={busy} onClick={() => chooseMode("forgot")}>
+                  Forgot password?
+                </button>
                 <button
                   type="button"
                   disabled={busy}
@@ -199,6 +239,43 @@ export function WelcomePage({
                 </button>
                 <button type="button" disabled={busy} onClick={() => chooseMode("start")}>
                   Back
+                </button>
+              </>
+            )}
+
+            {mode === "forgot" && (
+              <>
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={busy}
+                  onClick={() => void run("Requesting password reset", async () => {
+                    if (!requireFields("Enter your email to request a password reset.", [email])) return;
+                    const result = await onRequestPasswordReset(email.trim());
+                    setStatus(result.message);
+                  })}
+                >
+                  Send reset link
+                </button>
+                <button type="button" disabled={busy} onClick={() => chooseMode("login")}>Back</button>
+              </>
+            )}
+
+            {mode === "reset" && (
+              <>
+                <button
+                  type="button"
+                  className="primary-action"
+                  disabled={busy}
+                  onClick={() => void run("Resetting password", async () => {
+                    if (!requireFields("Enter a new password.", [password])) return;
+                    await onConfirmPasswordReset(passwordResetToken, password);
+                    setPassword("");
+                    setMode("login");
+                    setStatus("Password reset. Log in with your new password.");
+                  })}
+                >
+                  Reset password
                 </button>
               </>
             )}

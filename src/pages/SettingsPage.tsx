@@ -81,7 +81,7 @@ interface SettingsPageProps {
   onBackendModelModeChange?: (mode: BackendModelMode) => void;
   deviceOnlyDataMode?: boolean;
   hideDeveloperControls?: boolean;
-  onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationToken: string }>;
+  onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationRequired: true; message: string }>;
   onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
   onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
   onStartBackendGoogleOAuth?: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
@@ -181,7 +181,7 @@ export function SettingsPage({
   }
 
   async function signupWithBackendPassword() {
-    const result = await runBackendAction("Password signup", async () => {
+    await runBackendAction("Password signup", async () => {
       if (!onSignupBackendPassword) throw new Error("Backend signup is unavailable.");
       return onSignupBackendPassword({
         inviteToken: backendInviteToken,
@@ -190,7 +190,6 @@ export function SettingsPage({
         displayName: backendDisplayName,
       });
     });
-    if (result?.verificationToken) setBackendVerificationToken(result.verificationToken);
   }
 
   async function verifyBackendAccount() {

@@ -1,5 +1,6 @@
 import type { ProviderConfig } from "../../src/types/adventure";
 import { existsSync, readFileSync } from "node:fs";
+import type { EmailDelivery } from "./emailDelivery";
 
 export type PolicyMode = "reviewOnly" | "enforce";
 
@@ -25,6 +26,9 @@ export interface ApiConfig {
   googleOAuth: GoogleOAuthConfig;
   policyMode: PolicyMode;
   providerConfig: ProviderConfig;
+  resendApiKey?: string;
+  emailFrom?: string;
+  emailDelivery?: EmailDelivery;
   fetchImpl?: typeof fetch;
 }
 
@@ -97,6 +101,8 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     },
     policyMode,
     providerConfig,
+    resendApiKey: process.env.RESEND_API_KEY?.trim() || undefined,
+    emailFrom: process.env.AIST_EMAIL_FROM?.trim() || undefined,
   };
   return {
     ...config,

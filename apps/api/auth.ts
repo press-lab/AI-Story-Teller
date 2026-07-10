@@ -34,7 +34,12 @@ export interface AuthSessionResult {
 export interface PasswordSignupResult {
   user: BackendUser;
   profile: UserProfile;
-  verificationToken: string;
+  verification: IssuedAuthToken;
+}
+
+export interface IssuedAuthToken {
+  token: string;
+  expiresAt: string;
 }
 
 export interface GoogleOAuthStartResult {
@@ -234,8 +239,12 @@ export async function signupWithPassword(
     createdAt: nowIso(),
     updatedAt: nowIso(),
   });
-  const verificationToken = createVerificationToken(data, user.id, "emailVerification", 24).token;
-  return { user, profile, verificationToken };
+  const verification = createVerificationToken(data, user.id, "emailVerification", 24);
+  return {
+    user,
+    profile,
+    verification: { token: verification.token, expiresAt: verification.record.expiresAt },
+  };
 }
 
 export function signupWithLocalGoogle(
@@ -399,12 +408,13 @@ export function verifyEmailToken(data: LocalDbData, token: string): AuthSessionR
   return createSession(data, user, profile);
 }
 
-export function requestPasswordReset(data: LocalDbData, emailInput: string): { email: string; resetToken?: string } {
+export function requestPasswordReset(data: LocalDbData, emailInput: string): { email: string; reset?: IssuedAuthToken } {
   const email = normalizeEmail(emailInput);
   assertRateLimit(`reset:${email}`, 5, 60_000);
   const user = data.users.find((entry) => entry.email === email);
   if (!user) return { email };
-  return { email, resetToken: createVerificationToken(data, user.id, "passwordReset", 2).token };
+  const reset = createVerificationToken(data, user.id, "passwordReset", 2);
+  return { email, reset: { token: reset.token, expiresAt: reset.record.expiresAt } };
 }
 
 export async function confirmPasswordReset(data: LocalDbData, input: { token: string; password: string }): Promise<void> {
@@ -424,6 +434,15 @@ export async function confirmPasswordReset(data: LocalDbData, input: { token: st
       createdAt: nowIso(),
       updatedAt: nowIso(),
     });
+  }
+  const revokedAt = nowIso();
+  for (const session of data.sessions) {
+    if (session.userId === record.userId && !session.revokedAt) session.revokedAt = revokedAt;
+  }
+  for (const token of data.verificationTokens) {
+    if (token.userId === record.userId && token.purpose === "passwordReset" && !token.usedAt) {
+      token.usedAt = revokedAt;
+    }
   }
 }
 
