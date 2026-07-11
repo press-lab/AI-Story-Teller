@@ -501,7 +501,9 @@ export function SettingsPage({
             <p className="muted">Manage this account, its sessions, and the model used for your Stories.</p>
           </div>
           {showRuntimeTechnicalControls && (
-            <>
+            <details className="setup-panel settings-connection-details">
+              <summary>Connection settings</summary>
+              <p className="muted">Technical controls for changing where this browser runs and saves Stories.</p>
               <Field label="Execution mode">
                 <select
                   value={runtimeConfig?.mode ?? "local"}
@@ -519,7 +521,7 @@ export function SettingsPage({
                   placeholder="http://127.0.0.1:8787"
                 />
               </Field>
-            </>
+            </details>
           )}
           <div className="settings-account-identity" aria-label="Backend account summary">
             <strong>{backendSession ? backendSession.user.email : "Not signed in"}</strong>
@@ -575,7 +577,7 @@ export function SettingsPage({
               <button type="button" onClick={() => void runBackendAction("Loading sessions", async () => {
                 const result = await onListBackendSessions();
                 setBackendSessions(result.sessions);
-              })}>Sessions</button>
+              })}>Manage sessions</button>
             )}
             {backendSession && onExportBackendAccount && (
               <button type="button" onClick={() => void runBackendAction("Exporting account", async () => {

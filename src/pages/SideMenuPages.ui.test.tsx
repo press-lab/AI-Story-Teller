@@ -555,7 +555,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.queryByText("1 -> The first read was too simple.")).not.toBeInTheDocument();
   });
 
-  it("shows update timestamps on editor item summaries", () => {
+  it("shows update timestamps on memory editor summaries without adding noise to automation rows", () => {
     const adventure: Adventure = {
       ...seedAdventure(),
       storyCards: [
@@ -605,7 +605,7 @@ describe("side menu page smoke coverage", () => {
     cleanup();
 
     render(<TriggersPage adventure={adventure} dispatch={() => undefined} />);
-    expect(screen.getByTitle(/Updated:/)).toHaveTextContent("Updated");
+    expect(screen.queryByTitle(/Updated:/)).not.toBeInTheDocument();
   });
 
   it("covers Memory Inbox proposal creation and approval", async () => {
@@ -691,7 +691,7 @@ describe("side menu page smoke coverage", () => {
     expect(onSaveToCloud).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("tab", { name: /Migrate/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /Restore/i }));
-    expect(screen.getByText("Open an adventure backup")).toBeInTheDocument();
+    expect(screen.getByText("Open a Story you backed up earlier.")).toBeInTheDocument();
     cleanup();
 
     const onGenerateDurableSummary = vi.fn(async () => "Generated durable summary.");

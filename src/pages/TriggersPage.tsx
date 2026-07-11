@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { InlineMemoryCategory, TriggerEvaluationMode, TriggerMatchType, TriggerSource } from "../types/adventure";
 import { makeTriggerRule } from "../state/defaults";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, JsonTextarea, NumberInput, UpdatedAtBadge, commaList, fromCommaList } from "./shared";
+import { CheckboxField, Field, JsonTextarea, NumberInput, commaList, fromCommaList } from "./shared";
 import { useActionFeedback } from "../components/ActionFeedback";
 
 const sources: TriggerSource[] = ["input", "output", "both"];
@@ -29,6 +29,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
   const [flagValue, setFlagValue] = useState("");
   const [ruleSearch, setRuleSearch] = useState("");
   const [openRuleId, setOpenRuleId] = useState<string | null>(null);
+  const [customizeMemoryCategories, setCustomizeMemoryCategories] = useState(false);
 
   const searchLower = ruleSearch.trim().toLowerCase();
   const sortedRules = [...adventure.triggerRules].sort((a, b) => b.priority - a.priority);
@@ -117,10 +118,11 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
           ];
           const usesQuietPreset = categories.every(({ key }) => (st.categories[key] !== false) === quietMemoryCategories[key]);
           const usesBalancedPreset = categories.every(({ key }) => (st.categories[key] !== false) === balancedMemoryCategories[key]);
+          const usesCustomPreset = !usesQuietPreset && !usesBalancedPreset;
           return (
             <>
               <CheckboxField
-                label="Enable system triggers"
+                label="Create memory suggestions automatically"
                 checked={enabled}
                 onChange={(v) => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: v } })}
               />
@@ -129,7 +131,10 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                   type="button"
                   className={usesQuietPreset ? "active" : ""}
                   aria-pressed={usesQuietPreset}
-                  onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: quietMemoryCategories } })}
+                  onClick={() => {
+                    setCustomizeMemoryCategories(false);
+                    dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: quietMemoryCategories } });
+                  }}
                 >
                   Quiet
                 </button>
@@ -137,15 +142,27 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                   type="button"
                   className={usesBalancedPreset ? "active" : ""}
                   aria-pressed={usesBalancedPreset}
-                  onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: balancedMemoryCategories } })}
+                  onClick={() => {
+                    setCustomizeMemoryCategories(false);
+                    dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: balancedMemoryCategories } });
+                  }}
                 >
                   Balanced
+                </button>
+                <button
+                  type="button"
+                  className={usesCustomPreset || customizeMemoryCategories ? "active" : ""}
+                  aria-pressed={usesCustomPreset || customizeMemoryCategories}
+                  onClick={() => setCustomizeMemoryCategories(true)}
+                >
+                  Custom
                 </button>
               </div>
               <p className="muted">
                 Quiet tracks new characters and world facts. Balanced also tracks relationship, plot, and status milestones;
                 the prompt still asks for only the strongest durable memory tag per response.
               </p>
+              {(usesCustomPreset || customizeMemoryCategories) && (
               <div className="grid two disabled-when-off" data-disabled={!enabled}>
                 {categories.map(({ key, label, description }) => (
                   <div key={key}>
@@ -158,6 +175,7 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                   </div>
                 ))}
               </div>
+              )}
             </>
           );
         })()}
@@ -177,7 +195,20 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
 
       <div className="automation-grid">
         <div className="list trigger-rule-list">
-          {visibleRules.length === 0 && <p className="muted">No automation rules match that search.</p>}
+          {visibleRules.length === 0 && (
+            ruleSearch.trim() ? (
+              <div className="editor-empty-state" role="status">
+                <strong>No automations match that search</strong>
+                <p className="muted">Try a different name or condition.</p>
+              </div>
+            ) : (
+              <div className="editor-empty-state" role="status">
+                <strong>No automations yet</strong>
+                <p className="muted">Create one when you want a specific story event to update memory or plot state.</p>
+                <button type="button" onClick={createTrigger}>Create your first automation</button>
+              </div>
+            )
+          )}
           {visibleRules.map((rule) => {
             const isOpen = openRuleId === rule.id;
             return (
@@ -190,16 +221,14 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
                   setOpenRuleId(nextOpen ? rule.id : openRuleId === rule.id ? null : openRuleId);
                 }}
               >
-                <summary>
+                <summary aria-label={isOpen
+                  ? `Back to automation list from ${rule.name || "Untitled automation"}`
+                  : `Edit automation ${rule.name || "Untitled automation"}`}>
                   <span className="story-card-summary trigger-rule-summary">
                     <span className="story-card-title">{rule.name || "Untitled trigger"}</span>
                     <span className="story-card-badges">
-                      <span className="badge badge-type">{rule.evaluationMode ?? "semantic"}</span>
-                      <span className={rule.enabled ? "badge" : "badge badge-inactive"}>{rule.enabled ? "Enabled" : "Off"}</span>
-                      {rule.actions.length > 0 && <span className="badge">{rule.actions.length} actions</span>}
-                      <UpdatedAtBadge value={rule.updatedAt} />
+                      {!rule.enabled && <span className="badge badge-inactive">Off</span>}
                     </span>
-                    <span className="story-card-keys">{rule.patterns.length > 0 ? rule.patterns.join(", ") : "No patterns"}</span>
                     <span className="search-snippet">{rule.condition || rule.updatePrompt || "No condition set."}</span>
                   </span>
                 </summary>
@@ -316,7 +345,9 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
           })}
         </div>
 
-        <div className="list automation-side-list">
+        <details className="panel editor-tools-panel automation-diagnostics">
+          <summary>History and diagnostics</summary>
+          <div className="list automation-side-list">
           <article className="panel">
             <h3>Trigger History</h3>
             {adventure.activeState.triggerLog.length === 0 && <p className="muted">No triggers fired yet.</p>}
@@ -389,7 +420,8 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
               Set Flag
             </button>
           </article>
-        </div>
+          </div>
+        </details>
       </div>
     </section>
   );

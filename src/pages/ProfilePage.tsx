@@ -242,6 +242,10 @@ export function ProfilePage({
           {isPublicProfile && bio && <p className="muted">{bio}</p>}
         </div>
         {isPublicProfile ? (
+          <div className="profile-public-actions">
+            <button type="button" className="profile-return-link" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
+              ← Your profile
+            </button>
           <div className="toolbar profile-header-actions">
             {publicSocial && publicUserId && (
               <button
@@ -273,9 +277,7 @@ export function ProfilePage({
                 Remove Friend
               </button>
             )}
-            <button type="button" className="profile-return-link" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
-              ← Your profile
-            </button>
+          </div>
           </div>
         ) : (
           <button type="button" onClick={onOpenExplore} disabled={!onOpenExplore}>Explore Scenarios</button>

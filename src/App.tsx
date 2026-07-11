@@ -17,7 +17,7 @@ import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings, NewAdventureSetup } from "./types/adventure";
 import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
 import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pageTypes";
-import { AdventuresPage } from "./pages/AdventuresPage";
+import { AdventuresPage, type AdventureLibraryView } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
 import { ChroniclePage } from "./pages/ChroniclePage";
@@ -370,6 +370,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
   const [advancedStoryToolsOpen, setAdvancedStoryToolsOpen] = useState(false);
+  const [adventureLibraryView, setAdventureLibraryView] = useState<AdventureLibraryView>("list");
   const [editorFocusTarget, setEditorFocusTarget] = useState<EditorFocusTarget | undefined>();
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
@@ -378,8 +379,15 @@ export default function App() {
   const [saveStatus, setSaveStatus] = useState("idle");
 
   useEffect(() => {
-    if (editorTab === "triggers" || editorTab === "context") setAdvancedStoryToolsOpen(true);
+    const frame = window.requestAnimationFrame(() => {
+      const editorBody = document.querySelector<HTMLElement>(".editor-workspace > .editor-body");
+      if (editorBody) editorBody.scrollTop = 0;
+      const main = document.querySelector<HTMLElement>(".main-content.edit-content");
+      if (main) main.scrollTop = 0;
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [editorTab]);
+
   const [providerPresets, setProviderPresets] = useLocalStorage<ProviderPreset[]>(
     "ai-story-teller-provider-presets",
     [],
@@ -1624,7 +1632,7 @@ export default function App() {
     const common = { adventure, dispatch };
     switch (tabId) {
       case "chronicle":
-        return <ChroniclePage {...common} />;
+        return <ChroniclePage {...common} onOpenPlay={() => openTab("play")} />;
       case "context":
         return <ContextPreviewPage {...common} contextResult={contextResult} onBuildContext={runtime.buildPreview} providerConfig={hideBackendUserDeveloperControls ? undefined : runtime.activeProviderConfig} onOpenSourceItem={openEditorSourceItem} />;
       case "components":
@@ -1796,6 +1804,7 @@ export default function App() {
         headingEyebrow="Library"
         headingTitle={embedded ? "Your Stories" : "Choose a Story"}
         headingDescription="Continue where you left off or start something new. Backups, publishing, and transfer tools stay under More."
+        onViewChange={setAdventureLibraryView}
       />
     );
   }
@@ -2099,6 +2108,15 @@ export default function App() {
                 );
               })}
             </nav>
+            {canSaveOpenAdventureAsScenarioRevision && (
+              <button
+                type="button"
+                className="primary-action mobile-studio-save"
+                onClick={() => void saveScenarioRevisionFromAdventure(adventure)}
+              >
+                Save Scenario Revision
+              </button>
+            )}
             {editorTab === "components" && (
               <details className="studio-story-details">
                 <summary>
@@ -2139,14 +2157,20 @@ export default function App() {
                 <button
                   type="button"
                   className={editorTab === "triggers" ? "active" : ""}
-                  onClick={() => setEditorTab("triggers")}
+                  onClick={() => {
+                    setAdvancedStoryToolsOpen(false);
+                    setEditorTab("triggers");
+                  }}
                 >
                   Automation
                 </button>
                 <button
                   type="button"
                   className={editorTab === "context" ? "active" : ""}
-                  onClick={() => setEditorTab("context")}
+                  onClick={() => {
+                    setAdvancedStoryToolsOpen(false);
+                    setEditorTab("context");
+                  }}
                 >
                   Context Inspector
                 </button>
@@ -2172,8 +2196,19 @@ export default function App() {
   })();
 
   const activeProductDestination = productDestinationFor(activeTab, editorTab);
+  const homePageTitle = backendPublicProfileUserId && backendPublicProfileUserId !== backendSession?.user.id
+    ? "Creator Profile"
+    : adventureLibraryView === "create"
+      ? "New Story"
+      : adventureLibraryView === "aistImport"
+        ? "Restore Story"
+        : adventureLibraryView === "github"
+          ? "GitHub Saves"
+          : adventureLibraryView === "backups"
+            ? "Story Backups"
+            : "Home";
   const pageTitle: Record<ProductDestination, string> = {
-    home: backendPublicProfileUserId && backendPublicProfileUserId !== backendSession?.user.id ? "Creator Profile" : "Home",
+    home: homePageTitle,
     explore: "Explore",
     play: "Play",
     studio: studioTabs.some((tab) => tab.id === editorTab) ? "Story Studio" : (modalTitles[editorTab] ?? "Story Studio"),

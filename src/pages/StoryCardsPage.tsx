@@ -875,6 +875,9 @@ export function StoryCardsPage({
                 open={openCardId === card.id}
               >
                 <summary
+                  aria-label={openCardId === card.id
+                    ? `Back to Reference Card list from ${card.title || "Untitled Reference Card"}`
+                    : `Edit Reference Card ${card.title || "Untitled Reference Card"}`}
                   onClick={(event) => {
                     event.preventDefault();
                     setOpenCardId((current) => current === card.id ? null : card.id);

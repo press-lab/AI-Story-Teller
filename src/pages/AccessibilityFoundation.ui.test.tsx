@@ -32,7 +32,7 @@ describe("editor page interaction semantics", () => {
     await user.click(entryText);
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Edit chronicle entry 1" }));
+    await user.click(screen.getByRole("button", { name: "Edit story entry 1" }));
     expect(screen.getByRole("textbox")).toHaveValue("Rain waits outside.");
   });
 

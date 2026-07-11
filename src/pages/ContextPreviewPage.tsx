@@ -421,27 +421,30 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
           Rebuild Preview
         </button>
         <button type="button" onClick={() => void runDedup()} disabled={dedupLoading}>
-          {dedupLoading ? "Reviewing..." : "Auto Dedup"}
+          {dedupLoading ? "Reviewing..." : "Find duplicates"}
         </button>
         <CheckboxField
-          label="Include AI semantic pass"
+          label="Use AI for a deeper duplicate check"
           checked={dedupIncludeAI}
           disabled={!providerConfig}
           onChange={setDedupIncludeAI}
         />
-        <span className="muted token-metrics">
-          <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} est</span>
-          <span className="token-metrics-sep">·</span>
-          <span title="Total prompt tokens sent to story model across all turns">story {hasActualUsage ? `${totalActualIn.toLocaleString()}↑ ${totalActualOut.toLocaleString()}↓` : "—"}</span>
-          <span className="token-metrics-sep">·</span>
-          <span title="Prompt tokens sent on the last story turn">last {lastSentTokens != null ? lastSentTokens.toLocaleString() : "—"}</span>
-          <span className="token-metrics-sep">·</span>
-          <span title="Average prompt tokens per story turn">avg {avgSentTokens != null ? avgSentTokens.toLocaleString() : "—"}</span>
-          <span className="token-metrics-sep">·</span>
-          <span title="Total tokens used by background AI calls (brain updates, reference card updates, plot updates, triggers)">bg {hasBgUsage ? `${bgIn.toLocaleString()}↑ ${bgOut.toLocaleString()}↓` : "—"}</span>
-          <span className="token-metrics-sep">·</span>
-          <span title="Prompt-cache tokens reported by the provider across story turns">cache {totalCacheRead > 0 || totalCacheWrite > 0 ? `${totalCacheRead.toLocaleString()} read ${totalCacheWrite.toLocaleString()} write` : "—"}</span>
-        </span>
+        <details className="context-usage-details">
+          <summary>Usage details</summary>
+          <span className="muted token-metrics">
+            <span title="Estimated tokens in current context">{result.totalEstimatedTokens.toLocaleString()} estimated</span>
+            <span className="token-metrics-sep">·</span>
+            <span title="Total prompt tokens sent to story model across all turns">Story turns {hasActualUsage ? `${totalActualIn.toLocaleString()} in / ${totalActualOut.toLocaleString()} out` : "not recorded"}</span>
+            <span className="token-metrics-sep">·</span>
+            <span title="Prompt tokens sent on the last story turn">Last {lastSentTokens != null ? lastSentTokens.toLocaleString() : "not recorded"}</span>
+            <span className="token-metrics-sep">·</span>
+            <span title="Average prompt tokens per story turn">Average {avgSentTokens != null ? avgSentTokens.toLocaleString() : "not recorded"}</span>
+            <span className="token-metrics-sep">·</span>
+            <span title="Total tokens used by background AI calls">Background {hasBgUsage ? `${bgIn.toLocaleString()} in / ${bgOut.toLocaleString()} out` : "not recorded"}</span>
+            <span className="token-metrics-sep">·</span>
+            <span title="Prompt-cache tokens reported by the provider across story turns">Cache {totalCacheRead > 0 || totalCacheWrite > 0 ? `${totalCacheRead.toLocaleString()} read / ${totalCacheWrite.toLocaleString()} write` : "not recorded"}</span>
+          </span>
+        </details>
         {dedupError && (
           <span className="context-inline-error">
             {dedupError}
@@ -490,7 +493,7 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
         <details className="panel duplicate-warnings">
           <summary>Duplicate Content Warnings ({duplicates.length})</summary>
           <p className="muted" style={{ margin: "0.25rem 0" }}>
-            These items share &gt;50% word overlap. Run <strong>Auto Dedup</strong> for reviewable fixes.
+            These items share &gt;50% word overlap. Run <strong>Find duplicates</strong> for reviewable fixes.
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", marginTop: "0.25rem" }}>
             {duplicates.map(({ a, b, overlap }, idx) => (
@@ -521,10 +524,10 @@ export function ContextPreviewPage({ adventure, dispatch, contextResult, onBuild
             <tr>
               <th className="col-section">Section</th>
               <th className="col-title">Item</th>
-              <th className="col-tokens">Tokens</th>
-              <th className="col-priority">Pri</th>
-              <th className="col-flags">Flags</th>
-              <th className="col-policy">Policy</th>
+              <th className="col-tokens">Size</th>
+              <th className="col-priority">Order</th>
+              <th className="col-flags">Status</th>
+              <th className="col-policy">Inclusion</th>
               <th className="col-actions">Actions</th>
             </tr>
           </thead>

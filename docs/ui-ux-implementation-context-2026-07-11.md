@@ -1130,3 +1130,187 @@ complete until:
 6. remaining deviations are explicitly recorded as open work, not described as
    complete.
 
+---
+
+# Authoritative implementation addendum — 2026-07-11
+
+> **Supersession notice:** This addendum supersedes the earlier “implementation
+> evidence pending” statements for the local implementation described here. It
+> does not mark release-only fields complete until the final commit is deployed
+> and the same hash is verified live.
+
+## Here are the general adjustments
+
+- Standardized route containers so shell headers and page bodies share one
+  visual axis instead of appearing independently centered.
+- Normalized typography, spacing, panel sizing, control hierarchy, and the
+  distinction between literary Story text and operational interface text.
+- Replaced implementation-first language with task language: Story,
+  Characters, Story history, Restore a Story, and Guide the next response.
+- Applied progressive disclosure to advanced settings, destructive actions,
+  diagnostics, Automation categories, and Memory Suggestion tools.
+- Changed Story Studio collections from metadata-heavy developer rows into
+  meaningful previews and focused list-to-editor flows.
+- Prevented an open editor from competing with its collection. Sibling rows
+  and unrelated groups yield while the selected item owns the canvas.
+- Raised narrow-screen controls to a practical 44-pixel target baseline and
+  converted navigation, Studio tabs, action groups, and forms into genuine
+  narrow-screen layouts.
+- Expanded the visual audit to include collapsed/open Play companion states,
+  a selected mobile companion tool, an open Studio editor, every Studio
+  workspace, Automation, Context Inspector, More navigation, History,
+  Backups, Settings, and Help.
+- Preserved the architecture rule that distinct context types remain
+  individually inspectable. Simplifying the presentation did not merge World
+  Blocks, Reference Cards, Characters, Memory Suggestions, Automation, or
+  Context Inspector into an opaque bucket.
+
+## The eight reported problems
+
+| # | Implemented treatment | Evidence |
+|---|---|---|
+| 1. Play companion was not user friendly | The companion now defaults closed when no preference exists, separates quick Story edits from deeper controls, removes the duplicate visible Saved label, and exposes the one-turn note as “Guide the next response.” Mobile uses a destination sheet followed by one selected tool rather than a permanent second column beside the Story. | `final/022–024`, `final/077–079` |
+| 2. Character rows were misaligned | Shared collapsed editor rows now use stable desktop geometry, meaningful content snippets, and restrained exception badges. Technical status, update timestamps, priorities, and trigger keys no longer determine row geometry. | `final/029`, `final/047`, `final/084` |
+| 3. Scenario guidance floated on an empty public profile | Scenario-start guidance is conditional on at least one published Scenario. A creator with none receives a compact empty state. “Your profile” is return navigation, separated from Follow/Friend actions. | `src/pages/ProfilePage.tsx`; authenticated live evidence required below |
+| 4. Story Studio resembled a developer menu | Primary workspaces are Story & Direction, World & Lore, Characters, and Suggestions. Collapsed rows lead with meaning, not engine state. Title/cover and Advanced Story Tools are disclosures rather than permanent chrome. | `final/025`, `final/027–032`, `final/080`, `final/082–087` |
+| 5. Studio edit boxes were poor | Opening an item creates a focused editing canvas with a real Back-to-list affordance, task-specific headings and field copy, fewer nested borders, hidden sibling rows, and destructive actions under More. | `final/026`, `final/044`; live mobile capture required below |
+| 6. Redundant Back to Story Studio and inherited Studio chrome consumed space | Automation and Context Inspector render as focused tool-only workspaces. Selecting either closes the Advanced tools menu. History and Backups remain standalone destinations without Studio title/tab/banner duplication. | `final/031–034`, `final/086–090` |
+| 7. Settings looked like a developer menu | Settings is organized around reading comfort, runtime/account identity, models, sessions, and advanced controls. Normal users receive understandable presets; exact values and technical controls remain disclosed. “Sessions” is “Manage sessions,” and dangerous account actions remain separated. | `final/035`, `final/053`, `final/091` |
+| 8. Documentation felt off-center and wasted space | Help shares a deliberate route axis with its shell header, preserves a readable article measure, shows one selected article, supports hash-addressable topics and browser history, moves focus to the selected article, and converts topic navigation to a mobile disclosure. | `final/036`, `final/054`, `final/092` |
+
+## This is what I did on each page
+
+| Page | Desktop | Mobile | Local screenshot evidence |
+|---|---|---|---|
+| Home | Aligned the welcome, Continue Story hero, and library to one standard container. Missing cover art renders as an intentional fallback instead of a tiny corner initial. | Stacked the hero in reading order and kept Continue Story and library cards within one column. | `019`, `037`; `055`, `074` |
+| New Story | Uses a New Story shell title, removes the Home welcome block and duplicate top-level Create action, balances the setup-guide grid 3+2, and places the final Create Story decision after review. Removed floating absolute-position Expand controls. | Suppresses unrelated Home/library content while creation is active; fields and the final decision stack without horizontal loss. | `020`, `038`; `056`, `075` |
+| Explore | Uses a coherent page axis, readable result cards, and stable search/detail geometry. | Cards and actions stack; selected-detail space is reserved above mobile navigation and notices no longer collide with it. | `021`, `039`; `057`, `076` |
+| Public creator profile | Separates return navigation from social actions and renders Scenario guidance only when a Scenario exists. Empty-state cards size to their content. | Social actions wrap instead of becoming a clipped toolbar. | Authenticated live evidence required |
+| Play | Defaults the companion closed, maintains a literary reading measure, groups quick edits separately from deeper controls, and shows one optional guidance editor only when requested. | Companion destinations and the selected tool use a full-width sheet above bottom navigation; the Story remains a single-column reading surface. | `022–024`, `040–042`; `058–060`, `077–079` |
+| Story Studio shell | Uses one compact workspace identity, four stable primary workspaces, disclosed Story details, and disclosed advanced tools. | Primary workspaces form a 2×2 selector with no horizontal tab strip; a mobile Scenario-save action is available when the Story can save a revision. | `025`, `043`; `061`, `080` |
+| Story & Direction | Rows emphasize Story meaning and content previews rather than pinned/protected/update metadata. | Cards become one readable list with full-width controls. | `027`, `045`; `063`, `082` |
+| World & Lore | Search, create, collection review, and editing use one coherent task flow. | Search and Add World Block stack; the editor occupies the full width. | `028`, `046`; `064`, `083` |
+| Characters | Shared row geometry removes badge-driven misalignment; deletion is under More. | Character list and editor follow list-to-focused-editor navigation. | `029`, `047`; `065`, `084` |
+| Suggestions | Suggestion settings, manual review tools, and scanning are under one disclosure. Proposal rows use user-facing memory labels and Needs review instead of raw confidence/type keys. | Proposals remain closed until chosen and preserve full-width review actions. | `030`, `048`; `066`, `085` |
+| Open Studio editor | Hides competing siblings, uses Back to list, task-specific headings, a larger content canvas, and More for destructive operations. | Uses the available width without side-by-side inspectors. | `026`, `044`; authenticated live evidence supplements the local capture |
+| Automation | Replaces “Enable system triggers” with “Create memory suggestions automatically.” Quiet, Balanced, and Custom are visible modes; detailed categories appear only for Custom. Rule rows lead with their meaningful condition, and the zero-rule state explains what to do next. History and diagnostics are disclosed. | Mode controls and forms stack, and the redundant Back to Story Studio banner is gone. | `031`, `049`; `067`, `086` |
+| Context Inspector | Preserves named context sections while replacing shorthand labels with Size, Order, Status, and Inclusion. Duplicate review uses plain language and detailed usage accounting is collapsed. | Controls and details reflow without page-level horizontal scrolling. | `032`, `050`; `068`, `087` |
+| History | Uses Story-language descriptions, Search story history, and Edit story entry. The zero-entry state explains when history appears and links back to Play. It is a standalone destination. | Timeline, empty state, and search remain one column with full-width editing states. | `033`, `051`; `070`, `089` |
+| Backups & Transfer | Replaces adventure/Brains/JSON-first language with Story, Characters, backup file, and Restore a Story. | Backup facts, file selection, preview, and actions stack in task order. | `034`, `052`; `071`, `090` |
+| Settings | Organizes choices around Appearance, account access, Models, sessions, and advanced settings; local execution mode/API URL are behind Connection settings, and routine/destructive actions no longer have equal emphasis. | Categories and fields stack, with full-label actions and practical touch targets. | `035`, `053`; `072`, `091` |
+| Help | Aligns the documentation canvas to the shell, keeps prose readable, selects one topic, supports topic hashes/history, and focuses the new article heading after navigation. | Topics become a disclosure and one article owns the reading surface. | `036`, `054`; `073`, `092` |
+| More navigation | Keeps secondary destinations available without crowding the five-item primary navigation. | Full labels and 44-pixel interaction targets are preserved. | `069`, `088` |
+| Admin | Retains wide/compact route roles and a task-oriented console structure. | Metrics use a compact horizontal region and primary tabs use a safe grid. | Authenticated live evidence required |
+
+## Research applied
+
+| Principle | How it governed the implementation | Source |
+|---|---|---|
+| Match the system to the real world | Replaced engine-first language with Story, Characters, Story history, and task-based editor headings. | [Nielsen Norman Group: 10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) |
+| Recognition rather than recall | Collapsed Studio rows expose meaningful previews; selected workspaces and modes remain visibly selected. | [Nielsen Norman Group: Recognition vs. Recall](https://www.nngroup.com/articles/recognition-and-recall/) |
+| Aesthetic and minimalist design | Removed duplicate Saved text, empty persistent panes, redundant return banners, repeated Studio chrome, and irrelevant profile guidance. | [Nielsen Norman Group: 10 Usability Heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) |
+| Progressive disclosure | Advanced Story tools, exact reading values, diagnostics, destructive actions, and custom Automation categories remain available without dominating ordinary tasks. | [Nielsen Norman Group: Progressive Disclosure](https://www.nngroup.com/articles/progressive-disclosure/) |
+| Start with user needs | Navigation and editor headings describe what people are trying to accomplish rather than mirroring implementation modules. | [GOV.UK Service Manual: Start by learning user needs](https://www.gov.uk/service-manual/user-research/start-by-learning-user-needs) |
+| One coherent decision at a time | New Story, restore, selected companion tools, and focused Studio editors reduce competing decisions. | [GOV.UK Design System: Question pages](https://design-system.service.gov.uk/patterns/question-pages/) |
+| Consistent alignment and spacing | Shared route containers, spacing roles, and control roles replace route-specific visual axes. | [GOV.UK Layout](https://design-system.service.gov.uk/styles/layout/) and [Spacing](https://design-system.service.gov.uk/styles/spacing/) |
+| Short, progressive forms | Normal fields precede advanced configuration; the focused item owns the editing surface. | [U.S. Web Design System: Form guidance](https://designsystem.digital.gov/components/form/) |
+| Reflow | Core pages were inspected at 320 and 390 CSS-pixel widths with no page-level overflow. | [WCAG 2.2 Understanding Reflow](https://www.w3.org/WAI/WCAG22/Understanding/reflow.html) |
+| Target size | Frequent mobile controls use a practical 44-pixel target; the desktop audit retains the WCAG 24-pixel floor. | [WCAG 2.2 Understanding Target Size Minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html) |
+| Reading measure and user control | Story prose and Help retain deliberate reading measures instead of stretching merely to occupy desktop space. | [WCAG: Visual Presentation](https://www.w3.org/WAI/WCAG22/Understanding/visual-presentation.html) |
+| Accessible labels and focus | Open/return controls have meaningful accessible names, and Help moves focus to a newly selected topic. | [WCAG 2.2](https://www.w3.org/TR/WCAG22/) and [WAI Form Labels](https://www.w3.org/WAI/tutorials/forms/labels/) |
+
+## Exact local evidence
+
+Command:
+
+```text
+node scripts/full-ui-visual-audit.mjs --base-url http://127.0.0.1:4178/ --output docs/ui-ux-audit-2026-07-11/final
+```
+
+Reports:
+
+- `docs/ui-ux-audit-2026-07-11/final/report.json` (light)
+- `docs/ui-ux-audit-2026-07-11/final-dark/report.json` (dark)
+
+Final light result generated at `2026-07-11T21:56:51.958Z`; final dark
+result generated at `2026-07-11T21:57:50.634Z`:
+
+- 5 viewports.
+- 184 screenshots: 92 light and 92 dark.
+- 22 named interaction/page states.
+- 18 captures each at 1280×720, 1440×900, and 1920×1080.
+- 19 captures each at 320×568 and 390×844.
+- 0 document-overflow failures.
+- 0 viewport protrusions.
+- 0 clipped-text findings.
+- 0 controls below the configured 24-pixel desktop or 44-pixel mobile thresholds.
+- 0 overlapping-control findings.
+- 0 oversized empty-card findings.
+- 0 failed screenshots in either theme.
+
+Durable screenshot roots:
+
+- `docs/ui-ux-audit-2026-07-11/final/`
+- `docs/ui-ux-audit-2026-07-11/final-dark/`
+
+Representative manifest:
+
+```text
+Desktop Home/New Story/Explore:        final/019, final/020, final/021
+Desktop Play closed/open/editor:       final/022, final/023, final/024
+Desktop Story Studio shell/editor:     final/025, final/026
+Desktop Studio workspaces:             final/027 through final/032
+Desktop History/Backups:               final/033, final/034
+Desktop Settings/Help:                 final/035, final/036
+
+Mobile Home/New Story/Explore:         final/074, final/075, final/076
+Mobile Play base/destinations/tool:     final/077, final/078, final/079
+Mobile Studio shell:                   final/080
+Mobile Studio workspaces:              final/082 through final/087
+Mobile More/History/Backups:            final/088, final/089, final/090
+Mobile Settings/Help:                  final/091, final/092
+```
+
+## Final local validation
+
+```text
+npm.cmd test
+PASS — 69 test files passed, 1 skipped; 490 tests passed, 7 skipped.
+
+npm.cmd run build
+PASS — TypeScript and Vite production build completed; 113 modules transformed.
+Non-blocking warning: the main JavaScript chunk is above Vite's 500 kB advisory.
+
+npm.cmd run smoke:prod
+PASS — 2 production assets loaded from the temporary production server.
+
+Focused UI regression suites
+PASS — 36/36 Play, Help, Profile, and App tests.
+PASS — 24/24 accessibility-foundation and side-menu tests.
+PASS — 54/54 App, New Story, Settings, side-menu, and Context tests.
+
+Light-theme visual audit
+PASS — 92 screenshots, 5 viewports, 0 failed screens.
+
+Dark-theme visual audit
+PASS — 92 screenshots, 5 viewports, 0 failed screens.
+```
+
+## Verification limitations that must remain explicit
+
+The local report proves the selected geometry and interaction states above; it
+does not by itself prove subjective usability or every authenticated production
+state. Before marking the release Verified deployed, add:
+
+- authenticated desktop and mobile public-profile screenshots;
+- authenticated desktop and mobile Admin screenshots;
+- production frontend hash matching the final pushed commit;
+- final `npm.cmd test`, `npm.cmd run build`, and `npm.cmd run smoke:prod` results;
+- live 200%/400% reflow evidence if claiming those zoom states;
+- mobile virtual-keyboard evidence if claiming keyboard-safe composer behavior;
+- any separately required authenticated hosted Play/provider verification.
+
+The `3393966` hash visible in these local screenshots identifies the commit from
+which the local Vite fixture was started. It is not the final release hash and
+must not be recorded as the deployed implementation commit unless the final
+pushed commit is actually that hash.

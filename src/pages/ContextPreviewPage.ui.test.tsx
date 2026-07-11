@@ -88,7 +88,7 @@ describe("ContextPreviewPage condense", () => {
     expect(screen.queryByText(/OLD RECENT FACT SHOULD DISAPPEAR/)).not.toBeInTheDocument();
   });
 
-  it("runs Auto Dedup deterministically unless the AI pass is checked", async () => {
+  it("finds duplicates deterministically unless the deeper AI check is enabled", async () => {
     mockRunContextDedup.mockClear();
     const user = userEvent.setup();
     const duplicateText = [
@@ -130,7 +130,7 @@ describe("ContextPreviewPage condense", () => {
       />
     ), adventure);
 
-    await user.click(screen.getByRole("button", { name: "Auto Dedup" }));
+    await user.click(screen.getByRole("button", { name: "Find duplicates" }));
 
     expect(mockRunContextDedup).not.toHaveBeenCalled();
     expect(await screen.findByText("DETECTED")).toBeInTheDocument();

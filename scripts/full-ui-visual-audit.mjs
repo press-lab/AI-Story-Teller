@@ -10,6 +10,7 @@ const usage = `Usage: node scripts/full-ui-visual-audit.mjs [base-url] [options]
 Options:
   --base-url <url>   App URL to audit (default: http://127.0.0.1:5173/)
   --output <path>    Write screenshots and report.json to this durable directory
+  --theme <name>     Force light or dark theme before capture (default: light)
   --help             Show this help
 
 The app must be running in Browser Local fixture mode, or already expose an
@@ -18,6 +19,7 @@ authenticated product shell with the built-in Arcane scenario available.`;
 function parseArgs(args) {
   let baseUrl = "http://127.0.0.1:5173/";
   let outputDir;
+  let theme = "light";
   let positionalBaseUrlSeen = false;
 
   for (let index = 0; index < args.length; index += 1) {
@@ -45,13 +47,26 @@ function parseArgs(args) {
       outputDir = argument.slice("--output=".length);
       continue;
     }
+    if (argument === "--theme") {
+      const value = args[index + 1];
+      if (value !== "light" && value !== "dark") throw new Error("--theme requires light or dark.");
+      theme = value;
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("--theme=")) {
+      const value = argument.slice("--theme=".length);
+      if (value !== "light" && value !== "dark") throw new Error("--theme requires light or dark.");
+      theme = value;
+      continue;
+    }
     if (argument.startsWith("-")) throw new Error(`Unknown option: ${argument}`);
     if (positionalBaseUrlSeen) throw new Error(`Unexpected argument: ${argument}`);
     baseUrl = argument;
     positionalBaseUrlSeen = true;
   }
 
-  return { help: false, baseUrl, outputDir };
+  return { help: false, baseUrl, outputDir, theme };
 }
 
 const options = parseArgs(process.argv.slice(2));
@@ -285,12 +300,16 @@ async function main() {
     };
 
     await ensureDesktopStory();
+    const darkModeEnabled = await evaluate(() => document.documentElement.classList.contains("dark-mode"));
+    if ((options.theme === "dark") !== darkModeEnabled) {
+      await clickExact(options.theme === "dark" ? "Use dark theme" : "Use light theme");
+    }
     const results = [];
 
-    const auditCurrentScreen = async (viewportName, screenName) => {
-      await evaluate(() => {
+    const auditCurrentScreen = async (viewportName, screenName, preserveScroll = false) => {
+      if (!preserveScroll) await evaluate(() => {
         window.scrollTo(0, 0);
-        for (const element of document.querySelectorAll(".main-content,.transcript,.play-sidebar-panel-body")) element.scrollTop = 0;
+        for (const element of document.querySelectorAll(".main-content,.editor-body,.transcript,.play-sidebar-panel-body")) element.scrollTop = 0;
       });
       await settleUi();
       const metrics = await evaluate(({ viewportName, screenName }) => {
@@ -299,10 +318,11 @@ async function main() {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);
           if (rect.width <= 0 || rect.height <= 0 || style.display === "none" || style.visibility === "hidden" || Number(style.opacity || 1) <= 0.01) return false;
+          if (rect.bottom <= 0 || rect.top >= innerHeight || rect.right <= 0 || rect.left >= innerWidth) return false;
           const x = Math.max(0, Math.min(innerWidth - 1, rect.left + Math.min(rect.width / 2, 8)));
           const y = Math.max(0, Math.min(innerHeight - 1, rect.top + Math.min(rect.height / 2, 8)));
           const topElement = document.elementFromPoint(x, y);
-          return !topElement || element.contains(topElement) || topElement.contains(element);
+          return !topElement || element.contains(topElement);
         };
         const selector = (element) => {
           if (element.id) return `${element.tagName.toLowerCase()}#${element.id}`;
@@ -325,11 +345,12 @@ async function main() {
             clippedText.push({ selector: selector(element), text: text.slice(0, 80), delta: element.scrollWidth - element.clientWidth });
           }
         }
+        const minimumTarget = viewportName.startsWith("mobile-") ? 44 : 24;
         for (const element of interactive) {
           const rect = element.getBoundingClientRect();
           const tag = element.tagName.toLowerCase();
           const nativeSmall = tag === "input" && ["checkbox", "radio", "range"].includes(element.type);
-          if (!nativeSmall && (rect.width < 24 || rect.height < 24)) tinyTargets.push({ selector: selector(element), width: Math.round(rect.width), height: Math.round(rect.height) });
+          if (!nativeSmall && (rect.width < minimumTarget || rect.height < minimumTarget)) tinyTargets.push({ selector: selector(element), width: Math.round(rect.width), height: Math.round(rect.height), expected: minimumTarget });
         }
         for (let index = 0; index < interactive.length; index += 1) {
           const first = interactive[index].getBoundingClientRect();
@@ -381,7 +402,7 @@ async function main() {
       if (metrics.documentOverflowX > 2) failures.push(`document overflow ${metrics.documentOverflowX}px`);
       if (metrics.protrusions.length) failures.push(`${metrics.protrusions.length} viewport protrusions`);
       if (metrics.clippedText.length) failures.push(`${metrics.clippedText.length} clipped text elements`);
-      if (metrics.tinyTargets.length) failures.push(`${metrics.tinyTargets.length} controls below 24px`);
+      if (metrics.tinyTargets.length) failures.push(`${metrics.tinyTargets.length} controls below ${viewportName.startsWith("mobile-") ? 44 : 24}px`);
       if (metrics.overlaps.length) failures.push(`${metrics.overlaps.length} overlapping controls`);
       if (metrics.oversizedEmptyCards.length) failures.push(`${metrics.oversizedEmptyCards.length} oversized empty cards`);
       const slug = `${viewportName}--${screenName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -402,8 +423,14 @@ async function main() {
 
     const auditStudioItemEditor = async (viewportName) => {
       await studioTab("Story & Direction");
-      await clickFirst("details.component-editor-item > summary", "the first World Block editor row");
-      await auditCurrentScreen(viewportName, "Story Studio - opened World Block editor");
+      const summarySelector = ".editor-body .components-page summary[aria-label=\"Edit Author's Note\"]";
+      await evaluate((selector) => document.querySelector(selector)?.scrollIntoView({ block: "center" }), summarySelector);
+      await settleUi();
+      await clickFirst(summarySelector, "the first World Block editor row");
+      await waitForCondition(() => Boolean(document.querySelector(".editor-body .components-page details.component-editor-item[open] > summary[aria-label^=\"Back to\"]")), undefined, "an open World Block editor");
+      await evaluate(() => document.querySelector(".editor-body .components-page details.component-editor-item[open] > summary")?.scrollIntoView({ block: "start" }));
+      await settleUi();
+      await auditCurrentScreen(viewportName, "Story Studio - opened World Block editor", true);
     };
 
     const openAdvancedStudioTool = async (label) => {
@@ -420,7 +447,11 @@ async function main() {
       await auditCurrentScreen(viewportName, "Explore");
 
       await rail("Play");
-      await auditCurrentScreen(viewportName, "Play");
+      const companionCollapsed = await evaluate(() => Boolean(document.querySelector('.play-toolkit-expand')));
+      if (!companionCollapsed) await clickExact("Collapse story companion");
+      await auditCurrentScreen(viewportName, "Play - companion collapsed");
+      await clickExact("Show story companion");
+      await auditCurrentScreen(viewportName, "Play - companion open");
       await clickExact("Shape the story", ".play-tool-nav");
       await auditCurrentScreen(viewportName, "Play - companion editor");
 
@@ -456,7 +487,10 @@ async function main() {
       await mobileNav("Play");
       await auditCurrentScreen(viewportName, "Play");
       await clickExact("Story companion", ".mobile-story-tools-bar");
-      await auditCurrentScreen(viewportName, "Play - Story companion sheet");
+      await auditCurrentScreen(viewportName, "Play - Story companion destinations");
+      await clickExact("Shape the story", ".mobile-story-tools-sheet");
+      await auditCurrentScreen(viewportName, "Play - selected Story companion tool");
+      await clickExact("Close selected tool", ".mobile-story-tools-sheet");
       await clickExact("Close", ".mobile-story-tools-sheet");
 
       await mobileNav("Studio");
@@ -501,6 +535,7 @@ async function main() {
       baseUrl,
       generatedAt: new Date().toISOString(),
       durableOutput: Boolean(options.outputDir),
+      theme: options.theme,
       auditDir,
       viewports,
       results,
@@ -509,6 +544,7 @@ async function main() {
       auditDir,
       reportPath,
       durableOutput: Boolean(options.outputDir),
+      theme: options.theme,
       viewports: viewports.map(({ name, width, height }) => ({ name, width, height })),
       screens: results.length,
       failedScreens: failed.map((item) => ({ screen: `${item.viewportName}: ${item.screenName}`, failures: item.failures })),

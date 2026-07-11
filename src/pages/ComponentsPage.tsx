@@ -278,6 +278,18 @@ const TYPE_DESCRIPTIONS: Record<ComponentType, string> = {
   custom: "A general-purpose context block. Configure inclusion policy, priority, and protection manually.",
 };
 
+const EDITOR_COPY: Record<ComponentType, { eyebrow: string; heading: string; field: string }> = {
+  narrationRules: { eyebrow: "Writing guidance", heading: "How the narrator should write", field: "Narration guidance" },
+  aiInstructions: { eyebrow: "Story guidance", heading: "How the AI should handle this Story", field: "AI guidance" },
+  plotEssentials: { eyebrow: "Current story truth", heading: "What must stay true right now", field: "Current truth" },
+  currentArc: { eyebrow: "Current story arc", heading: "What has changed in this arc", field: "Arc history" },
+  activePressure: { eyebrow: "Current pressure", heading: "What is pressing on the player now", field: "Active pressure" },
+  immediateMomentum: { eyebrow: "Legacy guidance", heading: "Legacy immediate momentum", field: "Legacy content" },
+  authorNote: { eyebrow: "Tone and direction", heading: "What the next response should feel like", field: "Author guidance" },
+  memory: { eyebrow: "Legacy lore", heading: "Legacy lore guidance", field: "Legacy content" },
+  custom: { eyebrow: "Story guidance", heading: "Guidance for the Story", field: "Guidance" },
+};
+
 type ComponentAssistPreview = GeneratedComponentDraft & { id: string };
 
 function defaultComponentPriority(type: ComponentType): number {
@@ -945,6 +957,9 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
             open={openComponentId === component.id}
           >
             <summary
+              aria-label={openComponentId === component.id
+                ? `Back to World Block list from ${TYPE_LABELS[component.type]}`
+                : `Edit ${TYPE_LABELS[component.type]}`}
               onClick={(event) => {
                 event.preventDefault();
                 setOpenComponentId((current) => current === component.id ? null : component.id);
@@ -1000,9 +1015,14 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
                       {peRegenerating === component.id ? "Generating..." : (component.content.trim() ? "Regenerate" : "Generate")}
                     </button>
                   )}
-                  <button type="button" className="danger" onClick={() => void deleteComponent(component)}>
-                    Delete
-                  </button>
+                  <details className="editor-item-actions">
+                    <summary>More</summary>
+                    <div>
+                      <button type="button" className="danger" onClick={() => void deleteComponent(component)}>
+                        Delete World Block
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div className="grid two">
@@ -1051,12 +1071,12 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
               <section className="item-focus-section">
                 <div className="item-section-heading">
                   <div>
-                    <p className="eyebrow">{component.type === "currentArc" ? "arc log" : "context block"}</p>
-                    <h4>{component.type === "currentArc" ? "Current story arc history" : "Text sent to the model"}</h4>
+                    <p className="eyebrow">{EDITOR_COPY[component.type].eyebrow}</p>
+                    <h4>{EDITOR_COPY[component.type].heading}</h4>
                   </div>
                   <span className="muted">{component.content.split("\n").filter((line) => line.trim()).length} line{component.content.split("\n").filter((line) => line.trim()).length === 1 ? "" : "s"}</span>
                 </div>
-              <Field label={component.type === "currentArc" ? "Arc Log" : "Content"}>
+              <Field label={EDITOR_COPY[component.type].field}>
                 <textarea
                   rows={6}
                   value={component.content}

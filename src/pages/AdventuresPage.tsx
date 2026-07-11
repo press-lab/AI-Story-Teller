@@ -35,6 +35,8 @@ import { describeSyncConflictVersions } from "../utils/syncConflict";
 import type { BackendAdventureSnapshotSummary } from "../runtime/backendApi";
 import { isRetryableBackendSyncError, type AdventureSyncConflictResolution } from "../runtime/adventureStore";
 
+export type AdventureLibraryView = "list" | "create" | "aistImport" | "github" | "backups";
+
 interface AdventuresPageProps {
   adventures: AdventureSummary[];
   currentAdventure?: Adventure;
@@ -70,6 +72,7 @@ interface AdventuresPageProps {
   headingEyebrow?: string;
   headingTitle?: string;
   headingDescription?: string;
+  onViewChange?: (view: AdventureLibraryView) => void;
 }
 
 interface ComponentDraft {
@@ -281,9 +284,10 @@ export function AdventuresPage({
   headingEyebrow = "Library",
   headingTitle = "Choose a Story",
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
+  onViewChange,
 }: AdventuresPageProps) {
   const { confirmAction, notify } = useActionFeedback();
-  const [view, setView] = useState<"list" | "create" | "aistImport" | "github" | "backups">("list");
+  const [view, setView] = useState<AdventureLibraryView>("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   const [backupAdventure, setBackupAdventure] = useState<AdventureSummary | undefined>();
   const [backupSnapshots, setBackupSnapshots] = useState<BackendAdventureSnapshotSummary[]>([]);
@@ -291,6 +295,8 @@ export function AdventuresPage({
   const [backupLoading, setBackupLoading] = useState(false);
   const [deviceOnlyScenarioAdventureIds, setDeviceOnlyScenarioAdventureIds] = useState<string[]>([]);
   const [createDeviceOnlyAdventure, setCreateDeviceOnlyAdventure] = useState(false);
+
+  useEffect(() => onViewChange?.(view), [onViewChange, view]);
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
   function isDeviceOnlyScenarioCreationEnabled(id: string): boolean {
@@ -656,9 +662,6 @@ export function AdventuresPage({
                   disabled={forceDeviceOnlyScenarioCreation}
                 />
               )}
-              <button type="button" className="primary-action" onClick={createAdventure}>
-                Create Story
-              </button>
             </div>
           </div>
           {setupError && <p className="error-box">{setupError}</p>}
@@ -860,7 +863,7 @@ export function AdventuresPage({
                           onChange={(event) => updateComponentDraft(draft.id, { content: event.target.value })}
                         />
                       </Field>
-                      <button type="button" style={{ position: "absolute", top: 0, right: 0, fontSize: "0.7rem", padding: "0.1rem 0.4rem" }} onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
+                      <button type="button" className="setup-expand-button" onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
                     </div>
                     <div className="grid four">
                       <CheckboxField
@@ -955,7 +958,7 @@ export function AdventuresPage({
                               onChange={(event) => updateStoryCardDraft(draft.id, { content: event.target.value })}
                             />
                           </Field>
-                          <button type="button" style={{ position: "absolute", top: 0, right: 0, fontSize: "0.7rem", padding: "0.1rem 0.4rem" }} onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
+                          <button type="button" className="setup-expand-button" onClick={() => toggleExpand(draft.id)}>{expandedIds[draft.id] ? "Collapse" : "Expand"}</button>
                         </div>
                         <div className="grid three">
                           <Field label="Priority">
@@ -1024,6 +1027,15 @@ export function AdventuresPage({
               </section>
             </div>
           </details>
+          <div className="new-adventure-final-actions">
+            <div>
+              <p className="eyebrow">Ready to play?</p>
+              <strong>Create this Story after reviewing the setup above.</strong>
+            </div>
+            <button type="button" className="primary-action" onClick={createAdventure}>
+              Create Story
+            </button>
+          </div>
         </article>
       </section>
     );

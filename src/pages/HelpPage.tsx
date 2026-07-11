@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 interface DocTopic {
   id: string;
@@ -1091,8 +1091,14 @@ function searchableText(topic: DocTopic): string {
 
 export function HelpPage() {
   const [query, setQuery] = useState("");
-  const [selectedTopicId, setSelectedTopicId] = useState(topics[0].id);
+  const [selectedTopicId, setSelectedTopicId] = useState(() => {
+    if (typeof window === "undefined") return topics[0].id;
+    const requested = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    return topics.some((topic) => topic.id === requested) ? requested : topics[0].id;
+  });
   const [topicsOpen, setTopicsOpen] = useState(false);
+  const topicHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusSelectedTopic = useRef(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredTopics = useMemo(
     () => topics.filter((topic) => !normalizedQuery || searchableText(topic).includes(normalizedQuery)),
@@ -1101,6 +1107,28 @@ export function HelpPage() {
   const categories = Array.from(new Set(filteredTopics.map((topic) => topic.category)));
   const selectedTopic = filteredTopics.find((topic) => topic.id === selectedTopicId) ?? filteredTopics[0];
   const selectedTopicIndex = selectedTopic ? filteredTopics.findIndex((topic) => topic.id === selectedTopic.id) : -1;
+
+  useEffect(() => {
+    if (!focusSelectedTopic.current) return;
+    focusSelectedTopic.current = false;
+    topicHeadingRef.current?.focus();
+  }, [selectedTopicId]);
+
+  useEffect(() => {
+    const syncTopicFromUrl = () => {
+      const requested = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+      if (topics.some((topic) => topic.id === requested)) setSelectedTopicId(requested);
+    };
+    window.addEventListener("popstate", syncTopicFromUrl);
+    return () => window.removeEventListener("popstate", syncTopicFromUrl);
+  }, []);
+
+  function chooseTopic(topicId: string) {
+    focusSelectedTopic.current = true;
+    setSelectedTopicId(topicId);
+    setTopicsOpen(false);
+    window.history.pushState(window.history.state, "", `#${encodeURIComponent(topicId)}`);
+  }
 
   return (
     <section className="page docs-page">
@@ -1159,8 +1187,7 @@ export function HelpPage() {
                         aria-current={selectedTopic?.id === topic.id ? "page" : undefined}
                         onClick={(event) => {
                           event.preventDefault();
-                          setSelectedTopicId(topic.id);
-                          setTopicsOpen(false);
+                          chooseTopic(topic.id);
                         }}
                       >
                         {topic.title}
@@ -1187,7 +1214,7 @@ export function HelpPage() {
                 <div className="docs-topic-heading">
                   <div>
                     <span className="docs-category">{selectedTopic.category}</span>
-                    <h3>{selectedTopic.title}</h3>
+                    <h3 ref={topicHeadingRef} tabIndex={-1}>{selectedTopic.title}</h3>
                   </div>
                   <div className="docs-tags" aria-label={`${selectedTopic.title} topics`}>
                     {selectedTopic.tags.slice(0, 4).map((tag) => (
@@ -1202,7 +1229,7 @@ export function HelpPage() {
                     <button
                       type="button"
                       disabled={selectedTopicIndex <= 0}
-                      onClick={() => setSelectedTopicId(filteredTopics[selectedTopicIndex - 1].id)}
+                      onClick={() => chooseTopic(filteredTopics[selectedTopicIndex - 1].id)}
                     >
                       Previous
                     </button>
@@ -1210,7 +1237,7 @@ export function HelpPage() {
                     <button
                       type="button"
                       disabled={selectedTopicIndex >= filteredTopics.length - 1}
-                      onClick={() => setSelectedTopicId(filteredTopics[selectedTopicIndex + 1].id)}
+                      onClick={() => chooseTopic(filteredTopics[selectedTopicIndex + 1].id)}
                     >
                       Next
                     </button>

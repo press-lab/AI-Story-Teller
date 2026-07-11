@@ -454,6 +454,9 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
             open={openBrainId === brain.id}
           >
             <summary
+              aria-label={openBrainId === brain.id
+                ? `Back to Character list from ${brain.characterName || "Unnamed"}`
+                : `Edit Character ${brain.characterName || "Unnamed"}`}
               onClick={(event) => {
                 event.preventDefault();
                 setOpenBrainId((current) => current === brain.id ? null : brain.id);
@@ -477,9 +480,14 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
                 <button type="button" disabled={loading} onClick={() => onUpdateBrainNow(brain.id)}>
                   Update Now
                 </button>
-                <button type="button" className="danger" onClick={() => void deleteBrain(brain)}>
-                  Delete
-                </button>
+                <details className="editor-item-actions">
+                  <summary>More</summary>
+                  <div>
+                    <button type="button" className="danger" onClick={() => void deleteBrain(brain)}>
+                      Delete Character
+                    </button>
+                  </div>
+                </details>
               </div>
             </div>
 

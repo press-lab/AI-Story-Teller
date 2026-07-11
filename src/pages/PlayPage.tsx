@@ -169,8 +169,14 @@ export function PlayPage({
   const [compactLayout, setCompactLayout] = useState(isCompactPlayLayout);
   const [mobileStoryToolsOpen, setMobileStoryToolsOpen] = useState(false);
   const [toolkitCollapsed, setToolkitCollapsed] = useState(() => {
-    try { return localStorage.getItem("play-toolkit-collapsed") === "true"; } catch { return false; }
+    try {
+      const stored = localStorage.getItem("play-toolkit-collapsed");
+      return stored === null ? true : stored === "true";
+    } catch {
+      return true;
+    }
   });
+  const [showNextTurnNote, setShowNextTurnNote] = useState(() => Boolean(adventure.activeState.nextTurnNote.content.trim()));
   const [openMessageActionsId, setOpenMessageActionsId] = useState<string | undefined>();
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
@@ -452,6 +458,10 @@ export function PlayPage({
         <button type="button" aria-label="Open Story Studio" onClick={() => onOpenTab?.("edit")}>
           <span>Open Story Studio</span>
           <small>Use the complete editing workspace</small>
+        </button>
+        <button type="button" aria-label="Guide the next response" onClick={() => setShowNextTurnNote(true)}>
+          <span>Guide the next response</span>
+          <small>Add one-turn direction that expires after use</small>
         </button>
       </div>
     </>
@@ -933,9 +943,11 @@ export function PlayPage({
               Hide
             </button>
           </div>
-          <p className="play-status-summary">
-            <strong>{playerFacingSaveStatus(saveStatus)}</strong>
-            <span className="muted">Turn {adventure.activeState.turn}</span>
+          <p
+            className="play-status-summary"
+            aria-label={`Turn ${adventure.activeState.turn}; ${playerFacingSaveStatus(saveStatus)}`}
+          >
+            <span>Turn {adventure.activeState.turn}</span>
           </p>
           {providerPresets && providerPresets.length > 1 && onSelectPreset && (
             <select
@@ -1012,8 +1024,14 @@ export function PlayPage({
           </div>
         )}
 
-        <details className="next-turn-note panel" style={{ flex: "0 0 auto" }}>
-          <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
+        {(showNextTurnNote || nextTurnNote.content.trim()) && (
+        <details
+          className="next-turn-note panel"
+          style={{ flex: "0 0 auto" }}
+          open={showNextTurnNote}
+          onToggle={(event) => setShowNextTurnNote(event.currentTarget.open)}
+        >
+          <summary>Guide the next response{nextTurnNote.content.trim() ? " · active" : ""}</summary>
           <Field label="One-turn story guidance">
             <textarea
               rows={2}
@@ -1035,6 +1053,7 @@ export function PlayPage({
             <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>Clear</button>
           </div>
         </details>
+        )}
         </>
         )}
       </aside>

@@ -19,6 +19,18 @@ const proposalTypes: MemoryProposalType[] = [
   "summaryUpdate",
   "ignore",
 ];
+
+const proposalTypeLabels: Record<MemoryProposalType, string> = {
+  storyCard: "Reference Card",
+  brainUpdate: "Character update",
+  plotEssentialsUpdate: "Current story truth",
+  currentArcUpdate: "Current arc update",
+  arcProposal: "New arc direction",
+  plotPressureUpdate: "Active pressure",
+  plotMomentumUpdate: "Legacy momentum",
+  summaryUpdate: "Legacy summary",
+  ignore: "No lasting memory",
+};
 const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
 
 interface MemoryInboxPageProps extends AdventurePageProps {
@@ -193,8 +205,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
       </div>
 
       <details className="panel editor-tools-panel memory-suggestion-tools">
-        <summary>Suggestion settings and tools</summary>
-        <h3>Memory Suggestions</h3>
+        <summary>Suggestion tools and settings</summary>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Reference Cards, Character Self updates,
           Plot Essentials rewrites, Active Pressure updates, and legacy Summary changes. The AI generates these automatically after turns or when
@@ -215,9 +226,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
           <CheckboxField label="Reference Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
           <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
         </div>
-      </details>
-
-      <details className="panel">
+      <details className="setup-panel">
         <summary>Check Recent Entries</summary>
         <div className="grid two">
           <Field label="Entries to check">
@@ -252,7 +261,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         {reconcileStatus && <p className="muted">{reconcileStatus}</p>}
       </details>
 
-      <details className="panel">
+      <details className="setup-panel">
         <summary>Manual Suggestion</summary>
         <Field label="Source Text">
           <textarea
@@ -265,6 +274,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         <button type="button" disabled={!sourceText.trim()} onClick={createProposal}>
           Create Suggestion
         </button>
+      </details>
       </details>
 
       {resolved.length > 0 && (
@@ -299,18 +309,17 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
   }
 
   return (
-    <details key={proposal.id} className={`card proposal-card proposal-${proposal.status}`} open={isPending}>
+    <details key={proposal.id} className={`card proposal-card proposal-${proposal.status}`}>
       <summary className="proposal-card-summary">
         <span className="proposal-card-title">
           <strong>{proposal.title || "Untitled suggestion"}</strong>
           <span className="muted">
-            {proposal.proposedType}
+            {proposalTypeLabels[proposal.proposedType]}
           </span>
         </span>
         <span className="story-card-badges">
-          <span className="badge badge-type">{Math.round(proposal.confidence * 100)}%</span>
+          {isPending && <span className="badge badge-priority">Needs review</span>}
           {!isPending && <span className="badge badge-inactive">{proposal.status}</span>}
-          {proposal.suggestedTriggers.length > 0 && <span className="badge">{proposal.suggestedTriggers.length} keys</span>}
         </span>
         <span className="search-snippet">{proposal.content || proposal.sourceText || "No proposed content yet."}</span>
       </summary>
@@ -319,7 +328,7 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
         <div className="panel-heading">
         <div className="suggestion-meta">
           <p className="eyebrow">
-            {proposal.proposedType}
+            {proposalTypeLabels[proposal.proposedType]}
             {proposal.status !== "pending" ? ` · ${proposal.status}` : ""}
           </p>
           <input
@@ -395,7 +404,7 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
             >
               {proposalTypes.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {proposalTypeLabels[type]}
                 </option>
               ))}
             </select>

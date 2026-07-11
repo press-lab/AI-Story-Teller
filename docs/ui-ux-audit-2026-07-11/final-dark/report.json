@@ -1,0 +1,3169 @@
+{
+  "baseUrl": "http://127.0.0.1:4178/",
+  "generatedAt": "2026-07-11T21:57:50.634Z",
+  "durableOutput": true,
+  "theme": "dark",
+  "auditDir": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark",
+  "viewports": [
+    {
+      "name": "desktop-1280x720",
+      "width": 1280,
+      "height": 720,
+      "mobile": false
+    },
+    {
+      "name": "desktop-1440x900",
+      "width": 1440,
+      "height": 900,
+      "mobile": false
+    },
+    {
+      "name": "desktop-1920x1080",
+      "width": 1920,
+      "height": 1080,
+      "mobile": false
+    },
+    {
+      "name": "mobile-320x568",
+      "width": 320,
+      "height": 568,
+      "mobile": true
+    },
+    {
+      "name": "mobile-390x844",
+      "width": 390,
+      "height": 844,
+      "mobile": true
+    }
+  ],
+  "results": [
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Home",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Home",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Home",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Welcome back",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 38,
+          "family": "Georgia, \"Times New Roman\", serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Your Stories",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\001--desktop-1280x720-home.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "New Story setup",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "New Story",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "New Story",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Start with an idea",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\002--desktop-1280x720-new-story-setup.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Explore",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Explore",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Explore",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Explore",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3#built-in-scenarios-heading",
+          "text": "Built-in Scenarios",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Dispatch (SDN Supers)",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "The Rookery",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\003--desktop-1280x720-explore.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Play - companion collapsed",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\004--desktop-1280x720-play-companion-collapsed.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Play - companion open",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\005--desktop-1280x720-play-companion-open.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Play - companion editor",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\006--desktop-1280x720-play-companion-editor.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\007--desktop-1280x720-story-studio.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - opened World Block editor",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4",
+          "text": "What the next response should feel like",
+          "size": 14,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\008--desktop-1280x720-story-studio-opened-world-block-editor.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - Story & Direction",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\009--desktop-1280x720-story-studio-story-direction.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - World & Lore",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Reference Cards",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4.card-group-label",
+          "text": "Character (12)",
+          "size": 12,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\010--desktop-1280x720-story-studio-world-lore.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - Characters",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Character perspectives",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\011--desktop-1280x720-story-studio-characters.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - Suggestions",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Memory suggestions",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\012--desktop-1280x720-story-studio-suggestions.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - Automation",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Automation",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Automation",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Automation",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\013--desktop-1280x720-story-studio-automation.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Story Studio - Context Inspector",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Context Inspector",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\014--desktop-1280x720-story-studio-context-inspector.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "History",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "History",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "History",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story history",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\015--desktop-1280x720-history.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Backups & Transfer",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Backups & Transfer",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Backups & Transfer",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Backups & transfer",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Back up this Story",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\016--desktop-1280x720-backups-transfer.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Settings",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Settings",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Settings",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Make Story Mode AI feel right for you",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Appearance",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Runtime",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\017--desktop-1280x720-settings.png"
+    },
+    {
+      "viewportName": "desktop-1280x720",
+      "screenName": "Help",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "heading": "Help",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Help",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story Mode AI Documentation",
+          "size": 42.24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "New User Guide",
+          "size": 25.6,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\018--desktop-1280x720-help.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Home",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Home",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Home",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Welcome back",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 38,
+          "family": "Georgia, \"Times New Roman\", serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Your Stories",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\019--desktop-1440x900-home.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "New Story setup",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "New Story",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "New Story",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Start with an idea",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\020--desktop-1440x900-new-story-setup.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Explore",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Explore",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Explore",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Explore",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3#built-in-scenarios-heading",
+          "text": "Built-in Scenarios",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Dispatch (SDN Supers)",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "The Rookery",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Arcane: After the Rocket",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\021--desktop-1440x900-explore.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Play - companion collapsed",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\022--desktop-1440x900-play-companion-collapsed.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Play - companion open",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\023--desktop-1440x900-play-companion-open.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Play - companion editor",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\024--desktop-1440x900-play-companion-editor.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\025--desktop-1440x900-story-studio.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - opened World Block editor",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4",
+          "text": "What the next response should feel like",
+          "size": 14,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\026--desktop-1440x900-story-studio-opened-world-block-editor.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - Story & Direction",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\027--desktop-1440x900-story-studio-story-direction.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - World & Lore",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Reference Cards",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4.card-group-label",
+          "text": "Character (12)",
+          "size": 12,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\028--desktop-1440x900-story-studio-world-lore.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - Characters",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Character perspectives",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\029--desktop-1440x900-story-studio-characters.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - Suggestions",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Memory suggestions",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\030--desktop-1440x900-story-studio-suggestions.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - Automation",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Automation",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Automation",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Automation",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\031--desktop-1440x900-story-studio-automation.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Story Studio - Context Inspector",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Context Inspector",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\032--desktop-1440x900-story-studio-context-inspector.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "History",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "History",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "History",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story history",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\033--desktop-1440x900-history.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Backups & Transfer",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Backups & Transfer",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Backups & Transfer",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Backups & transfer",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Back up this Story",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\034--desktop-1440x900-backups-transfer.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Settings",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Settings",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Settings",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Make Story Mode AI feel right for you",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Appearance",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Runtime",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Models",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\035--desktop-1440x900-settings.png"
+    },
+    {
+      "viewportName": "desktop-1440x900",
+      "screenName": "Help",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "heading": "Help",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Help",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story Mode AI Documentation",
+          "size": 44,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "New User Guide",
+          "size": 27,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\036--desktop-1440x900-help.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Home",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Home",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Home",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Welcome back",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 38,
+          "family": "Georgia, \"Times New Roman\", serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Your Stories",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Arcane: After the Rocket",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\037--desktop-1920x1080-home.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "New Story setup",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "New Story",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "New Story",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Start with an idea",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\038--desktop-1920x1080-new-story-setup.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Explore",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Explore",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Explore",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Explore",
+          "size": 38,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3#built-in-scenarios-heading",
+          "text": "Built-in Scenarios",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Dispatch (SDN Supers)",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "The Rookery",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Arcane: After the Rocket",
+          "size": 17.55,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\039--desktop-1920x1080-explore.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Play - companion collapsed",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\040--desktop-1920x1080-play-companion-collapsed.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Play - companion open",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\041--desktop-1920x1080-play-companion-open.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Play - companion editor",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\042--desktop-1920x1080-play-companion-editor.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\043--desktop-1920x1080-story-studio.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - opened World Block editor",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4",
+          "text": "What the next response should feel like",
+          "size": 14,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\044--desktop-1920x1080-story-studio-opened-world-block-editor.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - Story & Direction",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\045--desktop-1920x1080-story-studio-story-direction.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - World & Lore",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Reference Cards",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4.card-group-label",
+          "text": "Character (12)",
+          "size": 12,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4.card-group-label",
+          "text": "Location (2)",
+          "size": 12,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\046--desktop-1920x1080-story-studio-world-lore.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - Characters",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Character perspectives",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\047--desktop-1920x1080-story-studio-characters.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - Suggestions",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Memory suggestions",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\048--desktop-1920x1080-story-studio-suggestions.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - Automation",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Automation",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Automation",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Automation",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\049--desktop-1920x1080-story-studio-automation.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Story Studio - Context Inspector",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Context Inspector",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\050--desktop-1920x1080-story-studio-context-inspector.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "History",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "History",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "History",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story history",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\051--desktop-1920x1080-history.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Backups & Transfer",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Backups & Transfer",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Backups & Transfer",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Backups & transfer",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Back up this Story",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\052--desktop-1920x1080-backups-transfer.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Settings",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Settings",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Settings",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Make Story Mode AI feel right for you",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Appearance",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Runtime",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Models",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Background Cost",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\053--desktop-1920x1080-settings.png"
+    },
+    {
+      "viewportName": "desktop-1920x1080",
+      "screenName": "Help",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "heading": "Help",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Help",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story Mode AI Documentation",
+          "size": 44,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "New User Guide",
+          "size": 27,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\054--desktop-1920x1080-help.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Home",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Home",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Home",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Welcome back",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 25,
+          "family": "Georgia, \"Times New Roman\", serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\055--mobile-320x568-home.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "New Story setup",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "New Story",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "New Story",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Start with an idea",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\056--mobile-320x568-new-story-setup.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Explore",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Explore",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Explore",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Explore",
+          "size": 28,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3#built-in-scenarios-heading",
+          "text": "Built-in Scenarios",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\057--mobile-320x568-explore.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Play",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\058--mobile-320x568-play.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Play - Story companion destinations",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2#mobile-story-tools-title",
+          "text": "Story companion",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\059--mobile-320x568-play-story-companion-destinations.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Play - selected Story companion tool",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2#mobile-story-tools-title",
+          "text": "Story companion",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Story & Direction",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\060--mobile-320x568-play-selected-story-companion-tool.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\061--mobile-320x568-story-studio.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - opened World Block editor",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4",
+          "text": "What the next response should feel like",
+          "size": 14,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\062--mobile-320x568-story-studio-opened-world-block-editor.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - Story & Direction",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\063--mobile-320x568-story-studio-story-direction.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - World & Lore",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Reference Cards",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\064--mobile-320x568-story-studio-world-lore.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - Characters",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Character perspectives",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\065--mobile-320x568-story-studio-characters.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - Suggestions",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Memory suggestions",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\066--mobile-320x568-story-studio-suggestions.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - Automation",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Automation",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Automation",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Automation",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\067--mobile-320x568-story-studio-automation.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Story Studio - Context Inspector",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Context Inspector",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\068--mobile-320x568-story-studio-context-inspector.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "More menu",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Current story",
+          "size": 11,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "App",
+          "size": 11,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\069--mobile-320x568-more-menu.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "History",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "History",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "History",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story history",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\070--mobile-320x568-history.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Backups & Transfer",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Backups & Transfer",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Backups & Transfer",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Backups & transfer",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Back up this Story",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\071--mobile-320x568-backups-transfer.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Settings",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Settings",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Settings",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Make Story Mode AI feel right for you",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Appearance",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\072--mobile-320x568-settings.png"
+    },
+    {
+      "viewportName": "mobile-320x568",
+      "screenName": "Help",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "heading": "Help",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Help",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story Mode AI Documentation",
+          "size": 28.8,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "New User Guide",
+          "size": 21,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\073--mobile-320x568-help.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Home",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Home",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Home",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Welcome back",
+          "size": 31.2,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 25,
+          "family": "Georgia, \"Times New Roman\", serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Your Stories",
+          "size": 31.2,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\074--mobile-390x844-home.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "New Story setup",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "New Story",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "New Story",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Start with an idea",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\075--mobile-390x844-new-story-setup.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Explore",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Explore",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Explore",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Explore",
+          "size": 31.2,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3#built-in-scenarios-heading",
+          "text": "Built-in Scenarios",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Dispatch (SDN Supers)",
+          "size": 18.72,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\076--mobile-390x844-explore.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Play",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\077--mobile-390x844-play.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Play - Story companion destinations",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2#mobile-story-tools-title",
+          "text": "Story companion",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\078--mobile-390x844-play-story-companion-destinations.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Play - selected Story companion tool",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Play",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Play",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2#mobile-story-tools-title",
+          "text": "Story companion",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Story & Direction",
+          "size": 16,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\079--mobile-390x844-play-selected-story-companion-tool.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\080--mobile-390x844-story-studio.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - opened World Block editor",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Author's Note",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4",
+          "text": "What the next response should feel like",
+          "size": 14,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\081--mobile-390x844-story-studio-opened-world-block-editor.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - Story & Direction",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "World Blocks",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\082--mobile-390x844-story-studio-story-direction.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - World & Lore",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Reference Cards",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h4.card-group-label",
+          "text": "Character (12)",
+          "size": 12,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\083--mobile-390x844-story-studio-world-lore.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - Characters",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Character perspectives",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\084--mobile-390x844-story-studio-characters.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - Suggestions",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Story Studio",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Story Studio",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Memory suggestions",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\085--mobile-390x844-story-studio-suggestions.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - Automation",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Automation",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Automation",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Automation",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\086--mobile-390x844-story-studio-automation.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Story Studio - Context Inspector",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Context Inspector",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\087--mobile-390x844-story-studio-context-inspector.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "More menu",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Context Inspector",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h2",
+          "text": "Arcane: After the Rocket",
+          "size": 24,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Current story",
+          "size": 11,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "App",
+          "size": 11,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\088--mobile-390x844-more-menu.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "History",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "History",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "History",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story history",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\089--mobile-390x844-history.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Backups & Transfer",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Backups & Transfer",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Backups & Transfer",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Backups & transfer",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Back up this Story",
+          "size": 20,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\090--mobile-390x844-backups-transfer.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Settings",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Settings",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Settings",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Make Story Mode AI feel right for you",
+          "size": 22,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "Appearance",
+          "size": 19,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\091--mobile-390x844-settings.png"
+    },
+    {
+      "viewportName": "mobile-390x844",
+      "screenName": "Help",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "heading": "Help",
+      "documentOverflowX": 0,
+      "protrusions": [],
+      "clippedText": [],
+      "tinyTargets": [],
+      "overlaps": [],
+      "headings": [
+        {
+          "selector": "h1",
+          "text": "Help",
+          "size": 18,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h2",
+          "text": "Story Mode AI Documentation",
+          "size": 34,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        },
+        {
+          "selector": "h3",
+          "text": "New User Guide",
+          "size": 21,
+          "family": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif"
+        }
+      ],
+      "oversizedEmptyCards": [],
+      "failures": [],
+      "screenshotPath": "C:\\Users\\sethp\\Documents\\GitHub\\AI Story Teller\\docs\\ui-ux-audit-2026-07-11\\final-dark\\092--mobile-390x844-help.png"
+    }
+  ]
+}

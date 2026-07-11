@@ -472,10 +472,23 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
+    await user.click(screen.getByRole("button", { name: "Show story companion" }));
     const contextBtn = screen.getAllByRole("button", { name: "What the AI knows" })[0];
     await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");
+  });
+
+  it("starts with the desktop Story companion collapsed and remembers expansion", async () => {
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    expect(screen.getByRole("button", { name: "Show story companion" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Collapse story companion" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show story companion" }));
+    expect(screen.getByRole("button", { name: "Collapse story companion" })).toBeInTheDocument();
+    expect(localStorage.getItem("play-toolkit-collapsed")).toBe("false");
   });
 
   it("toggles the inline Remember input from the composer", async () => {
@@ -508,11 +521,12 @@ describe("PlayPage AID-style controls", () => {
     expect(screen.queryByPlaceholderText(/Mira and Kael/)).not.toBeInTheDocument();
   });
 
-  it("edits the visible Next Turn Note controls through reducer actions", async () => {
+  it("opens and edits one-turn guidance through reducer actions", async () => {
     const user = userEvent.setup();
     render(<StatefulPlayPage />);
 
-    await user.click(screen.getByText("Next Turn Note (empty)", { exact: false }));
+    await user.click(screen.getByRole("button", { name: "Show story companion" }));
+    await user.click(within(document.querySelector(".play-sidebar") as HTMLElement).getByRole("button", { name: "Guide the next response" }));
     await user.type(
       screen.getByLabelText("One-turn story guidance"),
       "Do not resolve the argument yet.",

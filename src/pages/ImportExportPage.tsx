@@ -18,7 +18,7 @@ type ImportExportMode = "backup" | "restore";
 
 const modeOptions: Array<{ id: ImportExportMode; label: string; description: string }> = [
   { id: "backup", label: "Back Up", description: "Save a complete copy or reusable parts." },
-  { id: "restore", label: "Restore", description: "Open a saved adventure backup." },
+  { id: "restore", label: "Restore", description: "Open a Story you backed up earlier." },
 ];
 
 function download(filename: string, text: string) {
@@ -183,7 +183,7 @@ export function ImportExportPage({
           <span>Turn {adventure.activeState.turn}</span>
           <span>{transcriptCount} messages</span>
           <span>{adventure.storyCards.length} cards</span>
-          <span>{adventure.brains.length} brains</span>
+          <span>{adventure.brains.length} characters</span>
           {rawImportCount > 0 && <span>{rawImportCount} raw</span>}
         </div>
       </div>
@@ -251,7 +251,7 @@ export function ImportExportPage({
               <div><dt>Turn</dt><dd>{adventure.activeState.turn}</dd></div>
               <div><dt>Messages</dt><dd>{transcriptCount}</dd></div>
               <div><dt>Reference Cards</dt><dd>{adventure.storyCards.length}</dd></div>
-              <div><dt>Brains</dt><dd>{adventure.brains.length}</dd></div>
+              <div><dt>Characters</dt><dd>{adventure.brains.length}</dd></div>
             </dl>
           </div>
           <div className="import-export-primary-action">
@@ -263,7 +263,7 @@ export function ImportExportPage({
                 {cloudSaving ? "Saving..." : "Save to Cloud"}
               </button>
             )}
-            <span className="muted">{backupSizeKb} KB JSON</span>
+            <span className="muted">{backupSizeKb} KB file</span>
           </div>
           {cloudSaveStatus && (
             <p className="muted import-export-cloud-status">{cloudSaveStatus}</p>
@@ -285,9 +285,9 @@ export function ImportExportPage({
         <article className="panel import-export-card">
           <div className="import-export-card-copy">
             <p className="eyebrow">restore</p>
-            <h3>Open an adventure backup</h3>
+            <h3>Restore a Story</h3>
             <p className="muted">
-              Use a full JSON backup from this app. Import saves it locally and switches to that adventure.
+              Choose a full backup from Story Mode AI. The restored Story is saved separately before the app opens it.
             </p>
           </div>
           <div className="import-file-picker">
@@ -296,7 +296,7 @@ export function ImportExportPage({
             </Field>
             {importFilename && <span className="status-pill">Loaded {importFilename}</span>}
           </div>
-          <Field label="Adventure JSON">
+          <Field label="Backup contents">
             <textarea
               rows={6}
               value={importText}
@@ -304,12 +304,12 @@ export function ImportExportPage({
                 setImportFilename("");
                 setImportText(event.target.value);
               }}
-              placeholder="Paste a full adventure backup JSON here."
+              placeholder="Paste the contents of a Story Mode AI backup here."
             />
           </Field>
           <div className={`import-export-preview import-export-restore-preview import-export-preview-${importPreview.status}`}>
             {importPreview.status === "empty" && (
-              <p className="muted">Choose a backup file or paste a full adventure JSON to preview what will open.</p>
+              <p className="muted">Choose a backup file or paste its contents to preview the Story before opening it.</p>
             )}
             {importPreview.status === "error" && (
               <p>{importPreview.message}</p>
@@ -325,7 +325,7 @@ export function ImportExportPage({
                   <div><dt>Turn</dt><dd>{importPreview.turn}</dd></div>
                   <div><dt>Messages</dt><dd>{importPreview.messages}</dd></div>
                   <div><dt>Reference Cards</dt><dd>{importPreview.storyCards}</dd></div>
-                  <div><dt>Brains</dt><dd>{importPreview.brains}</dd></div>
+                  <div><dt>Characters</dt><dd>{importPreview.brains}</dd></div>
                   <div><dt>World Blocks</dt><dd>{importPreview.components}</dd></div>
                   {importPreview.rawImports > 0 && <div><dt>Raw Imports</dt><dd>{importPreview.rawImports}</dd></div>}
                 </dl>

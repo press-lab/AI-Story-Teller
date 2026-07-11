@@ -4,7 +4,11 @@ import { useActionFeedback } from "../components/ActionFeedback";
 
 const PAGE_SIZE = 100;
 
-export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
+interface ChroniclePageProps extends AdventurePageProps {
+  onOpenPlay?: () => void;
+}
+
+export function ChroniclePage({ adventure, dispatch, onOpenPlay }: ChroniclePageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const [editingId, setEditingId] = useState<string | undefined>();
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -37,9 +41,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
         <div className="editor-page-copy">
           <p className="eyebrow">Story tools</p>
           <h2>Story history</h2>
-          <p className="muted">
-            Your complete transcript. Only recent entries and active memory are included when the AI writes the next turn.
-          </p>
+          <p className="muted">Every story entry in order. Search, review, or correct an earlier entry here.</p>
         </div>
         <div className="editor-stat-row" aria-label="Chronicle counts">
           <span>{messages.length} entries</span>
@@ -50,7 +52,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
       <div className="editor-command-bar">
         <input
           type="search"
-          placeholder="Search chronicle..."
+          placeholder="Search story history..."
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -60,8 +62,14 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
       </div>
 
       <div className="list chronicle-list">
-        {messages.length === 0 && <p className="muted">No chronicle entries yet.</p>}
-        {messages.length > 0 && visible.length === 0 && <p className="muted">No chronicle entries match that search.</p>}
+        {messages.length === 0 && (
+          <div className="editor-empty-state chronicle-empty-state" role="status">
+            <strong>Your Story history will appear here</strong>
+            <p className="muted">Take a turn in Play, and each Story entry will be saved in order.</p>
+            {onOpenPlay && <button type="button" onClick={onOpenPlay}>Go to Play</button>}
+          </div>
+        )}
+        {messages.length > 0 && visible.length === 0 && <p className="muted">No story entries match that search.</p>}
         {visible.map(({ message, index }) =>
           editingId === message.id ? (
             <article key={message.id} className="card chronicle-editing">
@@ -94,7 +102,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
                 <button
                   type="button"
                   className="chronicle-entry-edit"
-                  aria-label={`Edit chronicle entry ${index + 1}`}
+                  aria-label={`Edit story entry ${index + 1}`}
                   onClick={() => setEditingId(message.id)}
                 >
                   Edit

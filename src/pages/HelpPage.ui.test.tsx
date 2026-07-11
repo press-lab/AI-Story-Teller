@@ -10,6 +10,7 @@ import { HelpPage } from "./HelpPage";
 describe("HelpPage documentation UI", () => {
   afterEach(() => {
     cleanup();
+    window.history.replaceState(null, "", window.location.pathname);
   });
 
   it("shows technical documentation topics and filters them with search", async () => {
@@ -71,7 +72,10 @@ describe("HelpPage documentation UI", () => {
     render(<HelpPage />);
 
     await user.click(screen.getByRole("link", { name: "Context Contract" }));
-    expect(screen.getByRole("heading", { name: "Context Contract" })).toBeInTheDocument();
+    const heading = screen.getByRole("heading", { name: "Context Contract" });
+    expect(heading).toBeInTheDocument();
+    expect(window.location.hash).toBe("#context-contract");
+    expect(heading).toHaveFocus();
     expect(document.querySelectorAll(".docs-topic")).toHaveLength(1);
   });
 

@@ -323,13 +323,47 @@ fieldset > legend {
 .explore-page,
 .docs-page,
 .settings-page {
+  width: 100%;
   max-width: var(--container-standard);
 }
 
 .editor-workspace,
 .editor-workspace-tool-only,
 .admin-console-page {
+  width: 100%;
   max-width: var(--container-wide);
+}
+
+.chronicle-page,
+.import-export-page,
+.context-preview-page,
+.triggers-page {
+  width: 100%;
+}
+
+/* Wide screens keep the shell title and the page below it on one axis. */
+.destination-home,
+.destination-explore,
+.destination-studio,
+.destination-history,
+.destination-backups,
+.destination-settings,
+.destination-help,
+.destination-admin {
+  --route-container: var(--container-standard);
+}
+
+.destination-studio,
+.destination-admin { --route-container: var(--container-wide); }
+.destination-settings { --route-container: 1320px; }
+.destination-history,
+.destination-backups { --route-container: 1260px; }
+.destination-help { --route-container: 1400px; }
+
+@media (min-width: 861px) {
+  .app-shell:not(.destination-play) > .app-header {
+    padding-inline: max(clamp(16px, 2.4vw, 34px), calc((100% - var(--route-container)) / 2));
+  }
 }
 
 .editor-workspace-tool-only {
@@ -396,10 +430,15 @@ fieldset > legend {
 .profile-scenarios-empty p { margin: var(--space-1) 0 0; }
 
 .profile-return-link {
-  order: -1;
   border-color: transparent;
   background: transparent;
   color: var(--muted);
+}
+
+.profile-public-actions {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
 }
 
 .explore-controls {
@@ -505,7 +544,7 @@ fieldset > legend {
 
 /* Story Studio: compact global navigation and focused editorial canvases. */
 .editor-workspace {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
   gap: var(--space-3);
 }
 
@@ -523,6 +562,8 @@ fieldset > legend {
   background: transparent;
   font-size: var(--type-label);
 }
+
+.mobile-studio-save { display: none; }
 
 .studio-story-details {
   border: 1px solid var(--border);
@@ -651,6 +692,22 @@ fieldset > legend {
   gap: var(--space-3);
 }
 
+/* Closed items lead with a name and meaningful preview. Engine metadata stays
+ * available after opening the item. */
+.split-editor-item:not([open]) .story-card-summary,
+.trigger-rule-item:not([open]) .trigger-rule-summary {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.split-editor-item:not([open]) .story-card-badges .badge-type,
+.split-editor-item:not([open]) .story-card-badges .badge-priority,
+.split-editor-item:not([open]) .story-card-badges .badge:not(.badge-inactive) {
+  display: none;
+}
+
+.split-editor-item:not([open]) .story-card-keys { display: none; }
+
 .split-editor-item:not([open]) {
   min-height: 74px;
   border-radius: 10px;
@@ -702,11 +759,54 @@ fieldset > legend {
 }
 
 .split-editor-item[open] > summary::before {
-  content: "← Back to list";
+  content: "Back to list";
   margin-right: var(--space-3);
   color: var(--accent);
   font-size: 12px;
   font-weight: 750;
+}
+
+/* One selected item becomes the workspace instead of competing with every
+ * sibling row for attention. Closing its summary returns to the collection. */
+.split-editor-list:has(.split-editor-item[open]) > .split-editor-item:not([open]),
+.brains-page > .list:has(.brain-item[open]) > .brain-item:not([open]),
+.component-group-list:has(.component-editor-item[open]) > .component-group-panel:not(:has(.component-editor-item[open])),
+.story-cards-page:has(.story-card-editor-item[open]) .card-group:not(:has(.story-card-editor-item[open])) {
+  display: none;
+}
+
+.editor-item-actions {
+  position: relative;
+}
+
+.editor-item-actions > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-standard);
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: var(--type-label);
+  font-weight: 700;
+  list-style: none;
+}
+
+.editor-item-actions > summary::-webkit-details-marker { display: none; }
+
+.editor-item-actions[open] > div {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 8;
+  display: grid;
+  min-width: 180px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 
 .split-editor-item[open] > .item-inspector,
@@ -828,6 +928,41 @@ fieldset > legend {
 
 .settings-security-actions .danger { margin-left: auto; }
 
+.context-source-link,
+.editor-stat-row .editor-stat-filter {
+  min-height: 28px;
+  padding: 4px 8px;
+}
+
+.context-usage-details {
+  min-width: min(100%, 260px);
+}
+
+.context-usage-details > summary {
+  min-height: var(--control-height);
+}
+
+.context-usage-details .token-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+.play-sidebar-panel-header > button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px;
+}
+
+.automation-grid { grid-template-columns: minmax(0, 1fr); }
+
+.automation-diagnostics { margin-top: var(--space-2); }
+
+.automation-diagnostics > .automation-side-list {
+  padding-top: var(--space-3);
+}
+
 /* Documentation: shared axis, one readable article, compact mobile browse. */
 .docs-page {
   width: min(1400px, 100%);
@@ -901,7 +1036,7 @@ fieldset > legend {
 }
 
 .new-adventure-setup .storyteller-profile-grid {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
 }
 
@@ -920,6 +1055,46 @@ fieldset > legend {
   margin-block: var(--space-3);
 }
 
+.library-page:has(.new-adventure-setup) > .home-story-hero,
+.library-page:has(.new-adventure-setup) > .home-header,
+.library-page:has(.new-adventure-setup) > .profile-section:not(.adventure-library-section) {
+  display: none;
+}
+
+.editor-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  width: min(560px, 100%);
+  padding: var(--space-5);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-card);
+  background: var(--surface-soft);
+}
+
+.editor-empty-state p { margin: 0; }
+
+.chronicle-empty-state { margin: var(--space-5) auto 0; }
+
+.new-adventure-setup .setup-expand-button {
+  position: static;
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.new-adventure-final-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid color-mix(in srgb, var(--accent) 36%, var(--border));
+  border-radius: var(--radius-card);
+  background: var(--accent-soft);
+}
+
+.new-adventure-final-actions p { margin-bottom: 2px; }
+
 /* Backups retain a two-choice flow and compact summary at all sizes. */
 .import-export-page,
 .chronicle-page,
@@ -937,22 +1112,28 @@ fieldset > legend {
   .main-content { padding: 12px; }
 
   .editor-workspace {
-    grid-template-rows: auto auto auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr);
+  }
+
+  .editor-workspace:has(.studio-story-details) {
+    grid-template-rows: auto auto auto auto minmax(0, 1fr);
   }
 
   .editor-tabs {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(138px, 1fr);
-    grid-template-columns: none;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
 
   .editor-tabs button {
     min-height: var(--control-touch);
-    scroll-snap-align: start;
+  }
+
+  .mobile-studio-save {
+    display: inline-flex;
+    justify-content: center;
+    width: 100%;
   }
 
   .studio-advanced-tools { justify-self: stretch; }
@@ -1016,6 +1197,23 @@ fieldset > legend {
     font-size: 16px;
   }
 
+  .welcome-shell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .welcome-panel {
+    order: -1;
+    width: 100%;
+  }
+
+  .welcome-copy h1 { font-size: 30px; }
+
+  .welcome-checks,
+  .welcome-copy > .muted {
+    display: none;
+  }
+
   .main-content { padding: 10px; }
 
   .home-story-hero { min-height: 0; }
@@ -1040,15 +1238,23 @@ fieldset > legend {
 
   .profile-header-actions {
     display: flex !important;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     width: 100%;
-    overflow-x: auto;
     padding-bottom: 2px;
   }
 
   .profile-header-actions button {
-    flex: 0 0 auto !important;
-    min-width: max-content;
+    flex: 1 1 140px !important;
+    min-width: 0;
+  }
+
+  .profile-public-actions {
+    justify-items: stretch;
+    width: 100%;
+  }
+
+  .profile-return-link {
+    justify-self: start;
   }
 
   .mobile-story-tools-sheet {
@@ -1056,6 +1262,76 @@ fieldset > legend {
     left: 6px;
     max-height: min(72dvh, 640px);
     padding: var(--space-3);
+  }
+
+  .mobile-story-tools-sheet.has-panel {
+    position: fixed;
+    top: calc(70px + env(safe-area-inset-top));
+    right: 10px;
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom) + 10px);
+    left: 10px;
+    max-height: none;
+  }
+
+  .mobile-story-tools-bar:has(.mobile-story-tools-sheet) {
+    padding: 0;
+    border-top: 0;
+  }
+
+  .mobile-story-tools-bar:has(.mobile-story-tools-sheet) > .mobile-story-tools-trigger {
+    display: none;
+  }
+
+  .play-layout:has(.mobile-story-tools-sheet) .message-actions-mobile {
+    display: none;
+  }
+
+  .explore-page:has(.explore-detail) { padding-bottom: 132px; }
+
+  .action-toast-region {
+    bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom) + 10px);
+  }
+
+  .profile-link-button,
+  .library-card-actions button,
+  .editor-title-block .file-button,
+  .editor-title-block button,
+  .chronicle-entry-edit,
+  .context-disclosure-button,
+  .editor-stat-row .editor-stat-filter,
+  .memory-inbox-page > details.panel > summary,
+  .library-card-more > summary,
+  .settings-account-actions button,
+  .mobile-story-tools-trigger,
+  .message-actions-trigger,
+  .message-actions-menu button,
+  .context-drop-warning {
+    min-height: var(--control-touch);
+  }
+
+  .admin-metric-grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(132px, 62vw);
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: var(--space-2);
+    scroll-snap-type: x proximity;
+  }
+
+  .admin-metric-card {
+    min-height: 96px;
+    scroll-snap-align: start;
+  }
+
+  .admin-view-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-view-tabs button {
+    justify-content: center;
+    min-width: 0;
+    white-space: normal;
   }
 
   .mobile-story-tools-nav {
@@ -1171,6 +1447,13 @@ fieldset > legend {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .new-adventure-final-actions {
+    display: grid;
+    padding: var(--space-4);
+  }
+
+  .new-adventure-final-actions button { width: 100%; }
+
   .import-export-mode-switch {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1178,5 +1461,35 @@ fieldset > legend {
   .import-export-preview dl,
   .import-export-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* WCAG 2.2 target-size baseline: mobile controls need a reliably tappable box,
+     even when older page styles set a shorter fixed height. */
+  .app-shell button,
+  .app-shell summary,
+  .welcome-page button,
+  .welcome-page summary {
+    min-height: 46px !important;
+  }
+
+  .app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  .welcome-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]) {
+    min-height: 46px !important;
+  }
+
+  .scroll-to-bottom-btn {
+    min-width: 46px !important;
+  }
+
+  .context-source-link {
+    min-height: 46px !important;
+  }
+
+  /* A solid navigation surface avoids stale backdrop-filter layers after the
+     More sheet closes and keeps every primary destination consistently legible. */
+  .mobile-bottom-nav {
+    isolation: isolate;
+    background: var(--surface);
+    backdrop-filter: none;
   }
 }
