@@ -8,6 +8,7 @@ import type { ComponentProps } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runAdventureGen } from "../ai/adventureGen";
 import type { NewAdventureSetup } from "../types/adventure";
+import { createDefaultAdventure } from "../state/defaults";
 import { AdventuresPage } from "./AdventuresPage";
 
 vi.mock("../ai/adventureGen", () => ({
@@ -115,6 +116,43 @@ describe("AdventuresPage new adventure setup", () => {
       content: "Magic cannot cross the warded threshold.",
       type: "lore",
     });
+  });
+
+  it("imports a full AIST adventure JSON from the create adventure flow", async () => {
+    const user = userEvent.setup();
+    const onCreateAdventureFromImport = vi.fn(async (_adventure: unknown) => undefined);
+    const onOpenImportedAdventure = vi.fn();
+    const adventure = {
+      ...createDefaultAdventure("Loaded AIST Adventure"),
+      id: "adv-imported-aist",
+      messages: [
+        {
+          id: "msg-1",
+          role: "assistant" as const,
+          content: "The old scene breathes again.",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    };
+    const file = new File([JSON.stringify(adventure)], "loaded-aist.json", { type: "application/json" });
+
+    renderAdventuresPage(undefined, { onCreateAdventureFromImport, onOpenImportedAdventure });
+
+    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Import from AIST" }));
+    await user.upload(screen.getByLabelText("AIST adventure JSON"), file);
+
+    await waitFor(() => expect(screen.getByText("Loaded AIST Adventure")).toBeInTheDocument());
+    expect(screen.getByText("Ready to import")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Import and open" }));
+
+    expect(onCreateAdventureFromImport).toHaveBeenCalledTimes(1);
+    expect(onCreateAdventureFromImport.mock.calls[0][0]).toMatchObject({
+      id: "adv-imported-aist",
+      title: "Loaded AIST Adventure",
+    });
+    expect(onOpenImportedAdventure).toHaveBeenCalledTimes(1);
   });
 
   it("prevents creation when an unpinned Story Card has no triggers", async () => {

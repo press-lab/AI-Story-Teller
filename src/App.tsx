@@ -435,6 +435,7 @@ export default function App() {
           onOpen={library.openAdventure}
           onOpenEdit={async (id) => { await library.openAdventure(id); openEditor(); }}
           onCreateAdventureFromImport={library.createAdventureFromImport}
+          onOpenImportedAdventure={() => navigateTo("play")}
           onDuplicate={library.duplicateAdventure}
           onDelete={(id) => library.removeAdventure(id, adventure?.id)}
           saveSlots={gitHubSaves.saveSlots}
