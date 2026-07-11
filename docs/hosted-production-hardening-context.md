@@ -36,7 +36,7 @@ email.
 
 ### F0. Explicit Free Render and no-email UAT mode
 
-Status: **Implemented July 10, 2026; live Render reconciliation still required**
+Status: **Implemented and reconciled on live Render July 10, 2026**
 
 - Add an explicit disabled-email capability mode with safe route and frontend
   behavior.
@@ -56,7 +56,11 @@ Implemented evidence:
 - `api:hosted:free` applies advisory-lock-serialized compiled migrations before
   importing the same compiled hosted server.
 - `render.yaml` now describes the actual Free/no-email UAT contract. The live
-  dashboard must still be reconciled to this file before redeployment.
+  dashboard is reconciled to this file.
+- The pooled Neon runtime no longer sends server timeouts as startup
+  parameters. It uses a client-side grace timeout plus transaction-local
+  server timeouts, verified against the Neon pooler and the deployment-parity
+  suite.
 
 ## P0 Workstreams
 

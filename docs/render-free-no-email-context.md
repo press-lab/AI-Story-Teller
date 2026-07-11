@@ -1,7 +1,7 @@
 # Render Free And No-Email Implementation Context
 
-Implementation status: **code and repository contract completed July 10,
-2026; live Render dashboard reconciliation and deployment validation remain.**
+Implementation status: **code, repository contract, live Render dashboard
+reconciliation, and deployment validation completed July 10, 2026.**
 
 Use this file for the next hosted deployment adaptation while the owner does
 not want to add Render billing or Resend. This is a temporary controlled-UAT
@@ -29,10 +29,10 @@ Recorded July 10, 2026:
 - Keep the current owner/local API available as rollback until the Free Render
   mode passes end-to-end UAT.
 
-## Verified Live Render Drift
+## Historical Live Render Drift And Repair
 
-The existing manually configured Render service does not currently match the
-repository contract:
+Before the July 10 repair, the manually configured Render service did not
+match the repository contract:
 
 - Instance type: Free.
 - Git branch: `main`.
@@ -50,8 +50,13 @@ The observed deploy failure is therefore expected: Render tries to run
 creates it. Correcting only the build command is insufficient because hosted
 startup currently refuses missing email delivery configuration.
 
-Do not repeatedly redeploy this service until the interim mode below exists.
-Render retains the older successful deployment when a new revision fails.
+The live service is now reconciled to the interim mode below. The first
+corrected deploy also exposed a Neon pooler incompatibility: server timeouts in
+the Postgres startup packet were rejected. Runtime database queries now avoid
+startup/session timeout state, use a client-side grace timeout, and apply
+server-enforced `SET LOCAL` timeouts inside explicit transactions. This was
+verified against the pooled Neon URL and the disposable Postgres deployment
+parity suite.
 
 ## Interim Topology
 
@@ -157,7 +162,7 @@ on every restart.
 
 ## Required Render Free Settings
 
-After the interim code and tests exist, reconcile the live Render service to:
+The live Render service was reconciled to and must remain on:
 
 ```text
 Branch: backend-local-implementation
