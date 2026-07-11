@@ -512,8 +512,6 @@ describe("side menu page smoke coverage", () => {
     const user = userEvent.setup();
     const onBuildContext = vi.fn();
     const onImportAdventure = vi.fn(async () => undefined);
-    const onCreateAdventureFromImport = vi.fn(async () => undefined);
-    const onOpenImportedAdventure = vi.fn();
 
     renderWithAdventure((adventure, dispatch) => (
       <ContextPreviewPage adventure={adventure} dispatch={dispatch} onBuildContext={onBuildContext} />
@@ -533,14 +531,12 @@ describe("side menu page smoke coverage", () => {
         adventure={adventure}
         dispatch={dispatch}
         onImportAdventure={onImportAdventure}
-        onCreateAdventureFromImport={onCreateAdventureFromImport}
-        onOpenImportedAdventure={onOpenImportedAdventure}
       />
     ));
     expect(screen.getByText("Back up this adventure")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Back Up/i })).toHaveAttribute("aria-selected", "true");
-    await user.click(screen.getByRole("tab", { name: /Migrate/i }));
-    expect(screen.getByText("Step 1: Story Text or Action JSON")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Restore/i })).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /Migrate/i })).not.toBeInTheDocument();
     cleanup();
 
     const onGenerateDurableSummary = vi.fn(async () => "Generated durable summary.");

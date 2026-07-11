@@ -155,7 +155,7 @@ The context builder in `src/contextBuilder/contextBuilder.ts` follows the requir
 - LLM semantic trigger evaluation with generated updates for brains, story cards, Plot Essentials, Current Arc, and Active Pressure.
 - Full trigger action suite wired through the reducer.
 - Legacy quest, Auto-Card, Rolling Summary, and Scene State fields preserved for older saves, but not part of default runtime context.
-- AI Dungeon import flow for transcript/action JSON, metadata setup, story cards, and character brain cards.
+- AIST adventure JSON backup/restore for full playable saves.
 - Approximate token estimator in `src/tokenizer/approximateTokenCount.ts`.
 
 ## Architecture Decision: Semantic Engine and Memory Proposals
@@ -186,7 +186,7 @@ npm.cmd run build
 npm.cmd run smoke:prod
 ```
 
-The deterministic test suite covers context order/inclusion/exclusion, story-card triggering and truncation, trigger matching/action mapping, reducer actions, AI memory mutation boundaries, memory classification, Memory Inbox approval/rejection, AI Dungeon import parsing, golden memory architecture, and a multi-turn play smoke path.
+The deterministic test suite covers context order/inclusion/exclusion, story-card triggering and truncation, trigger matching/action mapping, reducer actions, AI memory mutation boundaries, memory classification, Memory Inbox approval/rejection, backup/restore behavior, golden memory architecture, and a multi-turn play smoke path.
 
 Live provider checks are opt-in and use `.env.test.local`:
 

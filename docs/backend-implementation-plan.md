@@ -40,7 +40,6 @@ Current local workflow to preserve:
 - BYO API key in localStorage.
 - Browser-to-provider generation.
 - JSON backup and restore.
-- AI Dungeon import.
 - GitHub save slots.
 - GitHub cloud sync in the existing local workflow.
 - Local development with `npm.cmd run dev`.
@@ -249,7 +248,6 @@ Tasks:
 - Add adventure tables.
 - Add backend adventure CRUD endpoints.
 - Add JSON import endpoint for current AIST local exports.
-- Add AI Dungeon JSON import endpoint or route through the existing import parser.
 - Add GitHub save JSON import support by accepting uploaded/pasted save-slot JSON.
 - Add backend export endpoint.
 - Add version checks for writes.
@@ -285,7 +283,7 @@ Exit criteria:
 
 - A local adventure can be copied to backend mode.
 - A backend adventure can be exported back to current JSON format.
-- AIST JSON, AI Dungeon JSON, and GitHub save JSON can be imported as copies.
+- AIST JSON and GitHub save JSON can be imported as copies.
 - Local mode still works if the API is offline.
 
 ## Phase 5: Server Context Preview

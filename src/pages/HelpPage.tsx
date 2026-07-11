@@ -340,13 +340,13 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
     id: "side-menu-import-export",
     title: "Import / Export",
     category: "Side Menu",
-    summary: "Move adventure JSON and AI Dungeon exports in or out of the browser.",
-    tags: ["import", "export", "ai dungeon", "backup"],
+    summary: "Move AIST adventure JSON backups in or out of the browser.",
+    tags: ["import", "export", "aist", "backup"],
     body: (
       <>
         <p>
-          Import / Export handles full adventure JSON and AI Dungeon import flows. AI Dungeon story text
-          can become transcript messages; Story Card JSON can become Story Cards or Brain candidates.
+          Import / Export handles full AIST adventure JSON backups. Full backups keep the playable
+          save together, while partial exports are for reuse and editing.
         </p>
         <p>
           Invalid or ambiguous imported data should be preserved as raw text instead of silently discarded.
@@ -897,18 +897,18 @@ Model:    llama-3.3-70b-versatile`}</pre>
     id: "import-export",
     title: "Import and Export",
     category: "Data",
-    summary: "Adventure JSON, AI Dungeon story imports, and raw fallback behavior.",
-    tags: ["import", "export", "ai dungeon", "json"],
+    summary: "Adventure JSON backup, restore, and raw fallback behavior.",
+    tags: ["import", "export", "aist", "json"],
     body: (
       <>
         <p>
-          Adventure JSON should round-trip through the Import / Export page. AI Dungeon imports accept
-          story text, Story Card JSON, or both. Invalid or ambiguous data should be preserved as raw text
-          rather than silently discarded.
+          Adventure JSON should round-trip through the Import / Export page. AIST backups should
+          preserve transcript, plot blocks, story cards, brains, triggers, and settings, while runtime
+          API keys stay out of exported JSON.
         </p>
         <p>
-          AI Dungeon story text is parsed into messages. Story cards map title, keys, entry/value/content,
-          and type fields into internal StoryCard or Brain candidate shapes.
+          Invalid or ambiguous imported data should be rejected or preserved as raw text rather than
+          silently discarded.
         </p>
       </>
     ),

@@ -11,7 +11,6 @@ import type {
   StoryCardMemoryMode,
   StoryCardType,
 } from "../types/adventure";
-import { AidImportWizard } from "../components/AidImportWizard";
 import type { AdventureSummary } from "../db/adventureDb";
 import { defaultNarrationRulesContent, makeComponent, makeStoryCard } from "../state/defaults";
 import { parseAidStoryCards } from "../importers/aidCardParser";
@@ -247,7 +246,7 @@ export function AdventuresPage({
   premadeAdventures = [],
   onLoadPremadeAdventure,
 }: AdventuresPageProps) {
-  const [view, setView] = useState<"list" | "create" | "aistImport" | "aidImport" | "github" | "premade">("list");
+  const [view, setView] = useState<"list" | "create" | "aistImport" | "github" | "premade">("list");
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
   function toggleExpand(id: string) { setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] })); }
 
@@ -499,9 +498,6 @@ export function AdventuresPage({
             <div className="toolbar">
               <button type="button" onClick={() => setView("aistImport")}>
                 Import from AIST
-              </button>
-              <button type="button" onClick={() => setView("aidImport")}>
-                Import from AI Dungeon
               </button>
               <button type="button" className="primary-action" onClick={createAdventure}>
                 Create Adventure
@@ -841,32 +837,6 @@ export function AdventuresPage({
               </section>
             </div>
           </details>
-        </article>
-      </section>
-    );
-  }
-
-  if (view === "aidImport") {
-    return (
-      <section className="page">
-        <article className="panel">
-          <div className="panel-heading">
-            <div>
-              <p className="eyebrow">Import</p>
-              <h3>Import from AI Dungeon</h3>
-              <p className="muted">
-                Upload your AID export files. Multiple files are read in filename order and merged in sequence.
-              </p>
-            </div>
-          </div>
-          {onCreateAdventureFromImport && (
-            <AidImportWizard
-              onCreateAdventureFromImport={onCreateAdventureFromImport}
-              onComplete={() => setView("list")}
-              onBack={() => setView("list")}
-              backLabel="← Library"
-            />
-          )}
         </article>
       </section>
     );

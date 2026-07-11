@@ -411,11 +411,6 @@ export default function App() {
           <ImportExportPage
             {...common}
             onImportAdventure={library.importAdventure}
-            onCreateAdventureFromImport={library.createAdventureFromImport}
-            onOpenImportedAdventure={() => {
-              setModalTab(undefined);
-              navigateTo("play");
-            }}
           />
         );
       default:

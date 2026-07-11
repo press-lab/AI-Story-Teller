@@ -1,17 +1,13 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { exportAdventureJson } from "../utils/json";
-import type { Adventure } from "../types/adventure";
 import type { AdventurePageProps } from "./pageTypes";
 import { Field } from "./shared";
-import { AidImportWizard } from "../components/AidImportWizard";
 
 interface ImportExportPageProps extends AdventurePageProps {
   onImportAdventure: (text: string) => Promise<void>;
-  onCreateAdventureFromImport: (adventure: Adventure) => Promise<void>;
-  onOpenImportedAdventure: () => void;
 }
 
-type ImportExportMode = "backup" | "restore" | "migrate";
+type ImportExportMode = "backup" | "restore";
 
 type BackupPreview =
   | { status: "empty" }
@@ -32,7 +28,6 @@ type BackupPreview =
 const modeOptions: Array<{ id: ImportExportMode; label: string; description: string }> = [
   { id: "backup", label: "Back Up", description: "Save a complete copy or reusable parts." },
   { id: "restore", label: "Restore", description: "Open a saved adventure backup." },
-  { id: "migrate", label: "Migrate", description: "Convert AI Dungeon material." },
 ];
 
 function download(filename: string, text: string) {
@@ -91,8 +86,6 @@ export function ImportExportPage({
   adventure,
   dispatch,
   onImportAdventure,
-  onCreateAdventureFromImport,
-  onOpenImportedAdventure,
 }: ImportExportPageProps) {
   const [mode, setMode] = useState<ImportExportMode>("backup");
   const [importText, setImportText] = useState("");
@@ -176,7 +169,7 @@ export function ImportExportPage({
     <section className="page editor-surface import-export-page">
       <div className="editor-page-summary">
         <p className="muted">
-          Back up the current adventure, restore a saved JSON file, or migrate an AI Dungeon export into a new adventure.
+          Back up the current adventure or restore a saved AIST JSON file.
           Full backups keep the playable save together; partial exports are for reuse and editing.
         </p>
         <div className="editor-stat-row" aria-label="Adventure export counts">
@@ -317,22 +310,6 @@ export function ImportExportPage({
           </details>
         </article>
         )}
-
-        {mode === "migrate" && (
-          <article className="panel import-export-card import-export-migrate-card">
-            <div className="import-export-card-copy">
-              <p className="eyebrow">migrate</p>
-              <h3>Import from AI Dungeon</h3>
-              <p className="muted">
-                Convert story text, Story Card JSON, and optional plot setup into a new adventure you can review before opening.
-              </p>
-            </div>
-            <AidImportWizard
-              onCreateAdventureFromImport={onCreateAdventureFromImport}
-              onComplete={onOpenImportedAdventure}
-            />
-          </article>
-        )}
       </div>
 
       {rawImportCount > 0 && (
@@ -379,8 +356,4 @@ export function ImportExportPage({
       )}
     </section>
   );
-}
-
-export function assertAdventure(_adventure: Adventure) {
-  return true;
 }

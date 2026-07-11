@@ -163,10 +163,10 @@ function parseCard(raw: unknown, sourceIndex: number): AidParsedCard | AidSkippe
   const suggestionReason = isJsonBrain
     ? "keys field is JSON with an agent property."
     : typedBrain
-      ? "AI Dungeon card type is Brain."
+      ? "Imported card type is Brain."
       : mentionsAgent
         ? "keys field mentions agent; review before importing as a Brain."
-        : "Standard AI Dungeon story card.";
+        : "Standard story card.";
 
   const keys = keysToArray(keysText, brainKeyData);
   const storyCard = makeStoryCard({
@@ -220,7 +220,7 @@ function parseJsonValue(value: unknown): AidCardParseResult {
     return {
       cards: [],
       skipped: [],
-      warnings: ["Valid JSON was found, but it did not contain AI Dungeon story cards."],
+      warnings: ["Valid JSON was found, but it did not contain story cards."],
     };
   }
 
