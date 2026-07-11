@@ -48,7 +48,7 @@ describe("AdventuresPage new adventure setup", () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.clear(screen.getByLabelText("Adventure title"));
     await user.type(screen.getByLabelText("Adventure title"), "Setup Test");
     await user.type(screen.getByPlaceholderText(/The scene opens/), "Rain cuts across the bridge.");
@@ -65,7 +65,7 @@ describe("AdventuresPage new adventure setup", () => {
     const allContentFields = screen.getAllByLabelText("Content");
     await user.type(allContentFields[allContentFields.length - 1], "Margo calls Avery hedge prince as a private joke.");
 
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     const setup = onCreate.mock.calls[0][0];
@@ -94,9 +94,9 @@ describe("AdventuresPage new adventure setup", () => {
       allowDeviceOnlyScenarioCreation: true,
     });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
-    await user.click(screen.getByLabelText("Keep this adventure on this device only"));
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
+    await user.click(screen.getByLabelText("Keep this Story on this device only"));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate.mock.calls[0][1]).toEqual({ deviceOnly: true });
@@ -120,13 +120,13 @@ describe("AdventuresPage new adventure setup", () => {
       { type: "application/json" },
     );
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.upload(screen.getByLabelText("Upload .json file"), file);
 
     await waitFor(() => expect(screen.getByText("1 JSON Reference Card(s) ready")).toBeInTheDocument());
     expect(screen.getByText("Ward Threshold")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     expect(onCreate.mock.calls[0][0].storyCards).toHaveLength(1);
@@ -161,7 +161,7 @@ describe("AdventuresPage new adventure setup", () => {
       />,
     );
 
-    expect(screen.getByText("Loading adventures...")).toBeInTheDocument();
+    expect(screen.getByText("Loading Stories...")).toBeInTheDocument();
 
     rerender(
       <AdventuresPage
@@ -198,13 +198,13 @@ describe("AdventuresPage new adventure setup", () => {
       allowDeviceOnlyScenarioCreation: true,
     });
 
-    await user.click(screen.getByLabelText("Keep this adventure on this device only"));
+    await user.click(screen.getByLabelText("Keep this Story on this device only"));
     await user.click(screen.getByRole("button", { name: "Publish Scenario" }));
 
     expect(onPublish).toHaveBeenCalledWith("adv-local-source", { deviceOnly: true });
   });
 
-  it("imports a full AIST backup from the New Adventure menu", async () => {
+  it("imports a full AIST backup from the New Story menu", async () => {
     const user = userEvent.setup();
     const onImportAdventure = vi.fn(async (_text: string) => undefined);
     const backup = createDefaultAdventure("Long Running Story");
@@ -218,7 +218,7 @@ describe("AdventuresPage new adventure setup", () => {
 
     renderAdventuresPage(undefined, { onImportAdventure });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.click(screen.getByRole("button", { name: "Import from AIST" }));
     await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
 
@@ -242,7 +242,7 @@ describe("AdventuresPage new adventure setup", () => {
 
     renderAdventuresPage(undefined, { onImportAdventure });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.click(screen.getByRole("button", { name: "Import from AIST" }));
     await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
     await user.click(screen.getByRole("button", { name: "Import and Continue" }));
@@ -256,16 +256,16 @@ describe("AdventuresPage new adventure setup", () => {
     const user = userEvent.setup();
     const { onCreate } = renderAdventuresPage();
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.click(screen.getByRole("button", { name: "Add Manual Reference Card" }));
     await user.type(screen.getAllByLabelText("Content").at(-1)!, "A fact that needs to be reachable.");
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     expect(onCreate).not.toHaveBeenCalled();
     expect(screen.getByText(/Add at least one trigger/)).toBeInTheDocument();
 
     await user.click(screen.getAllByLabelText("Pinned").at(-1)!);
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
     expect(onCreate).toHaveBeenCalledTimes(1);
   });
 
@@ -308,7 +308,7 @@ describe("AdventuresPage new adventure setup", () => {
         ],
       });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.click(screen.getByRole("button", { name: "Add Manual Reference Card" }));
     const manualTitle = screen.getAllByLabelText("Title").at(-1)!;
     await user.clear(manualTitle);
@@ -342,7 +342,7 @@ describe("AdventuresPage new adventure setup", () => {
     expect(screen.queryByDisplayValue("Old Ally")).not.toBeInTheDocument();
     expect(screen.getAllByDisplayValue("New Ally")).toHaveLength(1);
 
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
     const setup = onCreate.mock.calls[0][0];
@@ -371,7 +371,7 @@ describe("AdventuresPage new adventure setup", () => {
 
     renderAdventuresPage(undefined, { onGenerateAdventureSetup });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.type(screen.getByLabelText("Premise"), "Make a backend-routed scenario.");
     await user.click(screen.getByRole("button", { name: "Generate" }));
 
@@ -419,7 +419,7 @@ describe("AdventuresPage new adventure setup", () => {
       setupGenerationProviderConfig: privateProvider,
     });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.type(screen.getByLabelText("Premise"), "Make an offline fallback scenario.");
     await user.click(screen.getByRole("button", { name: "Generate" }));
 
@@ -458,7 +458,7 @@ describe("AdventuresPage new adventure setup", () => {
       },
     });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
     await user.type(screen.getByLabelText("Premise"), "Make an offline scenario with no key.");
     await user.click(screen.getByRole("button", { name: "Generate" }));
 
@@ -486,7 +486,8 @@ describe("AdventuresPage new adventure setup", () => {
       storyCards: [],
     });
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
+    await user.click(screen.getByRole("button", { name: "New Story" }));
+    expect(screen.getByRole("radio", { name: /Custom.*No preset guide/ })).not.toHaveAccessibleName(/Storyteller names/);
     await user.click(screen.getByRole("radio", { name: /Mara/ }));
 
     expect(screen.getByLabelText("Story setup")).toHaveValue("romanceDrama");
@@ -628,12 +629,12 @@ describe("AdventuresPage new adventure setup", () => {
       ],
     });
 
-    expect(screen.getByText("Local backup conflict")).toBeInTheDocument();
+    expect(screen.getByText("Save needs attention")).toBeInTheDocument();
     expect(screen.getByText(/Local save is ahead/)).toBeInTheDocument();
-    expect(screen.getByText(/Choose which save should win: this device or the server/)).toBeInTheDocument();
+    expect(screen.getByText(/Both are preserved until you choose/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
-    await user.click(screen.getByRole("button", { name: "Download Server Save" }));
+    await user.click(screen.getByRole("button", { name: "Keep this device's version" }));
+    await user.click(screen.getByRole("button", { name: "Use the server version" }));
 
     expect(onResolveSyncConflict).toHaveBeenNthCalledWith(1, "adv-conflict", "uploadLocal");
     expect(onResolveSyncConflict).toHaveBeenNthCalledWith(2, "adv-conflict", "downloadServer");

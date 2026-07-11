@@ -37,7 +37,7 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
         <h3>Adventure Chronicle — {messages.length} entries</h3>
         <p className="muted">
           Complete story transcript stored locally. Not sent to the AI — only the Recent Messages window
-          and active memory surfaces reach the model. Click any entry to edit.
+          and active memory surfaces reach the model. Use an entry's Edit button to make changes.
         </p>
         <div className="editor-stat-row" aria-label="Chronicle counts">
           <span>{messages.length} entries</span>
@@ -86,12 +86,18 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
               />
             </article>
           ) : (
-            <article
-              key={message.id}
-              className={`chronicle-entry ${message.role}`}
-              onClick={() => setEditingId(message.id)}
-            >
-              <span className="chronicle-role">{message.role}</span>
+            <article key={message.id} className={`chronicle-entry ${message.role}`}>
+              <header className="toolbar chronicle-entry-header">
+                <span className="chronicle-role">{message.role}</span>
+                <button
+                  type="button"
+                  className="chronicle-entry-edit"
+                  aria-label={`Edit chronicle entry ${index + 1}`}
+                  onClick={() => setEditingId(message.id)}
+                >
+                  Edit
+                </button>
+              </header>
               <p className="chronicle-text">{message.content}</p>
             </article>
           ),

@@ -69,6 +69,34 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
   });
 
+  it("stages Reference Card editing around the story memory and progressive disclosures", async () => {
+    const user = userEvent.setup();
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      storyCards: [makeStoryCard({ title: "Morgana", keys: ["Morgana", "Guild"], content: "Morgana leads the lesson." })],
+    };
+
+    renderWithAdventure(
+      (current, dispatch) => <StoryCardsPage adventure={current} dispatch={dispatch} />,
+      adventure,
+    );
+
+    expect(screen.getByRole("heading", { name: "Reference Cards" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Search Reference Cards")).toBeInTheDocument();
+
+    const filters = screen.getByText("Filter and sort").closest("details");
+    expect(filters).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("Morgana", { selector: ".story-card-title" }));
+    expect(screen.getByRole("heading", { name: "Memory the storyteller receives" })).toBeInTheDocument();
+
+    const structuredMemory = screen.getByText("Structured facts (optional)").closest("details");
+    const advanced = screen.getByText("Advanced context and automation").closest("details");
+    expect(structuredMemory).not.toHaveAttribute("open");
+    expect(advanced).not.toHaveAttribute("open");
+    expect(screen.getByDisplayValue("Morgana leads the lesson.")).toBeInTheDocument();
+  });
+
   it("opens and scrolls focused Reference Card and World Block sources", async () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     const scrollIntoView = vi.fn();
@@ -453,7 +481,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
-  it("shows token estimates on plot, card, and brain summaries", () => {
+  it("keeps exact token estimates out of ordinary plot, card, and brain summaries", () => {
     const adventure: Adventure = {
       ...seedAdventure(),
       storyCards: [
@@ -470,19 +498,19 @@ describe("side menu page smoke coverage", () => {
     render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
     const cardRow = screen.getByText("Signal Card", { selector: ".story-card-title" }).closest(".story-card-editor-item");
     expect(cardRow).toBeTruthy();
-    expect(within(cardRow as HTMLElement).getByTitle("Estimated tokens in live card content: 3")).toHaveTextContent("3 tokens");
+    expect(within(cardRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
     cleanup();
 
     render(<ComponentsPage adventure={adventure} dispatch={() => undefined} />);
     const componentRow = screen.getByText("Plot Essentials", { selector: ".story-card-title" }).closest(".component-editor-item");
     expect(componentRow).toBeTruthy();
-    expect(within(componentRow as HTMLElement).getByTitle("Estimated tokens in plot context: 3")).toHaveTextContent("3 tokens");
+    expect(within(componentRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
     cleanup();
 
     render(<BrainsPage adventure={adventure} dispatch={() => undefined} loading={false} onUpdateBrainNow={async () => undefined} />);
     const brainRow = screen.getByText("Margo", { selector: ".story-card-title" }).closest(".brain-item");
     expect(brainRow).toBeTruthy();
-    expect(within(brainRow as HTMLElement).getByTitle("Estimated tokens in live brain thoughts: 5")).toHaveTextContent("5 tokens");
+    expect(within(brainRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
   });
 
   it("edits visible current and archived brain thoughts inline", async () => {

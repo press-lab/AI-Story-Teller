@@ -55,8 +55,8 @@ export interface BackendDb {
   completeIdempotency?(userId: string, operation: string, key: string, state: "succeeded" | "failed", responseStatus: number, responseBody: unknown): Promise<void>;
   consumeRateLimit?(bucketKey: string, limit: number, windowMs: number): Promise<{ allowed: boolean; retryAfterSeconds: number }>;
   readProfileSummary?(userId: string): Promise<BackendProfileSummary>;
-  readPublicProfileSummary?(userId: string): Promise<PublicProfileSummary>;
-  readExploreScenarios?(): Promise<ExploreScenarioSummary[]>;
+  readPublicProfileSummary?(userId: string, viewerUserId: string): Promise<PublicProfileSummary>;
+  readExploreScenarios?(viewerUserId?: string): Promise<ExploreScenarioSummary[]>;
   readAdventureSnapshotSummaries?(ownerUserId: string, adventureId: string): Promise<AdventureSnapshotSummary[]>;
   readAdminConsoleSummary?(config: ApiConfig): Promise<AdminConsoleData>;
   readAdminConsoleDetails?(config: ApiConfig): Promise<AdminConsoleDetailsData>;

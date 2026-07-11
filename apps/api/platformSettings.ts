@@ -27,6 +27,9 @@ export interface PlatformSettings {
     scenarioPublishingEnabled: boolean;
     developerToolsVisibleToAdmins: boolean;
   };
+  administration: {
+    adminEmails: string[];
+  };
   updatedAt?: string;
   updatedByUserId?: string;
 }
@@ -35,6 +38,7 @@ export type PlatformSettingsInput = Partial<{
   provider: Partial<PlatformSettings["provider"]>;
   background: Partial<PlatformSettings["background"]>;
   features: Partial<PlatformSettings["features"]>;
+  administration: Partial<PlatformSettings["administration"]>;
 }>;
 
 export function getPlatformSettings(data: LocalDbData, config: ApiConfig): PlatformSettings {
@@ -55,6 +59,7 @@ export function updatePlatformSettings(
     provider: { ...current.provider, ...(input.provider ?? {}) },
     background: { ...current.background, ...(input.background ?? {}) },
     features: { ...current.features, ...(input.features ?? {}) },
+    administration: { ...current.administration, ...(input.administration ?? {}) },
     updatedAt: nowIso(),
     updatedByUserId,
   });
@@ -119,6 +124,9 @@ function defaultPlatformSettings(config: ApiConfig): PlatformSettings {
       scenarioPublishingEnabled: true,
       developerToolsVisibleToAdmins: true,
     },
+    administration: {
+      adminEmails: config.adminEmails,
+    },
   });
 }
 
@@ -130,6 +138,7 @@ function mergePlatformSettings(defaults: PlatformSettings, record: PlatformSetti
     provider: { ...defaults.provider, ...(value.provider ?? {}) },
     background: { ...defaults.background, ...(value.background ?? {}) },
     features: { ...defaults.features, ...(value.features ?? {}) },
+    administration: { ...defaults.administration, ...(value.administration ?? {}) },
     updatedAt: value.updatedAt ?? record.updatedAt,
     updatedByUserId: value.updatedByUserId ?? record.updatedByUserId,
   });
@@ -160,13 +169,29 @@ function sanitizePlatformSettings(settings: PlatformSettings): PlatformSettings 
       scenarioPublishingEnabled: Boolean(settings.features.scenarioPublishingEnabled),
       developerToolsVisibleToAdmins: Boolean(settings.features.developerToolsVisibleToAdmins),
     },
+    administration: {
+      adminEmails: sanitizeAdminEmails(settings.administration?.adminEmails),
+    },
     updatedAt: settings.updatedAt,
     updatedByUserId: settings.updatedByUserId,
   };
 }
 
+export function effectiveAdminEmails(data: LocalDbData, config: ApiConfig): string[] {
+  return getPlatformSettings(data, config).administration.adminEmails;
+}
+
 function cleanString(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
+}
+
+function sanitizeAdminEmails(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value
+    .filter((email): email is string => typeof email === "string")
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)))]
+    .slice(0, 100);
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {

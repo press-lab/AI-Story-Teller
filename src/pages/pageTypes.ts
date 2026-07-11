@@ -36,7 +36,7 @@ export const defaultUiPreferences: UiPreferences = {
   storyContentWidth: 1400,
   storyContentAlign: "center",
   maxContentWidth: 1100,
-  showTokenEstimates: true,
+  showTokenEstimates: false,
   showAdvancedSettings: false,
 };
 

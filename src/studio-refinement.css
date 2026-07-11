@@ -1,0 +1,528 @@
+/* Story Studio refinement layer.
+ * Import after styles.css. This keeps the dense-directory/selected-editor
+ * behavior while giving World & Lore a calmer story-first hierarchy. */
+
+/* New Story: buttons inherit a global nowrap rule, so wrapping must be explicit. */
+.storyteller-profile-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+  gap: 10px;
+}
+
+.storyteller-profile-button {
+  grid-template-columns: 40px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 132px;
+  gap: 11px;
+  padding: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.storyteller-profile-button > *,
+.storyteller-copy,
+.storyteller-copy > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.storyteller-copy strong,
+.storyteller-copy span,
+.storyteller-copy small {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.storyteller-copy strong {
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+
+.storyteller-copy small {
+  margin-top: 3px;
+  line-height: 1.45;
+}
+
+/* Studio page orientation: name the job before showing controls. */
+.components-page,
+.story-cards-page {
+  gap: 14px;
+}
+
+.components-page .editor-page-summary,
+.story-cards-page .editor-page-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 68%, transparent), transparent 62%),
+    var(--surface);
+}
+
+.editor-page-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.editor-page-copy .eyebrow,
+.editor-page-copy h2,
+.editor-page-copy p {
+  margin: 0;
+}
+
+.editor-page-copy h2 {
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.editor-page-copy .muted {
+  max-width: 70ch;
+  line-height: 1.55;
+}
+
+/* Command bar: one primary action, then optional filters/tools. */
+.components-page .editor-command-bar,
+.story-cards-page .editor-command-bar {
+  position: static;
+  top: auto;
+  z-index: auto;
+  grid-template-columns: minmax(18rem, 1fr) auto;
+  align-items: end;
+  gap: 10px 12px;
+  padding: 11px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--page-bg));
+  box-shadow: 0 8px 24px rgb(24 39 31 / 0.07);
+}
+
+.editor-search-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: var(--label);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.editor-search-field input {
+  min-height: 42px;
+}
+
+.editor-create-action,
+.editor-create-menu > summary {
+  min-height: 42px;
+}
+
+.editor-create-action {
+  align-self: end;
+  min-width: 12rem;
+}
+
+.editor-filter-disclosure {
+  grid-column: 1 / -1;
+  min-width: 0;
+  border-top: 1px solid var(--border);
+}
+
+.editor-filter-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  padding: 8px 2px 0;
+  color: var(--label);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.editor-filter-disclosure > summary .muted {
+  font-weight: 600;
+}
+
+.editor-filter-disclosure .editor-filter-strip {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  justify-content: start;
+  align-items: end;
+  gap: 12px;
+  padding: 10px 0 2px;
+}
+
+.editor-filter-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.editor-filter-group > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.editor-filter-group .sort-toggle button {
+  min-height: 34px;
+  padding: 5px 10px;
+}
+
+.editor-create-menu {
+  position: relative;
+  justify-self: end;
+}
+
+.editor-create-menu > summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12rem;
+  padding: 8px 14px;
+  border: 1px solid var(--active-bg);
+  border-radius: 8px;
+  background: var(--active-bg);
+  color: var(--active-text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 750;
+  list-style: none;
+}
+
+.editor-create-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-create-menu[open] > summary {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--active-bg) 20%, transparent);
+}
+
+.editor-create-options {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 18;
+  display: grid;
+  gap: 6px;
+  width: min(360px, calc(100vw - 44px));
+  max-height: min(68vh, 520px);
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.2);
+}
+
+.editor-create-options button {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 9px 10px;
+  text-align: left;
+  white-space: normal;
+}
+
+.editor-create-options button span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* Dense rows stay directory-like; only the selected item becomes a canvas. */
+.story-cards-page .card-group,
+.components-page .component-group-panel {
+  border-radius: 12px;
+}
+
+.story-cards-page .card-group {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 88%, var(--page-bg));
+}
+
+.story-cards-page .card-group-label {
+  margin: 0;
+  padding: 0 2px 3px;
+  color: var(--label);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.story-cards-page .story-card-editor-list {
+  gap: 7px;
+}
+
+.story-cards-page .story-card-editor-item:not([open]) {
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.story-cards-page .story-card-editor-item:not([open]) > summary {
+  min-height: 48px;
+  padding: 9px 12px;
+}
+
+.story-cards-page .story-card-editor-item[open],
+.components-page .component-editor-item[open] {
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(24 39 31 / 0.09);
+}
+
+.story-card-inspector,
+.component-inspector {
+  width: min(100%, 1120px);
+  margin-inline: auto;
+  padding: 4px 6px 8px;
+}
+
+.story-card-inspector > .grid.story-card-primary-fields {
+  order: 1;
+}
+
+.story-card-inspector > .story-card-primary-fields ~ .item-focus-section.story-card-live-section {
+  order: 2;
+  border-color: color-mix(in srgb, var(--active-bg) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 34%, var(--surface));
+}
+
+.story-card-inspector > .story-card-primary-fields ~ .item-focus-section.story-card-compact-section {
+  order: 3;
+}
+
+.story-card-inspector > .item-focus-section.item-history-section {
+  order: 4;
+}
+
+.story-card-inspector > .item-secondary-details.memory-history-details {
+  order: 5;
+}
+
+.story-card-inspector > .story-card-primary-fields + .item-secondary-details.story-card-trigger-details {
+  order: 6;
+}
+
+.story-card-inspector > .item-secondary-details.story-card-advanced-details {
+  order: 7;
+}
+
+.story-card-compact-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.story-card-compact-section > summary {
+  min-height: 48px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.story-card-compact-section[open] > summary {
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-soft) 72%, var(--surface));
+}
+
+.story-card-compact-fields {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+}
+
+.item-section-helper {
+  margin: -2px 0 2px;
+  line-height: 1.45;
+}
+
+.story-card-live-section textarea,
+.component-inspector .item-focus-section textarea {
+  line-height: 1.6;
+}
+
+.story-card-inspector > .item-secondary-details,
+.component-inspector > .item-secondary-details {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface-soft) 66%, var(--surface));
+  padding: 0;
+}
+
+.story-card-inspector > .item-secondary-details > summary,
+.component-inspector > .item-secondary-details > summary {
+  min-height: 44px;
+  padding: 10px 12px;
+  color: var(--label);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.story-card-inspector > .item-secondary-details[open],
+.component-inspector > .item-secondary-details[open] {
+  padding: 0 12px 12px;
+}
+
+.story-card-inspector > .item-secondary-details[open] > summary,
+.component-inspector > .item-secondary-details[open] > summary {
+  margin: 0 -12px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+@media (max-width: 1040px) {
+  .storyteller-profile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .editor-filter-disclosure .editor-filter-strip {
+    grid-template-columns: repeat(2, minmax(0, max-content));
+  }
+}
+
+@media (max-width: 640px) {
+  .storyteller-profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .storyteller-profile-button {
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .components-page .editor-page-summary,
+  .story-cards-page .editor-page-summary {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    padding: 14px;
+  }
+
+  .components-page .editor-command-bar,
+  .story-cards-page .editor-command-bar {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    padding: 9px;
+  }
+
+  .editor-create-action,
+  .editor-create-menu,
+  .editor-create-menu > summary {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .editor-create-menu {
+    position: static;
+  }
+
+  .editor-create-options {
+    position: static;
+    width: 100%;
+    max-height: none;
+    margin-top: 8px;
+    box-shadow: none;
+  }
+
+  .editor-filter-disclosure {
+    grid-column: 1;
+  }
+
+  .editor-filter-disclosure .editor-filter-strip {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .editor-filter-group .sort-toggle {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+    width: 100%;
+  }
+
+  .editor-filter-group .sort-toggle button {
+    min-height: 42px;
+    white-space: normal;
+  }
+
+  .story-cards-page .card-group {
+    padding: 8px;
+  }
+
+  .story-card-inspector,
+  .component-inspector {
+    width: 100%;
+    padding-inline: 0;
+  }
+
+  .story-card-inspector > .grid.story-card-primary-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The Play companion pane retains its compact treatment; this file targets Studio. */
+.play-sidebar-panel-body .components-page .editor-page-summary,
+.play-sidebar-panel-body .story-cards-page .editor-page-summary {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.play-sidebar-panel-body .editor-page-copy .eyebrow,
+.play-sidebar-panel-body .editor-page-copy h2 {
+  display: none;
+}
+
+.play-sidebar-panel-body .components-page .editor-command-bar,
+.play-sidebar-panel-body .story-cards-page .editor-command-bar {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  padding: 7px;
+  box-shadow: none;
+}
+
+.play-sidebar-panel-body .editor-create-action,
+.play-sidebar-panel-body .editor-create-menu,
+.play-sidebar-panel-body .editor-create-menu > summary {
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+}
+
+.play-sidebar-panel-body .editor-create-menu {
+  position: static;
+}
+
+.play-sidebar-panel-body .editor-create-options {
+  position: static;
+  width: 100%;
+  max-height: none;
+  margin-top: 7px;
+  box-shadow: none;
+}
+
+.play-sidebar-panel-body .editor-filter-disclosure {
+  grid-column: 1;
+}
+
+.play-sidebar-panel-body .editor-filter-disclosure .editor-filter-strip {
+  grid-template-columns: minmax(0, 1fr);
+}

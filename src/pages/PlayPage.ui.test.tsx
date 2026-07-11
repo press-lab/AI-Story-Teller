@@ -20,6 +20,19 @@ global.IntersectionObserver = class {
 Element.prototype.scrollBy = () => {};
 Element.prototype.scrollIntoView = () => {};
 
+const draftStorage = new Map<string, string>();
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  value: {
+    get length() { return draftStorage.size; },
+    clear() { draftStorage.clear(); },
+    getItem(key: string) { return draftStorage.get(key) ?? null; },
+    key(index: number) { return [...draftStorage.keys()][index] ?? null; },
+    removeItem(key: string) { draftStorage.delete(key); },
+    setItem(key: string, value: string) { draftStorage.set(key, String(value)); },
+  } satisfies Storage,
+});
+
 const originalInnerWidth = window.innerWidth;
 const originalMatchMedia = window.matchMedia;
 const timestamp = "2026-01-01T00:00:00.000Z";
@@ -47,7 +60,10 @@ function setMobileComposerViewport() {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
-    value: vi.fn((query: string) => mediaQueryList(query, query.includes("max-width: 640px") || query.includes("pointer: coarse"))),
+    value: vi.fn((query: string) => mediaQueryList(
+      query,
+      query.includes("max-width: 640px") || query.includes("max-width: 860px") || query.includes("pointer: coarse"),
+    )),
   });
 }
 
@@ -102,6 +118,7 @@ function StatefulPlayPage({
 describe("PlayPage AID-style controls", () => {
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     restoreViewport();
   });
 
@@ -139,11 +156,13 @@ describe("PlayPage AID-style controls", () => {
 
   it("collapses the composer after desktop Enter while keeping submitted text until the turn resolves", async () => {
     const user = userEvent.setup();
+    const adventure = playAdventure();
+    const draftKey = `play-input-draft-${adventure.id}`;
     let resolveSubmit: (() => void) | undefined;
     const onSubmitTurn = vi.fn<SubmitTurnHandler>(() => new Promise<void>((resolve) => {
       resolveSubmit = resolve;
     }));
-    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+    render(<StatefulPlayPage initialAdventure={adventure} onSubmitTurn={onSubmitTurn} />);
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     const input = screen.getByPlaceholderText("What does your character do?");
@@ -152,8 +171,11 @@ describe("PlayPage AID-style controls", () => {
 
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
     expect(input).toHaveValue("draw your sword");
+    expect(localStorage.getItem(draftKey)).toBe("draw your sword");
     expect(input.closest(".composer")).toHaveClass("composer-input-closed");
     expect(screen.getByRole("button", { name: "Take a Turn" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
@@ -162,6 +184,23 @@ describe("PlayPage AID-style controls", () => {
 
     resolveSubmit?.();
     await waitFor(() => expect(input).toHaveValue(""));
+    expect(localStorage.getItem(draftKey)).toBeNull();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+  });
+
+  it("uses Shift+Enter for a desktop newline without submitting", async () => {
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+
+    expect(onSubmitTurn).not.toHaveBeenCalled();
+    expect(input).toHaveValue("draw your sword\n");
   });
 
   it("does not submit with Enter in the mobile composer", async () => {
@@ -208,10 +247,12 @@ describe("PlayPage AID-style controls", () => {
   it("keeps mobile turn text after a rejected submit", async () => {
     setMobileComposerViewport();
     const user = userEvent.setup();
+    const adventure = playAdventure();
+    const draftKey = `play-input-draft-${adventure.id}`;
     const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => {
       throw new Error("Network failed");
     });
-    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+    render(<StatefulPlayPage initialAdventure={adventure} onSubmitTurn={onSubmitTurn} />);
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     const input = screen.getByPlaceholderText("What does your character do?");
@@ -222,6 +263,91 @@ describe("PlayPage AID-style controls", () => {
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
     expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
     expect(input).toHaveValue("draw your sword");
+    expect(localStorage.getItem(draftKey)).toBe("draw your sword");
+  });
+
+  it("keeps every essential story destination reachable from the mobile Story tools sheet", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    const onOpenPlayTool = vi.fn();
+    const onOpenTab = vi.fn();
+    const onBuildContext = vi.fn();
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={onBuildContext}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+        onOpenTab={onOpenTab}
+        onOpenPlayTool={onOpenPlayTool}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Story tools" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    const sheet = screen.getByRole("region", { name: "Story tools" });
+    await user.click(within(sheet).getByRole("button", { name: "Story & Direction" }));
+    await user.click(within(sheet).getByRole("button", { name: "World & Lore" }));
+    await user.click(within(sheet).getByRole("button", { name: "Characters" }));
+    await user.click(within(sheet).getByRole("button", { name: "Suggestions" }));
+    await user.click(within(sheet).getByRole("button", { name: "Context details" }));
+
+    expect(onOpenPlayTool.mock.calls.map(([destination]) => destination)).toEqual([
+      "components",
+      "storyCards",
+      "brains",
+      "memoryInbox",
+      "context",
+    ]);
+    expect(onBuildContext).toHaveBeenCalledTimes(1);
+
+    await user.click(within(sheet).getByRole("button", { name: "Studio / Edit all" }));
+    expect(onOpenTab).toHaveBeenCalledWith("edit");
+  });
+
+  it("makes Edit and Delete reachable from a touch-friendly mobile message action control", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    const assistantMessage = screen.getByText("Rain waits outside.").closest("article");
+    expect(assistantMessage).toBeTruthy();
+    const actionTrigger = within(assistantMessage as HTMLElement).getByRole("button", { name: "Story entry actions" });
+    expect(actionTrigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(actionTrigger);
+
+    expect(actionTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(within(assistantMessage as HTMLElement).getByRole("button", { name: "Edit" })).toBeVisible();
+    expect(within(assistantMessage as HTMLElement).getByRole("button", { name: "Delete" })).toBeVisible();
+  });
+
+  it("announces a plain-language generation status beside the composer", () => {
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={() => undefined}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Writing the next scene...");
   });
 
   it("renders runtime errors inside the story frame before transcript text", () => {
@@ -341,7 +467,7 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    const contextBtn = screen.getAllByRole("button", { name: "Context" })[0];
+    const contextBtn = screen.getAllByRole("button", { name: "Context details" })[0];
     await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");

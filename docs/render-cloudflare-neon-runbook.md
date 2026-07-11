@@ -20,12 +20,15 @@ Pre-Deploy Command: blank
 Start Command: npm run api:hosted:free
 Health Check Path: /readyz
 AIST_EMAIL_DELIVERY_MODE=disabled
+AIST_PASSWORD_SIGNUP_MODE=trustedInvite
 AIST_POLICY_MODE=reviewOnly
 ```
 
 `api:hosted:free` serializes compiled migrations before listening. The live
 dashboard was reconciled to these values on July 10, 2026; keep it aligned and
-keep public signup disabled. Do not use fake email credentials.
+keep account creation impossible without a valid invite. `trustedInvite`
+creates an active, unverified account and session; password recovery and email
+verification delivery remain disabled. Do not use fake email credentials.
 
 ## Render Web Service
 
@@ -69,6 +72,8 @@ AIST_PROVIDER_BASE_URL=https://api.deepseek.com
 AIST_PROVIDER_MODEL=deepseek-chat
 AIST_PROVIDER_API_KEY=<provider secret>
 AIST_POLICY_MODE=reviewOnly
+AIST_PASSWORD_SIGNUP_MODE=emailVerification
+AIST_EMAIL_DELIVERY_MODE=resend
 AIST_API_ALLOW_LOCAL_GOOGLE_STUB=false
 AIST_GOOGLE_CLIENT_ID=<Google OAuth client id>
 AIST_GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
@@ -102,7 +107,7 @@ not increase it to accept arbitrary client-supplied forwarding chains.
 | `AIST_API_ALLOWED_ORIGINS` | Render | No | Required exact comma-separated Pages origins; no wildcards |
 | `AIST_WEB_APP_URL` | Render | No | Required canonical Pages URL for auth links/redirects |
 | `AIST_API_ADMIN_KEY` | Render | Yes | Optional break-glass admin credential |
-| `AIST_ADMIN_EMAILS` | Render | Sensitive | Required owner/admin email allowlist |
+| `AIST_ADMIN_EMAILS` | Render | Sensitive | Optional bootstrap/repair admin email list. Durable admin roles live in backend data (`users.role`) and can be managed from Admin Console. |
 | `AIST_API_ALLOW_LOCAL_GOOGLE_STUB` | Render | No | Required: `false` |
 | `AIST_GOOGLE_CLIENT_ID` | Render/Google | Sensitive | Required for Google sign-in |
 | `AIST_GOOGLE_CLIENT_SECRET` | Render/Google | Yes | Required for Google sign-in |
@@ -124,6 +129,7 @@ not increase it to accept arbitrary client-supplied forwarding chains.
 | `AIST_PROVIDER_OPENROUTER_DATA_COLLECTION` | Render | No | Optional: `allow` or `deny` |
 | `AIST_POLICY_MODE` | Render | No | `reviewOnly` until owner approval, then `enforce` |
 | `AIST_EMAIL_DELIVERY_MODE` | Render | No | Current UAT: `disabled`; later production: `resend` |
+| `AIST_PASSWORD_SIGNUP_MODE` | Render | No | `disabled`, `emailVerification` (default), or current UAT `trustedInvite`; every mode requires an invite |
 | `RESEND_API_KEY` | Render/Resend | Yes | Required for hosted verification/reset email |
 | `AIST_EMAIL_FROM` | Render/Resend | No | Required verified sender |
 
@@ -135,9 +141,14 @@ Production and preview Pages origins must also be listed explicitly in
 Leave `AIST_API_PORT` unset on Render. Render provides `PORT`, and
 `api:hosted` uses it.
 
-`AIST_EMAIL_FROM` must use a sender/domain verified in Resend. Hosted startup
-refuses to run without both email variables because password signup and reset no
-longer expose tokens through HTTP responses.
+`AIST_EMAIL_FROM` must use a sender/domain verified in Resend. Hosted
+`emailVerification` signup refuses to run without complete Resend delivery
+configuration because tokens are never exposed through HTTP responses.
+`trustedInvite` is valid only with disabled email and `reviewOnly`; it leaves
+recovery and verification delivery unavailable. Configured or database-stored
+bootstrap admin emails grant admin only after the account email has been
+verified. Once granted, `users.role` is the durable source of truth; removing an
+email from configuration must not silently demote an existing admin.
 
 After Render deploys, verify the temporary Render URL first:
 
@@ -208,6 +219,9 @@ Launch settings:
 ```text
 Invite-only: yes
 AIST_POLICY_MODE=reviewOnly
+AIST_EMAIL_DELIVERY_MODE=disabled
+AIST_PASSWORD_SIGNUP_MODE=trustedInvite
+Password recovery and email verification delivery: unavailable
 Production traffic: hosted Render API + Neon Postgres
 Owner local backend/watchdog: rollback only until hosted path is stable
 Browser Local / personal models: keep available as the existing fallback path

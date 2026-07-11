@@ -6,6 +6,8 @@ import { defaultGitHubSaveSettings } from "./sync/githubSaves";
 import { useGitHubSaves } from "./hooks/useGitHubSaves";
 import { useGitHubSaveLoad } from "./hooks/useGitHubSaveLoad";
 import { GitHubSaveConflictDialog } from "./components/GitHubSaveConflictDialog";
+import { ProductNavigation, type ProductDestination } from "./components/ProductNavigation";
+import { AccessibleDialog } from "./components/AccessibleDialog";
 import { createDefaultAdventure, defaultModelConfig } from "./state/defaults";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useAdventureRuntime } from "./hooks/useAdventureRuntime";
@@ -61,6 +63,7 @@ import {
   disableBackendInvite,
   exchangeBackendGoogleOAuth,
   exportBackendAccount,
+  followBackendProfile,
   forkBackendScenarioRevision,
   generateBackendAdventureSetup,
   generateBackendBrain,
@@ -75,11 +78,15 @@ import {
   loadBackendPublicProfile,
   loadBackendScenarioRevisionEditorCopy,
   loadBackendSession,
+  likeBackendScenario,
   logoutBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   confirmBackendPasswordReset,
   requestBackendPasswordReset,
+  requestBackendFriend,
+  acceptBackendFriend,
+  removeBackendFriend,
   restoreBackendAdventureSnapshot,
   revokeAllBackendSessions,
   reconcileBackendMemory,
@@ -88,8 +95,12 @@ import {
   suggestBackendStoryCardUpdates,
   startBackendGoogleOAuth,
   unpublishBackendScenarioRevision,
+  unfollowBackendProfile,
+  unlikeBackendScenario,
+  updateBackendSocialVisibility,
   updateBackendBrain,
   updateBackendAdminSafetyEventStatus,
+  updateBackendAdminUserRole,
   updateBackendAdminUserStatus,
   verifyBackendEmail,
   type BackendAdminConsoleData,
@@ -140,16 +151,32 @@ type EditorFocusTarget = {
 
 type BackendModelMode = "platform" | "personal";
 
+const failClosedBackendCapabilities: BackendCapabilities = {
+  passwordLogin: false,
+  passwordSignup: false,
+  inviteRequired: true,
+  passwordReset: false,
+  emailVerificationDelivery: false,
+  googleOAuth: false,
+};
+
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
-  { id: "components", label: "Plot" },
-  { id: "storyCards", label: "Reference Cards" },
+  { id: "components", label: "Story & Direction" },
+  { id: "storyCards", label: "World & Lore" },
   { id: "brains", label: "Characters" },
-  { id: "memoryInbox", label: "Memory", badge: "memory" },
-  { id: "chronicle", label: "Chronicle" },
+  { id: "memoryInbox", label: "Suggestions", badge: "memory" },
+  { id: "chronicle", label: "History" },
   { id: "triggers", label: "Automation" },
-  { id: "context", label: "Context" },
-  { id: "importExport", label: "Import / Export" },
+  { id: "context", label: "Context Inspector" },
+  { id: "importExport", label: "Backups & Transfer" },
 ];
+
+const studioTabs = editorTabs.filter((tab) =>
+  tab.id === "components"
+  || tab.id === "storyCards"
+  || tab.id === "brains"
+  || tab.id === "memoryInbox",
+);
 
 const editorTabIds = new Set<TabId>(editorTabs.map((tab) => tab.id));
 
@@ -166,17 +193,31 @@ const modalTabs = new Set<TabId>([
 ]);
 
 const modalTitles: Partial<Record<TabId, string>> = {
-  context: "Context",
-  chronicle: "Adventure Chronicle",
-  components: "Plot",
-  storyCards: "Reference Cards",
+  context: "Context Inspector",
+  chronicle: "History",
+  components: "Story & Direction",
+  storyCards: "World & Lore",
   brains: "Characters",
-  triggers: "Automations",
-  memoryInbox: "Memory Suggestions",
+  triggers: "Automation",
+  memoryInbox: "Suggestions",
   cloudSaves: "GitHub Saves",
   settings: "Settings",
-  importExport: "Import / Export",
+  importExport: "Backups & Transfer",
 };
+
+function productDestinationFor(tab: TabId, editorTab: EditorTabId): ProductDestination {
+  if (tab === "explore") return "explore";
+  if (tab === "play") return "play";
+  if (tab === "settings") return "settings";
+  if (tab === "help") return "help";
+  if (tab === "admin") return "admin";
+  const activeEditorTab = tab === "edit" ? editorTab : tab;
+  if (activeEditorTab === "chronicle") return "history";
+  if (activeEditorTab === "importExport" || activeEditorTab === "cloudSaves") return "backups";
+  if (activeEditorTab === "triggers" || activeEditorTab === "context") return "studio";
+  if (tab === "edit" || activeEditorTab === "components" || activeEditorTab === "storyCards" || activeEditorTab === "brains" || activeEditorTab === "memoryInbox") return "studio";
+  return "home";
+}
 
 const providerInitial: RuntimeProviderSettings = {
   ...defaultModelConfig,
@@ -320,14 +361,17 @@ export default function App() {
   const { confirmAction, notify } = useActionFeedback();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
+  const [advancedStoryToolsOpen, setAdvancedStoryToolsOpen] = useState(false);
   const [editorFocusTarget, setEditorFocusTarget] = useState<EditorFocusTarget | undefined>();
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
-  const [navForceVisible, setNavForceVisible] = useState(false);
-  const [openAdventureNavCollapsed, setOpenAdventureNavCollapsed] = useState(false);
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
+
+  useEffect(() => {
+    if (editorTab === "triggers" || editorTab === "context") setAdvancedStoryToolsOpen(true);
+  }, [editorTab]);
   const [providerPresets, setProviderPresets] = useLocalStorage<ProviderPreset[]>(
     "ai-story-teller-provider-presets",
     [],
@@ -360,13 +404,7 @@ export default function App() {
     "ai-story-teller-backend-session",
     null,
   );
-  const [backendCapabilities, setBackendCapabilities] = useState<BackendCapabilities>({
-    passwordLogin: true,
-    passwordSignup: true,
-    passwordReset: true,
-    emailVerificationDelivery: true,
-    googleOAuth: true,
-  });
+  const [backendCapabilities, setBackendCapabilities] = useState<BackendCapabilities>(failClosedBackendCapabilities);
   const [backendModelMode, setBackendModelMode] = useLocalStorage<BackendModelMode>(
     "ai-story-teller-backend-model-mode",
     "platform",
@@ -475,6 +513,7 @@ export default function App() {
   useEffect(() => {
     if (normalizedRuntimeConfig.mode === "local") return;
     let cancelled = false;
+    setBackendCapabilities(failClosedBackendCapabilities);
     void loadBackendCapabilities(normalizedRuntimeConfig)
       .then((capabilities) => { if (!cancelled) setBackendCapabilities(capabilities); })
       .catch(() => undefined);
@@ -494,20 +533,20 @@ export default function App() {
       : undefined,
     [backendAdventureDataReady, backendSession, normalizedRuntimeConfig],
   );
-  const adventureStore = !accountReady
-    ? unavailableBackendStore
-    : adminDeviceOnlyDataActive
+  const adventureStore = !backendMode
+    ? localAdventureStore
+    : !accountReady
+      ? unavailableBackendStore
+      : adminDeviceOnlyDataActive
       ? adminDeviceOnlyAdventureStore
-      : backendMode
-      ? (backendAdventureStore ?? unavailableBackendStore)
-      : localAdventureStore;
-  const storageLabel = !accountReady
-    ? "your signed-in account"
-    : adminDeviceOnlyDataActive
+      : (backendAdventureStore ?? unavailableBackendStore);
+  const storageLabel = !backendMode
+    ? "this browser"
+    : !accountReady
+      ? "your signed-in account"
+      : adminDeviceOnlyDataActive
       ? "this device"
-      : backendMode
-        ? "the local backend"
-        : "IndexedDB";
+      : "your account";
   const backendTurnRunner = useMemo(
     () => backendAdventureDataReady && backendSession
       ? createBackendTurnRunner(
@@ -587,11 +626,6 @@ export default function App() {
   }, [normalizedRuntimeConfig, setBackendSession]);
 
   useEffect(() => {
-    if (backendSession || normalizedRuntimeConfig.mode !== "local") return;
-    setRuntimeConfig({ ...normalizedRuntimeConfig, mode: "backendLocal" });
-  }, [backendSession, normalizedRuntimeConfig, setRuntimeConfig]);
-
-  useEffect(() => {
     if (normalizedRuntimeConfig.mode === "local" || !backendSession?.sessionToken) return;
     let cancelled = false;
     void loadBackendSession(normalizedRuntimeConfig, backendSession)
@@ -651,15 +685,6 @@ export default function App() {
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [playPanelTab]);
-
-  // Reset nav visibility each time the user enters the play tab
-  useEffect(() => {
-    if (activeTab !== "play") setNavForceVisible(false);
-  }, [activeTab]);
-
-  useEffect(() => {
-    setOpenAdventureNavCollapsed(false);
-  }, [adventure?.id]);
 
   // Browser back/forward support
   useEffect(() => {
@@ -729,6 +754,31 @@ export default function App() {
     }
     setModalTab(undefined);
     navigateTo(tabId);
+  }
+
+  function navigateProduct(destination: ProductDestination) {
+    if (destination === "home") {
+      setBackendPublicProfileUserId(null);
+      setBackendPublicProfile(undefined);
+      openTab("profile");
+      return;
+    }
+    if (destination === "explore" || destination === "settings" || destination === "help" || destination === "admin") {
+      openTab(destination);
+      return;
+    }
+    if (!adventure) return;
+    if (destination === "play") {
+      openTab("play");
+      return;
+    }
+    if (destination === "studio") {
+      const currentStudioTab = studioTabs.some((tab) => tab.id === editorTab) ? editorTab : "components";
+      openEditor(currentStudioTab);
+      return;
+    }
+    if (destination === "history") openEditor("chronicle");
+    if (destination === "backups") openEditor("importExport");
   }
 
   const library = useAdventureLibrary(
@@ -943,6 +993,79 @@ export default function App() {
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
 
+  const toggleBackendScenarioLike = useCallback(async (scenarioId: string, liked: boolean) => {
+    if (!backendReady || !backendSession) {
+      setBackendExploreStatus("Sign in to like Community Scenarios.");
+      return;
+    }
+    const setStatus = activeTab === "explore" ? setBackendExploreStatus : setBackendProfileStatus;
+    setStatus(liked ? "Saving like..." : "Removing like...");
+    try {
+      if (liked) await likeBackendScenario(normalizedRuntimeConfig, backendSession, scenarioId);
+      else await unlikeBackendScenario(normalizedRuntimeConfig, backendSession, scenarioId);
+      await refreshBackendExploreScenarios();
+      if (backendPublicProfileUserId) await refreshBackendPublicProfile(backendPublicProfileUserId);
+      setStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update this like.";
+      setStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [
+    activeTab,
+    backendPublicProfileUserId,
+    backendReady,
+    backendSession,
+    normalizedRuntimeConfig,
+    notify,
+    refreshBackendExploreScenarios,
+    refreshBackendPublicProfile,
+  ]);
+
+  const refreshSocialProfiles = useCallback(async (publicUserId?: string) => {
+    await refreshBackendProfile();
+    const nextPublicUserId = publicUserId ?? backendPublicProfileUserId ?? undefined;
+    if (nextPublicUserId) await refreshBackendPublicProfile(nextPublicUserId);
+  }, [backendPublicProfileUserId, refreshBackendProfile, refreshBackendPublicProfile]);
+
+  const runBackendSocialAction = useCallback(async (
+    progressMessage: string,
+    action: () => Promise<unknown>,
+    publicUserId?: string,
+  ) => {
+    if (!backendReady || !backendSession) {
+      setBackendProfileStatus("Sign in to manage connections.");
+      return;
+    }
+    setBackendProfileStatus(progressMessage);
+    try {
+      await action();
+      await refreshSocialProfiles(publicUserId);
+      setBackendProfileStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update this connection.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [backendReady, backendSession, notify, refreshSocialProfiles]);
+
+  const updateSocialVisibility = useCallback(async (visibility: Parameters<typeof updateBackendSocialVisibility>[2]) => {
+    if (!backendReady || !backendSession) {
+      setBackendProfileStatus("Sign in to change profile visibility.");
+      return;
+    }
+    setBackendProfileStatus("Saving profile visibility...");
+    try {
+      const profile = await updateBackendSocialVisibility(normalizedRuntimeConfig, backendSession, visibility);
+      setBackendProfile(profile);
+      setBackendProfileStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save profile visibility.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig, notify]);
+
   const refreshBackendAdminConsole = useCallback(async () => {
     if (!backendReady || !backendSession || backendSession.user.role !== "admin") {
       backendAdminRefreshIdRef.current += 1;
@@ -987,6 +1110,19 @@ export default function App() {
       setBackendAdminStatus("User status updated.");
     } catch (error) {
       setBackendAdminStatus(error instanceof Error ? error.message : "User status update failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
+  const setBackendAdminUserRole = useCallback(async (userId: string, role: "user" | "admin") => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Saving user role...");
+    try {
+      const result = await updateBackendAdminUserRole(normalizedRuntimeConfig, backendSession, userId, role);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("User role updated.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "User role update failed.");
       throw error;
     }
   }, [backendSession, normalizedRuntimeConfig]);
@@ -1042,7 +1178,7 @@ export default function App() {
         setBackendAdminConsole({ ...consoleData, ...details });
       }
       setBackendAdminStatus("Invite created.");
-      return { token: result.token };
+      return { token: result.token, inviteUrl: result.inviteUrl };
     } catch (error) {
       setBackendAdminStatus(error instanceof Error ? error.message : "Invite creation failed.");
       throw error;
@@ -1559,7 +1695,7 @@ export default function App() {
   }
 
   const pendingProposalCount = adventure?.activeState.memoryProposals.filter((p) => p.status === "pending").length ?? 0;
-  const visibleEditorTabs = editorTabs;
+  const visibleEditorTabs = studioTabs;
   const currentAdventureSummary = adventure ? library.adventures.find((entry) => entry.id === adventure.id) : undefined;
   const currentAdventureHasSyncConflict =
     currentAdventureSummary?.syncStatus === "conflict" || /local backup conflict/i.test(saveStatus);
@@ -1611,8 +1747,8 @@ export default function App() {
           : undefined}
         embedded={embedded}
         headingEyebrow="Library"
-        headingTitle={embedded ? "Adventure Library" : "Choose an adventure"}
-        headingDescription="Continue a saved story, duplicate a setup, import a save, or start a new world."
+        headingTitle={embedded ? "Your Stories" : "Choose a Story"}
+        headingDescription="Continue where you left off or start something new. Backups, publishing, and transfer tools stay under More."
       />
     );
   }
@@ -1633,6 +1769,7 @@ export default function App() {
           onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
           onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
+          onToggleScenarioLike={backendAdventureDataReady ? toggleBackendScenarioLike : undefined}
         />
       );
     }
@@ -1688,6 +1825,45 @@ export default function App() {
           }}
           onOpenAdmin={isBackendAdmin ? () => openTab("admin") : undefined}
           onOpenHelp={() => openTab("help")}
+          onOpenExplore={() => openTab("explore")}
+          onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
+          onToggleScenarioLike={backendAdventureDataReady ? toggleBackendScenarioLike : undefined}
+          onFollowProfile={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Following profile...",
+              () => followBackendProfile(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onUnfollowProfile={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Unfollowing profile...",
+              () => unfollowBackendProfile(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onRequestFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Sending friend request...",
+              () => requestBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onAcceptFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Accepting friend request...",
+              () => acceptBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              showingPublicProfile ? userId : undefined,
+            );
+          } : undefined}
+          onRemoveFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Removing friend...",
+              () => removeBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              showingPublicProfile ? userId : undefined,
+            );
+          } : undefined}
+          onUpdateSocialVisibility={backendAdventureDataReady ? updateSocialVisibility : undefined}
           onLogout={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
@@ -1708,6 +1884,7 @@ export default function App() {
           status={backendAdminStatus}
           onRefresh={refreshBackendAdminConsole}
           onSetUserStatus={setBackendAdminUserStatus}
+          onSetUserRole={setBackendAdminUserRole}
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
           onCreateInvite={createBackendAdminInviteLink}
@@ -1779,7 +1956,15 @@ export default function App() {
     if (!adventure) {
       return (
         <section className="page">
-          <p className="muted">Open an adventure from the Adventures page to get started.</p>
+          <div className="empty-state-card">
+            <p className="eyebrow">No story open</p>
+            <h2>Choose a story to begin</h2>
+            <p className="muted">Open one from Home or discover a new Scenario in Explore.</p>
+            <div className="toolbar">
+              <button type="button" className="primary-action" onClick={() => openTab("profile")}>Go to Home</button>
+              <button type="button" onClick={() => openTab("explore")}>Explore Scenarios</button>
+            </div>
+          </div>
         </section>
       );
     }
@@ -1840,12 +2025,17 @@ export default function App() {
           <section className="page editor-workspace">
             <header className="editor-header panel">
               <div className="editor-title-block">
+                <div className="editor-title-copy">
+                  <p className="eyebrow">Story Studio</p>
                 <input
                   className="editor-title-input"
                   value={adventure.title}
                   onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
-                  placeholder="Adventure title"
+                    aria-label="Story title"
+                  placeholder="Story title"
                 />
+                  <p className="muted">Shape the story, people, world, and suggestions without leaving the current Story.</p>
+                </div>
                 <AdventureThumbnailPicker
                   thumbnail={getAdventureThumbnail(adventure)}
                   title={adventure.title}
@@ -1873,6 +2063,38 @@ export default function App() {
                 );
               })}
             </nav>
+            <details
+              className="studio-advanced-tools"
+              open={advancedStoryToolsOpen}
+              onToggle={(event) => setAdvancedStoryToolsOpen(event.currentTarget.open)}
+            >
+              <summary>Advanced Story Tools</summary>
+              <div className="studio-advanced-tool-actions">
+                <button
+                  type="button"
+                  className={editorTab === "triggers" ? "active" : ""}
+                  onClick={() => setEditorTab("triggers")}
+                >
+                  Automation
+                </button>
+                <button
+                  type="button"
+                  className={editorTab === "context" ? "active" : ""}
+                  onClick={() => setEditorTab("context")}
+                >
+                  Context Inspector
+                </button>
+              </div>
+            </details>
+            {!studioTabs.some((tab) => tab.id === editorTab) && (
+              <div className="advanced-tool-banner" role="status">
+                <div>
+                  <p className="eyebrow">Advanced story tool</p>
+                  <strong>{modalTitles[editorTab] ?? "Advanced"}</strong>
+                </div>
+                <button type="button" onClick={() => setEditorTab("components")}>Back to Story Studio</button>
+              </div>
+            )}
             <div className="editor-body">{renderAdventureTool(editorTab)}</div>
           </section>
         );
@@ -1891,17 +2113,46 @@ export default function App() {
     }
   })();
 
-  const activeTopTab = editorTabIds.has(activeTab) ? "edit" : activeTab === "adventures" ? "profile" : activeTab;
-  const navHidden = activeTab === "play" && !navForceVisible;
+  const activeProductDestination = productDestinationFor(activeTab, editorTab);
+  const pageTitle: Record<ProductDestination, string> = {
+    home: backendPublicProfileUserId && backendPublicProfileUserId !== backendSession?.user.id ? "Creator Profile" : "Home",
+    explore: "Explore",
+    play: "Play",
+    studio: studioTabs.some((tab) => tab.id === editorTab) ? "Story Studio" : (modalTitles[editorTab] ?? "Story Studio"),
+    history: "History",
+    backups: "Backups & Transfer",
+    settings: "Settings",
+    help: "Help",
+    admin: "Admin",
+  };
+  const normalizedSaveStatus = saveStatus.trim().toLowerCase();
+  const saveStatusLabel = normalizedSaveStatus === "saved"
+    ? "Saved"
+    : normalizedSaveStatus === "saving"
+      ? "Saving..."
+      : normalizedSaveStatus === "idle"
+        ? "Ready"
+        : /conflict|failed|error/.test(normalizedSaveStatus)
+          ? "Save needs attention"
+          : saveStatus;
 
-  if (!backendSession?.sessionToken) {
+  if (backendMode && !backendSession?.sessionToken) {
     return (
       <WelcomePage
         capabilities={backendCapabilities}
-        onSignupPassword={(input) => signupBackendPassword(
-          { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
-          input,
-        )}
+        onSignupPassword={async (input) => {
+          const result = await signupBackendPassword(
+            { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
+            input,
+          );
+          if (!result.verificationRequired) {
+            setBackendPublicProfileUserId(null);
+            setBackendPublicProfile(undefined);
+            setBackendSession(result);
+            navigateTo("profile");
+          }
+          return result;
+        }}
         onVerifyEmail={async (token) => {
           const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
           setBackendPublicProfileUserId(null);
@@ -1926,140 +2177,44 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell${navHidden ? " nav-hidden" : ""}`}>
-      {navHidden && (
-        <button type="button" className="nav-show-btn" onClick={() => setNavForceVisible(true)} title="Show navigation">
-          Menu
-        </button>
-      )}
+    <div className={`app-shell destination-${activeProductDestination}`}>
+      <ProductNavigation
+        active={activeProductDestination}
+        currentStoryTitle={adventure?.title}
+        pendingSuggestions={pendingProposalCount}
+        isAdmin={isBackendAdmin}
+        onNavigate={navigateProduct}
+      />
       <header className="app-header">
         <div className="app-title">
           <button type="button" className="app-title-button" onClick={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
             openTab("profile");
-          }}>
-            <span className="app-brand">AI Story Teller</span>
-            {adventure && activeTab === "play" && <span className="muted">{adventure.title}</span>}
+          }} aria-label="Go to Home">
+            <span className="app-brand">Story Mode AI</span>
           </button>
-          <span className="app-version">{__COMMIT_HASH__}</span>
+          <div className="app-page-context">
+            <h1>{pageTitle[activeProductDestination]}</h1>
+            {adventure && activeProductDestination !== "home" && activeProductDestination !== "explore" && (
+              <span className="muted" title={adventure.title}>{adventure.title}</span>
+            )}
+          </div>
         </div>
-        <nav className="app-nav" aria-label="Primary">
-          {adventure && (
-            <span
-              className={`open-adventure-nav-group${openAdventureNavCollapsed ? " collapsed" : ""}`}
-              role="group"
-              aria-label={`Open adventure navigation for ${adventure.title}`}
-            >
-              <button
-                type="button"
-                className="open-adventure-label"
-                title={`${openAdventureNavCollapsed ? "Show" : "Hide"} adventure navigation for ${adventure.title}`}
-                aria-expanded={!openAdventureNavCollapsed}
-                onClick={() => setOpenAdventureNavCollapsed((collapsed) => !collapsed)}
-              >
-                Open: {adventure.title}
-              </button>
-              {!openAdventureNavCollapsed && (
-                <>
-                  <button
-                    type="button"
-                    className={activeTopTab === "dashboard" ? "active" : ""}
-                    onClick={() => openTab("dashboard")}
-                  >
-                    Adventure
-                  </button>
-                  <button
-                    type="button"
-                    className={activeTopTab === "play" ? "active primary" : ""}
-                    onClick={() => openTab("play")}
-                  >
-                    Play
-                  </button>
-                  <button
-                    type="button"
-                    className={activeTopTab === "edit" ? "active" : ""}
-                    onClick={() => {
-                      if (activeTab === "edit") {
-                        document.querySelector(".main-content")?.scrollTo({ top: 0, behavior: "smooth" });
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      } else {
-                        openEditor(editorTab);
-                      }
-                    }}
-                  >
-                    Edit
-                    {pendingProposalCount > 0 && <span className="nav-badge">{pendingProposalCount > 99 ? "99+" : pendingProposalCount}</span>}
-                  </button>
-                </>
-              )}
-            </span>
-          )}
-          {adventure && !openAdventureNavCollapsed && canSaveOpenAdventureAsScenarioRevision && (
-            <button
-              type="button"
-              className="primary-action nav-scenario-save"
-              onClick={() => void saveScenarioRevisionFromAdventure(adventure)}
-            >
+        <div className="header-meta">
+          {adventure && <span className={`status-pill status-${normalizedSaveStatus.replace(/[^a-z0-9]+/g, "-")}`} role="status">{saveStatusLabel}</span>}
+          {adventure && canSaveOpenAdventureAsScenarioRevision && (
+            <button type="button" className="primary-action nav-scenario-save" onClick={() => void saveScenarioRevisionFromAdventure(adventure)}>
               Save Scenario Revision
             </button>
           )}
           <button
             type="button"
-            className={activeTopTab === "profile" ? "active" : ""}
-            onClick={() => {
-              setBackendPublicProfileUserId(null);
-              setBackendPublicProfile(undefined);
-              openTab("profile");
-            }}
-          >
-            Profile
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "explore" ? "active" : ""}
-            onClick={() => openTab("explore")}
-          >
-            Explore
-          </button>
-          {isBackendAdmin && (
-            <button
-              type="button"
-              className={activeTopTab === "admin" ? "active" : ""}
-              onClick={() => openTab("admin")}
-            >
-              Admin
-            </button>
-          )}
-        </nav>
-        <div className="header-meta">
-          {adventure && <span className="status-pill">{saveStatus}</span>}
-          {activeTab === "play" && (
-            <button type="button" className="theme-toggle" onClick={() => setNavForceVisible(false)} title="Hide navigation bar">
-              ↑ Hide
-            </button>
-          )}
-          <button
-            type="button"
-            className={activeTopTab === "settings" ? "theme-toggle active" : "theme-toggle"}
-            onClick={() => openTab("settings")}
-          >
-            Settings
-          </button>
-          <button
-            type="button"
-            className={activeTopTab === "help" ? "theme-toggle active" : "theme-toggle"}
-            onClick={() => openTab("help")}
-          >
-            Docs
-          </button>
-          <button
-            type="button"
             className="theme-toggle"
-            title="Toggle dark mode"
+            aria-label={uiPreferences.darkMode ? "Use light theme" : "Use dark theme"}
             onClick={() => setUiPreferences({ ...uiPreferences, darkMode: !uiPreferences.darkMode })}
           >
-            {uiPreferences.darkMode ? "☀" : "☾"}
+            <span aria-hidden="true">{uiPreferences.darkMode ? "☀" : "☾"}</span>
           </button>
         </div>
       </header>
@@ -2094,26 +2249,23 @@ export default function App() {
       )}
 
       {modalTab && adventure && (
-        <div className="modal-backdrop" role="presentation" onMouseDown={() => setModalTab(undefined)}>
-          <section
-            className="tool-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={modalTitles[modalTab] ?? "Adventure tool"}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+        <AccessibleDialog
+          onDismiss={() => setModalTab(undefined)}
+          labelledBy="tool-modal-title"
+          backdropClassName="modal-backdrop"
+          dialogClassName="tool-modal"
+        >
             <header className="tool-modal-header">
               <div>
-                <p className="eyebrow">Adventure Tool</p>
-                <h2>{modalTitles[modalTab] ?? "Tool"}</h2>
+                <p className="eyebrow">Story tool</p>
+                <h2 id="tool-modal-title">{modalTitles[modalTab] ?? "Tool"}</h2>
               </div>
-              <button type="button" onClick={() => setModalTab(undefined)}>
+              <button type="button" data-modal-initial-focus onClick={() => setModalTab(undefined)}>
                 Close
               </button>
             </header>
             <div className="tool-modal-body">{renderAdventureTool(modalTab)}</div>
-          </section>
-        </div>
+        </AccessibleDialog>
       )}
     </div>
   );

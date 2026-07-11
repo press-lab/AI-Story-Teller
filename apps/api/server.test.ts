@@ -93,6 +93,8 @@ beforeEach(async () => {
     allowLocalGoogleStub: true,
     allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
     emailDelivery: fakeEmailDelivery,
+    emailDeliveryMode: "resend",
+    passwordSignupMode: "emailVerification",
     policyMode: "enforce",
     googleOAuth: {
       clientId: "test-google-client",
@@ -194,12 +196,12 @@ describe("local API auth and invite gate", () => {
   });
 
   it("exposes safe runtime capabilities", async () => {
-    const response = await requestJson<{ passwordLogin: boolean; passwordSignup: boolean; googleOAuth: boolean }>("/capabilities");
+    const response = await requestJson<{ passwordLogin: boolean; passwordSignup: boolean; googleOAuth: boolean; inviteRequired: boolean }>("/capabilities");
     expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ passwordLogin: true, passwordSignup: true, googleOAuth: false });
+    expect(response.body).toMatchObject({ passwordLogin: true, passwordSignup: true, googleOAuth: false, inviteRequired: true });
   });
 
-  it("disables email auth mutations before consuming invites or creating users", async () => {
+  it("does not silently turn disabled email delivery into trusted-invite signup", async () => {
     const inviteToken = await createInvite();
     const before = await api.db.read();
     api.config.emailDeliveryMode = "disabled";
@@ -213,7 +215,7 @@ describe("local API auth and invite gate", () => {
     });
     const after = await api.db.read();
     expect(signup.status).toBe(503);
-    expect(signup.body.code).toBe("email_delivery_disabled");
+    expect(signup.body.code).toBe("password_signup_disabled");
     expect(after.inviteLinks).toEqual(before.inviteLinks);
     expect(after.users).toEqual(before.users);
     expect(after.passwordCredentials).toEqual(before.passwordCredentials);
@@ -246,6 +248,168 @@ describe("local API auth and invite gate", () => {
     expect(deleted.status).toBe(200);
     const afterDelete = await requestJson<{ code: string }>("/auth/session", { headers: { Authorization: `Bearer ${secondToken}` } });
     expect(afterDelete.status).toBe(401);
+  });
+
+  it("upgrades a migrated bearer session to a hosted cookie before scenario mutations", async () => {
+    const sessionToken = await passwordSession("migrated-session@example.com");
+    const created = await requestJson<{ id: string }>("/scenarios", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ title: "Migrated Session Scenario" }),
+    });
+    expect(created.status).toBe(201);
+
+    // The hosted migration preserved bearer sessions, but hosted responses expose
+    // only the cookie sentinel. Refreshing the session must set the real cookie
+    // before the browser replaces its stored bearer token with that sentinel.
+    api.config.databaseUrl = "postgres://hosted.test/example";
+    const refreshed = await fetch(`${baseUrl}/auth/session`, {
+      headers: { Authorization: `Bearer ${sessionToken}` },
+    });
+    expect(refreshed.status).toBe(200);
+    expect(await refreshed.json()).toMatchObject({ sessionToken: "cookie" });
+    const setCookie = refreshed.headers.get("set-cookie");
+    expect(setCookie).toContain("__Host-aist_session=");
+    expect(setCookie).toContain("Path=/");
+    expect(setCookie).toContain("Secure");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).not.toContain("Domain=");
+    const cookie = setCookie?.split(";", 1)[0];
+    expect(cookie).toBeTruthy();
+    // Hosted-mode request tracing is normally backed by Postgres. This test
+    // deliberately toggles hosted behavior on a JSON-file database, so drain
+    // the queued trace write before the next request reads that file.
+    await api.db.update(() => undefined);
+
+    const deleted = await fetch(`${baseUrl}/scenarios/${encodeURIComponent(created.body.id)}`, {
+      method: "DELETE",
+      headers: {
+        // Older hosted clients sent this sentinel after session refresh. It
+        // must not mask the valid HttpOnly cookie.
+        Authorization: "Bearer cookie",
+        Cookie: cookie!,
+        "X-AIST-CSRF": "1",
+      },
+    });
+    expect(deleted.status).toBe(200);
+    await expect(deleted.json()).resolves.toMatchObject({ scenarioId: created.body.id });
+  });
+
+  it("falls back from a stale hosted cookie to a real bearer without weakening cookie-first authentication", async () => {
+    const bearerToken = await passwordSession("bearer-fallback@example.com");
+    const cookieToken = await passwordSession("cookie-first@example.com");
+
+    const bearerFallback = await requestJson<{ user: { email: string } }>("/auth/session", {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Cookie: "__Host-aist_session=expired-session",
+      },
+    });
+    expect(bearerFallback.status).toBe(200);
+    expect(bearerFallback.body.user.email).toBe("bearer-fallback@example.com");
+
+    const cookieFirst = await requestJson<{ user: { email: string } }>("/auth/session", {
+      headers: {
+        Authorization: `Bearer ${bearerToken}`,
+        Cookie: `__Host-aist_session=${encodeURIComponent(cookieToken)}`,
+      },
+    });
+    expect(cookieFirst.status).toBe(200);
+    expect(cookieFirst.body.user.email).toBe("cookie-first@example.com");
+
+    const sentinelOnly = await requestJson<{ code: string }>("/auth/session", {
+      headers: {
+        Authorization: "Bearer cookie",
+        Cookie: "__Host-aist_session=expired-session",
+      },
+    });
+    expect(sentinelOnly.status).toBe(401);
+    expect(sentinelOnly.body.code).toBe("unauthenticated");
+  });
+
+  it("uses a hosted cookie for adventure save, context preview, and a successful story turn", async () => {
+    const sessionToken = await passwordSession("hosted-play-session@example.com");
+    const adventure = createDefaultAdventure("Hosted Play Session");
+    adventure.id = "adv-hosted-play-session";
+    const imported = await requestJson<{ adventures: Array<{ id: string }> }>("/adventures/import", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({ sourceType: "aist", text: exportAdventureJson(adventure) }),
+    });
+    expect(imported.status).toBe(201);
+    const adventureId = imported.body.adventures[0].id;
+    expect(adventureId).toBeTruthy();
+
+    // The adjacent migration test covers `/auth/session` issuing this hosted
+    // cookie. Keep this end-to-end Play test on LocalDb so enabling hosted-only
+    // request telemetry cannot introduce JSON-file write/read races between
+    // consecutive requests.
+    const cookie = `__Host-aist_session=${encodeURIComponent(sessionToken)}`;
+
+    const hostedAuthHeaders = {
+      // This mirrors a browser immediately after migration: the real secret is
+      // in the HttpOnly cookie while older code may still send the sentinel.
+      Authorization: "Bearer cookie",
+      Cookie: cookie,
+    };
+    const loadedResponse = await fetch(`${baseUrl}/adventures/${adventureId}`, {
+      headers: hostedAuthHeaders,
+    });
+    const loaded = await loadedResponse.json() as ReturnType<typeof createDefaultAdventure>;
+    expect(loadedResponse.status).toBe(200);
+
+    const savedResponse = await fetch(`${baseUrl}/adventures/${adventureId}`, {
+      method: "PUT",
+      headers: {
+        ...hostedAuthHeaders,
+        "Content-Type": "application/json",
+        "X-AIST-CSRF": "1",
+      },
+      body: JSON.stringify({ adventure: { ...loaded, title: "Hosted Play Session Saved" } }),
+    });
+    expect(savedResponse.status).toBe(200);
+    await expect(savedResponse.json()).resolves.toMatchObject({ title: "Hosted Play Session Saved" });
+
+    const contextResponse = await fetch(`${baseUrl}/adventures/${adventureId}/context-preview`, {
+      headers: hostedAuthHeaders,
+    });
+    expect(contextResponse.status).toBe(200);
+    await expect(contextResponse.json()).resolves.toMatchObject({ sections: expect.any(Array), messages: expect.any(Array) });
+
+    const realFetch = globalThis.fetch;
+    const providerCalls: string[] = [];
+    api.config.providerConfig.baseUrl = "https://provider.test";
+    api.config.providerConfig.apiKey = "server-platform-key";
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (String(input).startsWith("https://provider.test")) {
+        providerCalls.push(String(init?.body ?? ""));
+        return new Response(JSON.stringify({
+          choices: [{ message: { content: "The lock gives way with a soft metallic sigh." } }],
+          usage: { prompt_tokens: 12, completion_tokens: 9, total_tokens: 21 },
+        }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return realFetch(input, init);
+    });
+
+    const turnResponse = await fetch(`${baseUrl}/adventures/${adventureId}/turn`, {
+      method: "POST",
+      headers: {
+        ...hostedAuthHeaders,
+        "Content-Type": "application/json",
+        "Idempotency-Key": "hosted-play-cookie-turn",
+        "X-AIST-CSRF": "1",
+      },
+      body: JSON.stringify({ input: "I test the lock.", mode: "story" }),
+    });
+    const turn = await turnResponse.json() as { adventure: ReturnType<typeof createDefaultAdventure>; responseContent: string };
+    expect(turnResponse.status).toBe(200);
+    expect(providerCalls).toHaveLength(1);
+    expect(turn.responseContent).toBe("The lock gives way with a soft metallic sigh.");
+    expect(turn.adventure.messages.slice(-2)).toEqual([
+      expect.objectContaining({ role: "user", content: "I test the lock.", inputMode: "story" }),
+      expect.objectContaining({ role: "assistant", content: turn.responseContent }),
+    ]);
   });
 
   it("shares stable authentication rate-limit responses without account disclosure", async () => {
@@ -314,6 +478,108 @@ describe("local API auth and invite gate", () => {
     });
     expect(reused.status).toBe(400);
     expect(reused.body.error).toMatch(/used/i);
+  });
+
+  it("creates an active unverified session only from a trusted invite while keeping recovery and admin elevation closed", async () => {
+    const created = await requestJson<{ token: string; inviteUrl: string }>("/admin/invites", {
+      method: "POST",
+      body: JSON.stringify({ maxUses: 1, note: "trusted UAT" }),
+    });
+    expect(created.status).toBe(201);
+    const inviteUrl = new URL(created.body.inviteUrl);
+    expect(inviteUrl.origin).toBe("http://localhost:5173");
+    expect(new URLSearchParams(inviteUrl.hash.slice(1)).get("invite")).toBe(created.body.token);
+
+    api.config.emailDeliveryMode = "disabled";
+    api.config.passwordSignupMode = "trustedInvite";
+    api.config.policyMode = "reviewOnly";
+    api.config.adminEmails.push("configured-admin@example.com");
+
+    const capabilities = await requestJson<{
+      passwordSignup: boolean;
+      passwordReset: boolean;
+      emailVerificationDelivery: boolean;
+      inviteRequired: boolean;
+    }>("/capabilities");
+    expect(capabilities.body).toMatchObject({
+      passwordSignup: true,
+      passwordReset: false,
+      emailVerificationDelivery: false,
+      inviteRequired: true,
+    });
+
+    const signup = await requestJson<{
+      sessionToken: string;
+      verificationRequired: false;
+      message: string;
+      user: { status: string; emailVerified: boolean; role: string };
+    }>("/auth/signup/password", {
+      method: "POST",
+      body: JSON.stringify({
+        inviteToken: created.body.token,
+        email: "configured-admin@example.com",
+        password: "correct horse battery staple",
+        displayName: "Invited Tester",
+      }),
+    });
+    expect(signup.status).toBe(201);
+    expect(signup.body).toMatchObject({
+      verificationRequired: false,
+      message: "Account created from your invite. You are signed in.",
+      user: { status: "active", emailVerified: false, role: "user" },
+    });
+    expect(signup.body.sessionToken).toBeTruthy();
+    expect(deliveredEmails).toEqual([]);
+
+    const data = await api.db.read();
+    expect(data.users).toHaveLength(1);
+    expect(data.passwordCredentials).toHaveLength(1);
+    expect(data.signupIntents).toHaveLength(1);
+    expect(data.sessions).toHaveLength(1);
+    expect(data.verificationTokens).toHaveLength(0);
+
+    const invalidReplay = await requestJson<{ error: string }>("/auth/signup/password", {
+      method: "POST",
+      body: JSON.stringify({
+        inviteToken: "not-a-real-invite",
+        email: "configured-admin@example.com",
+        password: "correct horse battery staple",
+      }),
+    });
+    expect(invalidReplay.status).toBe(400);
+    expect(invalidReplay.body.error).toMatch(/invite/i);
+    expect(invalidReplay.body.error).not.toMatch(/already exists/i);
+
+    const admin = await requestJson<{ code: string }>("/admin/console", {
+      headers: { Authorization: `Bearer ${signup.body.sessionToken}` },
+    });
+    expect(admin.status).toBe(403);
+
+    const login = await requestJson<{ sessionToken: string; user: { emailVerified: boolean } }>("/auth/login/password", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "configured-admin@example.com",
+        password: "correct horse battery staple",
+      }),
+    });
+    expect(login.status).toBe(200);
+    expect(login.body.user.emailVerified).toBe(false);
+
+    const disabledReset = await requestJson<{ code: string }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email: "configured-admin@example.com" }),
+    });
+    expect(disabledReset.status).toBe(503);
+    expect(disabledReset.body.code).toBe("email_delivery_disabled");
+
+    api.config.emailDeliveryMode = "resend";
+    const futureReset = await requestJson<{ ok: true }>("/auth/password-reset/request", {
+      method: "POST",
+      body: JSON.stringify({ email: "configured-admin@example.com" }),
+    });
+    expect(futureReset.status).toBe(202);
+    expect(deliveredEmails).toEqual([]);
+    expect((await api.db.read()).verificationTokens).toHaveLength(0);
   });
 
   it("keeps password-reset requests generic and revokes every session after a one-use reset", async () => {
@@ -549,6 +815,80 @@ describe("local API auth and invite gate", () => {
       body: JSON.stringify({ exchangeCode: expiringCode }),
     });
     expect(expired.status).toBe(400);
+  });
+});
+
+describe("social profile API", () => {
+  it("likes published scenarios and supports private social lists with follow and friend actions", async () => {
+    const creatorToken = await passwordSession("social-creator@example.com");
+    const viewerToken = await passwordSession("social-viewer@example.com");
+    const creatorAuth = { Authorization: `Bearer ${creatorToken}` };
+    const viewerAuth = { Authorization: `Bearer ${viewerToken}` };
+    const creatorProfile = await requestJson<{ user: { id: string } }>("/profile/me", { headers: creatorAuth });
+    const viewerProfile = await requestJson<{ user: { id: string } }>("/profile/me", { headers: viewerAuth });
+
+    const draft = await requestJson<{ id: string }>("/scenarios", {
+      method: "POST",
+      headers: creatorAuth,
+      body: JSON.stringify({ title: "Social Scenario", description: "A shared world." }),
+    });
+    const revision = await requestJson<{ id: string }>(`/scenarios/${draft.body.id}/revisions`, {
+      method: "POST",
+      headers: creatorAuth,
+      body: JSON.stringify({ content: { openingScene: "The gate opens." } }),
+    });
+    await requestJson(`/scenario-revisions/${revision.body.id}/publish`, { method: "POST", headers: creatorAuth });
+
+    const liked = await requestJson<{ liked: boolean; likeCount: number }>(`/scenarios/${draft.body.id}/like`, {
+      method: "POST",
+      headers: viewerAuth,
+    });
+    expect(liked).toEqual({ status: 200, body: { scenarioId: draft.body.id, liked: true, likeCount: 1 } });
+    const explore = await requestJson<{ scenarios: Array<{ likeCount: number; likedByViewer: boolean }> }>("/explore/scenarios", {
+      headers: viewerAuth,
+    });
+    expect(explore.body.scenarios[0]).toMatchObject({ likeCount: 1, likedByViewer: true });
+
+    expect((await requestJson(`/profiles/${creatorProfile.body.user.id}/follow`, { method: "POST", headers: viewerAuth })).status).toBe(200);
+    expect((await requestJson(`/profiles/${creatorProfile.body.user.id}/friend-request`, { method: "POST", headers: viewerAuth })).status).toBe(201);
+    const beforeAccept = await requestJson<{
+      scenarios: Array<{ title: string; likeCount: number }>;
+      social: { viewer: { isFollowing: boolean; friendshipStatus: string } };
+    }>(`/profiles/${creatorProfile.body.user.id}`, { headers: viewerAuth });
+    expect(beforeAccept.body.scenarios).toEqual([expect.objectContaining({ title: "Social Scenario", likeCount: 1 })]);
+    expect(beforeAccept.body.social.viewer).toMatchObject({ isFollowing: true, friendshipStatus: "outgoing_pending" });
+
+    const accepted = await requestJson<{ status: string }>(`/profiles/${viewerProfile.body.user.id}/friend-accept`, {
+      method: "POST",
+      headers: creatorAuth,
+    });
+    expect(accepted.body.status).toBe("accepted");
+    const hidden = await requestJson<{ social: { visibility: Record<string, boolean> } }>("/profile/me", {
+      method: "PATCH",
+      headers: creatorAuth,
+      body: JSON.stringify({ socialVisibility: { followers: false, following: false, friends: false } }),
+    });
+    expect(hidden.body.social.visibility).toEqual({ followers: false, following: false, friends: false });
+
+    const publicAfterAccept = await requestJson<{
+      social: {
+        followers?: unknown;
+        following?: unknown;
+        friends?: unknown;
+        viewer: { friendshipStatus: string };
+      };
+    }>(`/profiles/${creatorProfile.body.user.id}`, { headers: viewerAuth });
+    expect(publicAfterAccept.body.social.followers).toBeUndefined();
+    expect(publicAfterAccept.body.social.following).toBeUndefined();
+    expect(publicAfterAccept.body.social.friends).toBeUndefined();
+    expect(publicAfterAccept.body.social.viewer.friendshipStatus).toBe("friends");
+
+    expect((await requestJson(`/profiles/${creatorProfile.body.user.id}/friendship`, { method: "DELETE", headers: viewerAuth })).status).toBe(200);
+    const unliked = await requestJson<{ liked: boolean; likeCount: number }>(`/scenarios/${draft.body.id}/like`, {
+      method: "DELETE",
+      headers: viewerAuth,
+    });
+    expect(unliked.body).toMatchObject({ liked: false, likeCount: 0 });
   });
 });
 describe("local API adventure persistence", () => {
@@ -1251,6 +1591,7 @@ describe("local API policy gates and sharing", () => {
       }>;
       safetyEvents: Array<{ id: string; status: string }>;
       adminActions: Array<{ action: string }>;
+      platformSettings: { administration: { adminEmails: string[] } };
     }>("/admin/console", {
       headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
     });
@@ -1265,6 +1606,22 @@ describe("local API policy gates and sharing", () => {
       completionTokens: 7,
       totalTokens: 18,
     });
+    expect(consoleData.body.platformSettings.administration.adminEmails).toContain("backend-admin@example.com");
+
+    const roleUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/role`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+      body: JSON.stringify({ role: "admin" }),
+    });
+    expect(roleUpdate.status).toBe(200);
+    expect(roleUpdate.body.users.find((user) => user.id === member!.id)?.role).toBe("admin");
+
+    api.config.adminEmails = [];
+    const promotedMemberSession = await requestJson<{ user: { role: string } }>("/auth/session", {
+      headers: { Authorization: `Bearer ${memberSession}` },
+    });
+    expect(promotedMemberSession.status).toBe(200);
+    expect(promotedMemberSession.body.user.role).toBe("admin");
 
     const statusUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/status`, {
       method: "PATCH",
@@ -1296,7 +1653,7 @@ describe("local API policy gates and sharing", () => {
     expect(reviewed.status).toBe(200);
     expect(reviewed.body.safetyEvents.find((event) => event.id === eventId)?.status).toBe("reviewed");
     expect(reviewed.body.adminActions.map((action) => action.action)).toEqual(
-      expect.arrayContaining(["update_user_status", "create_manual_restriction", "update_safety_event_status"]),
+      expect.arrayContaining(["update_user_status", "update_user_role", "create_manual_restriction", "update_safety_event_status"]),
     );
   });
 
@@ -1621,6 +1978,7 @@ describe("local API policy gates and sharing", () => {
         durationMs: 42,
         requestBytes: 12,
         responseBytes: 34,
+        errorCategory: "auth",
         errorMessage: "Bearer secret sk-or-v1-abc123",
         metadata: {
           visibilityState: "hidden",
@@ -1630,15 +1988,103 @@ describe("local API policy gates and sharing", () => {
     });
     expect(deviceTrace.status).toBe(202);
 
+    const pageLoadTrace = await requestJson<{ ok: boolean }>("/telemetry/client", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "X-AIST-Trace-Id": "trace-device-page-load",
+      },
+      body: JSON.stringify({
+        traceId: "trace-device-page-load",
+        phase: "page_load",
+        route: "/app",
+        method: "UI",
+        status: "ok",
+        durationMs: 2_800,
+        metadata: {
+          ttfbMs: 350,
+          clientWorkMs: 2_100,
+          causeHint: "client_render_or_assets",
+          // Unknown/nested values are deliberately discarded by validation.
+          privateStoryTitle: "This must never be stored",
+        },
+      }),
+    });
+    expect(pageLoadTrace.status).toBe(202);
+
+    const navigationTrace = await requestJson<{ ok: boolean }>("/telemetry/client", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "X-AIST-Trace-Id": "trace-device-ui-navigation",
+      },
+      body: JSON.stringify({
+        traceId: "trace-device-ui-navigation",
+        phase: "ui_navigation",
+        route: "/ui/story-studio",
+        method: "UI",
+        status: "ok",
+        durationMs: 84,
+        metadata: {
+          destination: "story-studio",
+          causeHint: "client_render",
+        },
+      }),
+    });
+    expect(navigationTrace.status).toBe(202);
+
+    const contentInjectionTrace = await requestJson<{ ok: boolean }>("/telemetry/client", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+        "X-AIST-Trace-Id": "trace-device-content-attempt",
+      },
+      body: JSON.stringify({
+        traceId: "trace-device-content-attempt",
+        phase: "http_round_trip",
+        route: "/adventures/The%20Princess%20Secret/turn?draft=She%20betrays%20the%20guild",
+        method: "She betrays the guild",
+        status: "error",
+        statusCode: 500,
+        durationMs: 125,
+        errorCategory: "the final betrayal",
+        errorMessage: "The princess secretly betrays the guild in the final scene.",
+        metadata: {
+          online: true,
+          rttMs: 125,
+          connectionType: "secret romance",
+          appVersion: "The-Princess-Secret",
+          causeHint: "the final betrayal",
+          destination: "the hidden ending",
+          privateStoryTitle: "This must never be stored",
+        },
+      }),
+    });
+    expect(contentInjectionTrace.status).toBe(202);
+
+    const invalidPhase = await requestJson<{ code: string }>("/telemetry/client", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify({
+        phase: "the final betrayal",
+        status: "ok",
+        durationMs: 1,
+      }),
+    });
+    expect(invalidPhase).toMatchObject({ status: 400, body: { code: "invalid_telemetry" } });
+
     const details = await requestJson<{
       performanceTraces: Array<{
         traceId: string;
         source: string;
         phase: string;
         route?: string;
+        method?: string;
         status: string;
         durationMs: number;
+        errorCategory?: string;
         errorMessage?: string;
+        metadata?: Record<string, unknown>;
       }>;
     }>("/admin/console/details");
     expect(details.status).toBe(200);
@@ -1655,12 +2101,62 @@ describe("local API policy gates and sharing", () => {
           source: "device",
           phase: "http_round_trip",
           route: "/profile/me",
+          method: "GET",
           status: "error",
           durationMs: 42,
-          errorMessage: "Bearer [redacted] [redacted-openrouter-key]",
+          errorCategory: "auth",
+        }),
+        expect.objectContaining({
+          traceId: "trace-device-page-load",
+          source: "device",
+          phase: "page_load",
+          route: "/app",
+          durationMs: 2_800,
+          metadata: expect.objectContaining({
+            causeHint: "client_render_or_assets",
+            ttfbMs: 350,
+          }),
+        }),
+        expect.objectContaining({
+          traceId: "trace-device-ui-navigation",
+          phase: "ui_navigation",
+          route: "/ui/story-studio",
+          method: "UI",
+          metadata: expect.objectContaining({
+            destination: "story-studio",
+            causeHint: "client_render",
+          }),
+        }),
+        expect.objectContaining({
+          traceId: "trace-device-content-attempt",
+          phase: "http_round_trip",
+          route: "/adventures/:adventureId/turn",
+          status: "error",
+          durationMs: 125,
+          metadata: expect.objectContaining({
+            online: true,
+            rttMs: 125,
+          }),
         }),
       ]),
     );
+    const storedRoundTrip = details.body.performanceTraces.find((trace) => trace.traceId === "trace-device-round-trip");
+    expect(storedRoundTrip).not.toHaveProperty("errorMessage");
+    const storedPageLoad = details.body.performanceTraces.find((trace) => trace.traceId === "trace-device-page-load");
+    expect(storedPageLoad?.metadata).not.toHaveProperty("privateStoryTitle");
+    const storedContentAttempt = details.body.performanceTraces.find((trace) => trace.traceId === "trace-device-content-attempt");
+    expect(storedContentAttempt).not.toHaveProperty("method");
+    // The arbitrary submitted label is dropped; the server derives a known
+    // category from the validated HTTP status instead.
+    expect(storedContentAttempt?.errorCategory).toBe("server");
+    expect(storedContentAttempt).not.toHaveProperty("errorMessage");
+    expect(storedContentAttempt?.metadata).not.toHaveProperty("connectionType");
+    expect(storedContentAttempt?.metadata).not.toHaveProperty("appVersion");
+    expect(storedContentAttempt?.metadata).not.toHaveProperty("causeHint");
+    expect(storedContentAttempt?.metadata).not.toHaveProperty("destination");
+    expect(storedContentAttempt?.metadata).not.toHaveProperty("privateStoryTitle");
+    expect(JSON.stringify(storedContentAttempt)).not.toMatch(/princess|betray|guild|secret romance|hidden ending/i);
+    expect(details.body.performanceTraces.some((trace) => trace.phase === "the final betrayal")).toBe(false);
   });
 
   it("stores non-secret platform settings in the backend and gates scenario publishing", async () => {

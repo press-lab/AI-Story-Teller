@@ -1,4 +1,5 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { AccessibleDialog } from "./AccessibleDialog";
 
 export type ActionNoticeType = "info" | "success" | "error";
 
@@ -45,6 +46,8 @@ export function useActionFeedback() {
 
 export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
   const nextToastId = useRef(1);
+  const confirmationTitleId = useId();
+  const confirmationMessageId = useId();
   const [toasts, setToasts] = useState<ActionToast[]>([]);
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
 
@@ -86,30 +89,32 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
         ))}
       </div>
       {confirmation && (
-        <div className="action-confirm-backdrop" role="presentation" onClick={() => resolveConfirmation(false)}>
-          <div
-            className="action-confirm-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="action-confirm-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 id="action-confirm-title">{confirmation.options.title}</h3>
-            <p>{confirmation.options.message}</p>
-            <div className="action-confirm-actions">
-              <button type="button" onClick={() => resolveConfirmation(false)}>
-                {confirmation.options.cancelLabel ?? "Cancel"}
-              </button>
-              <button
-                type="button"
-                className={confirmation.options.danger ? "danger" : "primary-action"}
-                onClick={() => resolveConfirmation(true)}
-              >
-                {confirmation.options.confirmLabel ?? "Confirm"}
-              </button>
-            </div>
+        <AccessibleDialog
+          backdropClassName="action-confirm-backdrop"
+          dialogClassName="action-confirm-dialog"
+          labelledBy={confirmationTitleId}
+          describedBy={confirmationMessageId}
+          onDismiss={() => resolveConfirmation(false)}
+        >
+          <h3 id={confirmationTitleId}>{confirmation.options.title}</h3>
+          <p id={confirmationMessageId}>{confirmation.options.message}</p>
+          <div className="action-confirm-actions">
+            <button
+              type="button"
+              data-modal-initial-focus
+              onClick={() => resolveConfirmation(false)}
+            >
+              {confirmation.options.cancelLabel ?? "Cancel"}
+            </button>
+            <button
+              type="button"
+              className={confirmation.options.danger ? "danger" : "primary-action"}
+              onClick={() => resolveConfirmation(true)}
+            >
+              {confirmation.options.confirmLabel ?? "Confirm"}
+            </button>
           </div>
-        </div>
+        </AccessibleDialog>
       )}
     </ActionFeedbackContext.Provider>
   );

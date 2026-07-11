@@ -39,11 +39,14 @@ export interface AuthSessionResult {
   session: SessionRecord;
 }
 
-export interface PasswordSignupResult {
-  user: BackendUser;
-  profile: UserProfile;
-  verification: IssuedAuthToken;
-}
+export type PasswordSignupResult =
+  | {
+    user: BackendUser;
+    profile: UserProfile;
+    verificationRequired: true;
+    verification: IssuedAuthToken;
+  }
+  | (AuthSessionResult & { verificationRequired: false });
 
 export interface IssuedAuthToken {
   token: string;
@@ -273,16 +276,18 @@ export function consumeOAuthExchange(data: LocalDbData, exchangeCode: string): A
 export async function signupWithPassword(
   data: LocalDbData,
   input: { inviteToken: string; email: string; password: string; displayName?: string },
+  options: { requireEmailVerification?: boolean } = {},
 ): Promise<PasswordSignupResult> {
   const email = normalizeEmail(input.email);
   if (!email.includes("@")) throw new Error("Enter a valid email address.");
   if (input.password.length < 10) throw new Error("Password must be at least 10 characters.");
-  assertUniqueEmail(data, email);
   const invite = consumeInvite(data, input.inviteToken);
+  assertUniqueEmail(data, email);
+  const requireEmailVerification = options.requireEmailVerification ?? true;
   const { user, profile } = createUserAndProfile(data, {
     email,
     displayName: input.displayName,
-    status: "pending_verification",
+    status: requireEmailVerification ? "pending_verification" : "active",
     emailVerified: false,
   });
   createSignupIntent(data, invite.id, email, "password");
@@ -299,10 +304,14 @@ export async function signupWithPassword(
     createdAt: nowIso(),
     updatedAt: nowIso(),
   });
+  if (!requireEmailVerification) {
+    return { ...createSession(data, user, profile), verificationRequired: false };
+  }
   const verification = createVerificationToken(data, user.id, "emailVerification", 24);
   return {
     user,
     profile,
+    verificationRequired: true,
     verification: { token: verification.token, expiresAt: verification.record.expiresAt },
   };
 }
@@ -399,7 +408,7 @@ export async function loginWithPassword(data: LocalDbData, input: { email: strin
   const email = normalizeEmail(input.email);
   const user = data.users.find((entry) => entry.email === email);
   if (!user) throw new Error("Invalid email or password.");
-  if (user.status !== "active" || !user.emailVerified) {
+  if (user.status !== "active") {
     throw new Error("Verify this account before logging in.");
   }
   const credential = data.passwordCredentials.find((entry) => entry.userId === user.id);
@@ -480,7 +489,7 @@ export function verifyEmailToken(data: LocalDbData, token: string): AuthSessionR
 export function requestPasswordReset(data: LocalDbData, emailInput: string): { email: string; reset?: IssuedAuthToken } {
   const email = normalizeEmail(emailInput);
   const user = data.users.find((entry) => entry.email === email);
-  if (!user) return { email };
+  if (!user || user.status !== "active" || !user.emailVerified) return { email };
   const reset = createVerificationToken(data, user.id, "passwordReset", 2);
   return { email, reset: { token: reset.token, expiresAt: reset.record.expiresAt } };
 }

@@ -1,7 +1,8 @@
 import type { AdventureThumbnailImage } from "../../src/types/adventure";
 import { normalizeAdventureThumbnail } from "../../src/utils/adventureImages";
-import type { BackendUser, LocalDbData, ScenarioDraft, ScenarioRevision, UserProfile } from "./apiTypes";
+import type { BackendUser, LocalDbData, ProfileSocialVisibility, ScenarioDraft, ScenarioRevision, UserProfile } from "./apiTypes";
 import { summarizeAdventure } from "./adventureStore";
+import { findFriendship, profileSocialVisibility, scenarioLikeCount } from "./socialGraph";
 
 type BackendAdventureSummary = ReturnType<typeof summarizeAdventure>;
 
@@ -29,6 +30,35 @@ export interface BackendProfileSummary {
   profile: UserProfile;
   adventures: BackendAdventureSummary[];
   scenarios: ProfileScenarioSummary[];
+  social: OwnProfileSocialSummary;
+}
+
+export interface SocialProfilePerson {
+  userId: string;
+  displayName: string;
+}
+
+export interface OwnProfileSocialSummary {
+  visibility: ProfileSocialVisibility;
+  followers: SocialProfilePerson[];
+  following: SocialProfilePerson[];
+  friends: SocialProfilePerson[];
+  incomingFriendRequests: SocialProfilePerson[];
+  outgoingFriendRequests: SocialProfilePerson[];
+}
+
+export type ViewerFriendshipStatus = "self" | "none" | "outgoing_pending" | "incoming_pending" | "friends";
+
+export interface PublicProfileSocialSummary {
+  visibility: ProfileSocialVisibility;
+  followers?: SocialProfilePerson[];
+  following?: SocialProfilePerson[];
+  friends?: SocialProfilePerson[];
+  viewer: {
+    isFollowing: boolean;
+    isFollowedBy: boolean;
+    friendshipStatus: ViewerFriendshipStatus;
+  };
 }
 
 export interface PublicProfileSummary {
@@ -39,6 +69,7 @@ export interface PublicProfileSummary {
   };
   profile: UserProfile;
   scenarios: ExploreScenarioSummary[];
+  social: PublicProfileSocialSummary;
 }
 
 export interface ExploreScenarioSummary {
@@ -52,6 +83,8 @@ export interface ExploreScenarioSummary {
   createdAt: string;
   publishedAt: string;
   thumbnailImage?: AdventureThumbnailImage;
+  likeCount: number;
+  likedByViewer: boolean;
 }
 
 export function buildProfileSummary(data: LocalDbData, userId: string): BackendProfileSummary {
@@ -61,7 +94,7 @@ export function buildProfileSummary(data: LocalDbData, userId: string): BackendP
 
   return {
     user,
-    profile,
+    profile: { ...profile, socialVisibility: profileSocialVisibility(profile) },
     adventures: data.adventures
       .filter((entry) => entry.ownerUserId === userId)
       .map((entry) => summarizeAdventure(entry.adventure))
@@ -70,10 +103,11 @@ export function buildProfileSummary(data: LocalDbData, userId: string): BackendP
       .filter((entry) => entry.ownerUserId === userId)
       .map((draft) => summarizeScenarioDraft(data, draft))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    social: buildOwnSocialSummary(data, userId),
   };
 }
 
-export function buildPublicProfileSummary(data: LocalDbData, userId: string): PublicProfileSummary {
+export function buildPublicProfileSummary(data: LocalDbData, userId: string, viewerUserId: string): PublicProfileSummary {
   const user = data.users.find((entry) => entry.id === userId);
   const profile = data.profiles.find((entry) => entry.userId === userId);
   if (!user || !profile) throw new Error("Profile not found.");
@@ -84,12 +118,13 @@ export function buildPublicProfileSummary(data: LocalDbData, userId: string): Pu
       displayName: user.displayName,
       createdAt: user.createdAt,
     },
-    profile,
-    scenarios: listExploreScenarios(data).filter((scenario) => scenario.ownerUserId === userId),
+    profile: { ...profile, socialVisibility: profileSocialVisibility(profile) },
+    scenarios: listExploreScenarios(data, viewerUserId).filter((scenario) => scenario.ownerUserId === userId),
+    social: buildPublicSocialSummary(data, userId, viewerUserId),
   };
 }
 
-export function listExploreScenarios(data: LocalDbData): ExploreScenarioSummary[] {
+export function listExploreScenarios(data: LocalDbData, viewerUserId?: string): ExploreScenarioSummary[] {
   return data.scenarioRevisions
     .filter((revision) => revision.status === "published" && revision.publishedAt)
     .map((revision) => {
@@ -106,9 +141,75 @@ export function listExploreScenarios(data: LocalDbData): ExploreScenarioSummary[
         createdAt: revision.createdAt,
         publishedAt: revision.publishedAt!,
         thumbnailImage: scenarioThumbnail(revision) ?? sourceAdventureThumbnail(data, draft),
+        likeCount: scenarioLikeCount(data, revision.scenarioId),
+        likedByViewer: Boolean(viewerUserId && data.scenarioLikes.some(
+          (entry) => entry.scenarioId === revision.scenarioId && entry.userId === viewerUserId,
+        )),
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+}
+
+function buildOwnSocialSummary(data: LocalDbData, userId: string): OwnProfileSocialSummary {
+  const profile = data.profiles.find((entry) => entry.userId === userId);
+  if (!profile) throw new Error("Profile not found.");
+  return {
+    visibility: profileSocialVisibility(profile),
+    followers: peopleForIds(data, data.userFollows.filter((entry) => entry.followedUserId === userId).map((entry) => entry.followerUserId)),
+    following: peopleForIds(data, data.userFollows.filter((entry) => entry.followerUserId === userId).map((entry) => entry.followedUserId)),
+    friends: peopleForIds(data, data.friendships
+      .filter((entry) => entry.status === "accepted" && (entry.requesterUserId === userId || entry.addresseeUserId === userId))
+      .map((entry) => entry.requesterUserId === userId ? entry.addresseeUserId : entry.requesterUserId)),
+    incomingFriendRequests: peopleForIds(data, data.friendships
+      .filter((entry) => entry.status === "pending" && entry.addresseeUserId === userId)
+      .map((entry) => entry.requesterUserId)),
+    outgoingFriendRequests: peopleForIds(data, data.friendships
+      .filter((entry) => entry.status === "pending" && entry.requesterUserId === userId)
+      .map((entry) => entry.addresseeUserId)),
+  };
+}
+
+function buildPublicSocialSummary(data: LocalDbData, userId: string, viewerUserId: string): PublicProfileSocialSummary {
+  const profile = data.profiles.find((entry) => entry.userId === userId);
+  if (!profile) throw new Error("Profile not found.");
+  const visibility = profileSocialVisibility(profile);
+  const friendship = findFriendship(data, viewerUserId, userId);
+  let friendshipStatus: ViewerFriendshipStatus = "none";
+  if (viewerUserId === userId) friendshipStatus = "self";
+  else if (friendship?.status === "accepted") friendshipStatus = "friends";
+  else if (friendship?.requesterUserId === viewerUserId) friendshipStatus = "outgoing_pending";
+  else if (friendship) friendshipStatus = "incoming_pending";
+
+  return {
+    visibility,
+    followers: visibility.followers
+      ? peopleForIds(data, data.userFollows.filter((entry) => entry.followedUserId === userId).map((entry) => entry.followerUserId))
+      : undefined,
+    following: visibility.following
+      ? peopleForIds(data, data.userFollows.filter((entry) => entry.followerUserId === userId).map((entry) => entry.followedUserId))
+      : undefined,
+    friends: visibility.friends
+      ? peopleForIds(data, data.friendships
+        .filter((entry) => entry.status === "accepted" && (entry.requesterUserId === userId || entry.addresseeUserId === userId))
+        .map((entry) => entry.requesterUserId === userId ? entry.addresseeUserId : entry.requesterUserId))
+      : undefined,
+    viewer: {
+      isFollowing: data.userFollows.some((entry) => entry.followerUserId === viewerUserId && entry.followedUserId === userId),
+      isFollowedBy: data.userFollows.some((entry) => entry.followerUserId === userId && entry.followedUserId === viewerUserId),
+      friendshipStatus,
+    },
+  };
+}
+
+function peopleForIds(data: LocalDbData, userIds: string[]): SocialProfilePerson[] {
+  return [...new Set(userIds)]
+    .map((userId) => {
+      const user = data.users.find((entry) => entry.id === userId && entry.status === "active");
+      const profile = data.profiles.find((entry) => entry.userId === userId);
+      return user && profile ? { userId, displayName: profile.displayName || user.displayName } : undefined;
+    })
+    .filter((entry): entry is SocialProfilePerson => Boolean(entry))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 function summarizeScenarioDraft(data: LocalDbData, draft: ScenarioDraft): ProfileScenarioSummary {

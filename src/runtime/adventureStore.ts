@@ -11,7 +11,7 @@ import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from ".
 import type { RuntimeConfig } from "./runtimeConfig";
 import {
   bodyByteLength,
-  clientNetworkMetadata,
+  clientTimingMetadata,
   createClientTraceId,
   recordClientPerformanceTrace,
   sanitizeClientError,
@@ -184,7 +184,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
         responseBytes,
         errorCategory: traceErrorCategory(error, statusCode),
         errorMessage: sanitizeClientError(error),
-        metadata: clientNetworkMetadata(),
+        metadata: clientTimingMetadata(Math.max(0, Math.round(performance.now() - startedAt))),
         createdAt,
       }, initHeaders.Authorization);
     }
@@ -203,7 +203,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
         durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
         requestBytes,
         responseBytes,
-        metadata: clientNetworkMetadata(),
+        metadata: clientTimingMetadata(Math.max(0, Math.round(performance.now() - startedAt))),
         createdAt,
       }, initHeaders.Authorization);
     }
@@ -276,7 +276,7 @@ function recordAndSubmitDeviceTrace(config: RuntimeConfig, trace: ClientPerforma
 }
 
 export function createBackendAdventureStore(config: RuntimeConfig, authToken?: string): AdventureStore {
-  const authHeaders: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  const authHeaders = backendBearerHeaders(authToken);
   const revisions = new Map<string, number>();
   const saveChains = new Map<string, Promise<void>>();
   function rememberRevision(adventure: Adventure | undefined): Adventure | undefined {
@@ -374,9 +374,9 @@ export function createCachedBackendAdventureStore(
         syncStatus: "conflict",
         lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
         lastSyncedAt: existingBackup.lastSyncedAt,
-        lastSyncError: existingBackup.lastSyncError ?? "Server copy changed. Choose which save should win before generating.",
+        lastSyncError: existingBackup.lastSyncError ?? "Two Story versions changed. Choose which one to continue with.",
       });
-      throw new Error("Local backup conflict. Choose Upload Local Save or Download Server Save before generating.");
+      throw new Error("Two Story versions changed. Choose “Keep this device’s version” or “Use the server version” before continuing.");
     }
     if (
       existingBackup?.syncStatus === "clean"
@@ -396,7 +396,7 @@ export function createCachedBackendAdventureStore(
       }
       if (!serverAdventure) {
         await markMissingServerConflict(existingBackup);
-        throw new Error("Local backup conflict. Server copy was not found; choose Upload Local Save before generating.");
+        throw new Error("This Story has an unresolved save conflict. Keep this device’s version before continuing.");
       }
       if (serverAdventure.updatedAt !== adventure.updatedAt) {
         if (serverAdventure.updatedAt < adventure.updatedAt) {
@@ -404,7 +404,7 @@ export function createCachedBackendAdventureStore(
         } else {
           await markBackupConflict(existingBackup, serverAdventure.updatedAt);
         }
-        throw new Error("Local backup conflict. Server copy changed; choose which save should win before generating.");
+        throw new Error("Two Story versions changed. Choose which one to continue with before generating.");
       }
       return adventure;
     }
@@ -417,7 +417,7 @@ export function createCachedBackendAdventureStore(
       if (isStaleAdventureRevisionError(error)) {
         const backup = await getAccountAdventureBackup(ownerUserId, adventure.id);
         if (backup) await markBackupConflict(backup, undefined, "Server save revision changed. This device's local backup was kept; choose which save should win before syncing.");
-        throw new Error("Local backup conflict. Server save revision changed; choose which save should win before generating.");
+        throw new Error("Two Story versions changed again. Choose which one to continue with before generating.");
       }
       await markBackupFailed(adventure, error);
       if (isRetryableBackendSyncError(error)) {
@@ -466,7 +466,7 @@ export function createCachedBackendAdventureStore(
     return markBackupConflict(
       record,
       undefined,
-      "Server copy was not found. This device's local backup was kept; upload local save to restore it or delete the local backup deliberately.",
+      "The server version could not be found. This device’s version is preserved; keep it to restore the Story or deliberately delete the local copy.",
     );
   }
 
@@ -477,7 +477,7 @@ export function createCachedBackendAdventureStore(
     return markBackupConflict(
       record,
       serverUpdatedAt,
-      "Server copy is older than this device's local backup. The local backup was kept; choose Upload Local Save or Download Server Save.",
+      "The server version is older than this device’s version. Both are preserved until you choose which one to continue with.",
     );
   }
 
@@ -591,9 +591,9 @@ export function createCachedBackendAdventureStore(
           syncStatus: "conflict",
           lastServerUpdatedAt: existingBackup.lastServerUpdatedAt,
           lastSyncedAt: existingBackup.lastSyncedAt,
-          lastSyncError: existingBackup.lastSyncError ?? "Server copy changed. Duplicate this local backup or restore a server backup before syncing.",
+          lastSyncError: existingBackup.lastSyncError ?? "Two Story versions changed. Make a copy or choose a server backup before syncing.",
         });
-        throw new Error("Local backup conflict. Duplicate this local copy or restore a server backup before syncing.");
+        throw new Error("This Story has an unresolved save conflict. Make a copy of this device’s version or restore a server backup before syncing.");
       }
       await saveAccountAdventureBackup({ ownerUserId, adventure, syncStatus: "pending" });
       try {
@@ -603,7 +603,7 @@ export function createCachedBackendAdventureStore(
         if (isStaleAdventureRevisionError(error)) {
           const backup = await getAccountAdventureBackup(ownerUserId, adventure.id);
           if (backup) await markBackupConflict(backup, undefined, "Server save revision changed. This device's local backup was kept; choose which save should win before syncing.");
-          throw new Error("Local backup conflict. Server save revision changed; choose which save should win before syncing.");
+          throw new Error("Two Story versions changed again. Choose which one to continue with before syncing.");
         }
         await markBackupFailed(adventure, error);
         if (isRetryableBackendSyncError(error)) {
@@ -657,7 +657,7 @@ export function createBackendTurnRunner(config: RuntimeConfig, authToken: string
         method: "POST",
         keepalive: true,
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...backendBearerHeaders(authToken),
           "Idempotency-Key": crypto.randomUUID(),
         },
         body: JSON.stringify({
@@ -677,8 +677,14 @@ export function createBackendContextPreviewSource(config: RuntimeConfig, authTok
   return {
     build(adventureId) {
       return apiJson<ContextBuildResult>(config, `/adventures/${encodeURIComponent(adventureId)}/context-preview`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: backendBearerHeaders(authToken),
       });
     },
   };
+}
+
+function backendBearerHeaders(authToken?: string): Record<string, string> {
+  return authToken && authToken !== "cookie"
+    ? { Authorization: `Bearer ${authToken}` }
+    : {};
 }

@@ -194,7 +194,10 @@ export class LocalDb implements BackendDb {
   }
 
   async close(): Promise<void> {
-    return Promise.resolve();
+    // Server responses can finish before non-blocking telemetry persistence.
+    // Drain the serialized write queue so shutdown/tests do not remove the
+    // backing directory while a final trace write is still in flight.
+    await this.writeChain.catch(() => undefined);
   }
 }
 

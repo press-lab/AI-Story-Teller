@@ -3,6 +3,7 @@ import type { InputMode, Message } from "../types/adventure";
 import type { PlayRuntimeProps } from "./pageTypes";
 import { CheckboxField, Field, NumberInput } from "./shared";
 import { useActionFeedback } from "../components/ActionFeedback";
+import { classifyContextHealth } from "../ui/contextHealth";
 
 function StoryParagraphs({ content, trailing }: { content: string; trailing?: React.ReactNode }) {
   const paras = content.split(/\n\n+/);
@@ -19,15 +20,15 @@ function StoryParagraphs({ content, trailing }: { content: string; trailing?: Re
 const MODES: InputMode[] = ["do", "story", "comms"];
 
 const MODE_LABELS: Record<InputMode, string> = {
-  do: "Do",
+  do: "Action",
   story: "Story",
-  comms: "Author",
+  comms: "Ask AI",
 };
 
 const MODE_TOOLTIPS: Record<InputMode, string> = {
-  do: "Do — describe your character's action. Type in first or second person, the AI narrates in second person.",
-  story: "Story — directly add or guide the next story beat, as the narrator.",
-  comms: "Author — out-of-character message to the AI. Use for questions or instructions about the story.",
+  do: "Action - describe what your character does. The AI continues the scene in second person.",
+  story: "Story - directly add or guide the next story beat as the narrator.",
+  comms: "Ask AI - ask a question or give an out-of-character instruction about the story.",
 };
 
 const MODE_PLACEHOLDERS: Record<InputMode, string> = {
@@ -41,6 +42,7 @@ const PLAY_TOOLKIT_MIN_WIDTH = 120;
 const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420;
 const PLAY_TOOLKIT_MAX_WIDTH = 600;
 const MOBILE_COMPOSER_QUERY = "(max-width: 640px), (hover: none) and (pointer: coarse)";
+const COMPACT_PLAY_QUERY = "(max-width: 860px)";
 
 function transformInput(text: string, mode: InputMode): string {
   if (mode === "do" && !/^(you |i |i'|she |he |they |we )/i.test(text)) {
@@ -54,10 +56,31 @@ function messageRows(message: Message): number {
   return Math.max(3, Math.min(12, message.content.split(/\n/).length + 2));
 }
 
+function playerFacingSaveStatus(status: string): string {
+  const normalized = status.trim().toLowerCase();
+  if (!normalized || normalized === "saved") return "Saved";
+  if (normalized.includes("saving")) return "Saving…";
+  if (normalized.includes("offline") || normalized.includes("queued")) return "Saved on this device";
+  if (
+    normalized.includes("conflict")
+    || normalized.includes("two story versions")
+    || normalized.includes("unresolved save")
+    || normalized.includes("failed")
+    || normalized.includes("error")
+  ) return "Save needs attention";
+  return status;
+}
+
 function isMobileComposerKeyboard(): boolean {
   if (typeof window === "undefined") return false;
   if (typeof window.matchMedia === "function" && window.matchMedia(MOBILE_COMPOSER_QUERY).matches) return true;
   return window.innerWidth <= 640;
+}
+
+function isCompactPlayLayout(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia === "function" && window.matchMedia(COMPACT_PLAY_QUERY).matches) return true;
+  return window.innerWidth <= 860;
 }
 
 function usageTooltip(usage: NonNullable<Message["usage"]>): string {
@@ -143,6 +166,12 @@ export function PlayPage({
   const [showOverflow, setShowOverflow] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [turnSubmissionPending, setTurnSubmissionPending] = useState(false);
+  const [compactLayout, setCompactLayout] = useState(isCompactPlayLayout);
+  const [mobileStoryToolsOpen, setMobileStoryToolsOpen] = useState(false);
+  const [toolkitCollapsed, setToolkitCollapsed] = useState(() => {
+    try { return localStorage.getItem("play-toolkit-collapsed") === "true"; } catch { return false; }
+  });
+  const [openMessageActionsId, setOpenMessageActionsId] = useState<string | undefined>();
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
   const [toolkitWidth, setToolkitWidth] = useState(() => {
@@ -170,6 +199,26 @@ export function PlayPage({
   const [showScrollBottom, setShowScrollBottom] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(COMPACT_PLAY_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => setCompactLayout(event.matches);
+    setCompactLayout(media.matches);
+    media.addEventListener?.("change", handleChange);
+    return () => media.removeEventListener?.("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (compactLayout) return;
+    setMobileStoryToolsOpen(false);
+    setOpenMessageActionsId(undefined);
+  }, [compactLayout]);
+
+  useEffect(() => {
+    setMobileStoryToolsOpen(false);
+    setOpenMessageActionsId(undefined);
+  }, [adventure.id]);
+
+  useEffect(() => {
     const el = bottomRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) => setShowScrollBottom(!entry.isIntersecting), { threshold: 0 });
@@ -187,6 +236,9 @@ export function PlayPage({
   const droppedCards = budgetDropped.filter((i) => i.sourceType === "storyCard").length;
   const summaryTruncated = budgetDropped.some((i) => i.sourceType === "summary");
   const totalDropped = budgetDropped.length;
+  const contextHealth = contextResult
+    ? classifyContextHealth(contextResult, adventure.tokenBudgetSettings.maxContextTokens)
+    : undefined;
   const trimTooltip = [
     droppedMessages > 0 && `${droppedMessages} story turn${droppedMessages !== 1 ? "s" : ""} dropped`,
     droppedCards > 0 && `${droppedCards} reference card${droppedCards !== 1 ? "s" : ""} dropped`,
@@ -198,11 +250,16 @@ export function PlayPage({
     try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
   }
 
+  function updateToolkitCollapsed(next: boolean) {
+    setToolkitCollapsed(next);
+    try { localStorage.setItem("play-toolkit-collapsed", String(next)); } catch { /* ignore */ }
+  }
+
   useEffect(() => {
-    if (!playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return;
+    if (toolkitCollapsed || !playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return;
     updateToolkitWidth(PLAY_TOOLKIT_PANEL_MIN_WIDTH);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playPanelContent, toolkitWidth]);
+  }, [playPanelContent, toolkitWidth, toolkitCollapsed]);
 
   function startToolkitResize(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -254,6 +311,21 @@ export function PlayPage({
     } else {
       onOpenTab?.(tabId);
     }
+  }
+
+  function openMobileTool(tabId: string) {
+    if (tabId === "context") onBuildContext();
+    if (onOpenPlayTool) {
+      onOpenPlayTool(tabId);
+      return;
+    }
+    setMobileStoryToolsOpen(false);
+    onOpenTab?.(tabId);
+  }
+
+  function openFullStudio() {
+    setMobileStoryToolsOpen(false);
+    onOpenTab?.("edit");
   }
 
   useEffect(() => {
@@ -336,20 +408,20 @@ export function PlayPage({
 
   const toolButtons = (
     <>
-      <button type="button" onClick={() => openTool("components")}>Plot</button>
-      <button type="button" onClick={() => openTool("storyCards")}>Reference Cards</button>
+      <button type="button" onClick={() => openTool("components")}>Story &amp; Direction</button>
+      <button type="button" onClick={() => openTool("storyCards")}>World &amp; Lore</button>
       <button type="button" onClick={() => openTool("brains")}>Characters</button>
       <button type="button" onClick={() => openTool("memoryInbox")}>
-        Memory
+        Suggestions
         {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
       </button>
       <button
         type="button"
         onClick={() => { onBuildContext(); openTool("context"); }}
       >
-        Context
+        Context details
       </button>
-      <button type="button" onClick={() => onOpenTab?.("edit")}>Edit All</button>
+      <button type="button" onClick={() => onOpenTab?.("edit")}>Story Studio</button>
     </>
   );
 
@@ -384,18 +456,46 @@ export function PlayPage({
               <span>{error}</span>
               {onDismissError && (
                 <button type="button" className="error-dismiss" aria-label="Dismiss error" onClick={onDismissError}>
-                  Ã—
+                  ×
                 </button>
               )}
             </div>
           )}
           {adventure.openingScene && (
             <article className={`message assistant opening-scene-message${editingOpeningScene ? " editing" : ""}`}>
-              <div className="message-actions">
-                <button type="button" onClick={() => setEditingOpeningScene(!editingOpeningScene)}>
-                  {editingOpeningScene ? "Done" : "Edit"}
-                </button>
-              </div>
+              {compactLayout ? (
+                <div className="message-actions-mobile" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="message-actions-trigger"
+                    aria-label="Opening scene actions"
+                    aria-expanded={openMessageActionsId === "opening-scene"}
+                    aria-controls="opening-scene-actions"
+                    onClick={() => setOpenMessageActionsId((current) => current === "opening-scene" ? undefined : "opening-scene")}
+                  >
+                    More
+                  </button>
+                  {openMessageActionsId === "opening-scene" && (
+                    <div id="opening-scene-actions" className="message-actions-menu" aria-label="Opening scene actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingOpeningScene((current) => !current);
+                          setOpenMessageActionsId(undefined);
+                        }}
+                      >
+                        {editingOpeningScene ? "Done editing" : "Edit"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="message-actions">
+                  <button type="button" onClick={() => setEditingOpeningScene(!editingOpeningScene)}>
+                    {editingOpeningScene ? "Done" : "Edit"}
+                  </button>
+                </div>
+              )}
               {editingOpeningScene ? (
                 <textarea
                   className="message-editor"
@@ -420,21 +520,63 @@ export function PlayPage({
               }}
               className={`message ${message.role}${message.inputMode === "comms" ? " comms" : ""}${message.inputMode === "do" ? " mode-do" : ""}${editingMessageId === message.id ? " editing" : ""}`}
             >
-              <div className="message-actions">
-                <button
-                  type="button"
-                  onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
-                >
-                  {editingMessageId === message.id ? "Done" : "Edit"}
-                </button>
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={() => void deleteMessage(message)}
-                >
-                  Delete
-                </button>
-              </div>
+              {compactLayout ? (
+                <div className="message-actions-mobile" onClick={(event) => event.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="message-actions-trigger"
+                    aria-label="Story entry actions"
+                    aria-expanded={openMessageActionsId === message.id}
+                    aria-controls={`message-actions-${message.id}`}
+                    onClick={() => setOpenMessageActionsId((current) => current === message.id ? undefined : message.id)}
+                  >
+                    More
+                  </button>
+                  {openMessageActionsId === message.id && (
+                    <div
+                      id={`message-actions-${message.id}`}
+                      className="message-actions-menu"
+                      aria-label="Story entry actions"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingMessageId((current) => current === message.id ? undefined : message.id);
+                          setOpenMessageActionsId(undefined);
+                        }}
+                      >
+                        {editingMessageId === message.id ? "Done editing" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        className="danger"
+                        onClick={() => {
+                          setOpenMessageActionsId(undefined);
+                          void deleteMessage(message);
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="message-actions">
+                  <button
+                    type="button"
+                    onClick={() => setEditingMessageId(editingMessageId === message.id ? undefined : message.id)}
+                  >
+                    {editingMessageId === message.id ? "Done" : "Edit"}
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    onClick={() => void deleteMessage(message)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
               {editingMessageId === message.id ? (
                 <textarea
                   className="message-editor"
@@ -462,12 +604,12 @@ export function PlayPage({
                   {message.role === "assistant" && (message.usage || (message.id === lastAssistant?.id && pendingMemoryCount > 0)) && (
                     <span className="message-usage muted">
                       {message.usage && (
-                        <span title={usageTooltip(message.usage)}>
+                        <span className="technical-usage" title={usageTooltip(message.usage)}>
                           {usageInlineText(message.usage)}
                         </span>
                       )}
                       {message.id === lastAssistant?.id && adventure.activeState.backgroundTokenUsage.promptTokens > 0 && (
-                        <span title={`Background (cumulative): ${adventure.activeState.backgroundTokenUsage.promptTokens} prompt + ${adventure.activeState.backgroundTokenUsage.completionTokens} completion`}>
+                        <span className="technical-usage" title={`Background (cumulative): ${adventure.activeState.backgroundTokenUsage.promptTokens} prompt + ${adventure.activeState.backgroundTokenUsage.completionTokens} completion`}>
                           {" · "}bg ↑{adventure.activeState.backgroundTokenUsage.promptTokens} ↓{adventure.activeState.backgroundTokenUsage.completionTokens}
                         </span>
                       )}
@@ -501,7 +643,7 @@ export function PlayPage({
           </button>
         )}
         {loading && (
-          <div className="transcript-typing-indicator" aria-label="Generating…">
+          <div className="transcript-typing-indicator" aria-hidden="true">
             <span /><span /><span />
           </div>
         )}
@@ -511,6 +653,58 @@ export function PlayPage({
         <nav className="play-tool-row" aria-label="Adventure tools">
           {toolButtons}
         </nav>
+
+        {compactLayout && (
+          <div className="mobile-story-tools-bar">
+            <button
+              type="button"
+              className="mobile-story-tools-trigger"
+              aria-expanded={mobileStoryToolsOpen}
+              aria-controls="mobile-story-tools-sheet"
+              onClick={() => setMobileStoryToolsOpen((current) => !current)}
+            >
+              Story tools
+            </button>
+            {mobileStoryToolsOpen && (
+              <section
+                id="mobile-story-tools-sheet"
+                className={`mobile-story-tools-sheet${playPanelContent ? " has-panel" : ""}`}
+                aria-labelledby="mobile-story-tools-title"
+              >
+                <div className="mobile-story-tools-header">
+                  <h2 id="mobile-story-tools-title">Story tools</h2>
+                  <button type="button" aria-label="Close story tools" onClick={() => setMobileStoryToolsOpen(false)}>
+                    Close
+                  </button>
+                </div>
+                <nav className="mobile-story-tools-nav" aria-label="Story tools destinations">
+                  <button type="button" onClick={() => openMobileTool("components")}>Story &amp; Direction</button>
+                  <button type="button" onClick={() => openMobileTool("storyCards")}>World &amp; Lore</button>
+                  <button type="button" onClick={() => openMobileTool("brains")}>Characters</button>
+                  <button type="button" onClick={() => openMobileTool("memoryInbox")}>
+                    Suggestions
+                    {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+                  </button>
+                  <button type="button" onClick={() => openMobileTool("context")}>Context details</button>
+                  <button type="button" onClick={openFullStudio}>Studio / Edit all</button>
+                </nav>
+                {playPanelContent && (
+                  <div className="mobile-story-tools-panel">
+                    <div className="mobile-story-tools-panel-header">
+                      <h3>{playPanelTitle ?? "Story tool"}</h3>
+                      {onClosePlayPanel && (
+                        <button type="button" onClick={onClosePlayPanel}>Close selected tool</button>
+                      )}
+                    </div>
+                    <div className="mobile-story-tools-content">
+                      {playPanelContent}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        )}
 
         {composerOpen && (
           <div
@@ -522,6 +716,11 @@ export function PlayPage({
           />
         )}
         <div className={`composer panel${composerOpen ? "" : " composer-input-closed"}`} style={composerOpen ? { height: composerHeight } : {}}>
+          {(loading || turnSubmissionPending) && (
+            <div className="composer-generation-status" role="status" aria-live="polite">
+              Writing the next scene...
+            </div>
+          )}
           <div className="mode-selector">
             {(["do", "story", "comms"] as InputMode[]).map((mode) => (
               <button
@@ -549,10 +748,10 @@ export function PlayPage({
             </label>
           </div>
           <div className="mode-cycle-mobile">
-            <button type="button" className="mode-cycle-close" onClick={() => setComposerOpen(false)} title="Close">✕</button>
-            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)}>‹</button>
-            <span className="mode-cycle-label">{MODE_LABELS[inputMode]}</span>
-            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(1)}>›</button>
+            <button type="button" className="mode-cycle-close" onClick={() => setComposerOpen(false)} aria-label="Close turn input">✕</button>
+            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(-1)} aria-label="Previous input mode">‹</button>
+            <span className="mode-cycle-label">Input: {MODE_LABELS[inputMode]}</span>
+            <button type="button" className="mode-cycle-arrow" onClick={() => cycleMode(1)} aria-label="Next input mode">›</button>
           </div>
           <div className="composer-input-row">
             <textarea
@@ -596,11 +795,11 @@ export function PlayPage({
               {composerOpen ? "Close Input" : "Take a Turn"}
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
-              <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
-              <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>Retry</button>
+              <button type="button" disabled={loading || turnSubmissionPending} onClick={onContinue}>Continue</button>
+              <button type="button" disabled={loading || turnSubmissionPending || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button
                 type="button"
-                disabled={loading || adventure.messages.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.messages.length === 0}
                 onClick={() => void deleteLastMessage()}
               >
                 Erase
@@ -621,7 +820,7 @@ export function PlayPage({
               <button
                 type="button"
                 className="action-extra"
-                disabled={loading || adventure.activeState.storyUndoStack.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.activeState.storyUndoStack.length === 0}
                 onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
               >
                 Undo
@@ -629,7 +828,7 @@ export function PlayPage({
               <button
                 type="button"
                 className="action-extra"
-                disabled={loading || adventure.activeState.storyRedoStack.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.activeState.storyRedoStack.length === 0}
                 onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
               >
                 Redo
@@ -644,10 +843,11 @@ export function PlayPage({
               <button
                 type="button"
                 className="action-overflow-toggle"
+                aria-expanded={showOverflow}
                 onClick={() => setShowOverflow((v) => !v)}
                 title="More actions"
               >
-                {showOverflow ? "✕" : "···"}
+                {showOverflow ? "Less" : "More"}
               </button>
             </div>
             <span className="muted hint">Enter to submit · Shift+Enter for newline</span>
@@ -656,21 +856,47 @@ export function PlayPage({
       </div>
 
       {/* Drag handle between story column and Toolkit */}
-      <div
-        className="play-toolkit-handle"
-        onPointerDown={startToolkitResize}
-        title="Drag to resize Toolkit"
-        role="separator"
-        aria-orientation="vertical"
-      />
+      {!toolkitCollapsed && (
+        <div
+          className="play-toolkit-handle"
+          onPointerDown={startToolkitResize}
+          title="Drag to resize story tools"
+          role="separator"
+          aria-orientation="vertical"
+        />
+      )}
 
       {/* Toolkit — compact nav + optional tool panel */}
       <aside
-        className={`play-sidebar${playPanelContent ? " has-panel" : ""}`}
-        style={{ width: toolkitWidth }}
+        className={`play-sidebar${playPanelContent ? " has-panel" : ""}${toolkitCollapsed ? " is-collapsed" : ""}`}
+        style={{ width: toolkitCollapsed ? 48 : toolkitWidth }}
       >
+        {toolkitCollapsed ? (
+          <button
+            type="button"
+            className="play-toolkit-expand"
+            onClick={() => updateToolkitCollapsed(false)}
+            title="Show story tools"
+            aria-label="Show story tools"
+          >
+            Tools
+          </button>
+        ) : (
+        <>
         <div className="play-status">
-          <span className="muted">Turn {adventure.activeState.turn} · {saveStatus}</span>
+          <div className="play-toolkit-heading">
+            <span>Story tools</span>
+            <button
+              type="button"
+              onClick={() => updateToolkitCollapsed(true)}
+              title="Collapse story tools"
+              aria-label="Collapse story tools"
+            >
+              Hide
+            </button>
+          </div>
+          <span className="muted">Turn {adventure.activeState.turn}</span>
+          <strong>{playerFacingSaveStatus(saveStatus)}</strong>
           {providerPresets && providerPresets.length > 1 && onSelectPreset && (
             <select
               className="preset-select"
@@ -683,7 +909,17 @@ export function PlayPage({
               ))}
             </select>
           )}
-          <div className="token-strip">
+          {contextHealth && (
+            <button
+              type="button"
+              className={`play-context-health context-health-${contextHealth.status}`}
+              onClick={() => { onBuildContext(); onOpenContext(); }}
+              title={contextHealth.detail}
+            >
+              {contextHealth.label}
+            </button>
+          )}
+          <div className="token-strip" aria-label="Exact context usage">
             <span>{contextResult?.totalEstimatedTokens ?? 0} tokens</span>
             {totalDropped > 0 && (
               <span className="trim-warning" title={trimTooltip || "Context trimmed to fit token budget"}>
@@ -724,7 +960,7 @@ export function PlayPage({
           {toolButtons}
         </nav>
 
-        {playPanelContent && (
+        {!compactLayout && playPanelContent && (
           <div className="play-sidebar-panel">
             <div className="play-sidebar-panel-header">
               <span className="play-sidebar-panel-title">{playPanelTitle ?? "Tool"}</span>
@@ -759,6 +995,8 @@ export function PlayPage({
             <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>Clear</button>
           </div>
         </details>
+        </>
+        )}
       </aside>
     </section>
   );

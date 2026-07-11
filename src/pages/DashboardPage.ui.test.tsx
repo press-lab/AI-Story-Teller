@@ -50,15 +50,16 @@ describe("DashboardPage adventure detail", () => {
 
     expect(screen.getByRole("heading", { name: "Dashboard Adventure" })).toBeInTheDocument();
     expect(screen.getByText("Rain waits outside.")).toBeInTheDocument();
-    expect(screen.getByText(/\d+ tokens/)).toBeInTheDocument();
+    expect(screen.getByText("Context is healthy")).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ tokens/)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Continue Story" }));
     expect(onOpenTab).toHaveBeenCalledWith("play");
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Open Story Studio" }));
     expect(onOpenTab).toHaveBeenCalledWith("edit");
 
-    await user.click(screen.getByRole("button", { name: "Inspect" }));
+    await user.click(screen.getByRole("button", { name: "Context details" }));
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenContext).toHaveBeenCalledTimes(1);
   });
@@ -96,10 +97,10 @@ describe("DashboardPage adventure detail", () => {
     );
 
     expect(screen.getByText(/Server save is ahead/)).toBeInTheDocument();
-    expect(screen.getByText(/Choose which save should win: this device or the server/)).toBeInTheDocument();
+    expect(screen.getByText(/Both versions are preserved until you choose/)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Upload Local Save" }));
-    await user.click(screen.getByRole("button", { name: "Download Server Save" }));
+    await user.click(screen.getByRole("button", { name: "Keep this device's version" }));
+    await user.click(screen.getByRole("button", { name: "Use the server version" }));
 
     expect(onResolveSyncConflict).toHaveBeenNthCalledWith(1, "uploadLocal");
     expect(onResolveSyncConflict).toHaveBeenNthCalledWith(2, "downloadServer");

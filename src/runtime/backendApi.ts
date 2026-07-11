@@ -21,6 +21,7 @@ export interface BackendProfile {
   userId: string;
   displayName: string;
   bio: string;
+  socialVisibility?: BackendSocialVisibility;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,21 +36,59 @@ export interface BackendSessionState {
 export interface BackendCapabilities {
   passwordLogin: boolean;
   passwordSignup: boolean;
+  inviteRequired: boolean;
   passwordReset: boolean;
   emailVerificationDelivery: boolean;
   googleOAuth: boolean;
+}
+
+export interface BackendSocialVisibility {
+  followers: boolean;
+  following: boolean;
+  friends: boolean;
+}
+
+export interface BackendSocialPerson {
+  userId: string;
+  displayName: string;
+}
+
+export interface BackendOwnProfileSocial {
+  visibility: BackendSocialVisibility;
+  followers: BackendSocialPerson[];
+  following: BackendSocialPerson[];
+  friends: BackendSocialPerson[];
+  incomingFriendRequests: BackendSocialPerson[];
+  outgoingFriendRequests: BackendSocialPerson[];
+}
+
+export interface BackendPublicProfileSocial {
+  visibility: BackendSocialVisibility;
+  followers?: BackendSocialPerson[];
+  following?: BackendSocialPerson[];
+  friends?: BackendSocialPerson[];
+  viewer: {
+    isFollowing: boolean;
+    isFollowedBy: boolean;
+    friendshipStatus: "self" | "none" | "outgoing_pending" | "incoming_pending" | "friends";
+  };
 }
 
 export function loadBackendCapabilities(config: RuntimeConfig) {
   return apiJson<BackendCapabilities>(config, "/capabilities");
 }
 
-export interface BackendPasswordSignupResult {
-  user: BackendUser;
-  profile: BackendProfile;
-  verificationRequired: true;
-  message: string;
-}
+export type BackendPasswordSignupResult =
+  | {
+      user: BackendUser;
+      profile: BackendProfile;
+      verificationRequired: true;
+      message: string;
+    }
+  | (BackendSessionState & {
+      verificationRequired: false;
+      message: string;
+    });
 
 export interface BackendImportRequest {
   sourceType: "aist" | "githubSave";
@@ -117,6 +156,7 @@ export interface BackendProfileSummary {
   profile: BackendProfile;
   adventures: AdventureSummary[];
   scenarios: BackendProfileScenarioSummary[];
+  social?: BackendOwnProfileSocial;
 }
 
 export interface BackendAdventureSnapshotSummary {
@@ -138,6 +178,7 @@ export interface BackendPublicProfileSummary {
   };
   profile: BackendProfile;
   scenarios: BackendExploreScenarioSummary[];
+  social?: BackendPublicProfileSocial;
 }
 
 export interface BackendExploreScenarioSummary {
@@ -151,6 +192,8 @@ export interface BackendExploreScenarioSummary {
   createdAt: string;
   publishedAt: string;
   thumbnailImage?: AdventureThumbnailImage;
+  likeCount?: number;
+  likedByViewer?: boolean;
 }
 
 export interface BackendPlatformSettings {
@@ -176,6 +219,9 @@ export interface BackendPlatformSettings {
   features: {
     scenarioPublishingEnabled: boolean;
     developerToolsVisibleToAdmins: boolean;
+  };
+  administration: {
+    adminEmails: string[];
   };
   updatedAt?: string;
   updatedByUserId?: string;
@@ -334,7 +380,7 @@ function providerMutationHeaders(session: BackendSessionState): Record<string, s
 }
 
 export function createBackendInvite(config: RuntimeConfig, session: BackendSessionState, input: { note?: string; maxUses?: number; expiresInDays?: number }) {
-  return apiJson<{ token: string; invite: unknown }>(config, "/admin/invites", {
+  return apiJson<{ token: string; inviteUrl: string; invite: unknown }>(config, "/admin/invites", {
     method: "POST",
     headers: authHeaders(session),
     body: JSON.stringify(input),
@@ -457,6 +503,18 @@ export function loadBackendProfile(config: RuntimeConfig, session: BackendSessio
   });
 }
 
+export function updateBackendSocialVisibility(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  socialVisibility: Partial<BackendSocialVisibility>,
+) {
+  return apiJson<BackendProfileSummary>(config, "/profile/me", {
+    method: "PATCH",
+    headers: authHeaders(session),
+    body: JSON.stringify({ socialVisibility }),
+  });
+}
+
 export function loadBackendPublicProfile(config: RuntimeConfig, session: BackendSessionState, userId: string) {
   return apiJson<BackendPublicProfileSummary>(config, `/profiles/${encodeURIComponent(userId)}`, {
     headers: authHeaders(session),
@@ -465,6 +523,55 @@ export function loadBackendPublicProfile(config: RuntimeConfig, session: Backend
 
 export function loadBackendExploreScenarios(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<{ scenarios: BackendExploreScenarioSummary[] }>(config, "/explore/scenarios", {
+    headers: authHeaders(session),
+  });
+}
+
+export function likeBackendScenario(config: RuntimeConfig, session: BackendSessionState, scenarioId: string) {
+  return apiJson<{ scenarioId: string; liked: true; likeCount: number }>(config, `/scenarios/${encodeURIComponent(scenarioId)}/like`, {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
+export function unlikeBackendScenario(config: RuntimeConfig, session: BackendSessionState, scenarioId: string) {
+  return apiJson<{ scenarioId: string; liked: false; likeCount: number }>(config, `/scenarios/${encodeURIComponent(scenarioId)}/like`, {
+    method: "DELETE",
+    headers: authHeaders(session),
+  });
+}
+
+export function followBackendProfile(config: RuntimeConfig, session: BackendSessionState, userId: string) {
+  return apiJson<{ followedUserId: string; following: true }>(config, `/profiles/${encodeURIComponent(userId)}/follow`, {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
+export function unfollowBackendProfile(config: RuntimeConfig, session: BackendSessionState, userId: string) {
+  return apiJson<{ followedUserId: string; following: false }>(config, `/profiles/${encodeURIComponent(userId)}/follow`, {
+    method: "DELETE",
+    headers: authHeaders(session),
+  });
+}
+
+export function requestBackendFriend(config: RuntimeConfig, session: BackendSessionState, userId: string) {
+  return apiJson<{ id: string; status: "pending" }>(config, `/profiles/${encodeURIComponent(userId)}/friend-request`, {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
+export function acceptBackendFriend(config: RuntimeConfig, session: BackendSessionState, requesterUserId: string) {
+  return apiJson<{ id: string; status: "accepted" }>(config, `/profiles/${encodeURIComponent(requesterUserId)}/friend-accept`, {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
+export function removeBackendFriend(config: RuntimeConfig, session: BackendSessionState, userId: string) {
+  return apiJson<{ otherUserId: string; removed: boolean }>(config, `/profiles/${encodeURIComponent(userId)}/friendship`, {
+    method: "DELETE",
     headers: authHeaders(session),
   });
 }
@@ -525,6 +632,19 @@ export function updateBackendAdminUserStatus(
     method: "PATCH",
     headers: authHeaders(session),
     body: JSON.stringify({ status }),
+  });
+}
+
+export function updateBackendAdminUserRole(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  userId: string,
+  role: BackendUser["role"],
+) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: "PATCH",
+    headers: authHeaders(session),
+    body: JSON.stringify({ role }),
   });
 }
 

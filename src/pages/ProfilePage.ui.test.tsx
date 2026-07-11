@@ -182,7 +182,7 @@ describe("ProfilePage", () => {
     expect(screen.getByAltText("Draft scenario cover")).toBeInTheDocument();
     expect(screen.getByAltText("Private adventure cover")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start adventure from Draft Scenario" }));
+    await user.click(screen.getByRole("button", { name: "Start Story from Draft Scenario" }));
     expect(onStartScenario).toHaveBeenCalledWith("revision-1");
 
     await user.click(screen.getByRole("button", { name: "Edit scenario Draft Scenario" }));
@@ -209,7 +209,7 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Publish Scenario" }));
     expect(onPublishAdventure).toHaveBeenCalledWith("adventure-1");
 
-    await user.click(screen.getByRole("button", { name: "Logout" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
     expect(onLogout).toHaveBeenCalledOnce();
   });
 
@@ -242,7 +242,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("local device")).toBeInTheDocument();
     expect(screen.getByText("not published")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start adventure from local scenario Device Scenario" }));
+    await user.click(screen.getByRole("button", { name: "Start Story from local Scenario Device Scenario" }));
     expect(onStartLocalScenario).toHaveBeenCalledWith("local-scenario-1");
 
     await user.click(screen.getByRole("button", { name: "Delete local scenario Device Scenario" }));
@@ -272,7 +272,7 @@ describe("ProfilePage", () => {
     );
 
     const images = screen.getAllByAltText("Live adventure cover");
-    expect(images).toHaveLength(2);
+    expect(images).toHaveLength(3);
     expect(images[0]).toHaveAttribute("src", "data:image/png;base64,bGl2ZQ==");
   });
 
@@ -298,12 +298,88 @@ describe("ProfilePage", () => {
     expect(screen.getByAltText("Published scenario cover")).toBeInTheDocument();
     expect(screen.queryByText("player@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText("Private Playthrough")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Logout" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Start Story" }));
     expect(onStartScenario).toHaveBeenCalledWith("revision-public");
 
     await user.click(screen.getByRole("button", { name: "Your Profile" }));
     expect(onViewOwnProfile).toHaveBeenCalledOnce();
+  });
+
+  it("shows public connections and wires follow, friend, profile, and scenario-like actions", async () => {
+    const user = userEvent.setup();
+    const onFollowProfile = vi.fn(async () => undefined);
+    const onRequestFriend = vi.fn(async () => undefined);
+    const onOpenProfile = vi.fn(async () => undefined);
+    const onToggleScenarioLike = vi.fn(async () => undefined);
+    const sharedProfile: BackendPublicProfileSummary = {
+      ...publicProfile(),
+      scenarios: publicProfile().scenarios.map((scenario) => ({ ...scenario, likeCount: 4, likedByViewer: false })),
+      social: {
+        visibility: { followers: true, following: false, friends: true },
+        followers: [{ userId: "user-margo", displayName: "Margo" }],
+        friends: [],
+        viewer: { isFollowing: false, isFollowedBy: true, friendshipStatus: "none" },
+      },
+    };
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        publicProfile={sharedProfile}
+        viewMode="public"
+        onFollowProfile={onFollowProfile}
+        onRequestFriend={onRequestFriend}
+        onOpenProfile={onOpenProfile}
+        onToggleScenarioLike={onToggleScenarioLike}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Follow" }));
+    expect(onFollowProfile).toHaveBeenCalledWith("user-creator");
+    await user.click(screen.getByRole("button", { name: "Add Friend" }));
+    expect(onRequestFriend).toHaveBeenCalledWith("user-creator");
+    await user.click(screen.getByRole("button", { name: "Margo" }));
+    expect(onOpenProfile).toHaveBeenCalledWith("user-margo");
+    expect(screen.getByRole("heading", { name: "Following" }).parentElement).toHaveTextContent("Private");
+
+    await user.click(screen.getByRole("button", { name: "Like Published World" }));
+    expect(onToggleScenarioLike).toHaveBeenCalledWith("scenario-public", true);
+    expect(screen.getByText("4 likes")).toBeInTheDocument();
+  });
+
+  it("lets the owner control connection visibility and accept requests", async () => {
+    const user = userEvent.setup();
+    const onUpdateSocialVisibility = vi.fn(async () => undefined);
+    const onAcceptFriend = vi.fn(async () => undefined);
+    const ownProfile: BackendProfileSummary = {
+      ...profile(),
+      social: {
+        visibility: { followers: true, following: true, friends: false },
+        followers: [],
+        following: [],
+        friends: [],
+        incomingFriendRequests: [{ userId: "user-margo", displayName: "Margo" }],
+        outgoingFriendRequests: [],
+      },
+    };
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        profile={ownProfile}
+        onUpdateSocialVisibility={onUpdateSocialVisibility}
+        onAcceptFriend={onAcceptFriend}
+      />,
+    );
+
+    await user.click(screen.getByText("Account & profile"));
+    await user.click(screen.getByRole("checkbox", { name: "Show followers" }));
+    expect(onUpdateSocialVisibility).toHaveBeenCalledWith({ followers: false });
+    await user.click(screen.getByRole("button", { name: "Accept Margo" }));
+    expect(onAcceptFriend).toHaveBeenCalledWith("user-margo");
   });
 });

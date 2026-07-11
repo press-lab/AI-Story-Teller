@@ -14,9 +14,10 @@ afterEach(async () => {
 describe("SQL migration catalog", () => {
   it("loads ordered versioned SQL migrations", async () => {
     const migrations = await loadSqlMigrations();
-    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3]);
+    expect(migrations.map((migration) => migration.version)).toEqual([1, 2, 3, 4, 5]);
     expect(migrations[0].sql).toContain("schema_migrations");
     expect(migrations[1].sql).toContain("aist_idempotency");
+    expect(migrations[3].sql).toContain("aist_performance_created_idx");
   });
 
   it("rejects duplicate migration versions", async () => {

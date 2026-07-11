@@ -28,8 +28,25 @@ describe("data lifecycle", () => {
       { userId: "delete", displayName: "Delete", bio: "", createdAt: "x", updatedAt: "x" },
       { userId: "keep", displayName: "Keep", bio: "", createdAt: "x", updatedAt: "x" },
     ];
+    data.scenarioDrafts = [{ id: "owned-scenario", ownerUserId: "delete", title: "Owned", description: "", createdAt: "x", updatedAt: "x" }];
+    data.scenarioLikes = [
+      { id: "like-by-delete", scenarioId: "someone-elses", userId: "delete", createdAt: "x" },
+      { id: "like-on-delete", scenarioId: "owned-scenario", userId: "keep", createdAt: "x" },
+    ];
+    data.userFollows = [{ id: "follow", followerUserId: "keep", followedUserId: "delete", createdAt: "x" }];
+    data.friendships = [{
+      id: "friendship",
+      requesterUserId: "delete",
+      addresseeUserId: "keep",
+      status: "accepted",
+      createdAt: "x",
+      updatedAt: "x",
+    }];
     deleteUserData(data, "delete");
     expect(data.users.map((entry) => entry.id)).toEqual(["keep"]);
     expect(data.profiles.map((entry) => entry.userId)).toEqual(["keep"]);
+    expect(data.scenarioLikes).toEqual([]);
+    expect(data.userFollows).toEqual([]);
+    expect(data.friendships).toEqual([]);
   });
 });

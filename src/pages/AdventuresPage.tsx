@@ -279,7 +279,7 @@ export function AdventuresPage({
   loading = false,
   openingAdventureId,
   headingEyebrow = "Library",
-  headingTitle = "Choose an adventure",
+  headingTitle = "Choose a Story",
   headingDescription = "Continue a saved story, duplicate a setup, or start a new world.",
 }: AdventuresPageProps) {
   const { confirmAction, notify } = useActionFeedback();
@@ -370,7 +370,7 @@ export function AdventuresPage({
     }
   }
 
-  const [title, setTitle] = useState("New Adventure");
+  const [title, setTitle] = useState("New Story");
   const [openingScene, setOpeningScene] = useState("");
   const [thumbnailImage, setThumbnailImage] = useState<AdventureThumbnailImage | undefined>();
   const [componentDrafts, setComponentDrafts] = useState<ComponentDraft[]>([{
@@ -524,7 +524,7 @@ export function AdventuresPage({
     const createOptions = isCreateDeviceOnlyAdventureEnabled() ? { deviceOnly: true } : undefined;
     await onCreate(
       {
-        title: title.trim() || "New Adventure",
+        title: title.trim() || "New Story",
         openingScene: openingScene.trim(),
         components: starterComponents,
         storyCards: [...manualStoryCards, ...jsonStoryCards],
@@ -636,7 +636,7 @@ export function AdventuresPage({
               <button type="button" onClick={() => setView("list")}>
                 ← Library
               </button>
-              <p className="eyebrow">New Adventure</p>
+              <p className="eyebrow">New Story</p>
               <h3>Set up before playing</h3>
               <p className="muted">
                 Add starter context and Reference Cards now, or leave everything blank and build it later.
@@ -650,26 +650,27 @@ export function AdventuresPage({
               )}
               {allowDeviceOnlyScenarioCreation && (
                 <CheckboxField
-                  label="Keep this adventure on this device only"
+                  label="Keep this Story on this device only"
                   checked={isCreateDeviceOnlyAdventureEnabled()}
                   onChange={setCreateDeviceOnlyAdventure}
                   disabled={forceDeviceOnlyScenarioCreation}
                 />
               )}
               <button type="button" className="primary-action" onClick={createAdventure}>
-                Create Adventure
+                Create Story
               </button>
             </div>
           </div>
           {setupError && <p className="error-box">{setupError}</p>}
 
           {canGenerateAdventureSetup && (
-            <details className="setup-panel" open={!title || title === "New Adventure"}>
+            <details className="setup-panel" open={!title || title === "New Story"}>
               <summary>Generate with AI</summary>
               <p className="muted">
-                Pick a setup guide or stay custom, then describe your adventure idea. The AI drafts a title, opening scene, World Blocks, and reference cards for review.
+                Pick a setup guide or stay custom, then describe your Story idea. The AI drafts a title, opening scene, World Blocks, and Reference Cards for review.
               </p>
-              <Field label="Storyteller">
+              <div className="field">
+                <span>Storyteller</span>
                 <div className="storyteller-profile-grid" role="radiogroup" aria-label="Storyteller">
                   {STORYTELLER_PROFILES.map((profile) => {
                     const active = storytellerProfile === profile.id;
@@ -693,7 +694,7 @@ export function AdventuresPage({
                   })}
                 </div>
                 <p className="muted">Storyteller names are setup labels only. They are not added as characters or narrators.</p>
-              </Field>
+              </div>
               <Field label="Premise">
                 <textarea
                   rows={4}
@@ -1032,12 +1033,12 @@ export function AdventuresPage({
           <div className="panel-heading">
             <div>
               <button type="button" onClick={() => setView("create")}>
-                ← New Adventure
+                ← New Story
               </button>
               <p className="eyebrow">Import</p>
               <h3>Import from AIST</h3>
               <p className="muted">
-                Restore a full AI Story Teller adventure backup and continue from its saved messages, turn state, cards, brains, and components.
+                Restore a full Story Mode AI adventure backup and continue from its saved messages, turn state, cards, brains, and components.
               </p>
             </div>
           </div>
@@ -1053,7 +1054,7 @@ export function AdventuresPage({
               rows={12}
               value={aistImportText}
               onChange={(event) => setAistImportText(event.target.value)}
-              placeholder="Paste a full AI Story Teller adventure backup JSON."
+              placeholder="Paste a full Story Mode AI adventure backup JSON."
             />
           </Field>
 
@@ -1249,13 +1250,13 @@ export function AdventuresPage({
             </button>
           )}
           <button type="button" className="primary-action" onClick={() => setView("create")}>
-            New Adventure
+            New Story
           </button>
         </div>
       </header>
       <div className="library-grid">
         {adventures.length === 0 && (
-          <p className="muted">{loading ? "Loading adventures..." : "No adventures saved yet."}</p>
+          <p className="muted">{loading ? "Loading Stories..." : "No Stories saved yet."}</p>
         )}
         {adventures.map((adventure) => {
           const liveThumbnail = currentAdventure?.id === adventure.id ? getAdventureThumbnail(currentAdventure) : undefined;
@@ -1280,65 +1281,59 @@ export function AdventuresPage({
               {currentAdventure?.id === adventure.id && <p className="status-pill">Open</p>}
               {adventure.syncStatus && adventure.syncStatus !== "clean" && (
                 <p className="status-pill">
-                  {adventure.syncStatus === "conflict" ? "Local backup conflict" : `Local backup ${adventure.syncStatus}`}
+                  {adventure.syncStatus === "conflict" ? "Save needs attention" : `Device backup ${adventure.syncStatus}`}
                 </p>
               )}
               {adventure.syncStatus === "conflict" && onResolveSyncConflict && (
-                <p className="muted sync-conflict-help">
-                  {syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Choose which save should win: this device or the server.
-                </p>
+                <div className="sync-conflict-help" role="alert">
+                  <strong>Two versions changed.</strong>
+                  <span>{syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Both are preserved until you choose.</span>
+                </div>
               )}
               {adventure.syncError && <p className="error-inline">{adventure.syncError}</p>}
             </div>
             <div className="library-card-actions">
               <button type="button" className="primary-action" disabled={isOpening} onClick={() => void onOpen(adventure.id)}>
-                {isOpening ? "Opening..." : "Select"}
+                {isOpening ? "Opening..." : "Continue Story"}
               </button>
               {onOpenEdit && (
                 <button type="button" disabled={isOpening} onClick={() => void onOpenEdit(adventure.id)}>
-                  {isOpening ? "Opening..." : "Edit"}
-                </button>
-              )}
-              <button type="button" onClick={() => onDuplicate(adventure.id)}>
-                Duplicate
-              </button>
-              <button type="button" className="danger" onClick={() => onDelete(adventure.id)}>
-                Delete
-              </button>
-              {onListBackups && (
-                <button type="button" onClick={() => void openBackups(adventure)}>
-                  Backups
+                  {isOpening ? "Opening..." : "Story Studio"}
                 </button>
               )}
               {adventure.syncStatus === "conflict" && onResolveSyncConflict && (
                 <>
-                  <button type="button" className="primary-action" onClick={() => void onResolveSyncConflict(adventure.id, "uploadLocal")}>
-                    Upload Local Save
+                  <button type="button" onClick={() => void onResolveSyncConflict(adventure.id, "uploadLocal")}>
+                    Keep this device's version
                   </button>
                   <button type="button" onClick={() => void onResolveSyncConflict(adventure.id, "downloadServer")}>
-                    Download Server Save
+                    Use the server version
                   </button>
                 </>
               )}
-              {onPublish && (
-                <>
-                  {allowDeviceOnlyScenarioCreation && (
-                    <CheckboxField
-                      label="Keep this adventure on this device only"
-                      checked={isDeviceOnlyScenarioCreationEnabled(adventure.id)}
-                      onChange={(enabled) => setDeviceOnlyScenarioCreation(adventure.id, enabled)}
-                      disabled={forceDeviceOnlyScenarioCreation}
-                    />
+              <details className="library-card-more">
+                <summary>More</summary>
+                <div className="library-card-more-menu">
+                  <button type="button" onClick={() => onDuplicate(adventure.id)}>Duplicate</button>
+                  {onListBackups && <button type="button" onClick={() => void openBackups(adventure)}>Backups</button>}
+                  {onPublish && (
+                    <>
+                      {allowDeviceOnlyScenarioCreation && (
+                        <CheckboxField
+                          label="Keep this Story on this device only"
+                          checked={isDeviceOnlyScenarioCreationEnabled(adventure.id)}
+                          onChange={(enabled) => setDeviceOnlyScenarioCreation(adventure.id, enabled)}
+                          disabled={forceDeviceOnlyScenarioCreation}
+                        />
+                      )}
+                      <button type="button" onClick={() => void onPublish(adventure.id, { deviceOnly: isDeviceOnlyScenarioCreationEnabled(adventure.id) })}>
+                        Publish Scenario
+                      </button>
+                    </>
                   )}
-                  <button
-                    type="button"
-                    className="primary-action"
-                    onClick={() => void onPublish(adventure.id, { deviceOnly: isDeviceOnlyScenarioCreationEnabled(adventure.id) })}
-                  >
-                    Publish Scenario
-                  </button>
-                </>
-              )}
+                  <button type="button" className="danger" onClick={() => onDelete(adventure.id)}>Delete Story</button>
+                </div>
+              </details>
             </div>
             </div>
           </article>

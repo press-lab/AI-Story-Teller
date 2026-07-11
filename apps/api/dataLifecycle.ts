@@ -39,6 +39,9 @@ export function deleteUserData(data: LocalDbData, userId: string): void {
   data.accountStatusHistory = data.accountStatusHistory.filter((entry) => entry.userId !== userId);
   data.scenarioDrafts = data.scenarioDrafts.filter((entry) => entry.ownerUserId !== userId);
   data.scenarioRevisions = data.scenarioRevisions.filter((entry) => !scenarioIds.has(entry.scenarioId));
+  data.scenarioLikes = data.scenarioLikes.filter((entry) => entry.userId !== userId && !scenarioIds.has(entry.scenarioId));
+  data.userFollows = data.userFollows.filter((entry) => entry.followerUserId !== userId && entry.followedUserId !== userId);
+  data.friendships = data.friendships.filter((entry) => entry.requesterUserId !== userId && entry.addresseeUserId !== userId);
   data.shareLinks = data.shareLinks.filter((entry) => entry.ownerUserId !== userId && !revisionIds.has(entry.targetId));
   data.usageLogs = data.usageLogs.filter((entry) => entry.userId !== userId);
   data.performanceTraces = data.performanceTraces.filter((entry) => entry.userId !== userId);
