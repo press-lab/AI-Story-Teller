@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
 import type { ContextBuildResult } from "../types/adventure";
 import type { AdventureStore } from "../runtime/adventureStore";
@@ -11,6 +11,23 @@ import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import { useAdventureLibrary } from "./useAdventureLibrary";
 
 describe("useAdventureLibrary", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  function stableCallbacks(errors?: string[]) {
+    return {
+      setAdventure: vi.fn(),
+      setContextResult: vi.fn((_result: ContextBuildResult | undefined) => undefined),
+      onNavigate: vi.fn(),
+      onModalClose: vi.fn(),
+      onError: vi.fn((message: string) => {
+        errors?.push(message);
+      }),
+    };
+  }
+
   it("hydrates missing summary thumbnails from the full adventure record", async () => {
     const adventure = createDefaultAdventure("Profile Cover Source");
     adventure.id = "adv-profile-cover";
@@ -33,16 +50,17 @@ describe("useAdventureLibrary", () => {
       save: vi.fn(async () => undefined),
       delete: vi.fn(async () => undefined),
     };
+    const callbacks = stableCallbacks();
 
     function Harness() {
       const library = useAdventureLibrary(
         store,
         "backend",
-        vi.fn(),
-        vi.fn((_result: ContextBuildResult | undefined) => undefined),
-        vi.fn(),
-        vi.fn(),
-        vi.fn(),
+        callbacks.setAdventure,
+        callbacks.setContextResult,
+        callbacks.onNavigate,
+        callbacks.onModalClose,
+        callbacks.onError,
       );
       const summary = library.adventures[0];
       return (
@@ -75,16 +93,17 @@ describe("useAdventureLibrary", () => {
       save: vi.fn(async () => undefined),
       delete: vi.fn(async () => undefined),
     };
+    const callbacks = stableCallbacks();
 
     function Harness() {
       const library = useAdventureLibrary(
         store,
         "backend",
-        vi.fn(),
-        vi.fn((_result: ContextBuildResult | undefined) => undefined),
-        vi.fn(),
-        vi.fn(),
-        vi.fn(),
+        callbacks.setAdventure,
+        callbacks.setContextResult,
+        callbacks.onNavigate,
+        callbacks.onModalClose,
+        callbacks.onError,
       );
       return <span data-testid="title">{library.adventures[0]?.title ?? "missing"}</span>;
     }
@@ -116,16 +135,17 @@ describe("useAdventureLibrary", () => {
       save: vi.fn(async () => undefined),
       delete: vi.fn(async () => undefined),
     };
+    const callbacks = stableCallbacks(errors);
 
     function Harness() {
       const library = useAdventureLibrary(
         store,
         "backend",
-        vi.fn(),
-        vi.fn((_result: ContextBuildResult | undefined) => undefined),
-        vi.fn(),
-        vi.fn(),
-        (message) => errors.push(message),
+        callbacks.setAdventure,
+        callbacks.setContextResult,
+        callbacks.onNavigate,
+        callbacks.onModalClose,
+        callbacks.onError,
       );
       return (
         <div>
@@ -146,6 +166,7 @@ describe("useAdventureLibrary", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
 
     await waitFor(() => expect(errors).toContain("Backend list timed out."));
+    await waitFor(() => expect(store.list).toHaveBeenCalledTimes(2));
     expect(screen.getByTestId("titles")).toHaveTextContent("Server Adventure");
   });
 
@@ -168,16 +189,17 @@ describe("useAdventureLibrary", () => {
         throw new Error("Backend delete failed.");
       }),
     };
+    const callbacks = stableCallbacks(errors);
 
     function Harness() {
       const library = useAdventureLibrary(
         store,
         "backend",
-        vi.fn(),
-        vi.fn((_result: ContextBuildResult | undefined) => undefined),
-        vi.fn(),
-        vi.fn(),
-        (message) => errors.push(message),
+        callbacks.setAdventure,
+        callbacks.setContextResult,
+        callbacks.onNavigate,
+        callbacks.onModalClose,
+        callbacks.onError,
       );
       return (
         <button type="button" onClick={() => void library.removeAdventure("adv-stubborn")}>
@@ -187,6 +209,7 @@ describe("useAdventureLibrary", () => {
     }
 
     render(<Harness />);
+    await waitFor(() => expect(store.list).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
