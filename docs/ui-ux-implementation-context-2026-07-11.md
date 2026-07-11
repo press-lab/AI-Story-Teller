@@ -1200,7 +1200,7 @@ complete until:
 | Settings | Organizes choices around Appearance, account access, Models, sessions, and advanced settings; local execution mode/API URL are behind Connection settings, and routine/destructive actions no longer have equal emphasis. | Categories and fields stack, with full-label actions and practical touch targets. | `035`, `053`; `072`, `091` |
 | Help | Aligns the documentation canvas to the shell, keeps prose readable, selects one topic, supports topic hashes/history, and focuses the new article heading after navigation. | Topics become a disclosure and one article owns the reading surface. | `036`, `054`; `073`, `092` |
 | More navigation | Keeps secondary destinations available without crowding the five-item primary navigation. | Full labels and 44-pixel interaction targets are preserved. | `069`, `088` |
-| Admin | Retains wide/compact route roles and a task-oriented console structure. | Metrics use a compact horizontal region and primary tabs use a safe grid. | Authenticated live evidence required |
+| Admin | Retains wide/compact route roles and a task-oriented console structure. | Metrics use a compact horizontal region and primary tabs use a safe grid. | Authenticated production evidence captured on build `4bd5a6b` |
 
 ## Research applied
 
@@ -1296,21 +1296,52 @@ Dark-theme visual audit
 PASS — 92 screenshots, 5 viewports, 0 failed screens.
 ```
 
-## Verification limitations that must remain explicit
+## Production verification completed
 
-The local report proves the selected geometry and interaction states above; it
-does not by itself prove subjective usability or every authenticated production
-state. Before marking the release Verified deployed, add:
+The implementation commit is
+`4bd5a6b70f04085369a458151c8e162128c619db`. The signed-in production UI at
+`https://story.storymodeai.com/` displayed build `4bd5a6b` during the release
+pass on 2026-07-11.
 
-- authenticated desktop and mobile public-profile screenshots;
-- authenticated desktop and mobile Admin screenshots;
-- production frontend hash matching the final pushed commit;
-- final `npm.cmd test`, `npm.cmd run build`, and `npm.cmd run smoke:prod` results;
-- live 200%/400% reflow evidence if claiming those zoom states;
-- mobile virtual-keyboard evidence if claiming keyboard-safe composer behavior;
-- any separately required authenticated hosted Play/provider verification.
+Authenticated desktop verification covered Home, Explore and creator search,
+an empty public creator profile, Play with the companion collapsed and open,
+Story Studio, a focused World Block editor, Settings, Help, and Admin. The live
+empty public profile rendered a compact `No published scenarios yet` state and
+did not render the old floating Scenario warning. The Admin Console identified
+the signed-in Reynaud account as an active admin.
 
-The `3393966` hash visible in these local screenshots identifies the commit from
-which the local Vite fixture was started. It is not the final release hash and
-must not be recorded as the deployed implementation commit unless the final
-pushed commit is actually that hash.
+Authenticated mobile verification at 390x844 covered Home, New Story, Play,
+Story Studio, a focused Studio editor, More navigation, Settings, and Help.
+For every measured mobile route, the document `scrollWidth` equaled the
+390-pixel `clientWidth`, and no visible button measured below 44 pixels tall.
+This confirms the tested production states did not introduce page-level
+horizontal overflow or undersized visible buttons at that viewport.
+
+A real production Play action was submitted against the existing Atrocity
+Story. The provider returned a new multi-paragraph scene, the companion advanced
+from turn 1 to turn 2, and no model-provider error appeared. The Story library
+subsequently showed 2 turns and 4 Story entries.
+
+The hosted API readiness check returned HTTP 200 with Postgres available and
+schema version 5. GitHub Actions run
+`https://github.com/press-lab/AI-Story-Teller/actions/runs/29169876073`
+completed successfully, including unit tests, Postgres integration, frontend
+build, hosted API build, hosted API production smoke, production smoke, and
+Render build/deployment parity.
+
+Authenticated production screenshots are stored locally under
+`docs/ui-ux-audit-2026-07-11/live-4bd5a6b/` for the owner's final report. They
+are intentionally not committed because the signed-in Admin and account views
+contain private account information. The committed light and dark local audit
+galleries remain the durable public screenshot evidence.
+
+The `3393966` hash visible in the committed local screenshots identifies the
+commit from which the local Vite fixture was started. The signed-in production
+evidence above is the authoritative deployment check for implementation build
+`4bd5a6b`.
+
+This release does not claim separate 200%/400% browser-zoom coverage or a
+physical mobile virtual-keyboard capture. It does claim the five explicit CSS
+viewports, signed-in 390x844 production reflow measurements, desktop and mobile
+light/dark screenshot audits, and the real hosted provider turn described
+above.
