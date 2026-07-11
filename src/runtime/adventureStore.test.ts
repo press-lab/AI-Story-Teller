@@ -298,7 +298,7 @@ describe("cached backend adventure store", () => {
       title: "Local Only After Failed Server Save",
       syncStatus: "conflict",
       updatedAt: "2026-07-05T10:10:00.000Z",
-      syncError: expect.stringContaining("Server copy was not found"),
+      syncError: expect.stringContaining("server version could not be found"),
     });
     const backup = await getAccountAdventureBackup("user-1", "adv-missing-server");
     expect(backup).toMatchObject({
@@ -384,7 +384,7 @@ describe("cached backend adventure store", () => {
 
     const config: RuntimeConfig = { mode: "backendLocal", apiBaseUrl: "http://backend.test" };
     const store = createCachedBackendAdventureStore(config, "session-token", "user-1");
-    await expect(store.saveForGeneration!(openAdventure)).rejects.toThrow("Local backup conflict");
+    await expect(store.saveForGeneration!(openAdventure)).rejects.toThrow("Two Story versions changed");
 
     expect(fetchMock).not.toHaveBeenCalled();
     const backup = await getAccountAdventureBackup("user-1", "adv-conflict");

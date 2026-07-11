@@ -103,51 +103,36 @@ describe("App adventure tool workspace", () => {
     });
     render(<App />);
 
-    const nav = screen.getByRole("navigation", { name: "Primary" });
-    expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Profile",
-      "Explore",
-    ]);
-    expect(within(nav).queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("button", { name: "Adventure" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    expect(screen.getByText("New User Guide")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Adventure Library" })).toBeInTheDocument();
+    const nav = screen.getByRole("navigation", { name: "Primary navigation" });
+    expect(within(nav).getByRole("button", { name: "Home" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("button", { name: "Explore" })).toBeEnabled();
+    expect(within(nav).getByRole("button", { name: "Play" })).toBeDisabled();
+    expect(within(nav).getByRole("button", { name: "Story Studio" })).toBeDisabled();
+    expect(screen.getByText("Getting started")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your Stories" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "New Adventure" }));
-    const titleInput = screen.getByDisplayValue("New Adventure");
+    await user.click(screen.getByRole("button", { name: "New Story" }));
+    const titleInput = screen.getByDisplayValue("New Story");
     await user.clear(titleInput);
     await user.type(titleInput, "Workspace Test");
-    await user.click(screen.getByRole("button", { name: "Create Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Create Story" }));
 
     // After creation the app lands on the dashboard — title appears as a heading
     await screen.findByRole("heading", { name: "Workspace Test" });
-    const openAdventureToggle = within(nav).getByRole("button", { name: "Open: Workspace Test" });
-    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "true");
-    expect(within(nav).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Open: Workspace Test",
-      "Adventure",
-      "Play",
-      "Edit",
-      "Profile",
-      "Explore",
-    ]);
+    expect(within(nav).getByRole("button", { name: "Play" })).toBeEnabled();
+    expect(within(nav).getByRole("button", { name: "Story Studio" })).toBeEnabled();
+    expect(within(nav).getByRole("button", { name: "History" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Context Inspector" })).toBeInTheDocument();
 
-    await user.click(openAdventureToggle);
-    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "false");
-    expect(within(nav).queryByRole("button", { name: "Adventure" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("button", { name: "Play" })).not.toBeInTheDocument();
-    expect(within(nav).queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
-    await user.click(openAdventureToggle);
-    expect(openAdventureToggle).toHaveAttribute("aria-expanded", "true");
-    expect(within(nav).getByRole("button", { name: "Adventure" })).toBeInTheDocument();
-
-    expect(screen.queryByRole("button", { name: "Quests" })).not.toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await user.click(within(nav).getByRole("button", { name: "Story Studio" }));
     const editorNav = screen.getByRole("navigation", { name: "Adventure editor" });
-    expect(within(editorNav).queryByRole("button", { name: "Saves" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Reference Cards" }));
+    expect(within(editorNav).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "Story & Direction",
+      "World & Lore",
+      "Characters",
+      "Suggestions",
+    ]);
+    await user.click(within(editorNav).getByRole("button", { name: "World & Lore" }));
 
     // Now in the editor — title is an editable input
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -155,8 +140,9 @@ describe("App adventure tool workspace", () => {
     expect(screen.getByRole("button", { name: "Create Reference Card" })).toBeInTheDocument();
 
     // Adventure tab returns to dashboard — heading again
-    await user.click(screen.getByRole("button", { name: "Adventure" }));
-    expect(screen.getByRole("heading", { name: "Workspace Test" })).toBeInTheDocument();
+    await user.click(within(nav).getByRole("button", { name: "Home" }));
+    expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Continue Story" }).length).toBeGreaterThan(0);
   });
 
   it("shows only the welcome account gate without a session", () => {
@@ -166,6 +152,18 @@ describe("App adventure tool workspace", () => {
     expect(screen.queryByLabelText("Backend API URL")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "New Adventure" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "New Story" })).not.toBeInTheDocument();
+  });
+
+  it("opens Browser Local directly without requiring a backend account", async () => {
+    installLocalStorage({
+      "ai-story-teller-runtime-config": { mode: "local", apiBaseUrl: "http://127.0.0.1:8787" },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Your Stories" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Story" })).toBeEnabled();
+    expect(screen.queryByRole("heading", { name: "Sign in to continue." })).not.toBeInTheDocument();
   });
 });

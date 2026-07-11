@@ -47,7 +47,10 @@ function setMobileComposerViewport() {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
     writable: true,
-    value: vi.fn((query: string) => mediaQueryList(query, query.includes("max-width: 640px") || query.includes("pointer: coarse"))),
+    value: vi.fn((query: string) => mediaQueryList(
+      query,
+      query.includes("max-width: 640px") || query.includes("max-width: 860px") || query.includes("pointer: coarse"),
+    )),
   });
 }
 
@@ -224,6 +227,90 @@ describe("PlayPage AID-style controls", () => {
     expect(input).toHaveValue("draw your sword");
   });
 
+  it("keeps every essential story destination reachable from the mobile Story tools sheet", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    const onOpenPlayTool = vi.fn();
+    const onOpenTab = vi.fn();
+    const onBuildContext = vi.fn();
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading={false}
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={onBuildContext}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+        onOpenTab={onOpenTab}
+        onOpenPlayTool={onOpenPlayTool}
+      />,
+    );
+
+    const trigger = screen.getByRole("button", { name: "Story tools" });
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await user.click(trigger);
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    const sheet = screen.getByRole("region", { name: "Story tools" });
+    await user.click(within(sheet).getByRole("button", { name: "Story & Direction" }));
+    await user.click(within(sheet).getByRole("button", { name: "World & Lore" }));
+    await user.click(within(sheet).getByRole("button", { name: "Characters" }));
+    await user.click(within(sheet).getByRole("button", { name: "Suggestions" }));
+    await user.click(within(sheet).getByRole("button", { name: "Context details" }));
+
+    expect(onOpenPlayTool.mock.calls.map(([destination]) => destination)).toEqual([
+      "components",
+      "storyCards",
+      "brains",
+      "memoryInbox",
+      "context",
+    ]);
+    expect(onBuildContext).toHaveBeenCalledTimes(1);
+
+    await user.click(within(sheet).getByRole("button", { name: "Studio / Edit all" }));
+    expect(onOpenTab).toHaveBeenCalledWith("edit");
+  });
+
+  it("makes Edit and Delete reachable from a touch-friendly mobile message action control", async () => {
+    setMobileComposerViewport();
+    const user = userEvent.setup();
+    render(<StatefulPlayPage />);
+
+    const assistantMessage = screen.getByText("Rain waits outside.").closest("article");
+    expect(assistantMessage).toBeTruthy();
+    const actionTrigger = within(assistantMessage as HTMLElement).getByRole("button", { name: "Story entry actions" });
+    expect(actionTrigger).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(actionTrigger);
+
+    expect(actionTrigger).toHaveAttribute("aria-expanded", "true");
+    expect(within(assistantMessage as HTMLElement).getByRole("button", { name: "Edit" })).toBeVisible();
+    expect(within(assistantMessage as HTMLElement).getByRole("button", { name: "Delete" })).toBeVisible();
+  });
+
+  it("announces a plain-language generation status beside the composer", () => {
+    render(
+      <PlayPage
+        adventure={playAdventure()}
+        dispatch={() => undefined}
+        loading
+        saveStatus="saved"
+        onSubmitTurn={noopSubmitTurn}
+        onContinue={noopAsync}
+        onRegenerate={noopAsync}
+        onBuildContext={() => undefined}
+        onOpenContext={() => undefined}
+        onRememberThis={async () => undefined}
+      />,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Writing the next scene...");
+  });
+
   it("renders runtime errors inside the story frame before transcript text", () => {
     const error = "Provider error 403: OpenRouter key limit exceeded. Raise or reset the key limit.";
     render(
@@ -341,7 +428,7 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    const contextBtn = screen.getAllByRole("button", { name: "Context" })[0];
+    const contextBtn = screen.getAllByRole("button", { name: "Context details" })[0];
     await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");

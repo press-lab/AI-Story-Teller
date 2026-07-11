@@ -182,7 +182,7 @@ describe("ProfilePage", () => {
     expect(screen.getByAltText("Draft scenario cover")).toBeInTheDocument();
     expect(screen.getByAltText("Private adventure cover")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start adventure from Draft Scenario" }));
+    await user.click(screen.getByRole("button", { name: "Start Story from Draft Scenario" }));
     expect(onStartScenario).toHaveBeenCalledWith("revision-1");
 
     await user.click(screen.getByRole("button", { name: "Edit scenario Draft Scenario" }));
@@ -209,7 +209,7 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Publish Scenario" }));
     expect(onPublishAdventure).toHaveBeenCalledWith("adventure-1");
 
-    await user.click(screen.getByRole("button", { name: "Logout" }));
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
     expect(onLogout).toHaveBeenCalledOnce();
   });
 
@@ -242,7 +242,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("local device")).toBeInTheDocument();
     expect(screen.getByText("not published")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start adventure from local scenario Device Scenario" }));
+    await user.click(screen.getByRole("button", { name: "Start Story from local Scenario Device Scenario" }));
     expect(onStartLocalScenario).toHaveBeenCalledWith("local-scenario-1");
 
     await user.click(screen.getByRole("button", { name: "Delete local scenario Device Scenario" }));
@@ -272,7 +272,7 @@ describe("ProfilePage", () => {
     );
 
     const images = screen.getAllByAltText("Live adventure cover");
-    expect(images).toHaveLength(2);
+    expect(images).toHaveLength(3);
     expect(images[0]).toHaveAttribute("src", "data:image/png;base64,bGl2ZQ==");
   });
 
@@ -298,9 +298,9 @@ describe("ProfilePage", () => {
     expect(screen.getByAltText("Published scenario cover")).toBeInTheDocument();
     expect(screen.queryByText("player@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText("Private Playthrough")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Logout" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Start Adventure" }));
+    await user.click(screen.getByRole("button", { name: "Start Story" }));
     expect(onStartScenario).toHaveBeenCalledWith("revision-public");
 
     await user.click(screen.getByRole("button", { name: "Your Profile" }));

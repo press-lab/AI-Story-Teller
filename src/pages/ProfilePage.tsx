@@ -34,9 +34,10 @@ interface ProfilePageProps {
   onLogout?: () => void;
   adventureLibrary?: ReactNode;
   onOpenHelp?: () => void;
+  onOpenExplore?: () => void;
 }
 
-const publicScenarioStartWarning = "This scenario will start exactly as published. AI Story Teller does not substitute user variables yet. If you do not want to play the premade player character, edit the new adventure after it opens before continuing play.";
+const publicScenarioStartWarning = "This Scenario starts exactly as published. If you want a different player character, start the private Story and change its setup in Story Studio before taking the first turn.";
 
 export interface LocalProfileScenarioSummary {
   id: string;
@@ -50,6 +51,62 @@ export interface LocalProfileScenarioSummary {
 function formatDate(iso?: string): string {
   if (!iso) return "Not yet";
   return new Date(iso).toLocaleString();
+}
+
+function currentScenePreview(adventure: Adventure): string {
+  const latestAssistant = [...adventure.messages].reverse().find((message) => message.role === "assistant");
+  const source = latestAssistant?.content || adventure.openingScene || "This Story is ready for its first turn.";
+  const normalized = source.trim().replace(/\s+/g, " ");
+  return normalized.length > 240 ? `${normalized.slice(0, 237).trim()}...` : normalized;
+}
+
+function HomeStoryHero({
+  story,
+  onContinue,
+  onEdit,
+  onExplore,
+}: {
+  story?: Adventure;
+  onContinue?: (id: string) => Promise<void>;
+  onEdit?: (id: string) => Promise<void>;
+  onExplore?: () => void;
+}) {
+  if (!story) {
+    return (
+      <section className="home-story-hero home-story-empty">
+        <div>
+          <p className="eyebrow">Your next Story</p>
+          <h2>Find a world worth stepping into</h2>
+          <p className="muted">Preview a reusable Scenario, then start a private Story that belongs to you.</p>
+        </div>
+        <button type="button" className="primary-action" onClick={onExplore} disabled={!onExplore}>Explore Scenarios</button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="home-story-hero">
+      <AdventureThumbnailFrame
+        thumbnail={getAdventureThumbnail(story)}
+        title={story.title}
+        className="home-story-cover"
+      />
+      <div className="home-story-content">
+        <div>
+          <p className="eyebrow">Continue your Story</p>
+          <h2>{story.title}</h2>
+          <p className="muted">Turn {story.activeState.turn} · Last modified {formatDate(story.updatedAt)}</p>
+        </div>
+        <p className="home-story-preview">{currentScenePreview(story)}</p>
+        <div className="home-story-actions">
+          <button type="button" className="primary-action" onClick={() => void onContinue?.(story.id)} disabled={!onContinue}>
+            Continue Story
+          </button>
+          <button type="button" onClick={() => void onEdit?.(story.id)} disabled={!onEdit}>Open Story Studio</button>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export function ProfilePage({
@@ -77,19 +134,25 @@ export function ProfilePage({
   onLogout,
   adventureLibrary,
   onOpenHelp,
+  onOpenExplore,
 }: ProfilePageProps) {
   if (!backendMode) {
     return (
       <section className="page library-page">
-        <header className="library-header">
+        <header className="library-header home-header">
           <div>
             <p className="eyebrow">Home</p>
-            <h2>Profile & Library</h2>
+            <h2>Welcome back</h2>
+            <p className="muted">Continue where you left off or start something new.</p>
           </div>
         </header>
-        <p className="notice">Account profiles are available in backend mode. Browser Local adventures remain below.</p>
-        <NewUserGuide onOpenHelp={onOpenHelp} />
+        <HomeStoryHero story={liveAdventure} onContinue={onOpenAdventure} onEdit={onEditAdventure} onExplore={onOpenExplore} />
         {adventureLibrary}
+        <details className="setup-panel home-secondary-panel">
+          <summary>Browser Local details</summary>
+          <p className="muted">These Stories stay in this browser unless you back them up or transfer them. Account profiles are available in hosted mode.</p>
+        </details>
+        <NewUserGuide onOpenHelp={onOpenHelp} />
       </section>
     );
   }
@@ -145,54 +208,39 @@ export function ProfilePage({
 
   return (
     <section className="page library-page">
-      <header className="library-header">
+      <header className={`library-header${isPublicProfile ? "" : " home-header"}`}>
         <div>
-          <p className="eyebrow">{isPublicProfile ? "Public Profile" : "Account"}</p>
-          <h2>{displayName}</h2>
+          <p className="eyebrow">{isPublicProfile ? "Public Profile" : "Home"}</p>
+          <h2>{isPublicProfile ? displayName : `Welcome back, ${displayName.split(" ")[0]}`}</h2>
           {isPublicProfile ? (
             <p className="muted">Joined {formatDate(publicProfile!.user.createdAt)}</p>
           ) : (
-            <p className="muted">{ownEmail}</p>
+            <p className="muted">Continue where you left off or begin a new Story.</p>
           )}
-          {bio && <p className="muted">{bio}</p>}
+          {isPublicProfile && bio && <p className="muted">{bio}</p>}
         </div>
         {isPublicProfile ? (
           <button type="button" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
             Your Profile
           </button>
         ) : (
-          <div className="toolbar">
-            {onOpenAdmin && (
-              <button type="button" onClick={onOpenAdmin}>
-                Admin Console
-              </button>
-            )}
-            <button type="button" onClick={onLogout} disabled={!onLogout}>
-              Logout
-            </button>
-          </div>
+          <button type="button" onClick={onOpenExplore} disabled={!onOpenExplore}>Explore Scenarios</button>
         )}
       </header>
 
       {status && <p className="notice">{status}</p>}
 
-      <div className="editor-stat-row" aria-label="Profile summary">
-        {isPublicProfile ? (
+      {!isPublicProfile && (
+        <HomeStoryHero story={liveAdventure} onContinue={onOpenAdventure} onEdit={onEditAdventure} onExplore={onOpenExplore} />
+      )}
+
+      {isPublicProfile && (
+        <div className="editor-stat-row" aria-label="Profile summary">
           <>
             <span>{publicProfile!.scenarios.length} published scenarios</span>
             <span>Public profile</span>
           </>
-        ) : (
-          <>
-            <span>{profile?.adventures.length ?? 0} adventures</span>
-            <span>{ownScenarioCount} scenarios</span>
-            <span>{backendSession.user.status}</span>
-          </>
-        )}
-      </div>
-
-      {!isPublicProfile && (
-        <NewUserGuide onOpenHelp={onOpenHelp} />
+        </div>
       )}
 
       {!isPublicProfile && adventureLibrary}
@@ -205,7 +253,7 @@ export function ProfilePage({
             <p className="muted">
               {isPublicProfile
                 ? "Published scenarios from this creator. Starting one copies the setup, not their private transcripts."
-                : "Scenarios are reusable setups. Start one to create a private adventure; publish one to list it in Explore."}
+                : "Scenarios are reusable setups. Start one to create a private Story; publish one to list it in Explore."}
             </p>
           </div>
         </div>
@@ -249,11 +297,11 @@ export function ProfilePage({
                     <button
                       type="button"
                       className="primary-action"
-                      aria-label={`Start adventure from local scenario ${scenario.title}`}
+                      aria-label={`Start Story from local Scenario ${scenario.title}`}
                       onClick={() => void onStartLocalScenario?.(scenario.id)}
                       disabled={!onStartLocalScenario}
                     >
-                      Start Adventure
+                      Start Story
                     </button>
                     <button
                       type="button"
@@ -295,11 +343,11 @@ export function ProfilePage({
                         <button
                           type="button"
                           className="primary-action"
-                          aria-label={`Start adventure from ${scenario.title}`}
+                          aria-label={`Start Story from ${scenario.title}`}
                           onClick={() => void onStartScenario?.(scenario.latestRevision!.id)}
                           disabled={!onStartScenario}
                         >
-                          Start Adventure
+                          Start Story
                         </button>
                         <button
                           type="button"
@@ -420,6 +468,30 @@ export function ProfilePage({
           )}
         </section>
       )}
+
+      {!isPublicProfile && (
+        <>
+          <NewUserGuide onOpenHelp={onOpenHelp} />
+          <details className="setup-panel home-account-panel">
+            <summary>Account &amp; profile</summary>
+            <div className="home-account-content">
+              <div>
+                <strong>{displayName}</strong>
+                <p className="muted">{ownEmail}</p>
+                {bio && <p className="muted">{bio}</p>}
+              </div>
+              <div className="editor-stat-row" aria-label="Account library summary">
+                <span>{profile?.adventures.length ?? 0} Stories</span>
+                <span>{ownScenarioCount} Scenarios</span>
+              </div>
+              <div className="toolbar">
+                {onOpenAdmin && <button type="button" onClick={onOpenAdmin}>Admin</button>}
+                <button type="button" onClick={onLogout} disabled={!onLogout}>Sign out</button>
+              </div>
+            </div>
+          </details>
+        </>
+      )}
     </section>
   );
 }
@@ -427,30 +499,29 @@ export function ProfilePage({
 function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
   return (
     <details className="setup-panel profile-guide">
-      <summary>New User Guide</summary>
+      <summary>Getting started</summary>
       <div className="profile-guide-grid">
         <article>
           <p className="eyebrow">1. Start</p>
           <h3>Create or explore</h3>
           <p className="muted">
-            Use New Adventure for your own setup, Import from AIST / GitHub JSON to continue an existing save,
-            or Explore to copy a built-in or community scenario into your account.
+            Use New Story for your own setup, restore an existing backup, or Explore a built-in or community Scenario.
           </p>
         </article>
         <article>
-          <p className="eyebrow">2. Open adventure</p>
-          <h3>Adventure, Play, Edit</h3>
+          <p className="eyebrow">2. Open a Story</p>
+          <h3>Play or open Studio</h3>
           <p className="muted">
-            Once an adventure is open, the top-left Adventure group appears. Adventure is the dashboard, Play is the turn
-            screen, and Edit is where setup, Reference Cards, Characters, Plot, automations, and imports live.
+            Play is the reading and turn-taking screen. Story Studio is where you shape direction, Characters, World Blocks,
+            Reference Cards, and Suggestions.
           </p>
         </article>
         <article>
-          <p className="eyebrow">3. Build context</p>
-          <h3>Memory is inspectable</h3>
+          <p className="eyebrow">3. Stay in control</p>
+          <h3>Review Suggestions</h3>
           <p className="muted">
-            Plot Essentials, Active Pressure, Reference Cards, Characters, Author's Note, and recent messages are assembled
-            into Context Preview. Nothing important should be hidden from review.
+            Suggested durable changes wait for review. Exact context sections and token details remain available in the
+            Advanced Context Inspector when you need them.
           </p>
         </article>
         <article>
@@ -502,7 +573,7 @@ function PublicScenarioCard({
             onClick={() => void onStartScenario?.(scenario.revisionId)}
             disabled={!onStartScenario}
           >
-            Start Adventure
+            Start Story
           </button>
         </div>
       </div>

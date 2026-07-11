@@ -53,7 +53,7 @@ const topics: DocTopic[] = [
           existing adventure, publish a reusable scenario, or delete a private playthrough.
         </p>
         <p>
-          New Adventure includes optional setup before play: an opening scene, starter World Blocks, manual
+          New Story includes optional setup before play: an opening scene, starter World Blocks, manual
           Reference Cards, and Reference Cards parsed from uploaded or pasted JSON. Generate with AI drafts the title,
           opening scene, tight Plot Essentials, one-sentence Active Pressure, optional scenario-specific
           AI Instructions or Author's Note, and recurring Reference Cards for review. Native DeepSeek generation uses
@@ -580,7 +580,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "new-adventure-generator-recipes",
-    title: "New Adventure AI Generator - Setup Recipes",
+    title: "New Story AI Generator - Setup Recipes",
     category: "Best Practices",
     summary: "How to choose generator options based on the kind of adventure you want.",
     tags: ["new adventure", "generate with ai", "ai instructions", "plot essentials", "nsfw", "setup"],
@@ -889,7 +889,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
       <>
         <p>
           Adventure JSON should round-trip through the Import / Export page. Reference Card JSON can be reused
-          from New Adventure setup or the Reference Cards editor.
+          from New Story setup or the Reference Cards editor.
         </p>
         <p>
           Reference Card JSON maps title, keys, entry/value/content,

@@ -3,9 +3,8 @@ import type { Adventure, AdventureAction, ArcPace, ArcPhase, ArcTriggerMode, Com
 import type { ComponentAIBuilderRequest, GeneratedComponentDraft } from "../ai/generators";
 import type { ComponentAuditRecommendation } from "../memory/componentAudit";
 import { makeComponent } from "../state/defaults";
-import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, contentSnippet, formatCompactTimestamp } from "./shared";
 import { useActionFeedback } from "../components/ActionFeedback";
 import { createId } from "../utils/id";
 
@@ -290,28 +289,9 @@ function defaultComponentPriority(type: ComponentType): number {
   return 0;
 }
 
-function componentContextText(component: ComponentEntry): string {
-  if (component.type !== "currentArc") return component.content;
-
-  const phase = component.arcState?.phase ?? "simmer";
-  const phaseDirection =
-    phase === "break"
-      ? component.arcBreakInstruction?.trim()
-      : phase === "simmer" || phase === "escalate"
-        ? component.arcSimmerInstruction?.trim()
-        : undefined;
-
-  if (!component.content.trim() && !component.arcPremise?.trim() && !phaseDirection) return "";
-
-  const premiseHeader = component.arcPremise?.trim() ? `[Arc Premise: ${component.arcPremise.trim()}]\n` : "";
-  const directionBlock = phaseDirection ? `\n\n[ARC DIRECTION \u2014 ${phase.toUpperCase()}]\n${phaseDirection}` : "";
-  return premiseHeader + (component.content.trim() || "(no entries yet)") + directionBlock;
-}
-
 function ComponentSummary({ component, query }: { component: ComponentEntry; query: string }) {
   const snippet = contentSnippet(component.content, query);
   const memoryUpdatedAt = formatCompactTimestamp(component.lastMemoryUpdatedAt);
-  const tokenEstimate = approximateTokenCount(componentContextText(component));
   return (
     <span className="story-card-summary">
       <span className="story-card-title"><Highlight text={TYPE_LABELS[component.type]} query={query} /></span>
@@ -319,8 +299,6 @@ function ComponentSummary({ component, query }: { component: ComponentEntry; que
         {!component.active && <span className="badge badge-inactive">Inactive</span>}
         {component.pinned && <span className="badge badge-pinned">Pinned</span>}
         {component.protected && <span className="badge badge-protected">Protected</span>}
-        {component.priority > 0 && <span className="badge badge-priority">p{component.priority}</span>}
-        <TokenCountBadge count={tokenEstimate} title="Estimated tokens in plot context" />
         <UpdatedAtBadge value={component.updatedAt} />
         {memoryUpdatedAt && (
           <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>
@@ -676,7 +654,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </p>
 
       {onGenerateComponents && (
-        <details className="panel" open>
+        <details className="panel">
           <summary>Create World Blocks with AI</summary>
           <p className="muted">
             Choose one block, several blocks, or the common setup set. The AI drafts editable World Block previews from your prompt before anything is applied.
@@ -855,7 +833,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       </div>
 
       {(onAuditComponents || onSuggestPlotUpdates) && (
-        <details className="panel editor-tools-panel component-maintenance-panel" open>
+        <details className="panel editor-tools-panel component-maintenance-panel">
           <summary>Review and Maintain World Blocks</summary>
           <div className="component-maintenance-grid">
             {onAuditComponents && (

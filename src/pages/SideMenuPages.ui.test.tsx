@@ -453,7 +453,7 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByText("1 shown")).toBeInTheDocument();
   });
 
-  it("shows token estimates on plot, card, and brain summaries", () => {
+  it("keeps exact token estimates out of ordinary plot, card, and brain summaries", () => {
     const adventure: Adventure = {
       ...seedAdventure(),
       storyCards: [
@@ -470,19 +470,19 @@ describe("side menu page smoke coverage", () => {
     render(<StoryCardsPage adventure={adventure} dispatch={() => undefined} />);
     const cardRow = screen.getByText("Signal Card", { selector: ".story-card-title" }).closest(".story-card-editor-item");
     expect(cardRow).toBeTruthy();
-    expect(within(cardRow as HTMLElement).getByTitle("Estimated tokens in live card content: 3")).toHaveTextContent("3 tokens");
+    expect(within(cardRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
     cleanup();
 
     render(<ComponentsPage adventure={adventure} dispatch={() => undefined} />);
     const componentRow = screen.getByText("Plot Essentials", { selector: ".story-card-title" }).closest(".component-editor-item");
     expect(componentRow).toBeTruthy();
-    expect(within(componentRow as HTMLElement).getByTitle("Estimated tokens in plot context: 3")).toHaveTextContent("3 tokens");
+    expect(within(componentRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
     cleanup();
 
     render(<BrainsPage adventure={adventure} dispatch={() => undefined} loading={false} onUpdateBrainNow={async () => undefined} />);
     const brainRow = screen.getByText("Margo", { selector: ".story-card-title" }).closest(".brain-item");
     expect(brainRow).toBeTruthy();
-    expect(within(brainRow as HTMLElement).getByTitle("Estimated tokens in live brain thoughts: 5")).toHaveTextContent("5 tokens");
+    expect(within(brainRow as HTMLElement).queryByText(/tokens$/)).not.toBeInTheDocument();
   });
 
   it("edits visible current and archived brain thoughts inline", async () => {

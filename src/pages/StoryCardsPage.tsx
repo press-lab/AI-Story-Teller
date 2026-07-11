@@ -3,9 +3,8 @@ import type { ContextInclusionPolicy, StoryCard, StoryCardAIBuilderIntent, Story
 import type { AuditRecommendation } from "../memory/storyCardAudit";
 import { storyCardContextContent } from "../memory/storyCardPolicy";
 import { makeStoryCard } from "../state/defaults";
-import { approximateTokenCount } from "../tokenizer/approximateTokenCount";
 import type { AdventurePageProps } from "./pageTypes";
-import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, TokenCountBadge, UpdatedAtBadge, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
+import { CheckboxField, Field, Highlight, MemoryUpdateHistory, NumberInput, UpdatedAtBadge, commaList, contentSnippet, formatCompactTimestamp, fromCommaList } from "./shared";
 import { useActionFeedback } from "../components/ActionFeedback";
 
 const TYPE_ORDER: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
@@ -78,7 +77,6 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
   const living = isLivingCard(card);
   const archivedCount = card.archivedFacts?.split("\n").filter((line) => line.trim()).length ?? 0;
   const memoryUpdatedAt = formatCompactTimestamp(card.lastMemoryUpdatedAt);
-  const tokenEstimate = approximateTokenCount(contextContent);
   return (
     <span className="story-card-summary">
       <span className="story-card-title">
@@ -92,10 +90,8 @@ function CardSummary({ card, query }: { card: StoryCard; query: string }) {
         {!card.active && <span className="badge badge-inactive">Inactive</span>}
         {card.pinned && <span className="badge badge-pinned">Pinned</span>}
         {card.protected && <span className="badge badge-protected">Protected</span>}
-        {card.priority > 0 && <span className="badge badge-priority">p{card.priority}</span>}
         {card.keys.length > 0 && <span className="badge badge-priority">{card.keys.length} triggers</span>}
         {archivedCount > 0 && <span className="badge badge-priority">{archivedCount} archived</span>}
-        <TokenCountBadge count={tokenEstimate} title="Estimated tokens in live card content" />
         <UpdatedAtBadge value={card.updatedAt} />
         {memoryUpdatedAt && (
           <span className="badge badge-memory-update" title={`Last memory update: ${memoryUpdatedAt}`}>
@@ -639,7 +635,7 @@ export function StoryCardsPage({
       </div>
 
       {(onAuditStoryCards || onSuggestCardUpdates) && (
-        <details className="panel editor-tools-panel story-card-maintenance-panel" open>
+        <details className="panel editor-tools-panel story-card-maintenance-panel">
           <summary>Review and Maintain Reference Cards</summary>
           <div className="story-card-maintenance-grid">
             {onAuditStoryCards && (

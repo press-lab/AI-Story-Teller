@@ -371,6 +371,10 @@ export function SettingsPage({
   }
 
   function updateMemoryDetection(patch: Partial<MemoryDetectionSettings>) {
+    if (adventure) {
+      dispatch({ type: "SET_MEMORY_DETECTION_SETTINGS", settings: { ...adventure.memoryDetectionSettings, ...patch } });
+      return;
+    }
     onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
   }
 
@@ -393,17 +397,12 @@ export function SettingsPage({
   return (
     <section className="page editor-surface settings-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          {hideDeveloperControls
-            ? "App-wide controls for reading comfort and personal account preferences."
-            : deviceOnlyDataMode
-              ? "App-wide controls for reading comfort, browser model routing, background cost, memory detection, and the open adventure's device-only save path."
-              : isBackendMode
-              ? "App-wide controls for reading comfort and your optional personal model override. Platform controls live in Admin."
-              : "App-wide controls for reading comfort, local model routing, background cost, memory detection, and sync."}
-          The common controls stay first; platform-wide controls stay out of user settings.
-        </p>
+        <div>
+          <p className="eyebrow">Preferences</p>
+          <p className="muted">Reading and appearance settings affect this app. Story behavior settings below affect {adventure ? `only “${adventure.title}”` : "new Stories by default"}. Advanced diagnostics stay collapsed until you ask for them.</p>
+        </div>
         <div className="editor-stat-row" aria-label="Settings summary">
+          <span>{adventure ? "Current Story" : "App defaults"}</span>
           <span>{uiPreferences.density}</span>
           <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
           {showLocalDeveloperControls && <span>{activeModelLabel}</span>}
@@ -464,11 +463,13 @@ export function SettingsPage({
               <NumberInput min={600} max={1800} value={uiPreferences.maxContentWidth} onChange={(maxContentWidth) => updateUi({ maxContentWidth })} />
             </Field>
           </div>
-          <CheckboxField
-            label="Show token estimates in play"
-            checked={uiPreferences.showTokenEstimates}
-            onChange={(showTokenEstimates) => updateUi({ showTokenEstimates })}
-          />
+          {advanced && (
+            <CheckboxField
+              label="Show exact token estimates in Play"
+              checked={uiPreferences.showTokenEstimates}
+              onChange={(showTokenEstimates) => updateUi({ showTokenEstimates })}
+            />
+          )}
           {showLocalDeveloperControls && (
             <CheckboxField
               label="Show advanced settings"
@@ -862,7 +863,7 @@ export function SettingsPage({
         {showLocalDeveloperControls && (() => {
           const sem = activeSettings.semanticEvaluationSettings;
           const bud = activeSettings.tokenBudgetSettings;
-          const mem = globalAdventureSettings.memoryDetectionSettings;
+          const mem = activeSettings.memoryDetectionSettings;
           const isOff = !sem.enabled;
           const isLight = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) >= 5 && (bud.autoSceneStateEveryNTurns ?? 1) >= 5 && mem.enabled && mem.everyNTurns >= 5;
           const isNormal = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 2 && (bud.autoSceneStateEveryNTurns ?? 1) === 2 && mem.enabled && mem.everyNTurns === 3;
@@ -1113,21 +1114,21 @@ export function SettingsPage({
             </p>
             <CheckboxField
               label="Enable AI memory detection"
-              checked={globalAdventureSettings.memoryDetectionSettings.enabled}
+              checked={activeSettings.memoryDetectionSettings.enabled}
               onChange={(enabled) => updateMemoryDetection({ enabled })}
             />
-            {globalAdventureSettings.memoryDetectionSettings.enabled && (
+            {activeSettings.memoryDetectionSettings.enabled && (
               <>
                 <Field label="Run every N turns (1 = every turn)">
                   <NumberInput
                     min={1}
-                    value={globalAdventureSettings.memoryDetectionSettings.everyNTurns}
+                    value={activeSettings.memoryDetectionSettings.everyNTurns}
                     onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })}
                   />
                 </Field>
                 <CheckboxField
                   label="Generate card content"
-                  checked={globalAdventureSettings.memoryDetectionSettings.generateContent}
+                  checked={activeSettings.memoryDetectionSettings.generateContent}
                   onChange={(generateContent) => updateMemoryDetection({ generateContent })}
                 />
                 <p className="muted">
@@ -1258,7 +1259,7 @@ export function SettingsPage({
             </div>
             <p className="notice">
               The full adventure JSON can be re-uploaded through Import / Export. The Reference Cards JSON can be
-              pasted or uploaded in New Adventure setup or the Reference Cards editor.
+              pasted or uploaded in New Story setup or the Reference Cards editor.
             </p>
           </details>
         )}
@@ -1296,7 +1297,7 @@ export function SettingsPage({
             </div>
             <p className="notice">
               The full adventure JSON can be re-uploaded through Import / Export. The Reference Cards JSON can be
-              pasted or uploaded in New Adventure setup or the Reference Cards editor.
+              pasted or uploaded in New Story setup or the Reference Cards editor.
             </p>
           </details>
         )}

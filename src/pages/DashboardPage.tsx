@@ -6,6 +6,7 @@ import type { AdventureSyncConflictResolution } from "../runtime/adventureStore"
 import { getAdventureThumbnail } from "../utils/adventureImages";
 import { describeSyncConflictVersions } from "../utils/syncConflict";
 import type { PlayRuntimeProps } from "./pageTypes";
+import { classifyContextHealth } from "../ui/contextHealth";
 
 function scenePreview(adventure: PlayRuntimeProps["adventure"]): string {
   const latestAssistant = [...adventure.messages].reverse().find((message) => message.role === "assistant");
@@ -53,6 +54,7 @@ export function DashboardPage({
   }
 
   const computedContext = useMemo(() => contextResult ?? buildContext(adventure), [adventure, contextResult]);
+  const contextHealth = classifyContextHealth(computedContext, adventure.tokenBudgetSettings.maxContextTokens);
   const pendingProposals = adventure.activeState.memoryProposals.filter((proposal) => proposal.status === "pending");
   const activeCards = adventure.storyCards.filter((card) => card.active);
   const activeCharacters = adventure.brains.filter((brain) => brain.active);
@@ -66,20 +68,21 @@ export function DashboardPage({
         <AdventureThumbnailFrame thumbnail={thumbnail} title={adventure.title} className="adventure-cover" />
         <div className="adventure-hero-body">
           <div>
-            <p className="eyebrow">Current Adventure</p>
+            <p className="eyebrow">Current Story</p>
             <h2>{adventure.title}</h2>
             <p className="muted">
-              Turn {adventure.activeState.turn} · {saveStatus}
+              Turn {adventure.activeState.turn} · {saveStatus === "saved" ? "Saved" : saveStatus}
             </p>
             {showSyncConflictActions && (
-              <p className="muted sync-conflict-help">
-                {syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Choose which save should win: this device or the server.
-              </p>
+              <div className="sync-conflict-help" role="alert">
+                <strong>Two versions of this Story changed.</strong>
+                <span>{syncConflictVersionText ? `${syncConflictVersionText} ` : ""}Both versions are preserved until you choose which one to continue with.</span>
+              </div>
             )}
           </div>
           <div className="adventure-hero-actions">
             <button type="button" className="primary-action" onClick={() => onOpenTab?.("play")}>
-              Continue
+              Continue Story
             </button>
             {onPullLatest && (
               <button type="button" disabled={pulling} onClick={handlePull}>
@@ -87,7 +90,7 @@ export function DashboardPage({
               </button>
             )}
             <button type="button" onClick={() => onOpenTab?.("edit")}>
-              Edit
+              Open Story Studio
             </button>
             {showSyncConflictActions && (
               <>
@@ -97,14 +100,14 @@ export function DashboardPage({
                   disabled={Boolean(resolvingConflict)}
                   onClick={() => void handleResolveSyncConflict("uploadLocal")}
                 >
-                  {resolvingConflict === "uploadLocal" ? "Uploading..." : "Upload Local Save"}
+                  {resolvingConflict === "uploadLocal" ? "Saving..." : "Keep this device's version"}
                 </button>
                 <button
                   type="button"
                   disabled={Boolean(resolvingConflict)}
                   onClick={() => void handleResolveSyncConflict("downloadServer")}
                 >
-                  {resolvingConflict === "downloadServer" ? "Downloading..." : "Download Server Save"}
+                  {resolvingConflict === "downloadServer" ? "Loading..." : "Use the server version"}
                 </button>
               </>
             )}
@@ -115,7 +118,7 @@ export function DashboardPage({
                 onOpenContext();
               }}
             >
-              Inspect
+              Context details
             </button>
           </div>
         </div>
@@ -129,20 +132,20 @@ export function DashboardPage({
 
         <aside className="adventure-stats-panel">
           <div className="adventure-stat">
-            <span>Reference Cards</span>
-            <strong>{activeCards.length}</strong>
+            <span>World &amp; Lore</span>
+            <strong>{activeCards.length} active</strong>
           </div>
           <div className="adventure-stat">
             <span>Characters</span>
-            <strong>{activeCharacters.length}</strong>
+            <strong>{activeCharacters.length} active</strong>
           </div>
           <div className="adventure-stat">
-            <span>Context</span>
-            <strong>{computedContext.totalEstimatedTokens} tokens</strong>
+            <span>Story context</span>
+            <strong className={`context-health context-health-${contextHealth.status}`}>{contextHealth.label}</strong>
           </div>
           <div className="adventure-stat">
-            <span>Memory</span>
-            <strong>{pendingProposals.length} pending</strong>
+            <span>Suggestions</span>
+            <strong>{pendingProposals.length ? `${pendingProposals.length} to review` : "All caught up"}</strong>
           </div>
         </aside>
       </div>
