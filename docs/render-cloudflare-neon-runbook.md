@@ -79,7 +79,7 @@ AIST_GOOGLE_CLIENT_ID=<Google OAuth client id>
 AIST_GOOGLE_CLIENT_SECRET=<Google OAuth client secret>
 AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
 RESEND_API_KEY=<Resend API key>
-AIST_EMAIL_FROM=AI Story Teller <accounts@storymodeai.com>
+AIST_EMAIL_FROM=Story Mode AI <accounts@storymodeai.com>
 ```
 
 `AIST_TRUST_PROXY_HOPS=1` trusts exactly Render's final reverse-proxy hop. Do

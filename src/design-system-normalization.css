@@ -1,0 +1,272 @@
+/* Platform-wide visual rhythm and component scale.
+ * This final cascade layer intentionally normalizes legacy page-specific CSS.
+ * Literary type remains reserved for story prose and story/scenario titles. */
+
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-control: 8px;
+  --radius-panel: 12px;
+  --control-height: 40px;
+  --type-caption: 11px;
+  --type-label: 13px;
+  --type-body: 15px;
+  --type-section: 20px;
+  --type-page: clamp(30px, 3vw, 38px);
+  --content-max-width: 1240px;
+}
+
+body {
+  font-size: var(--type-body);
+  line-height: 1.5;
+}
+
+.page { gap: var(--space-5); }
+
+.app-header h1 {
+  font-size: 24px;
+  font-weight: 720;
+  letter-spacing: -0.025em;
+}
+
+.library-header h2,
+.home-header h2 {
+  font-size: var(--type-page);
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+}
+
+.panel-heading h3,
+.profile-section h3,
+.settings-card h3 {
+  font-size: var(--type-section);
+  font-weight: 680;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.eyebrow {
+  font-size: var(--type-caption);
+  line-height: 1.35;
+}
+
+button,
+input,
+select { min-height: var(--control-height); }
+
+button {
+  border-radius: var(--radius-control);
+  padding: 7px 12px;
+}
+
+textarea,
+input,
+select { border-radius: var(--radius-control); }
+
+.primary-action {
+  min-height: 42px;
+  font-weight: 750;
+}
+
+.panel,
+.card,
+.setup-panel { border-radius: var(--radius-panel); }
+
+.setup-panel > summary,
+.page details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.toolbar,
+.row,
+.button-row,
+.library-card-actions { gap: var(--space-2); }
+
+.library-header {
+  align-items: center;
+  gap: var(--space-5);
+  padding-bottom: var(--space-5);
+}
+
+.profile-section {
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.profile-connections-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.profile-connection-card {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.profile-connection-card-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 104px;
+  padding: var(--space-4);
+}
+
+.profile-connection-card h4,
+.profile-connection-card p { margin: 0; }
+
+.profile-connection-card h4 {
+  font-size: 16px;
+  font-weight: 680;
+}
+
+.play-status {
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.play-toolkit-heading > span {
+  font-size: var(--type-label);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.play-status-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.play-context-health {
+  width: 100%;
+  white-space: normal;
+}
+
+.play-status > .token-strip { display: none; }
+
+.play-advanced-status,
+.play-layout-controls { border-top: 1px solid var(--border); }
+
+.play-advanced-status > summary,
+.play-layout-controls > summary {
+  min-height: 36px;
+  padding-block: var(--space-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.play-tool-nav {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface) 82%, var(--page-bg));
+}
+
+.play-tool-nav button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 9px 10px;
+  text-align: left;
+  white-space: normal;
+}
+
+.play-tool-nav button > span:first-child {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 730;
+  line-height: 1.25;
+}
+
+.play-tool-nav button small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.brain-summary-thought {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.editor-create-menu:not([open]) > .editor-create-options { display: none; }
+
+.studio-advanced-tools[open] {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.studio-advanced-tools[open] .studio-advanced-tool-actions {
+  position: static;
+  padding-bottom: 0;
+}
+
+.editor-workspace .advanced-tool-banner { margin-top: var(--space-6); }
+
+.play-sidebar.has-panel .play-tool-nav button small,
+.play-tool-row button small { display: none; }
+
+.next-turn-note.panel {
+  margin: var(--space-2);
+  padding: 0;
+  overflow: hidden;
+}
+
+.next-turn-note > summary {
+  min-height: 42px;
+  padding: 11px 12px;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.next-turn-note[open] > :not(summary) { margin-inline: 12px; }
+
+@media (max-width: 900px) {
+  :root {
+    --control-height: 44px;
+    --type-body: 16px;
+    --type-page: clamp(28px, 8vw, 36px);
+  }
+
+  .page { gap: var(--space-4); }
+  .library-header { align-items: flex-start; }
+  .profile-connections-grid { grid-template-columns: 1fr; }
+  .profile-connection-card-body { min-height: 0; }
+
+  .mobile-story-tools-nav button {
+    min-height: 48px;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 560px) {
+  .library-header {
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+  }
+
+  .library-header > .toolbar,
+  .library-header > button { width: 100%; }
+
+  .library-header > .toolbar button,
+  .library-header > button { flex: 1 1 auto; }
+}

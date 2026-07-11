@@ -56,9 +56,9 @@ class ResendEmailDelivery implements EmailDelivery {
   sendVerificationEmail(input: VerificationEmailInput): Promise<void> {
     return this.send({
       to: input.to,
-      subject: "Verify your AI Story Teller account",
+      subject: "Verify your Story Mode AI account",
       text: [
-        "Verify your AI Story Teller account by opening this link:",
+        "Verify your Story Mode AI account by opening this link:",
         input.verificationUrl,
         "",
         `This one-use link expires at ${input.expiresAt}.`,
@@ -69,9 +69,9 @@ class ResendEmailDelivery implements EmailDelivery {
   sendPasswordResetEmail(input: PasswordResetEmailInput): Promise<void> {
     return this.send({
       to: input.to,
-      subject: "Reset your AI Story Teller password",
+      subject: "Reset your Story Mode AI password",
       text: [
-        "Reset your AI Story Teller password by opening this link:",
+        "Reset your Story Mode AI password by opening this link:",
         input.resetUrl,
         "",
         `This one-use link expires at ${input.expiresAt}.`,

@@ -6,6 +6,7 @@ import { startClientPerformanceMonitoring } from "./runtime/clientPerformanceMon
 import "./styles.css";
 import "./studio-refinement.css";
 import "./play-docs-refinement.css";
+import "./design-system-normalization.css";
 
 startClientPerformanceMonitoring();
 

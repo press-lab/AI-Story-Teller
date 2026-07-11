@@ -10,6 +10,8 @@ The redesign must not remove the engine's power or inspectability. It must stage
 
 Companion documents:
 
+- `docs/ui-ux-story-mode-ai-ux-ui-research-blueprint.md`: UX research basis, task-success criteria, accessibility guidance, and interaction-cost recommendations.
+- `docs/current-nonfunctional-implementation-context.md`: current acceptance status and release-verification evidence.
 - `docs/edit-surface-ui-treatment.md`: existing dense-list and selected-editor treatment to retain inside Story Studio and Advanced tools.
 - `docs/new-user-guide.md`: current user journey; update it as the navigation changes land.
 - `docs/advanced-settings.md`: current advanced setting definitions and behavior.

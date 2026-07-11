@@ -344,6 +344,9 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Margo" }));
     expect(onOpenProfile).toHaveBeenCalledWith("user-margo");
     expect(screen.getByRole("heading", { name: "Following" }).parentElement).toHaveTextContent("Private");
+    const connectionCards = document.querySelectorAll(".profile-connection-card");
+    expect(connectionCards).toHaveLength(3);
+    expect(document.querySelector(".profile-connections-grid .library-card-body")).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Like Published World" }));
     expect(onToggleScenarioLike).toHaveBeenCalledWith("scenario-public", true);

@@ -408,20 +408,37 @@ export function PlayPage({
 
   const toolButtons = (
     <>
-      <button type="button" onClick={() => openTool("components")}>Story &amp; Direction</button>
-      <button type="button" onClick={() => openTool("storyCards")}>World &amp; Lore</button>
-      <button type="button" onClick={() => openTool("brains")}>Characters</button>
-      <button type="button" onClick={() => openTool("memoryInbox")}>
-        Suggestions
-        {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+      <button type="button" aria-label="Shape the story" onClick={() => openTool("components")}>
+        <span>Shape the story</span>
+        <small>Direction and active pressure</small>
+      </button>
+      <button type="button" aria-label="World & lore" onClick={() => openTool("storyCards")}>
+        <span>World &amp; lore</span>
+        <small>Places, facts, and recurring details</small>
+      </button>
+      <button type="button" aria-label="Characters" onClick={() => openTool("brains")}>
+        <span>Characters</span>
+        <small>Important people and their inner state</small>
+      </button>
+      <button type="button" aria-label="Memory suggestions" onClick={() => openTool("memoryInbox")}>
+        <span>
+          Memory suggestions
+          {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+        </span>
+        <small>Review what the story should remember</small>
       </button>
       <button
         type="button"
+        aria-label="What the AI knows"
         onClick={() => { onBuildContext(); openTool("context"); }}
       >
-        Context details
+        <span>What the AI knows</span>
+        <small>Context health and included details</small>
       </button>
-      <button type="button" onClick={() => onOpenTab?.("edit")}>Story Studio</button>
+      <button type="button" aria-label="Open Story Studio" onClick={() => onOpenTab?.("edit")}>
+        <span>Open Story Studio</span>
+        <small>Use the complete editing workspace</small>
+      </button>
     </>
   );
 
@@ -663,7 +680,7 @@ export function PlayPage({
               aria-controls="mobile-story-tools-sheet"
               onClick={() => setMobileStoryToolsOpen((current) => !current)}
             >
-              Story tools
+              Story companion
             </button>
             {mobileStoryToolsOpen && (
               <section
@@ -672,21 +689,21 @@ export function PlayPage({
                 aria-labelledby="mobile-story-tools-title"
               >
                 <div className="mobile-story-tools-header">
-                  <h2 id="mobile-story-tools-title">Story tools</h2>
+                  <h2 id="mobile-story-tools-title">Story companion</h2>
                   <button type="button" aria-label="Close story tools" onClick={() => setMobileStoryToolsOpen(false)}>
                     Close
                   </button>
                 </div>
                 <nav className="mobile-story-tools-nav" aria-label="Story tools destinations">
-                  <button type="button" onClick={() => openMobileTool("components")}>Story &amp; Direction</button>
-                  <button type="button" onClick={() => openMobileTool("storyCards")}>World &amp; Lore</button>
+                  <button type="button" onClick={() => openMobileTool("components")}>Shape the story</button>
+                  <button type="button" onClick={() => openMobileTool("storyCards")}>World &amp; lore</button>
                   <button type="button" onClick={() => openMobileTool("brains")}>Characters</button>
                   <button type="button" onClick={() => openMobileTool("memoryInbox")}>
-                    Suggestions
+                    Memory suggestions
                     {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
                   </button>
-                  <button type="button" onClick={() => openMobileTool("context")}>Context details</button>
-                  <button type="button" onClick={openFullStudio}>Studio / Edit all</button>
+                  <button type="button" onClick={() => openMobileTool("context")}>What the AI knows</button>
+                  <button type="button" onClick={openFullStudio}>Open Story Studio</button>
                 </nav>
                 {playPanelContent && (
                   <div className="mobile-story-tools-panel">
@@ -876,27 +893,29 @@ export function PlayPage({
             type="button"
             className="play-toolkit-expand"
             onClick={() => updateToolkitCollapsed(false)}
-            title="Show story tools"
-            aria-label="Show story tools"
+            title="Show story companion"
+            aria-label="Show story companion"
           >
-            Tools
+            Story tools
           </button>
         ) : (
         <>
         <div className="play-status">
           <div className="play-toolkit-heading">
-            <span>Story tools</span>
+            <span>Story companion</span>
             <button
               type="button"
               onClick={() => updateToolkitCollapsed(true)}
-              title="Collapse story tools"
-              aria-label="Collapse story tools"
+              title="Collapse story companion"
+              aria-label="Collapse story companion"
             >
               Hide
             </button>
           </div>
-          <span className="muted">Turn {adventure.activeState.turn}</span>
-          <strong>{playerFacingSaveStatus(saveStatus)}</strong>
+          <p className="play-status-summary">
+            <strong>{playerFacingSaveStatus(saveStatus)}</strong>
+            <span className="muted">Turn {adventure.activeState.turn}</span>
+          </p>
           {providerPresets && providerPresets.length > 1 && onSelectPreset && (
             <select
               className="preset-select"
@@ -974,7 +993,7 @@ export function PlayPage({
 
         <details className="next-turn-note panel" style={{ flex: "0 0 auto" }}>
           <summary>Next Turn Note {nextTurnNote.content.trim() ? "· active" : "(empty)"}</summary>
-          <Field label="Visible next-output steering note">
+          <Field label="One-turn story guidance">
             <textarea
               rows={2}
               value={nextTurnNote.content}

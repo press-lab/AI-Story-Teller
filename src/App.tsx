@@ -434,11 +434,14 @@ export default function App() {
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
   const backendAdminRefreshIdRef = useRef(0);
   const normalizedRuntimeConfig = useMemo(() => applyConfiguredBackendDefault(runtimeConfig), [runtimeConfig]);
-  const logoutBackend = useCallback(async () => {
-    try {
-      if (backendSession?.sessionToken) await logoutBackendSession(normalizedRuntimeConfig, backendSession);
-    } finally {
-      setBackendSession(null);
+  const logoutBackend = useCallback(() => {
+    const sessionToRevoke = backendSession;
+    setBackendSession(null);
+    if (sessionToRevoke?.sessionToken) {
+      void logoutBackendSession(normalizedRuntimeConfig, sessionToRevoke).catch(() => {
+        // Local sign-out is intentionally immediate. The server revocation is
+        // best-effort so temporary network latency cannot hold the UI open.
+      });
     }
   }, [backendSession, normalizedRuntimeConfig, setBackendSession]);
   const backendMode = normalizedRuntimeConfig.mode !== "local";
