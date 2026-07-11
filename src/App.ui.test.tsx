@@ -178,6 +178,7 @@ describe("App adventure tool workspace", () => {
     render(<App />);
 
     expect(await screen.findByRole("heading", { name: "Your Stories" })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Build /)).toHaveTextContent(/^(dev|[0-9a-f]{7,})$/i);
     expect(screen.getByRole("button", { name: "New Story" })).toBeEnabled();
     expect(screen.queryByRole("heading", { name: "Sign in to continue." })).not.toBeInTheDocument();
   });

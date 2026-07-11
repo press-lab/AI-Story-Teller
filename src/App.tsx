@@ -112,6 +112,10 @@ import {
   type BackendSessionState,
 } from "./runtime/backendApi";
 
+const appBuildHash = typeof __COMMIT_HASH__ === "string" && __COMMIT_HASH__.trim()
+  ? __COMMIT_HASH__.trim()
+  : "dev";
+
 type TabId =
   | "adventures"
   | "explore"
@@ -2208,6 +2212,13 @@ export default function App() {
               Save Scenario Revision
             </button>
           )}
+          <span
+            className="app-version"
+            aria-label={`Build ${appBuildHash}`}
+            title={`GitHub commit ${appBuildHash}`}
+          >
+            {appBuildHash}
+          </span>
           <button
             type="button"
             className="theme-toggle"
