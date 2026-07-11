@@ -25,6 +25,7 @@ async function main(): Promise<void> {
   console.log(`Bind URL: http://${api.config.host}:${port}`);
   console.log(`Allowed origins: ${api.config.allowedOrigins.join(", ")}`);
   console.log(`Policy mode: ${api.config.policyMode}`);
+  console.log(`Password signup mode: ${api.config.passwordSignupMode}`);
 
   let shuttingDown = false;
   for (const signal of ["SIGTERM", "SIGINT"] as const) {
@@ -100,6 +101,10 @@ function assertHostedServerConfig(config: ApiConfig): void {
   }
   if (config.emailDeliveryMode === "disabled" && config.policyMode !== "reviewOnly") {
     errors.push("AIST_EMAIL_DELIVERY_MODE=disabled is allowed only with AIST_POLICY_MODE=reviewOnly for controlled UAT.");
+  }
+  if (config.passwordSignupMode === "trustedInvite"
+    && (config.emailDeliveryMode !== "disabled" || config.policyMode !== "reviewOnly")) {
+    errors.push("AIST_PASSWORD_SIGNUP_MODE=trustedInvite requires AIST_EMAIL_DELIVERY_MODE=disabled and AIST_POLICY_MODE=reviewOnly.");
   }
   if (config.emailDeliveryMode === "resend" && !config.emailDelivery && (!config.resendApiKey || !config.emailFrom)) {
     errors.push("Set RESEND_API_KEY and AIST_EMAIL_FROM so hosted verification and password reset email can be delivered.");

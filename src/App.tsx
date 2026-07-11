@@ -63,6 +63,7 @@ import {
   disableBackendInvite,
   exchangeBackendGoogleOAuth,
   exportBackendAccount,
+  followBackendProfile,
   forkBackendScenarioRevision,
   generateBackendAdventureSetup,
   generateBackendBrain,
@@ -77,11 +78,15 @@ import {
   loadBackendPublicProfile,
   loadBackendScenarioRevisionEditorCopy,
   loadBackendSession,
+  likeBackendScenario,
   logoutBackendSession,
   loginBackendPassword,
   publishBackendScenarioRevision,
   confirmBackendPasswordReset,
   requestBackendPasswordReset,
+  requestBackendFriend,
+  acceptBackendFriend,
+  removeBackendFriend,
   restoreBackendAdventureSnapshot,
   revokeAllBackendSessions,
   reconcileBackendMemory,
@@ -90,6 +95,9 @@ import {
   suggestBackendStoryCardUpdates,
   startBackendGoogleOAuth,
   unpublishBackendScenarioRevision,
+  unfollowBackendProfile,
+  unlikeBackendScenario,
+  updateBackendSocialVisibility,
   updateBackendBrain,
   updateBackendAdminSafetyEventStatus,
   updateBackendAdminUserStatus,
@@ -141,6 +149,15 @@ type EditorFocusTarget = {
 };
 
 type BackendModelMode = "platform" | "personal";
+
+const failClosedBackendCapabilities: BackendCapabilities = {
+  passwordLogin: false,
+  passwordSignup: false,
+  inviteRequired: true,
+  passwordReset: false,
+  emailVerificationDelivery: false,
+  googleOAuth: false,
+};
 
 const editorTabs: Array<{ id: EditorTabId; label: string; badge?: "memory" }> = [
   { id: "components", label: "Story & Direction" },
@@ -196,8 +213,7 @@ function productDestinationFor(tab: TabId, editorTab: EditorTabId): ProductDesti
   const activeEditorTab = tab === "edit" ? editorTab : tab;
   if (activeEditorTab === "chronicle") return "history";
   if (activeEditorTab === "importExport" || activeEditorTab === "cloudSaves") return "backups";
-  if (activeEditorTab === "triggers") return "automation";
-  if (activeEditorTab === "context") return "context";
+  if (activeEditorTab === "triggers" || activeEditorTab === "context") return "studio";
   if (tab === "edit" || activeEditorTab === "components" || activeEditorTab === "storyCards" || activeEditorTab === "brains" || activeEditorTab === "memoryInbox") return "studio";
   return "home";
 }
@@ -344,12 +360,17 @@ export default function App() {
   const { confirmAction, notify } = useActionFeedback();
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [editorTab, setEditorTab] = useState<EditorTabId>("components");
+  const [advancedStoryToolsOpen, setAdvancedStoryToolsOpen] = useState(false);
   const [editorFocusTarget, setEditorFocusTarget] = useState<EditorFocusTarget | undefined>();
   const [modalTab, setModalTab] = useState<TabId | undefined>();
   const [playPanelTab, setPlayPanelTab] = useState<EditorTabId | undefined>();
   const [adventure, setAdventure] = useState<Adventure | undefined>();
   const [contextResult, setContextResult] = useState<ContextBuildResult | undefined>();
   const [saveStatus, setSaveStatus] = useState("idle");
+
+  useEffect(() => {
+    if (editorTab === "triggers" || editorTab === "context") setAdvancedStoryToolsOpen(true);
+  }, [editorTab]);
   const [providerPresets, setProviderPresets] = useLocalStorage<ProviderPreset[]>(
     "ai-story-teller-provider-presets",
     [],
@@ -382,13 +403,7 @@ export default function App() {
     "ai-story-teller-backend-session",
     null,
   );
-  const [backendCapabilities, setBackendCapabilities] = useState<BackendCapabilities>({
-    passwordLogin: true,
-    passwordSignup: true,
-    passwordReset: true,
-    emailVerificationDelivery: true,
-    googleOAuth: true,
-  });
+  const [backendCapabilities, setBackendCapabilities] = useState<BackendCapabilities>(failClosedBackendCapabilities);
   const [backendModelMode, setBackendModelMode] = useLocalStorage<BackendModelMode>(
     "ai-story-teller-backend-model-mode",
     "platform",
@@ -497,6 +512,7 @@ export default function App() {
   useEffect(() => {
     if (normalizedRuntimeConfig.mode === "local") return;
     let cancelled = false;
+    setBackendCapabilities(failClosedBackendCapabilities);
     void loadBackendCapabilities(normalizedRuntimeConfig)
       .then((capabilities) => { if (!cancelled) setBackendCapabilities(capabilities); })
       .catch(() => undefined);
@@ -762,8 +778,6 @@ export default function App() {
     }
     if (destination === "history") openEditor("chronicle");
     if (destination === "backups") openEditor("importExport");
-    if (destination === "automation") openEditor("triggers");
-    if (destination === "context") openEditor("context");
   }
 
   const library = useAdventureLibrary(
@@ -978,6 +992,79 @@ export default function App() {
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
 
+  const toggleBackendScenarioLike = useCallback(async (scenarioId: string, liked: boolean) => {
+    if (!backendReady || !backendSession) {
+      setBackendExploreStatus("Sign in to like Community Scenarios.");
+      return;
+    }
+    const setStatus = activeTab === "explore" ? setBackendExploreStatus : setBackendProfileStatus;
+    setStatus(liked ? "Saving like..." : "Removing like...");
+    try {
+      if (liked) await likeBackendScenario(normalizedRuntimeConfig, backendSession, scenarioId);
+      else await unlikeBackendScenario(normalizedRuntimeConfig, backendSession, scenarioId);
+      await refreshBackendExploreScenarios();
+      if (backendPublicProfileUserId) await refreshBackendPublicProfile(backendPublicProfileUserId);
+      setStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update this like.";
+      setStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [
+    activeTab,
+    backendPublicProfileUserId,
+    backendReady,
+    backendSession,
+    normalizedRuntimeConfig,
+    notify,
+    refreshBackendExploreScenarios,
+    refreshBackendPublicProfile,
+  ]);
+
+  const refreshSocialProfiles = useCallback(async (publicUserId?: string) => {
+    await refreshBackendProfile();
+    const nextPublicUserId = publicUserId ?? backendPublicProfileUserId ?? undefined;
+    if (nextPublicUserId) await refreshBackendPublicProfile(nextPublicUserId);
+  }, [backendPublicProfileUserId, refreshBackendProfile, refreshBackendPublicProfile]);
+
+  const runBackendSocialAction = useCallback(async (
+    progressMessage: string,
+    action: () => Promise<unknown>,
+    publicUserId?: string,
+  ) => {
+    if (!backendReady || !backendSession) {
+      setBackendProfileStatus("Sign in to manage connections.");
+      return;
+    }
+    setBackendProfileStatus(progressMessage);
+    try {
+      await action();
+      await refreshSocialProfiles(publicUserId);
+      setBackendProfileStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update this connection.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [backendReady, backendSession, notify, refreshSocialProfiles]);
+
+  const updateSocialVisibility = useCallback(async (visibility: Parameters<typeof updateBackendSocialVisibility>[2]) => {
+    if (!backendReady || !backendSession) {
+      setBackendProfileStatus("Sign in to change profile visibility.");
+      return;
+    }
+    setBackendProfileStatus("Saving profile visibility...");
+    try {
+      const profile = await updateBackendSocialVisibility(normalizedRuntimeConfig, backendSession, visibility);
+      setBackendProfile(profile);
+      setBackendProfileStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not save profile visibility.";
+      setBackendProfileStatus(message);
+      notify(message, { type: "error" });
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig, notify]);
+
   const refreshBackendAdminConsole = useCallback(async () => {
     if (!backendReady || !backendSession || backendSession.user.role !== "admin") {
       backendAdminRefreshIdRef.current += 1;
@@ -1077,7 +1164,7 @@ export default function App() {
         setBackendAdminConsole({ ...consoleData, ...details });
       }
       setBackendAdminStatus("Invite created.");
-      return { token: result.token };
+      return { token: result.token, inviteUrl: result.inviteUrl };
     } catch (error) {
       setBackendAdminStatus(error instanceof Error ? error.message : "Invite creation failed.");
       throw error;
@@ -1668,6 +1755,7 @@ export default function App() {
           onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
           onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
+          onToggleScenarioLike={backendAdventureDataReady ? toggleBackendScenarioLike : undefined}
         />
       );
     }
@@ -1724,6 +1812,44 @@ export default function App() {
           onOpenAdmin={isBackendAdmin ? () => openTab("admin") : undefined}
           onOpenHelp={() => openTab("help")}
           onOpenExplore={() => openTab("explore")}
+          onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
+          onToggleScenarioLike={backendAdventureDataReady ? toggleBackendScenarioLike : undefined}
+          onFollowProfile={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Following profile...",
+              () => followBackendProfile(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onUnfollowProfile={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Unfollowing profile...",
+              () => unfollowBackendProfile(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onRequestFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Sending friend request...",
+              () => requestBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              userId,
+            );
+          } : undefined}
+          onAcceptFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Accepting friend request...",
+              () => acceptBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              showingPublicProfile ? userId : undefined,
+            );
+          } : undefined}
+          onRemoveFriend={backendAdventureDataReady && backendSession ? async (userId) => {
+            await runBackendSocialAction(
+              "Removing friend...",
+              () => removeBackendFriend(normalizedRuntimeConfig, backendSession, userId),
+              showingPublicProfile ? userId : undefined,
+            );
+          } : undefined}
+          onUpdateSocialVisibility={backendAdventureDataReady ? updateSocialVisibility : undefined}
           onLogout={() => {
             setBackendPublicProfileUserId(null);
             setBackendPublicProfile(undefined);
@@ -1922,6 +2048,29 @@ export default function App() {
                 );
               })}
             </nav>
+            <details
+              className="studio-advanced-tools"
+              open={advancedStoryToolsOpen}
+              onToggle={(event) => setAdvancedStoryToolsOpen(event.currentTarget.open)}
+            >
+              <summary>Advanced Story Tools</summary>
+              <div className="studio-advanced-tool-actions">
+                <button
+                  type="button"
+                  className={editorTab === "triggers" ? "active" : ""}
+                  onClick={() => setEditorTab("triggers")}
+                >
+                  Automation
+                </button>
+                <button
+                  type="button"
+                  className={editorTab === "context" ? "active" : ""}
+                  onClick={() => setEditorTab("context")}
+                >
+                  Context Inspector
+                </button>
+              </div>
+            </details>
             {!studioTabs.some((tab) => tab.id === editorTab) && (
               <div className="advanced-tool-banner" role="status">
                 <div>
@@ -1957,8 +2106,6 @@ export default function App() {
     studio: studioTabs.some((tab) => tab.id === editorTab) ? "Story Studio" : (modalTitles[editorTab] ?? "Story Studio"),
     history: "History",
     backups: "Backups & Transfer",
-    automation: "Automation",
-    context: "Context Inspector",
     settings: "Settings",
     help: "Help",
     admin: "Admin",
@@ -1978,10 +2125,19 @@ export default function App() {
     return (
       <WelcomePage
         capabilities={backendCapabilities}
-        onSignupPassword={(input) => signupBackendPassword(
-          { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
-          input,
-        )}
+        onSignupPassword={async (input) => {
+          const result = await signupBackendPassword(
+            { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
+            input,
+          );
+          if (!result.verificationRequired) {
+            setBackendPublicProfileUserId(null);
+            setBackendPublicProfile(undefined);
+            setBackendSession(result);
+            navigateTo("profile");
+          }
+          return result;
+        }}
         onVerifyEmail={async (token) => {
           const session = await verifyBackendEmail(normalizedRuntimeConfig, token);
           setBackendPublicProfileUserId(null);
@@ -2021,7 +2177,7 @@ export default function App() {
             setBackendPublicProfile(undefined);
             openTab("profile");
           }} aria-label="Go to Home">
-            <span className="app-brand">AI Story Teller</span>
+            <span className="app-brand">Story Mode AI</span>
           </button>
           <div className="app-page-context">
             <h1>{pageTitle[activeProductDestination]}</h1>

@@ -13,6 +13,7 @@ interface ExplorePageProps {
   onStartScenario?: (revisionId: string) => Promise<void>;
   onStartPremade?: (premadeId: PremadeAdventureId) => Promise<void>;
   onOpenProfile?: (userId: string) => Promise<void>;
+  onToggleScenarioLike?: (scenarioId: string, liked: boolean) => Promise<void>;
 }
 
 type ExploreSourceFilter = "all" | "built-in" | "community";
@@ -45,6 +46,7 @@ export function ExplorePage({
   onStartScenario,
   onStartPremade,
   onOpenProfile,
+  onToggleScenarioLike,
 }: ExplorePageProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<ExploreSourceFilter>("all");
@@ -264,6 +266,7 @@ export function ExplorePage({
                 </span>
                 <span>Version {selectedCommunityScenario.version}</span>
                 <span>Published {formatDate(selectedCommunityScenario.publishedAt)}</span>
+                <span>{selectedCommunityScenario.likeCount ?? 0} likes</span>
               </div>
             )}
 
@@ -278,6 +281,20 @@ export function ExplorePage({
             </details>
 
             <div className="library-card-actions explore-detail-actions">
+              {selectedCommunityScenario && (
+                <button
+                  type="button"
+                  aria-label={`${selectedCommunityScenario.likedByViewer ? "Unlike" : "Like"} ${selectedCommunityScenario.title}`}
+                  aria-pressed={Boolean(selectedCommunityScenario.likedByViewer)}
+                  onClick={() => void onToggleScenarioLike?.(
+                    selectedCommunityScenario.scenarioId,
+                    !selectedCommunityScenario.likedByViewer,
+                  )}
+                  disabled={!onToggleScenarioLike}
+                >
+                  {selectedCommunityScenario.likedByViewer ? "Liked" : "Like"} · {selectedCommunityScenario.likeCount ?? 0}
+                </button>
+              )}
               <button
                 type="button"
                 className="primary-action"
@@ -377,9 +394,19 @@ export function ExplorePage({
                       <div className="editor-stat-row explore-card-meta">
                         <span>Version {scenario.version}</span>
                         <span>Published {formatDate(scenario.publishedAt)}</span>
+                        <span>{scenario.likeCount ?? 0} likes</span>
                       </div>
                     </div>
                     <div className="library-card-actions">
+                      <button
+                        type="button"
+                        aria-label={`${scenario.likedByViewer ? "Unlike" : "Like"} ${scenario.title}`}
+                        aria-pressed={Boolean(scenario.likedByViewer)}
+                        onClick={() => void onToggleScenarioLike?.(scenario.scenarioId, !scenario.likedByViewer)}
+                        disabled={!onToggleScenarioLike}
+                      >
+                        {scenario.likedByViewer ? "Liked" : "Like"} · {scenario.likeCount ?? 0}
+                      </button>
                       <button
                         type="button"
                         aria-label={`${isSelected ? "Close details" : "View details"} for ${scenario.title}`}

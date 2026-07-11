@@ -306,4 +306,80 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Your Profile" }));
     expect(onViewOwnProfile).toHaveBeenCalledOnce();
   });
+
+  it("shows public connections and wires follow, friend, profile, and scenario-like actions", async () => {
+    const user = userEvent.setup();
+    const onFollowProfile = vi.fn(async () => undefined);
+    const onRequestFriend = vi.fn(async () => undefined);
+    const onOpenProfile = vi.fn(async () => undefined);
+    const onToggleScenarioLike = vi.fn(async () => undefined);
+    const sharedProfile: BackendPublicProfileSummary = {
+      ...publicProfile(),
+      scenarios: publicProfile().scenarios.map((scenario) => ({ ...scenario, likeCount: 4, likedByViewer: false })),
+      social: {
+        visibility: { followers: true, following: false, friends: true },
+        followers: [{ userId: "user-margo", displayName: "Margo" }],
+        friends: [],
+        viewer: { isFollowing: false, isFollowedBy: true, friendshipStatus: "none" },
+      },
+    };
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        publicProfile={sharedProfile}
+        viewMode="public"
+        onFollowProfile={onFollowProfile}
+        onRequestFriend={onRequestFriend}
+        onOpenProfile={onOpenProfile}
+        onToggleScenarioLike={onToggleScenarioLike}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Follow" }));
+    expect(onFollowProfile).toHaveBeenCalledWith("user-creator");
+    await user.click(screen.getByRole("button", { name: "Add Friend" }));
+    expect(onRequestFriend).toHaveBeenCalledWith("user-creator");
+    await user.click(screen.getByRole("button", { name: "Margo" }));
+    expect(onOpenProfile).toHaveBeenCalledWith("user-margo");
+    expect(screen.getByRole("heading", { name: "Following" }).parentElement).toHaveTextContent("Private");
+
+    await user.click(screen.getByRole("button", { name: "Like Published World" }));
+    expect(onToggleScenarioLike).toHaveBeenCalledWith("scenario-public", true);
+    expect(screen.getByText("4 likes")).toBeInTheDocument();
+  });
+
+  it("lets the owner control connection visibility and accept requests", async () => {
+    const user = userEvent.setup();
+    const onUpdateSocialVisibility = vi.fn(async () => undefined);
+    const onAcceptFriend = vi.fn(async () => undefined);
+    const ownProfile: BackendProfileSummary = {
+      ...profile(),
+      social: {
+        visibility: { followers: true, following: true, friends: false },
+        followers: [],
+        following: [],
+        friends: [],
+        incomingFriendRequests: [{ userId: "user-margo", displayName: "Margo" }],
+        outgoingFriendRequests: [],
+      },
+    };
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        profile={ownProfile}
+        onUpdateSocialVisibility={onUpdateSocialVisibility}
+        onAcceptFriend={onAcceptFriend}
+      />,
+    );
+
+    await user.click(screen.getByText("Account & profile"));
+    await user.click(screen.getByRole("checkbox", { name: "Show followers" }));
+    expect(onUpdateSocialVisibility).toHaveBeenCalledWith({ followers: false });
+    await user.click(screen.getByRole("button", { name: "Accept Margo" }));
+    expect(onAcceptFriend).toHaveBeenCalledWith("user-margo");
+  });
 });

@@ -10,6 +10,7 @@ const ENV_KEYS = [
   "DATABASE_URL",
   "AIST_API_ALLOWED_ORIGINS",
   "AIST_EMAIL_DELIVERY_MODE",
+  "AIST_PASSWORD_SIGNUP_MODE",
 ] as const;
 
 const originalEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -52,5 +53,16 @@ describe("API config", () => {
     expect(loadApiConfig().emailDeliveryMode).toBe("resend");
     process.env.AIST_EMAIL_DELIVERY_MODE = "disabled";
     expect(loadApiConfig().emailDeliveryMode).toBe("disabled");
+  });
+
+  it("requires an explicit opt-in to trusted-invite password signup", () => {
+    delete process.env.AIST_PASSWORD_SIGNUP_MODE;
+    expect(loadApiConfig().passwordSignupMode).toBe("emailVerification");
+    process.env.AIST_PASSWORD_SIGNUP_MODE = "trustedInvite";
+    expect(loadApiConfig().passwordSignupMode).toBe("trustedInvite");
+    process.env.AIST_PASSWORD_SIGNUP_MODE = "disabled";
+    expect(loadApiConfig().passwordSignupMode).toBe("disabled");
+    process.env.AIST_PASSWORD_SIGNUP_MODE = "public";
+    expect(() => loadApiConfig()).toThrow(/AIST_PASSWORD_SIGNUP_MODE/);
   });
 });

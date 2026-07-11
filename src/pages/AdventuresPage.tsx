@@ -669,7 +669,8 @@ export function AdventuresPage({
               <p className="muted">
                 Pick a setup guide or stay custom, then describe your Story idea. The AI drafts a title, opening scene, World Blocks, and Reference Cards for review.
               </p>
-              <Field label="Storyteller">
+              <div className="field">
+                <span>Storyteller</span>
                 <div className="storyteller-profile-grid" role="radiogroup" aria-label="Storyteller">
                   {STORYTELLER_PROFILES.map((profile) => {
                     const active = storytellerProfile === profile.id;
@@ -693,7 +694,7 @@ export function AdventuresPage({
                   })}
                 </div>
                 <p className="muted">Storyteller names are setup labels only. They are not added as characters or narrators.</p>
-              </Field>
+              </div>
               <Field label="Premise">
                 <textarea
                   rows={4}
@@ -1037,7 +1038,7 @@ export function AdventuresPage({
               <p className="eyebrow">Import</p>
               <h3>Import from AIST</h3>
               <p className="muted">
-                Restore a full AI Story Teller adventure backup and continue from its saved messages, turn state, cards, brains, and components.
+                Restore a full Story Mode AI adventure backup and continue from its saved messages, turn state, cards, brains, and components.
               </p>
             </div>
           </div>
@@ -1053,7 +1054,7 @@ export function AdventuresPage({
               rows={12}
               value={aistImportText}
               onChange={(event) => setAistImportText(event.target.value)}
-              placeholder="Paste a full AI Story Teller adventure backup JSON."
+              placeholder="Paste a full Story Mode AI adventure backup JSON."
             />
           </Field>
 

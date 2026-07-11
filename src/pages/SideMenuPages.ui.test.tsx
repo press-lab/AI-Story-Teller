@@ -69,6 +69,34 @@ describe("side menu page smoke coverage", () => {
     expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
   });
 
+  it("stages Reference Card editing around the story memory and progressive disclosures", async () => {
+    const user = userEvent.setup();
+    const adventure: Adventure = {
+      ...seedAdventure(),
+      storyCards: [makeStoryCard({ title: "Morgana", keys: ["Morgana", "Guild"], content: "Morgana leads the lesson." })],
+    };
+
+    renderWithAdventure(
+      (current, dispatch) => <StoryCardsPage adventure={current} dispatch={dispatch} />,
+      adventure,
+    );
+
+    expect(screen.getByRole("heading", { name: "Reference Cards" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Search Reference Cards")).toBeInTheDocument();
+
+    const filters = screen.getByText("Filter and sort").closest("details");
+    expect(filters).not.toHaveAttribute("open");
+
+    await user.click(screen.getByText("Morgana", { selector: ".story-card-title" }));
+    expect(screen.getByRole("heading", { name: "Memory the storyteller receives" })).toBeInTheDocument();
+
+    const structuredMemory = screen.getByText("Structured facts (optional)").closest("details");
+    const advanced = screen.getByText("Advanced context and automation").closest("details");
+    expect(structuredMemory).not.toHaveAttribute("open");
+    expect(advanced).not.toHaveAttribute("open");
+    expect(screen.getByDisplayValue("Morgana leads the lesson.")).toBeInTheDocument();
+  });
+
   it("opens and scrolls focused Reference Card and World Block sources", async () => {
     const originalScrollIntoView = Element.prototype.scrollIntoView;
     const scrollIntoView = vi.fn();

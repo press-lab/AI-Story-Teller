@@ -4,6 +4,7 @@ import { createEmptyDb } from "./dbShape";
 import { buildPostgresPoolConfig, buildPostgresTransactionTimeoutQuery, PostgresDb } from "./postgresDb";
 import { CURRENT_SQL_SCHEMA_VERSION, runSqlMigrations } from "./sqlMigrations";
 import { createDefaultAdventure } from "../../src/state/defaults";
+import { createInvite, signupWithPassword } from "./auth";
 
 const connectionString = process.env.TEST_POSTGRES_URL;
 const suite = connectionString ? describe : describe.skip;
@@ -109,6 +110,33 @@ suite("Postgres production integration", () => {
       await db.completeIdempotency("integration-user", "turn", `key-${suffix}`, "succeeded", 200, { ok: true });
       expect(await second.claimIdempotency("integration-user", "turn", `key-${suffix}`, "hash-a", new Date(Date.now() + 60_000).toISOString()))
         .toMatchObject({ state: "succeeded", responseStatus: 200, responseBody: { ok: true } });
+    } finally {
+      await second.close();
+    }
+  });
+
+  it("atomically consumes a one-use trusted invite across API instances", async () => {
+    const second = new PostgresDb(connectionString!, { max: 2, statementTimeoutMs: 5_000, lockTimeoutMs: 2_000 });
+    const suffix = Date.now().toString(36);
+    const email = `trusted-invite-${suffix}@example.com`;
+    try {
+      const created = await db.updateAuth((data) => createInvite(data, { maxUses: 1 }));
+      const signupInput = {
+        inviteToken: created.token,
+        email,
+        password: "correct horse battery staple",
+      };
+      const results = await Promise.allSettled([
+        db.updateAuth((data) => signupWithPassword(data, signupInput, { requireEmailVerification: false })),
+        second.updateAuth((data) => signupWithPassword(data, signupInput, { requireEmailVerification: false })),
+      ]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+
+      const data = await db.read();
+      expect(data.users.filter((user) => user.email === email)).toHaveLength(1);
+      const invite = data.inviteLinks.find((entry) => entry.id === created.invite.id);
+      expect(invite?.useCount).toBe(1);
     } finally {
       await second.close();
     }

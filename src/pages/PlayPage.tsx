@@ -787,11 +787,11 @@ export function PlayPage({
               {composerOpen ? "Close Input" : "Take a Turn"}
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
-              <button type="button" disabled={loading} onClick={onContinue}>Continue</button>
-              <button type="button" disabled={loading || !lastAssistant} onClick={onRegenerate}>Retry</button>
+              <button type="button" disabled={loading || turnSubmissionPending} onClick={onContinue}>Continue</button>
+              <button type="button" disabled={loading || turnSubmissionPending || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button
                 type="button"
-                disabled={loading || adventure.messages.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.messages.length === 0}
                 onClick={() => void deleteLastMessage()}
               >
                 Erase
@@ -812,7 +812,7 @@ export function PlayPage({
               <button
                 type="button"
                 className="action-extra"
-                disabled={loading || adventure.activeState.storyUndoStack.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.activeState.storyUndoStack.length === 0}
                 onClick={() => dispatch({ type: "UNDO_STORY_EDIT" })}
               >
                 Undo
@@ -820,7 +820,7 @@ export function PlayPage({
               <button
                 type="button"
                 className="action-extra"
-                disabled={loading || adventure.activeState.storyRedoStack.length === 0}
+                disabled={loading || turnSubmissionPending || adventure.activeState.storyRedoStack.length === 0}
                 onClick={() => dispatch({ type: "REDO_STORY_EDIT" })}
               >
                 Redo

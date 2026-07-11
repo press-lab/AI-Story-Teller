@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
 import type { Adventure } from "../../src/types/adventure";
 import type { BackendDb } from "./backendDb";
-import { loadApiConfig, type ApiConfig } from "./config";
+import { loadApiConfig, type ApiConfig, type PasswordSignupMode } from "./config";
 import { createBackendDb } from "./db";
 import { createEmptyDb } from "./dbShape";
 import {
@@ -61,6 +61,18 @@ import { configuredEmailDelivery, type EmailDelivery } from "./emailDelivery";
 import { hashToken } from "./ids";
 import { ApiError, normalizeApiError } from "./apiError";
 import { deleteUserData, pruneExpiredAndRetainedData } from "./dataLifecycle";
+import {
+  acceptFriendship,
+  followUser,
+  likeScenario,
+  removeFriendship,
+  requestFriendship,
+  scenarioLikeCount,
+  unfollowUser,
+  unlikeScenario,
+  updateProfileSocialVisibility,
+} from "./socialGraph";
+import type { ProfileSocialVisibility } from "./apiTypes";
 
 export interface ApiServer {
   server: Server;
@@ -167,7 +179,10 @@ async function handleRequest(
       const adminUserId = await assertAdmin(request, config, db);
       const { body } = await readJsonBody<{ expiresInDays?: number; maxUses?: number; note?: string }>(request);
       const created = await authUpdate(db, (data) => createInvite(data, { ...body, createdByUserId: adminUserId }));
-      sendJson(response, 201, created, corsHeaders);
+      sendJson(response, 201, {
+        ...created,
+        inviteUrl: authActionUrl(config.googleOAuth.successRedirectUrl, "invite", created.token),
+      }, corsHeaders);
       return;
     }
 
@@ -189,26 +204,36 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/auth/signup/password") {
-      assertEmailCapability(config);
+      const signupMode = assertPasswordSignupCapability(config);
       const { body } = await readJsonBody<{ inviteToken: string; email: string; password: string; displayName?: string }>(request);
       requireStringFields(body, ["inviteToken", "email", "password"]);
       await enforceRateLimit(db, config, request, "signup", body.email, 8, 60_000);
       const result = await authUpdate(db, async (data) => {
-        const signup = await signupWithPassword(data, body);
+        const signup = await signupWithPassword(data, body, {
+          requireEmailVerification: signupMode === "emailVerification",
+        });
         applyConfiguredAdminRole(data, signup.user, config);
         return signup;
       });
-      await emailDelivery.sendVerificationEmail({
-        to: result.user.email,
-        verificationUrl: authActionUrl(config.googleOAuth.successRedirectUrl, "verifyEmail", result.verification.token),
-        expiresAt: result.verification.expiresAt,
-      });
-      sendJson(response, 201, {
-        user: publicUser(result.user, config),
-        profile: result.profile,
-        verificationRequired: true,
-        message: "Check your email for a verification link.",
-      }, corsHeaders);
+      if (result.verificationRequired) {
+        await emailDelivery.sendVerificationEmail({
+          to: result.user.email,
+          verificationUrl: authActionUrl(config.googleOAuth.successRedirectUrl, "verifyEmail", result.verification.token),
+          expiresAt: result.verification.expiresAt,
+        });
+        sendJson(response, 201, {
+          user: publicUser(result.user, config),
+          profile: result.profile,
+          verificationRequired: true,
+          message: "Check your email for a verification link.",
+        }, corsHeaders);
+      } else {
+        sendJson(response, 201, {
+          ...publicSession(result, config),
+          verificationRequired: false,
+          message: "Account created from your invite. You are signed in.",
+        }, authSessionHeaders(config, corsHeaders, result));
+      }
       return;
     }
 
@@ -327,7 +352,12 @@ async function handleRequest(
       const data = db.readAccountRestrictions
         ? { ...createEmptyDb(), accountRestrictions: await db.readAccountRestrictions(session.user.id) }
         : await db.read();
-      sendJson(response, 200, { ...publicSession(session, config), restriction: currentRestriction(data, session.user.id) }, corsHeaders);
+      sendJson(
+        response,
+        200,
+        { ...publicSession(session, config), restriction: currentRestriction(data, session.user.id) },
+        authSessionHeaders(config, corsHeaders, session),
+      );
       return;
     }
 
@@ -423,12 +453,62 @@ async function handleRequest(
       return;
     }
 
+    if (request.method === "PATCH" && route.pathname === "/profile/me") {
+      const session = await requireSession(request, db);
+      const { body } = await readJsonBody<{ socialVisibility?: Partial<ProfileSocialVisibility> }>(request, 4_096);
+      if (!body.socialVisibility || typeof body.socialVisibility !== "object" || Array.isArray(body.socialVisibility)) {
+        throw new ApiError(400, "invalid_social_visibility", "Social visibility settings are required.");
+      }
+      const profile = await db.update((data) => {
+        updateProfileSocialVisibility(data, session.user.id, body.socialVisibility!);
+        return buildProfileSummary(data, session.user.id);
+      });
+      sendJson(response, 200, profile, corsHeaders);
+      return;
+    }
+
+    if (route.segments[0] === "profiles" && route.segments.length === 3 && route.segments[2] === "follow") {
+      const session = await requireSession(request, db);
+      const targetUserId = route.segments[1];
+      if (request.method === "POST") {
+        await db.update((data) => followUser(data, session.user.id, targetUserId));
+        sendJson(response, 200, { followedUserId: targetUserId, following: true }, corsHeaders);
+        return;
+      }
+      if (request.method === "DELETE") {
+        await db.update((data) => unfollowUser(data, session.user.id, targetUserId));
+        sendJson(response, 200, { followedUserId: targetUserId, following: false }, corsHeaders);
+        return;
+      }
+    }
+
+    if (request.method === "POST" && route.segments[0] === "profiles" && route.segments.length === 3 && route.segments[2] === "friend-request") {
+      const session = await requireSession(request, db);
+      const friendship = await db.update((data) => requestFriendship(data, session.user.id, route.segments[1]));
+      sendJson(response, 201, friendship, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.segments[0] === "profiles" && route.segments.length === 3 && route.segments[2] === "friend-accept") {
+      const session = await requireSession(request, db);
+      const friendship = await db.update((data) => acceptFriendship(data, session.user.id, route.segments[1]));
+      sendJson(response, 200, friendship, corsHeaders);
+      return;
+    }
+
+    if (request.method === "DELETE" && route.segments[0] === "profiles" && route.segments.length === 3 && route.segments[2] === "friendship") {
+      const session = await requireSession(request, db);
+      const removed = await db.update((data) => removeFriendship(data, session.user.id, route.segments[1]));
+      sendJson(response, 200, { otherUserId: route.segments[1], removed }, corsHeaders);
+      return;
+    }
+
     if (request.method === "GET" && route.segments[0] === "profiles" && route.segments.length === 2) {
-      await requireSession(request, db);
+      const session = await requireSession(request, db);
       const dbStartedAt = performance.now();
       const profile = db.readPublicProfileSummary
-        ? await db.readPublicProfileSummary(route.segments[1])
-        : buildPublicProfileSummary(await db.read(), route.segments[1]);
+        ? await db.readPublicProfileSummary(route.segments[1], session.user.id)
+        : buildPublicProfileSummary(await db.read(), route.segments[1], session.user.id);
       await recordTrace(db, performanceTrace({
         traceId,
         source: "database",
@@ -445,11 +525,11 @@ async function handleRequest(
     }
 
     if (request.method === "GET" && route.pathname === "/explore/scenarios") {
-      await requireSession(request, db);
+      const session = await requireSession(request, db);
       const dbStartedAt = performance.now();
       const scenarios = db.readExploreScenarios
-        ? await db.readExploreScenarios()
-        : listExploreScenarios(await db.read());
+        ? await db.readExploreScenarios(session.user.id)
+        : listExploreScenarios(await db.read(), session.user.id);
       await recordTrace(db, performanceTrace({
         traceId,
         source: "database",
@@ -561,7 +641,7 @@ async function handleRequest(
       const { body } = await readJsonBody<Partial<PerformanceTraceRecord>>(request, 16_384);
       const trace = validatedClientTrace(body);
       await recordTrace(db, performanceTrace({
-        traceId: trace.traceId ?? traceId,
+        traceId: trace.traceId ?? validatedClientTraceId(traceId) ?? createTraceId(),
         source: "device",
         userId: session.user.id,
         phase: trace.phase,
@@ -1023,6 +1103,19 @@ async function handleScenarioRoute(
   db: BackendDb,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
+  if ((request.method === "POST" || request.method === "DELETE") && segments.length === 3 && segments[2] === "like") {
+    const result = await db.update((data) => {
+      if (request.method === "POST") likeScenario(data, session.user.id, segments[1]);
+      else unlikeScenario(data, session.user.id, segments[1]);
+      return {
+        scenarioId: segments[1],
+        liked: request.method === "POST",
+        likeCount: scenarioLikeCount(data, segments[1]),
+      };
+    });
+    sendJson(response, 200, result, corsHeaders);
+    return;
+  }
   if (request.method === "POST" && segments.length === 1) {
     const { body } = await readJsonBody<{ title: string; description?: string; sourceAdventureId?: string }>(request);
     const scenario = await db.updatePersistingOnError((data) => {
@@ -1093,13 +1186,31 @@ async function handleScenarioRevisionRoute(
 }
 
 async function requireSession(request: IncomingMessage, db: BackendDb): Promise<AuthSessionResult> {
-  const token = bearerToken(request) ?? sessionCookie(request);
+  // Hosted browsers authenticate with the HttpOnly cookie. Prefer it so a
+  // migrated client that still sends the non-secret `cookie` sentinel (or a
+  // stale bearer token) cannot mask an otherwise valid hosted session. If the
+  // cookie itself is stale, a real bearer token can still complete migration;
+  // the literal `cookie` sentinel is never treated as a session secret.
+  const cookieToken = sessionCookie(request);
+  const headerToken = bearerToken(request);
+  const candidateTokens: string[] = [];
+  if (cookieToken) candidateTokens.push(cookieToken);
+  if (headerToken && headerToken !== "cookie" && headerToken !== cookieToken) candidateTokens.push(headerToken);
   let session: AuthSessionResult | undefined;
   if (db.resolveSessionByTokenHash) {
-    const resolved = token ? await db.resolveSessionByTokenHash(hashToken(token)) : undefined;
-    session = resolved && token ? { ...resolved, sessionToken: token } : undefined;
+    for (const token of candidateTokens) {
+      const resolved = await db.resolveSessionByTokenHash(hashToken(token));
+      if (resolved) {
+        session = { ...resolved, sessionToken: token };
+        break;
+      }
+    }
   } else {
-    session = resolveSession(await db.read(), token);
+    const data = await db.read();
+    for (const token of candidateTokens) {
+      session = resolveSession(data, token);
+      if (session) break;
+    }
   }
   if (!session) throw new ApiError(401, "unauthenticated", "Authentication is required.");
   if (session.user.status !== "active") throw new ApiError(403, "account_inactive", "Account is not active.");
@@ -1272,7 +1383,7 @@ function applyConfiguredAdminRole(
   config: ApiConfig,
 ): void {
   if (config.adminEmails.length === 0) return;
-  const nextRole = config.adminEmails.includes(user.email.toLowerCase()) ? "admin" : "user";
+  const nextRole = user.emailVerified && config.adminEmails.includes(user.email.toLowerCase()) ? "admin" : "user";
   const previousRole = user.role ?? "user";
   user.role = nextRole;
   const stored = data.users.find((entry) => entry.id === user.id);
@@ -1315,7 +1426,7 @@ function sessionCookie(request: IncomingMessage): string | undefined {
 
 function isAdminUser(user: AuthSessionResult["user"], config: ApiConfig): boolean {
   return config.adminEmails.length > 0
-    ? config.adminEmails.includes(user.email.toLowerCase())
+    ? user.emailVerified && config.adminEmails.includes(user.email.toLowerCase())
     : user.role === "admin";
 }
 
@@ -1340,7 +1451,7 @@ function sendOAuthRedirect(
   response.end(`<!doctype html><meta charset="utf-8"><script>location.replace(${JSON.stringify(target.toString())});</script>`);
 }
 
-function authActionUrl(baseUrl: string, action: "verifyEmail" | "passwordReset", token: string): string {
+function authActionUrl(baseUrl: string, action: "invite" | "verifyEmail" | "passwordReset", token: string): string {
   const target = new URL(baseUrl);
   target.hash = `${action}=${encodeURIComponent(token)}`;
   return target.toString();
@@ -1358,14 +1469,30 @@ function authUpdate<T>(db: BackendDb, mutate: (data: LocalDbData) => T | Promise
 }
 
 function assertEmailCapability(config: ApiConfig): void {
-  if (config.emailDeliveryMode === "disabled") {
-    throw new ApiError(503, "email_delivery_disabled", "Account signup and recovery email are disabled during controlled UAT.");
+  if (!emailDeliveryEnabled(config)) {
+    throw new ApiError(503, "email_delivery_disabled", "Email verification and password recovery are disabled during controlled UAT.");
   }
 }
 
-function serverCapabilities(config: ApiConfig) {
-  const emailEnabled = config.emailDeliveryMode === "resend"
+function assertPasswordSignupCapability(config: ApiConfig): PasswordSignupMode {
+  if (trustedInviteSignupEnabled(config)) return "trustedInvite";
+  if (config.passwordSignupMode === "emailVerification" && emailDeliveryEnabled(config)) return "emailVerification";
+  throw new ApiError(503, "password_signup_disabled", "Account creation is unavailable. A valid invite link is required when signup is enabled.");
+}
+
+function trustedInviteSignupEnabled(config: ApiConfig): boolean {
+  return config.passwordSignupMode === "trustedInvite"
+    && config.emailDeliveryMode === "disabled"
+    && config.policyMode === "reviewOnly";
+}
+
+function emailDeliveryEnabled(config: ApiConfig): boolean {
+  return config.emailDeliveryMode === "resend"
     && Boolean(config.emailDelivery || (config.resendApiKey && config.emailFrom));
+}
+
+function serverCapabilities(config: ApiConfig) {
+  const emailEnabled = emailDeliveryEnabled(config);
   const googleOAuth = Boolean(
     config.googleOAuth.clientId
     && config.googleOAuth.clientSecret
@@ -1373,10 +1500,12 @@ function serverCapabilities(config: ApiConfig) {
   );
   return {
     passwordLogin: true,
-    passwordSignup: emailEnabled,
+    passwordSignup: trustedInviteSignupEnabled(config)
+      || (config.passwordSignupMode === "emailVerification" && emailEnabled),
     passwordReset: emailEnabled,
     emailVerificationDelivery: emailEnabled,
     googleOAuth,
+    inviteRequired: true,
   };
 }
 
@@ -1390,33 +1519,203 @@ function validatedClientTrace(body: Partial<PerformanceTraceRecord>) {
   if (typeof body.durationMs !== "number" || !Number.isFinite(body.durationMs) || body.durationMs < 0 || body.durationMs > 3_600_000) {
     throw new ApiError(400, "invalid_telemetry", "Telemetry duration is invalid.");
   }
-  const short = (value: unknown, max: number): string | undefined =>
-    typeof value === "string" && value.length <= max ? value : undefined;
+  if (typeof body.phase !== "string" || !CLIENT_TELEMETRY_PHASES.has(body.phase)) {
+    throw new ApiError(400, "invalid_telemetry", "Telemetry phase is invalid.");
+  }
   const boundedNumber = (value: unknown, max: number): number | undefined =>
     typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max ? value : undefined;
-  const metadata: NonNullable<PerformanceTraceRecord["metadata"]> = {};
-  if (body.metadata && typeof body.metadata === "object") {
-    for (const [key, value] of Object.entries(body.metadata).slice(0, 20)) {
-      if (!/^[A-Za-z0-9_.-]{1,50}$/.test(key)) continue;
-      if (typeof value === "string") metadata[key] = value.slice(0, 200);
-      else if (typeof value === "number" && Number.isFinite(value)) metadata[key] = value;
-      else if (typeof value === "boolean") metadata[key] = value;
-    }
-  }
+  const phase = body.phase;
+  const metadata = validatedClientTelemetryMetadata(body.metadata);
   return {
-    traceId: short(body.traceId, 200),
-    phase: short(body.phase, 80) ?? "http_round_trip",
-    route: short(body.route, 300),
-    method: short(body.method, 12),
+    traceId: validatedClientTraceId(body.traceId),
+    phase,
+    route: normalizedClientTelemetryRoute(body.route, phase),
+    method: validatedClientTelemetryMethod(body.method, phase),
     status: body.status,
     statusCode: boundedNumber(body.statusCode, 599),
     durationMs: body.durationMs,
     requestBytes: boundedNumber(body.requestBytes, 20_000_000),
     responseBytes: boundedNumber(body.responseBytes, 20_000_000),
-    errorCategory: short(body.errorCategory, 80),
-    errorMessage: body.errorMessage === undefined ? undefined : sanitizeErrorMessage(short(body.errorMessage, 500) ?? "invalid client error"),
+    errorCategory: typeof body.errorCategory === "string" && CLIENT_TELEMETRY_ERROR_CATEGORIES.has(body.errorCategory)
+      ? body.errorCategory
+      : undefined,
+    // Error text is not required for client performance diagnosis and can
+    // contain user-authored content. Server-generated traces keep their own
+    // sanitized errors; client-ingested traces store only a controlled category.
+    errorMessage: undefined,
     metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
   };
+}
+
+const CLIENT_TELEMETRY_PHASES = new Set<string>([
+  "http_round_trip",
+  "page_load",
+  "ui_navigation",
+  "largest_contentful_paint",
+  "interaction_latency",
+  "long_task_window",
+] as const);
+
+const CLIENT_TELEMETRY_HTTP_METHODS = new Set<string>(["GET", "POST", "PUT", "PATCH", "DELETE"] as const);
+const CLIENT_TELEMETRY_ERROR_CATEGORIES = new Set<string>(["network", "aborted", "auth", "server", "client", "unknown"] as const);
+const CLIENT_TELEMETRY_CAUSE_HINTS = new Set<string>([
+  "offline",
+  "network_quality",
+  "server_or_network",
+  "client_render_or_assets",
+  "mixed_page_load",
+  "client_render",
+  "render_or_asset_loading",
+  "main_thread_work",
+] as const);
+const CLIENT_TELEMETRY_NAVIGATION_DESTINATIONS = new Set<string>([
+  "home",
+  "explore",
+  "play",
+  "story-studio",
+  "history",
+  "backups-transfer",
+  "automation",
+  "context-inspector",
+  "settings",
+  "help",
+  "admin",
+] as const);
+const CLIENT_TELEMETRY_VISIBILITY_STATES = new Set<string>(["visible", "hidden", "prerender"] as const);
+const CLIENT_TELEMETRY_CONNECTION_TYPES = new Set<string>(["slow-2g", "2g", "3g", "4g"] as const);
+const CLIENT_TELEMETRY_NAVIGATION_TYPES = new Set<string>(["navigate", "reload", "back_forward", "prerender"] as const);
+
+const CLIENT_TELEMETRY_STATIC_API_ROUTES = new Set<string>([
+  "/capabilities",
+  "/admin/invites",
+  "/auth/signup/password",
+  "/auth/email/verify",
+  "/auth/login/password",
+  "/auth/password-reset/request",
+  "/auth/password-reset/confirm",
+  "/auth/google/local",
+  "/auth/google/start",
+  "/auth/google/exchange",
+  "/auth/session",
+  "/auth/logout",
+  "/auth/sessions",
+  "/auth/sessions/revoke-all",
+  "/account/export",
+  "/account",
+  "/profile/me",
+  "/explore/scenarios",
+  "/adventures",
+  "/adventures/import",
+  "/scenarios",
+  "/ai/adventure-generation",
+  "/admin/account-safety-events",
+  "/admin/console",
+  "/admin/console/details",
+  "/admin/platform-settings",
+  "/admin/maintenance/retention",
+] as const);
+
+const CLIENT_TELEMETRY_DYNAMIC_API_ROUTES: Array<{ pattern: RegExp; template: string }> = [
+  { pattern: /^\/admin\/invites\/[^/]+\/disable$/, template: "/admin/invites/:inviteId/disable" },
+  { pattern: /^\/invites\/[^/]+\/preview$/, template: "/invites/:inviteToken/preview" },
+  { pattern: /^\/profiles\/[^/]+$/, template: "/profiles/:userId" },
+  { pattern: /^\/profiles\/[^/]+\/follow$/, template: "/profiles/:userId/follow" },
+  { pattern: /^\/profiles\/[^/]+\/friend-request$/, template: "/profiles/:userId/friend-request" },
+  { pattern: /^\/profiles\/[^/]+\/friend-accept$/, template: "/profiles/:userId/friend-accept" },
+  { pattern: /^\/profiles\/[^/]+\/friendship$/, template: "/profiles/:userId/friendship" },
+  { pattern: /^\/admin\/users\/[^/]+\/status$/, template: "/admin/users/:userId/status" },
+  { pattern: /^\/admin\/users\/[^/]+\/restrictions$/, template: "/admin/users/:userId/restrictions" },
+  { pattern: /^\/admin\/account-safety-events\/[^/]+$/, template: "/admin/account-safety-events/:eventId" },
+  { pattern: /^\/adventures\/[^/]+$/, template: "/adventures/:adventureId" },
+  { pattern: /^\/adventures\/[^/]+\/turn$/, template: "/adventures/:adventureId/turn" },
+  { pattern: /^\/adventures\/[^/]+\/context-preview$/, template: "/adventures/:adventureId/context-preview" },
+  { pattern: /^\/adventures\/[^/]+\/snapshots$/, template: "/adventures/:adventureId/snapshots" },
+  { pattern: /^\/adventures\/[^/]+\/snapshots\/[^/]+\/restore$/, template: "/adventures/:adventureId/snapshots/:snapshotId/restore" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/story-card-builder$/, template: "/adventures/:adventureId/ai/story-card-builder" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/story-card-updates$/, template: "/adventures/:adventureId/ai/story-card-updates" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/memory-reconcile$/, template: "/adventures/:adventureId/ai/memory-reconcile" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/story-card-audit$/, template: "/adventures/:adventureId/ai/story-card-audit" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/generate-brain$/, template: "/adventures/:adventureId/ai/generate-brain" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/update-brain$/, template: "/adventures/:adventureId/ai/update-brain" },
+  { pattern: /^\/adventures\/[^/]+\/ai\/brain-audit$/, template: "/adventures/:adventureId/ai/brain-audit" },
+  { pattern: /^\/scenarios\/[^/]+$/, template: "/scenarios/:scenarioId" },
+  { pattern: /^\/scenarios\/[^/]+\/like$/, template: "/scenarios/:scenarioId/like" },
+  { pattern: /^\/scenarios\/[^/]+\/revisions$/, template: "/scenarios/:scenarioId/revisions" },
+  { pattern: /^\/scenario-revisions\/[^/]+\/publish$/, template: "/scenario-revisions/:revisionId/publish" },
+  { pattern: /^\/scenario-revisions\/[^/]+\/unpublish$/, template: "/scenario-revisions/:revisionId/unpublish" },
+  { pattern: /^\/scenario-revisions\/[^/]+\/fork$/, template: "/scenario-revisions/:revisionId/fork" },
+  { pattern: /^\/scenario-revisions\/[^/]+\/editor-copy$/, template: "/scenario-revisions/:revisionId/editor-copy" },
+];
+
+function validatedClientTraceId(value: unknown): string | undefined {
+  return typeof value === "string" && /^trace[_-][A-Za-z0-9][A-Za-z0-9_.:-]{0,119}$/.test(value)
+    ? value
+    : undefined;
+}
+
+function validatedClientTelemetryMethod(value: unknown, phase: string): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (phase === "http_round_trip") return CLIENT_TELEMETRY_HTTP_METHODS.has(value) ? value : undefined;
+  return value === "UI" ? value : undefined;
+}
+
+function normalizedClientTelemetryRoute(value: unknown, phase: string): string | undefined {
+  if (typeof value !== "string") return undefined;
+  if (phase === "ui_navigation") {
+    const match = /^\/ui\/([a-z-]+)$/.exec(value);
+    return match && CLIENT_TELEMETRY_NAVIGATION_DESTINATIONS.has(match[1]) ? `/ui/${match[1]}` : undefined;
+  }
+  if (phase !== "http_round_trip") return value === "/app" ? "/app" : undefined;
+
+  const pathname = value.split(/[?#]/, 1)[0];
+  if (!pathname?.startsWith("/") || pathname.includes("\\")) return undefined;
+  if (CLIENT_TELEMETRY_STATIC_API_ROUTES.has(pathname)) return pathname;
+  return CLIENT_TELEMETRY_DYNAMIC_API_ROUTES.find(({ pattern }) => pattern.test(pathname))?.template;
+}
+
+function validatedClientTelemetryMetadata(value: unknown): NonNullable<PerformanceTraceRecord["metadata"]> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const input = value as Record<string, unknown>;
+  const metadata: NonNullable<PerformanceTraceRecord["metadata"]> = {};
+  const enumValue = (key: string, allowed: ReadonlySet<string>) => {
+    const candidate = input[key];
+    if (typeof candidate === "string" && allowed.has(candidate)) metadata[key] = candidate;
+  };
+  const booleanValue = (key: string) => {
+    if (typeof input[key] === "boolean") metadata[key] = input[key] as boolean;
+  };
+  const numberValue = (key: string, min: number, max: number, integer = false) => {
+    const candidate = input[key];
+    if (typeof candidate !== "number" || !Number.isFinite(candidate) || candidate < min || candidate > max) return;
+    if (integer && !Number.isInteger(candidate)) return;
+    metadata[key] = candidate;
+  };
+
+  enumValue("visibilityState", CLIENT_TELEMETRY_VISIBILITY_STATES);
+  booleanValue("online");
+  enumValue("connectionType", CLIENT_TELEMETRY_CONNECTION_TYPES);
+  numberValue("downlinkMbps", 0, 10_000);
+  numberValue("rttMs", 0, 600_000);
+  booleanValue("saveData");
+  numberValue("hardwareConcurrency", 1, 1_024, true);
+  numberValue("deviceMemoryGb", 0.125, 1_024);
+  if (typeof input.appVersion === "string" && /^(?:dev|[0-9a-f]{7,64})$/i.test(input.appVersion)) {
+    metadata.appVersion = input.appVersion;
+  }
+  enumValue("causeHint", CLIENT_TELEMETRY_CAUSE_HINTS);
+  enumValue("navigationType", CLIENT_TELEMETRY_NAVIGATION_TYPES);
+  numberValue("ttfbMs", 0, 3_600_000);
+  numberValue("responseDownloadMs", 0, 3_600_000);
+  numberValue("domInteractiveMs", 0, 3_600_000);
+  numberValue("domContentLoadedMs", 0, 3_600_000);
+  numberValue("clientWorkMs", 0, 3_600_000);
+  numberValue("transferBytes", 0, 2_000_000_000, true);
+  numberValue("resourceCount", 0, 1_000_000, true);
+  enumValue("destination", CLIENT_TELEMETRY_NAVIGATION_DESTINATIONS);
+  numberValue("taskCount", 0, 1_000_000, true);
+  numberValue("longestTaskMs", 0, 3_600_000);
+  numberValue("interactionCount", 0, 1_000_000, true);
+  return metadata;
 }
 
 function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, string> {

@@ -4,6 +4,7 @@ import type { EmailDelivery } from "./emailDelivery";
 
 export type PolicyMode = "reviewOnly" | "enforce";
 export type EmailDeliveryMode = "disabled" | "resend";
+export type PasswordSignupMode = "disabled" | "emailVerification" | "trustedInvite";
 
 export interface GoogleOAuthConfig {
   clientId: string;
@@ -35,6 +36,7 @@ export interface ApiConfig {
   googleOAuth: GoogleOAuthConfig;
   policyMode: PolicyMode;
   emailDeliveryMode: EmailDeliveryMode;
+  passwordSignupMode: PasswordSignupMode;
   providerConfig: ProviderConfig;
   resendApiKey?: string;
   emailFrom?: string;
@@ -58,6 +60,13 @@ function boolEnv(name: string, fallback: boolean): boolean {
   const value = process.env[name];
   if (value === undefined || value.trim() === "") return fallback;
   return ["1", "true", "yes", "on"].includes(value.trim().toLowerCase());
+}
+
+function passwordSignupModeEnv(name: string, fallback: PasswordSignupMode): PasswordSignupMode {
+  const value = process.env[name]?.trim();
+  if (!value) return fallback;
+  if (value === "disabled" || value === "emailVerification" || value === "trustedInvite") return value;
+  throw new Error(`${name} must be disabled, emailVerification, or trustedInvite.`);
 }
 
 function openRouterProviderSortEnv(name: string): ProviderConfig["openRouterProviderSort"] {
@@ -90,6 +99,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   const policyMode: PolicyMode = policyModeRaw === "enforce" ? "enforce" : "reviewOnly";
   const emailDeliveryModeRaw = stringEnv("AIST_EMAIL_DELIVERY_MODE", "resend");
   const emailDeliveryMode: EmailDeliveryMode = emailDeliveryModeRaw === "disabled" ? "disabled" : "resend";
+  const passwordSignupMode = passwordSignupModeEnv("AIST_PASSWORD_SIGNUP_MODE", "emailVerification");
   const config: ApiConfig = {
     host: stringEnv("AIST_API_HOST", "127.0.0.1"),
     port: numberEnv("AIST_API_PORT", numberEnv("PORT", 8787)),
@@ -121,6 +131,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     },
     policyMode,
     emailDeliveryMode,
+    passwordSignupMode,
     providerConfig,
     resendApiKey: process.env.RESEND_API_KEY?.trim() || undefined,
     emailFrom: process.env.AIST_EMAIL_FROM?.trim() || undefined,

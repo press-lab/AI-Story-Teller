@@ -22,8 +22,39 @@ export interface UserProfile {
   userId: string;
   displayName: string;
   bio: string;
+  socialVisibility?: ProfileSocialVisibility;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ProfileSocialVisibility {
+  followers: boolean;
+  following: boolean;
+  friends: boolean;
+}
+
+export interface ScenarioLike {
+  id: string;
+  scenarioId: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface UserFollow {
+  id: string;
+  followerUserId: string;
+  followedUserId: string;
+  createdAt: string;
+}
+
+export interface Friendship {
+  id: string;
+  requesterUserId: string;
+  addresseeUserId: string;
+  status: "pending" | "accepted";
+  createdAt: string;
+  updatedAt: string;
+  acceptedAt?: string;
 }
 
 export interface AuthIdentity {
@@ -309,6 +340,9 @@ export interface LocalDbData {
   accountStatusHistory: AccountStatusHistory[];
   scenarioDrafts: ScenarioDraft[];
   scenarioRevisions: ScenarioRevision[];
+  scenarioLikes: ScenarioLike[];
+  userFollows: UserFollow[];
+  friendships: Friendship[];
   shareLinks: ShareLink[];
   usageLogs: UsageLog[];
   performanceTraces: PerformanceTraceRecord[];

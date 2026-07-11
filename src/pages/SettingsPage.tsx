@@ -18,6 +18,7 @@ import type { RuntimeConfig, RuntimeMode } from "../runtime/runtimeConfig";
 import { runtimeModeLabel } from "../runtime/runtimeConfig";
 import type {
   BackendImportRequest,
+  BackendPasswordSignupResult,
   BackendSessionState,
 } from "../runtime/backendApi";
 import { CheckboxField, Field, JsonTextarea, NumberInput } from "./shared";
@@ -81,7 +82,7 @@ interface SettingsPageProps {
   onBackendModelModeChange?: (mode: BackendModelMode) => void;
   deviceOnlyDataMode?: boolean;
   hideDeveloperControls?: boolean;
-  onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<{ verificationRequired: true; message: string }>;
+  onSignupBackendPassword?: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<BackendPasswordSignupResult>;
   onVerifyBackendEmail?: (token: string) => Promise<BackendSessionState>;
   onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
   onStartBackendGoogleOAuth?: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
@@ -549,7 +550,7 @@ export function SettingsPage({
               </div>
             </>
           )}
-          <div className="toolbar">
+          <div className="toolbar settings-account-actions">
             <button type="button" onClick={onLogoutBackend} disabled={!backendSession}>
               Log out
             </button>

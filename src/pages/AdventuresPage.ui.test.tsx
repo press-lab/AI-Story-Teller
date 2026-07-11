@@ -487,6 +487,7 @@ describe("AdventuresPage new adventure setup", () => {
     });
 
     await user.click(screen.getByRole("button", { name: "New Story" }));
+    expect(screen.getByRole("radio", { name: /Custom.*No preset guide/ })).not.toHaveAccessibleName(/Storyteller names/);
     await user.click(screen.getByRole("radio", { name: /Mara/ }));
 
     expect(screen.getByLabelText("Story setup")).toHaveValue("romanceDrama");

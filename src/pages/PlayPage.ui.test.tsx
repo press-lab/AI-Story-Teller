@@ -20,6 +20,19 @@ global.IntersectionObserver = class {
 Element.prototype.scrollBy = () => {};
 Element.prototype.scrollIntoView = () => {};
 
+const draftStorage = new Map<string, string>();
+Object.defineProperty(window, "localStorage", {
+  configurable: true,
+  value: {
+    get length() { return draftStorage.size; },
+    clear() { draftStorage.clear(); },
+    getItem(key: string) { return draftStorage.get(key) ?? null; },
+    key(index: number) { return [...draftStorage.keys()][index] ?? null; },
+    removeItem(key: string) { draftStorage.delete(key); },
+    setItem(key: string, value: string) { draftStorage.set(key, String(value)); },
+  } satisfies Storage,
+});
+
 const originalInnerWidth = window.innerWidth;
 const originalMatchMedia = window.matchMedia;
 const timestamp = "2026-01-01T00:00:00.000Z";
@@ -105,6 +118,7 @@ function StatefulPlayPage({
 describe("PlayPage AID-style controls", () => {
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     restoreViewport();
   });
 
@@ -142,11 +156,13 @@ describe("PlayPage AID-style controls", () => {
 
   it("collapses the composer after desktop Enter while keeping submitted text until the turn resolves", async () => {
     const user = userEvent.setup();
+    const adventure = playAdventure();
+    const draftKey = `play-input-draft-${adventure.id}`;
     let resolveSubmit: (() => void) | undefined;
     const onSubmitTurn = vi.fn<SubmitTurnHandler>(() => new Promise<void>((resolve) => {
       resolveSubmit = resolve;
     }));
-    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+    render(<StatefulPlayPage initialAdventure={adventure} onSubmitTurn={onSubmitTurn} />);
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     const input = screen.getByPlaceholderText("What does your character do?");
@@ -155,8 +171,11 @@ describe("PlayPage AID-style controls", () => {
 
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
     expect(input).toHaveValue("draw your sword");
+    expect(localStorage.getItem(draftKey)).toBe("draw your sword");
     expect(input.closest(".composer")).toHaveClass("composer-input-closed");
     expect(screen.getByRole("button", { name: "Take a Turn" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
@@ -165,6 +184,23 @@ describe("PlayPage AID-style controls", () => {
 
     resolveSubmit?.();
     await waitFor(() => expect(input).toHaveValue(""));
+    expect(localStorage.getItem(draftKey)).toBeNull();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeEnabled();
+  });
+
+  it("uses Shift+Enter for a desktop newline without submitting", async () => {
+    const user = userEvent.setup();
+    const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => undefined);
+    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+
+    await user.click(screen.getByRole("button", { name: "Take a Turn" }));
+    const input = screen.getByPlaceholderText("What does your character do?");
+    await user.type(input, "draw your sword");
+    await user.keyboard("{Shift>}{Enter}{/Shift}");
+
+    expect(onSubmitTurn).not.toHaveBeenCalled();
+    expect(input).toHaveValue("draw your sword\n");
   });
 
   it("does not submit with Enter in the mobile composer", async () => {
@@ -211,10 +247,12 @@ describe("PlayPage AID-style controls", () => {
   it("keeps mobile turn text after a rejected submit", async () => {
     setMobileComposerViewport();
     const user = userEvent.setup();
+    const adventure = playAdventure();
+    const draftKey = `play-input-draft-${adventure.id}`;
     const onSubmitTurn = vi.fn<SubmitTurnHandler>(async () => {
       throw new Error("Network failed");
     });
-    render(<StatefulPlayPage onSubmitTurn={onSubmitTurn} />);
+    render(<StatefulPlayPage initialAdventure={adventure} onSubmitTurn={onSubmitTurn} />);
 
     await user.click(screen.getByRole("button", { name: "Take a Turn" }));
     const input = screen.getByPlaceholderText("What does your character do?");
@@ -225,6 +263,7 @@ describe("PlayPage AID-style controls", () => {
     expect(onSubmitTurn).toHaveBeenCalledWith("You draw your sword", "do");
     expect(input.closest(".composer")).not.toHaveClass("composer-input-closed");
     expect(input).toHaveValue("draw your sword");
+    expect(localStorage.getItem(draftKey)).toBe("draw your sword");
   });
 
   it("keeps every essential story destination reachable from the mobile Story tools sheet", async () => {

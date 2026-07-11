@@ -4,6 +4,8 @@ import type {
   BackendProfileSummary,
   BackendPublicProfileSummary,
   BackendSessionState,
+  BackendSocialPerson,
+  BackendSocialVisibility,
 } from "../runtime/backendApi";
 import type { Adventure, AdventureThumbnailImage } from "../types/adventure";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
@@ -35,6 +37,14 @@ interface ProfilePageProps {
   adventureLibrary?: ReactNode;
   onOpenHelp?: () => void;
   onOpenExplore?: () => void;
+  onOpenProfile?: (userId: string) => Promise<void>;
+  onToggleScenarioLike?: (scenarioId: string, liked: boolean) => Promise<void>;
+  onFollowProfile?: (userId: string) => Promise<void>;
+  onUnfollowProfile?: (userId: string) => Promise<void>;
+  onRequestFriend?: (userId: string) => Promise<void>;
+  onAcceptFriend?: (userId: string) => Promise<void>;
+  onRemoveFriend?: (userId: string) => Promise<void>;
+  onUpdateSocialVisibility?: (visibility: Partial<BackendSocialVisibility>) => Promise<void>;
 }
 
 const publicScenarioStartWarning = "This Scenario starts exactly as published. If you want a different player character, start the private Story and change its setup in Story Studio before taking the first turn.";
@@ -135,6 +145,14 @@ export function ProfilePage({
   adventureLibrary,
   onOpenHelp,
   onOpenExplore,
+  onOpenProfile,
+  onToggleScenarioLike,
+  onFollowProfile,
+  onUnfollowProfile,
+  onRequestFriend,
+  onAcceptFriend,
+  onRemoveFriend,
+  onUpdateSocialVisibility,
 }: ProfilePageProps) {
   if (!backendMode) {
     return (
@@ -197,6 +215,8 @@ export function ProfilePage({
   const bio = isPublicProfile ? publicProfile!.profile.bio : profile?.profile.bio;
   const liveAdventureThumbnail = liveAdventure ? getAdventureThumbnail(liveAdventure) : undefined;
   const ownScenarioCount = (profile?.scenarios.length ?? 0) + localScenarios.length;
+  const publicUserId = publicProfile?.user.id;
+  const publicSocial = publicProfile?.social;
 
   function sourceAdventureThumbnail(sourceAdventureId?: string): AdventureThumbnailImage | undefined {
     return liveAdventure?.id === sourceAdventureId ? liveAdventureThumbnail : undefined;
@@ -220,9 +240,41 @@ export function ProfilePage({
           {isPublicProfile && bio && <p className="muted">{bio}</p>}
         </div>
         {isPublicProfile ? (
-          <button type="button" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
-            Your Profile
-          </button>
+          <div className="toolbar">
+            {publicSocial && publicUserId && (
+              <button
+                type="button"
+                aria-pressed={publicSocial.viewer.isFollowing}
+                onClick={() => void (publicSocial.viewer.isFollowing
+                  ? onUnfollowProfile?.(publicUserId)
+                  : onFollowProfile?.(publicUserId))}
+                disabled={publicSocial.viewer.isFollowing ? !onUnfollowProfile : !onFollowProfile}
+              >
+                {publicSocial.viewer.isFollowing ? "Unfollow" : "Follow"}
+              </button>
+            )}
+            {publicSocial && publicUserId && publicSocial.viewer.friendshipStatus === "none" && (
+              <button type="button" onClick={() => void onRequestFriend?.(publicUserId)} disabled={!onRequestFriend}>
+                Add Friend
+              </button>
+            )}
+            {publicSocial && publicUserId && publicSocial.viewer.friendshipStatus === "incoming_pending" && (
+              <button type="button" className="primary-action" onClick={() => void onAcceptFriend?.(publicUserId)} disabled={!onAcceptFriend}>
+                Accept Friend
+              </button>
+            )}
+            {publicSocial && publicUserId && publicSocial.viewer.friendshipStatus === "outgoing_pending" && (
+              <button type="button" disabled>Friend request sent</button>
+            )}
+            {publicSocial && publicUserId && publicSocial.viewer.friendshipStatus === "friends" && (
+              <button type="button" onClick={() => void onRemoveFriend?.(publicUserId)} disabled={!onRemoveFriend}>
+                Remove Friend
+              </button>
+            )}
+            <button type="button" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
+              Your Profile
+            </button>
+          </div>
         ) : (
           <button type="button" onClick={onOpenExplore} disabled={!onOpenExplore}>Explore Scenarios</button>
         )}
@@ -239,8 +291,40 @@ export function ProfilePage({
           <>
             <span>{publicProfile!.scenarios.length} published scenarios</span>
             <span>Public profile</span>
+            {publicSocial?.viewer.isFollowedBy && <span>Follows you</span>}
           </>
         </div>
+      )}
+
+      {isPublicProfile && publicSocial && (
+        <section className="profile-section" aria-labelledby="profile-connections-heading">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Community</p>
+              <h3 id="profile-connections-heading">Connections</h3>
+            </div>
+          </div>
+          <div className="library-grid">
+            <SocialPeopleList
+              title="Followers"
+              people={publicSocial.followers}
+              hidden={!publicSocial.visibility.followers}
+              onOpenProfile={onOpenProfile}
+            />
+            <SocialPeopleList
+              title="Following"
+              people={publicSocial.following}
+              hidden={!publicSocial.visibility.following}
+              onOpenProfile={onOpenProfile}
+            />
+            <SocialPeopleList
+              title="Friends"
+              people={publicSocial.friends}
+              hidden={!publicSocial.visibility.friends}
+              onOpenProfile={onOpenProfile}
+            />
+          </div>
+        </section>
       )}
 
       {!isPublicProfile && adventureLibrary}
@@ -267,6 +351,7 @@ export function ProfilePage({
                     key={scenario.revisionId}
                     scenario={scenario}
                     onStartScenario={onStartScenario}
+                    onToggleScenarioLike={onToggleScenarioLike}
                   />
                 ))}
               </div>
@@ -484,8 +569,54 @@ export function ProfilePage({
                 <span>{profile?.adventures.length ?? 0} Stories</span>
                 <span>{ownScenarioCount} Scenarios</span>
               </div>
+              {profile?.social && (
+                <div>
+                  <strong>Connection visibility</strong>
+                  <p className="muted">Choose which connection lists other members can see on your profile.</p>
+                  <div className="toolbar" role="group" aria-label="Connection visibility">
+                    {(["followers", "following", "friends"] as const).map((key) => (
+                      <label key={key} className="checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={profile.social!.visibility[key]}
+                          onChange={(event) => void onUpdateSocialVisibility?.({ [key]: event.target.checked })}
+                          disabled={!onUpdateSocialVisibility}
+                        />
+                        Show {key}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="editor-stat-row" aria-label="Connections summary">
+                    <span>{profile.social.followers.length} followers</span>
+                    <span>{profile.social.following.length} following</span>
+                    <span>{profile.social.friends.length} friends</span>
+                  </div>
+                  <div className="library-grid">
+                    <SocialPeopleList title="Followers" people={profile.social.followers} hidden={false} onOpenProfile={onOpenProfile} />
+                    <SocialPeopleList title="Following" people={profile.social.following} hidden={false} onOpenProfile={onOpenProfile} />
+                    <SocialPeopleList title="Friends" people={profile.social.friends} hidden={false} onOpenProfile={onOpenProfile} />
+                  </div>
+                  {profile.social.incomingFriendRequests.length > 0 && (
+                    <div>
+                      <strong>Friend requests</strong>
+                      <div className="toolbar">
+                        {profile.social.incomingFriendRequests.map((person) => (
+                          <button
+                            key={person.userId}
+                            type="button"
+                            onClick={() => void onAcceptFriend?.(person.userId)}
+                            disabled={!onAcceptFriend}
+                          >
+                            Accept {person.displayName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="toolbar">
-                {onOpenAdmin && <button type="button" onClick={onOpenAdmin}>Admin</button>}
+                {onOpenAdmin && <button type="button" onClick={onOpenAdmin}>Admin Console</button>}
                 <button type="button" onClick={onLogout} disabled={!onLogout}>Sign out</button>
               </div>
             </div>
@@ -546,9 +677,11 @@ function NewUserGuide({ onOpenHelp }: { onOpenHelp?: () => void }) {
 function PublicScenarioCard({
   scenario,
   onStartScenario,
+  onToggleScenarioLike,
 }: {
   scenario: BackendExploreScenarioSummary;
   onStartScenario?: (revisionId: string) => Promise<void>;
+  onToggleScenarioLike?: (scenarioId: string, liked: boolean) => Promise<void>;
 }) {
   return (
     <article className="library-card">
@@ -564,9 +697,19 @@ function PublicScenarioCard({
           <div className="editor-stat-row">
             <span>v{scenario.version}</span>
             <span>Published {formatDate(scenario.publishedAt)}</span>
+            <span>{scenario.likeCount ?? 0} likes</span>
           </div>
         </div>
         <div className="library-card-actions">
+          <button
+            type="button"
+            aria-label={`${scenario.likedByViewer ? "Unlike" : "Like"} ${scenario.title}`}
+            aria-pressed={Boolean(scenario.likedByViewer)}
+            onClick={() => void onToggleScenarioLike?.(scenario.scenarioId, !scenario.likedByViewer)}
+            disabled={!onToggleScenarioLike}
+          >
+            {scenario.likedByViewer ? "Liked" : "Like"} · {scenario.likeCount ?? 0}
+          </button>
           <button
             type="button"
             className="primary-action"
@@ -576,6 +719,45 @@ function PublicScenarioCard({
             Start Story
           </button>
         </div>
+      </div>
+    </article>
+  );
+}
+
+function SocialPeopleList({
+  title,
+  people,
+  hidden,
+  onOpenProfile,
+}: {
+  title: string;
+  people?: BackendSocialPerson[];
+  hidden: boolean;
+  onOpenProfile?: (userId: string) => Promise<void>;
+}) {
+  return (
+    <article className="library-card">
+      <div className="library-card-body">
+        <h4>{title}</h4>
+        {hidden ? (
+          <p className="muted">Private</p>
+        ) : people?.length ? (
+          <div className="toolbar">
+            {people.map((person) => (
+              <button
+                key={person.userId}
+                type="button"
+                className="profile-link-button"
+                onClick={() => void onOpenProfile?.(person.userId)}
+                disabled={!onOpenProfile}
+              >
+                {person.displayName}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <p className="muted">None yet</p>
+        )}
       </div>
     </article>
   );

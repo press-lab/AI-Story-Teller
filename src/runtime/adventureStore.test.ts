@@ -10,6 +10,7 @@ import { thumbnailMetadataPatch } from "../utils/adventureImages";
 import {
   apiJson,
   createBackendAdventureStore,
+  createBackendContextPreviewSource,
   createBackendTurnRunner,
   createCachedBackendAdventureStore,
   isRetryableBackendSyncError,
@@ -135,6 +136,52 @@ describe("cached backend adventure store", () => {
         keepalive: true,
       }),
     );
+  });
+
+  it("uses the hosted cookie without sending the cookie sentinel as a bearer token", async () => {
+    const savedAdventure = createDefaultAdventure("Cookie Save Result");
+    const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const url = String(input);
+      let body: unknown = [];
+      if (init?.method === "PUT") body = savedAdventure;
+      if (url.endsWith("/turn")) body = { adventure: savedAdventure, responseContent: "Done." };
+      if (url.endsWith("/context-preview")) {
+        body = {
+          sections: [],
+          messages: [],
+          excludedItems: [],
+          totalEstimatedTokens: 0,
+          decisions: [],
+          pendingProposals: [],
+        };
+      }
+      if (url.endsWith("/telemetry/client")) body = { ok: true };
+      return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const config: RuntimeConfig = { mode: "hostedBackend", apiBaseUrl: "https://api.storymodeai.com" };
+    const store = createBackendAdventureStore(config, "cookie");
+    const runner = createBackendTurnRunner(config, "cookie");
+    const preview = createBackendContextPreviewSource(config, "cookie");
+
+    await store.list();
+    await store.save(savedAdventure);
+    await runner.runTurn({ adventureId: "adv-1", input: "You draw your sword", mode: "do" });
+    await preview.build("adv-1");
+
+    const applicationCalls = fetchMock.mock.calls.filter(([input]) => !String(input).endsWith("/telemetry/client"));
+    expect(applicationCalls.map(([input]) => String(input))).toEqual([
+      "https://api.storymodeai.com/adventures",
+      `https://api.storymodeai.com/adventures/${savedAdventure.id}`,
+      "https://api.storymodeai.com/adventures/adv-1/turn",
+      "https://api.storymodeai.com/adventures/adv-1/context-preview",
+    ]);
+    for (const [, init] of applicationCalls) {
+      const headers = new Headers(init?.headers);
+      expect(headers.has("Authorization")).toBe(false);
+      expect(init?.credentials).toBe("include");
+    }
   });
 
   it("preserves HTTP status when the backend returns a non-JSON tunnel error", async () => {

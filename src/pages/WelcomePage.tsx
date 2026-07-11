@@ -18,6 +18,7 @@ export function WelcomePage({
   capabilities = {
     passwordLogin: true,
     passwordSignup: true,
+    inviteRequired: true,
     passwordReset: true,
     emailVerificationDelivery: true,
     googleOAuth: true,
@@ -42,7 +43,8 @@ export function WelcomePage({
     const params = new URLSearchParams(window.location.hash.slice(1));
     const verificationToken = params.get("verifyEmail");
     const resetToken = params.get("passwordReset");
-    if (!verificationToken && !resetToken) return;
+    const capturedInviteToken = params.get("invite")?.trim();
+    if (!verificationToken && !resetToken && !capturedInviteToken) return;
     history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
     if (verificationToken) {
       void run("Verifying email", async () => {
@@ -51,10 +53,15 @@ export function WelcomePage({
       });
       return;
     }
-    setPasswordResetToken(resetToken ?? "");
-    setPassword("");
-    setMode("reset");
-    setStatus("Enter a new password for your account.");
+    if (resetToken) {
+      setPasswordResetToken(resetToken);
+      setPassword("");
+      setMode("reset");
+      setStatus("Enter a new password for your account.");
+      return;
+    }
+    setInviteToken(capturedInviteToken ?? "");
+    setMode("signup");
   // The auth action fragment is consumed once when the welcome screen mounts.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -86,10 +93,10 @@ export function WelcomePage({
     <main className="welcome-page">
       <section className="welcome-shell">
         <div className="welcome-copy">
-          <p className="eyebrow">AI Story Teller</p>
+          <p className="eyebrow">Story Mode AI</p>
           <h1>Sign in to continue.</h1>
           <p>
-            This build requires an account. Use an invite code to create an account on the owner-hosted backend,
+            This build requires an account. Use an invite link to create an account on the hosted backend,
             then open Explore, publish scenarios, and play saved adventures from your profile.
           </p>
           <div className="welcome-checks" aria-label="Account features">
@@ -112,36 +119,42 @@ export function WelcomePage({
                 {mode === "login"
                   ? "Use your existing account email and password, or continue with Google."
                   : mode === "signup"
-                    ? "Create an invited account with email and password, or use the invite token with Google."
+                    ? "Your invite link is ready. Create an account with email and password, or continue with Google."
                     : mode === "forgot"
                       ? "Enter your account email. The response is the same whether or not an account exists."
                     : mode === "reset"
                       ? "Choose a new password. Completing the reset signs out every existing session."
-                    : "Log in to an existing account or create a new account with an invite token."}
+                    : "Log in to an existing account. New accounts require an invite link."}
               </p>
             </div>
           </div>
 
           {status && <p className="notice">{status}</p>}
-          {!capabilities.passwordSignup && (
-            <p className="notice">New account signup and email recovery are disabled during controlled UAT. Existing verified users can still log in.</p>
+          {capabilities.inviteRequired && (
+            <p className="notice">Account creation requires an invite link.</p>
+          )}
+          {!capabilities.passwordReset && (
+            <p className="notice">Password recovery is unavailable during controlled UAT.</p>
+          )}
+          {mode === "signup" && !capabilities.passwordSignup && (
+            <p className="notice">Invited account creation is currently unavailable.</p>
           )}
 
           {mode === "signup" && (
-            <div className="grid two">
-              <Field label="Invite token">
-                <input value={inviteToken} onChange={(event) => setInviteToken(event.target.value)} />
-              </Field>
-              <Field label="Email">
-                <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-              </Field>
-              <Field label="Display name">
-                <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
-              </Field>
-              <Field label="Password">
-                <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-              </Field>
-            </div>
+            <>
+              {inviteToken && <p className="notice">Invite link accepted.</p>}
+              <div className="grid two">
+                <Field label="Email">
+                  <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                </Field>
+                <Field label="Display name">
+                  <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} />
+                </Field>
+                <Field label="Password">
+                  <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
+                </Field>
+              </div>
+            </>
           )}
 
           {(mode === "login" || mode === "forgot") && (
@@ -166,10 +179,12 @@ export function WelcomePage({
           <div className="welcome-actions">
             {mode === "start" && (
               <>
-                <button type="button" className="primary-action" disabled={busy} onClick={() => chooseMode("login")}>
+                <button type="button" className="primary-action" disabled={busy || !capabilities.passwordLogin} onClick={() => chooseMode("login")}>
                   Log in
                 </button>
-                {capabilities.passwordSignup && <button type="button" disabled={busy} onClick={() => chooseMode("signup")}>Sign up</button>}
+                {capabilities.passwordSignup && inviteToken && (
+                  <button type="button" disabled={busy} onClick={() => chooseMode("signup")}>Sign up</button>
+                )}
                 <button
                   type="button"
                   disabled={busy || !capabilities.googleOAuth}
@@ -188,9 +203,9 @@ export function WelcomePage({
                 <button
                   type="button"
                   className="primary-action"
-                  disabled={busy}
+                  disabled={busy || !capabilities.passwordSignup}
                   onClick={() => void run("Signing up", async () => {
-                    if (!requireFields("Enter an invite token, email, and password to sign up.", [inviteToken, email, password])) return;
+                    if (!requireFields("Open a valid invite link, then enter your email and password to sign up.", [inviteToken, email, password])) return;
                     const result = await onSignupPassword({
                       inviteToken: inviteToken.trim(),
                       email: email.trim(),
@@ -204,9 +219,9 @@ export function WelcomePage({
                 </button>
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !capabilities.googleOAuth}
                   onClick={() => void run("Opening Google", async () => {
-                    if (!requireFields("Enter an invite token to continue with Google.", [inviteToken])) return;
+                    if (!requireFields("Open a valid invite link to continue with Google.", [inviteToken])) return;
                     const result = await onStartGoogleOAuth({
                       inviteToken: inviteToken.trim(),
                       returnTo: window.location.href,

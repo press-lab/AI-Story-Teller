@@ -30,7 +30,7 @@ interface AdminConsolePageProps {
     },
   ) => Promise<void>;
   onUpdateSafetyEvent: (eventId: string, status: "open" | "reviewed" | "dismissed") => Promise<void>;
-  onCreateInvite: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string }>;
+  onCreateInvite: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string; inviteUrl: string }>;
   onDisableInvite: (inviteId: string) => Promise<void>;
   onSavePlatformSettings: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
 }
@@ -79,6 +79,13 @@ function numericValue(value: unknown): number | undefined {
 
 function numberOrZero(value: unknown): number {
   return numericValue(value) ?? 0;
+}
+
+function percentile(values: number[], value: number): number {
+  if (values.length === 0) return 0;
+  const ordered = [...values].sort((a, b) => a - b);
+  const index = Math.max(0, Math.ceil(value * ordered.length) - 1);
+  return ordered[Math.min(index, ordered.length - 1)] ?? 0;
 }
 
 function stringArray(value: unknown): string[] {
@@ -157,6 +164,31 @@ function traceNeedsAttention(trace: BackendAdminConsoleData["performanceTraces"]
   return trace.status === "error" || statusCode !== undefined && statusCode >= 400 || numberOrZero(trace.durationMs) >= 1000 || numberOrZero(trace.retryCount) > 0;
 }
 
+function traceCause(trace: BackendAdminConsoleData["performanceTraces"][number]): string {
+  const hintedCause = trace.metadata && typeof trace.metadata.causeHint === "string"
+    ? trace.metadata.causeHint
+    : undefined;
+  const labels: Record<string, string> = {
+    offline: "offline device",
+    network_quality: "network quality",
+    server_or_network: "server or network",
+    client_render_or_assets: "browser rendering or assets",
+    mixed_page_load: "mixed page load",
+    client_render: "browser rendering",
+    render_or_asset_loading: "rendering or asset loading",
+    main_thread_work: "browser main-thread work",
+  };
+  if (hintedCause) return labels[hintedCause] ?? hintedCause.replaceAll("_", " ");
+  if (trace.source === "ai" || trace.phase.includes("provider")) return "model provider";
+  if (trace.source === "database") return "database";
+  if (trace.source === "policy") return "policy processing";
+  if (trace.source === "sync") return "cloud synchronization";
+  if (trace.source === "server") return "application server";
+  if (trace.phase === "interaction_latency" || trace.phase === "long_task_window") return "browser main-thread work";
+  if (trace.phase === "largest_contentful_paint" || trace.phase === "page_load") return "browser rendering or assets";
+  return "unclassified";
+}
+
 function auditNeedsAttention(action: BackendAdminConsoleData["adminActions"][number]): boolean {
   return /restriction|safety|status|disable|ban|hold/i.test(`${action.action} ${action.targetType}`);
 }
@@ -199,7 +231,7 @@ export function AdminConsolePage({
   const [inviteNote, setInviteNote] = useState("");
   const [inviteMaxUses, setInviteMaxUses] = useState(1);
   const [inviteExpiresInDays, setInviteExpiresInDays] = useState(14);
-  const [createdInviteToken, setCreatedInviteToken] = useState("");
+  const [createdInviteUrl, setCreatedInviteUrl] = useState("");
   const [adminActionStatus, setAdminActionStatus] = useState("");
   const [safetyEventActionId, setSafetyEventActionId] = useState("");
   const [inviteActionId, setInviteActionId] = useState("");
@@ -339,6 +371,7 @@ export function AdminConsolePage({
         trace.model,
         trace.errorCategory,
         trace.errorMessage,
+        traceCause(trace),
         trace.userId ? formatUserReference(trace.userId, usersById) : "system",
       ])
     )),
@@ -381,12 +414,25 @@ export function AdminConsolePage({
       : 0,
     excludedBuilds: filteredContextBuilds.filter((build) => numberOrZero(build.excludedItemCount) > 0).length,
   }), [filteredContextBuilds]);
-  const traceStats = useMemo(() => ({
-    traces: filteredPerformanceTraces.length,
-    errors: filteredPerformanceTraces.filter((trace) => trace.status === "error" || numberOrZero(trace.statusCode) >= 400).length,
-    slow: filteredPerformanceTraces.filter((trace) => numberOrZero(trace.durationMs) >= 1000).length,
-    worstMs: filteredPerformanceTraces.reduce((max, trace) => Math.max(max, numberOrZero(trace.durationMs)), 0),
-  }), [filteredPerformanceTraces]);
+  const traceStats = useMemo(() => {
+    const durations = filteredPerformanceTraces.map((trace) => numberOrZero(trace.durationMs));
+    const attention = filteredPerformanceTraces.filter(traceNeedsAttention);
+    const causeCounts = new Map<string, number>();
+    for (const trace of attention) {
+      const cause = traceCause(trace);
+      causeCounts.set(cause, (causeCounts.get(cause) ?? 0) + 1);
+    }
+    const likelyBottleneck = [...causeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "none in loaded traces";
+    return {
+      traces: filteredPerformanceTraces.length,
+      errors: filteredPerformanceTraces.filter((trace) => trace.status === "error" || numberOrZero(trace.statusCode) >= 400).length,
+      slow: filteredPerformanceTraces.filter((trace) => numberOrZero(trace.durationMs) >= 1000).length,
+      p50Ms: percentile(durations, 0.5),
+      p95Ms: percentile(durations, 0.95),
+      worstMs: durations.reduce((max, duration) => Math.max(max, duration), 0),
+      likelyBottleneck,
+    };
+  }, [filteredPerformanceTraces]);
   const showPolicyOperations = operationsRecordType === "all" || operationsRecordType === "policy";
   const showUsageOperations = operationsRecordType === "all" || operationsRecordType === "usage";
   const showContextOperations = operationsRecordType === "all" || operationsRecordType === "context";
@@ -417,7 +463,7 @@ export function AdminConsolePage({
         maxUses: inviteMaxUses,
         expiresInDays: inviteExpiresInDays,
       });
-      setCreatedInviteToken(result.token);
+      setCreatedInviteUrl(result.inviteUrl);
       setAdminActionStatus("Invite created.");
       notify("Invite created.", { type: "success" });
     } catch (error) {
@@ -652,9 +698,9 @@ export function AdminConsolePage({
                 <NumberInput min={1} value={inviteExpiresInDays} onChange={setInviteExpiresInDays} />
               </Field>
             </div>
-            {createdInviteToken && (
-              <Field label="Created invite token">
-                <input readOnly value={createdInviteToken} />
+            {createdInviteUrl && (
+              <Field label="Created invite link">
+                <input readOnly value={createdInviteUrl} />
               </Field>
             )}
           </article>
@@ -1089,15 +1135,18 @@ export function AdminConsolePage({
           )}
 
           {showLatencyOperations && (
-          <Section title="Latency Traces" description="Backend/client timing rows. Errors, HTTP 4xx/5xx, retries, and 1s+ traces are the first rows to investigate.">
+          <Section title="Latency Traces" description="Content-free device, server, database, policy, sync, and model timing rows. Use the shared trace id to follow one request across layers; errors, retries, and 1s+ traces need attention first.">
             <InsightStrip
               items={[
                 { label: "shown", value: formatCount(traceStats.traces), detail: `${formatCount((data.performanceTraces ?? []).length)} loaded` },
                 { label: "errors", value: formatCount(traceStats.errors) },
                 { label: "slow", value: formatCount(traceStats.slow) },
+                { label: "p50", value: formatDuration(traceStats.p50Ms) },
+                { label: "p95", value: formatDuration(traceStats.p95Ms) },
                 { label: "worst", value: formatDuration(traceStats.worstMs) },
               ]}
             />
+            <p className="muted"><strong>Likely bottleneck in the loaded attention traces:</strong> {traceStats.likelyBottleneck}. This is a coarse hint; correlated layer timings are the evidence.</p>
             <CompactList
               items={filteredPerformanceTraces.slice(0, 50).map((trace) => ({
                 id: trace.id,
@@ -1110,6 +1159,8 @@ export function AdminConsolePage({
                   trace.providerName ? `${trace.providerName} ${trace.model ?? ""}`.trim() : undefined,
                   trace.totalTokens !== undefined ? `${trace.totalTokens} tokens` : undefined,
                   trace.errorCategory,
+                  `cause: ${traceCause(trace)}`,
+                  `trace ${shortId(trace.traceId)}`,
                 ].filter(Boolean).join(" / ") || `trace ${shortId(trace.traceId)}`,
                 meta: formatDate(trace.createdAt),
               }))}

@@ -141,7 +141,10 @@ export function buildAdminConsole(
         const userScenarios = data.scenarioDrafts.filter((scenario) => scenario.ownerUserId === user.id);
         const userScenarioIds = new Set(userScenarios.map((scenario) => scenario.id));
         const safetyEvents = data.accountSafetyEvents.filter((event) => event.userId === user.id);
-        const role: "user" | "admin" = user.role === "admin" || config.adminEmails.includes(user.email.toLowerCase()) ? "admin" : "user";
+        const role: "user" | "admin" = user.role === "admin"
+          || (user.emailVerified && config.adminEmails.includes(user.email.toLowerCase()))
+          ? "admin"
+          : "user";
         return {
           id: user.id,
           email: user.email,

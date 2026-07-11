@@ -16,10 +16,10 @@ describe("HelpPage documentation UI", () => {
     const user = userEvent.setup();
     render(<HelpPage />);
 
-    expect(screen.getByRole("heading", { name: "AI Story Teller Documentation" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Story Mode AI Documentation" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Context Contract" })[0]).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(/search docs/i), "mutation");
+    await user.type(screen.getByLabelText(/search the guide/i), "mutation");
 
     expect(screen.getAllByRole("link", { name: "AI Mutation Boundaries" })[0]).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Context Contract" })).not.toBeInTheDocument();
@@ -31,29 +31,29 @@ describe("HelpPage documentation UI", () => {
 
     [
       "New User Guide",
-      "Profile / Library",
-      "Dashboard",
+      "Home / Library",
+      "Current Story Home",
       "Play",
-      "Chronicle",
+      "History",
       "Memory Suggestions",
       "Reference Cards",
       "Character Cards — Voice Contract",
       "Characters",
       "Current Story Arc",
       "World Blocks",
-      "Context Preview",
+      "Context Inspector",
       "Automations",
-      "Import / Export",
+      "Backups & Transfer",
       "Settings",
       "Documentation",
     ].forEach((label) => {
       expect(screen.getAllByRole("link", { name: label })[0]).toBeInTheDocument();
     });
 
-    await user.clear(screen.getByLabelText(/search docs/i));
-    await user.type(screen.getByLabelText(/search docs/i), "chronicle");
+    await user.clear(screen.getByLabelText(/search the guide/i));
+    await user.type(screen.getByLabelText(/search the guide/i), "chronicle");
 
-    expect(screen.getAllByRole("link", { name: "Chronicle" })[0]).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "History" })[0]).toBeInTheDocument();
     expect(screen.getByText(/complete local transcript/i)).toBeInTheDocument();
   });
 
@@ -65,11 +65,24 @@ describe("HelpPage documentation UI", () => {
     expect(document.querySelector(".docs-content")).toBeInTheDocument();
   });
 
+  it("offers a useful empty search state and lets the reader return to all guides", async () => {
+    const user = userEvent.setup();
+    render(<HelpPage />);
+
+    await user.type(screen.getByLabelText(/search the guide/i), "no-topic-has-this-name");
+
+    expect(screen.getByRole("heading", { name: "Try a broader search" })).toBeInTheDocument();
+    expect(screen.getByText("0 guides")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getAllByRole("link", { name: "New User Guide" })[0]).toBeInTheDocument();
+  });
+
   it("documents Next Turn Note as an inspectable context lane", async () => {
     const user = userEvent.setup();
     render(<HelpPage />);
 
-    await user.type(screen.getByLabelText(/search docs/i), "next turn note");
+    await user.type(screen.getByLabelText(/search the guide/i), "next turn note");
 
     expect(screen.getAllByText("Next Turn Note")[0]).toBeInTheDocument();
     expect(screen.getByText(/visible, token-counted, and expires after use by default/i)).toBeInTheDocument();
@@ -79,7 +92,7 @@ describe("HelpPage documentation UI", () => {
     const user = userEvent.setup();
     render(<HelpPage />);
 
-    await user.type(screen.getByLabelText(/search docs/i), "new user");
+    await user.type(screen.getByLabelText(/search the guide/i), "new user");
 
     expect(screen.getAllByRole("link", { name: "New User Guide" })[0]).toBeInTheDocument();
     expect(screen.getByText(/Scenarios are reusable setups/i)).toBeInTheDocument();

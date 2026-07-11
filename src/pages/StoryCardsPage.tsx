@@ -404,10 +404,14 @@ export function StoryCardsPage({
   return (
     <section className="page editor-surface story-cards-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Triggered memory for characters, places, relationships, secrets, rules, and recurring facts.
-          Keep triggers specific; always-on lore belongs in Plot.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">World &amp; Lore</p>
+          <h2>Reference Cards</h2>
+          <p className="muted">
+            Bring characters, places, relationships, secrets, and recurring facts back when they matter.
+            Use specific trigger phrases; keep always-present story truth in World Blocks.
+          </p>
+        </div>
         <div className="editor-stat-row" aria-label="Story card counts">
           <span>{totalCards} total</span>
           <span>{activeCount} active</span>
@@ -519,95 +523,18 @@ export function StoryCardsPage({
       )}
 
       <div className="editor-command-bar">
-        <input
-          type="search"
-          placeholder="Search cards…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <div className="editor-filter-strip" aria-label="Story card filters">
-          <div className="sort-toggle" role="group" aria-label="Status filter">
-            <button
-              type="button"
-              className={statusFilter === "all" ? "active" : ""}
-              aria-pressed={statusFilter === "all"}
-              onClick={() => setStatusFilter("all")}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              className={statusFilter === "active" ? "active" : ""}
-              aria-pressed={statusFilter === "active"}
-              onClick={() => setStatusFilter("active")}
-            >
-              Active
-            </button>
-            <button
-              type="button"
-              className={statusFilter === "inactive" ? "active" : ""}
-              aria-pressed={statusFilter === "inactive"}
-              onClick={() => setStatusFilter("inactive")}
-            >
-              Inactive
-            </button>
-          </div>
-          <div className="sort-toggle" role="group" aria-label="Memory filter">
-            <button
-              type="button"
-              className={memoryFilter === "all" ? "active" : ""}
-              aria-pressed={memoryFilter === "all"}
-              onClick={() => setMemoryFilter("all")}
-            >
-              Any
-            </button>
-            <button
-              type="button"
-              className={memoryFilter === "living" ? "active" : ""}
-              aria-pressed={memoryFilter === "living"}
-              onClick={() => setMemoryFilter("living")}
-            >
-              Living
-            </button>
-          </div>
-          <div className="sort-toggle" role="group" aria-label="Card flag filter">
-            <button
-              type="button"
-              className={flagFilter === "all" ? "active" : ""}
-              aria-pressed={flagFilter === "all"}
-              onClick={() => setFlagFilter("all")}
-            >
-              Any
-            </button>
-            <button
-              type="button"
-              className={flagFilter === "flagged" ? "active" : ""}
-              aria-pressed={flagFilter === "flagged"}
-              onClick={() => setFlagFilter("flagged")}
-            >
-              Flagged
-            </button>
-            <button
-              type="button"
-              className={flagFilter === "pinned" ? "active" : ""}
-              aria-pressed={flagFilter === "pinned"}
-              onClick={() => setFlagFilter("pinned")}
-            >
-              Pinned
-            </button>
-            <button
-              type="button"
-              className={flagFilter === "protected" ? "active" : ""}
-              aria-pressed={flagFilter === "protected"}
-              onClick={() => setFlagFilter("protected")}
-            >
-              Protected
-            </button>
-          </div>
-        </div>
+        <label className="editor-search-field">
+          <span>Search Reference Cards</span>
+          <input
+            type="search"
+            placeholder="Name, trigger, or memory text"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
         <button
           type="button"
-          className="primary-action"
+          className="primary-action editor-create-action"
           onClick={() => {
             const card = makeStoryCard({ title: "New Reference Card", content: "" });
             dispatch({ type: "UPSERT_STORY_CARD", storyCard: card });
@@ -616,22 +543,80 @@ export function StoryCardsPage({
         >
           Create Reference Card
         </button>
-        <div className="sort-toggle">
-          <button
-            type="button"
-            className={sortMode === "alpha" ? "active" : ""}
-            onClick={() => setSortMode("alpha")}
-          >
-            A–Z
-          </button>
-          <button
-            type="button"
-            className={sortMode === "recent" ? "active" : ""}
-            onClick={() => setSortMode("recent")}
-          >
-            Recent
-          </button>
-        </div>
+        <details className="editor-filter-disclosure">
+          <summary>
+            <span>Filter and sort</span>
+            <span className="muted">
+              {filtersActive ? `${visibleCount} of ${totalCards} shown` : sortMode === "alpha" ? "A–Z" : "Recently edited"}
+            </span>
+          </summary>
+          <div className="editor-filter-strip" aria-label="Story card filters">
+            <div className="editor-filter-group">
+              <span>Status</span>
+              <div className="sort-toggle" role="group" aria-label="Status filter">
+                {(["all", "active", "inactive"] as CardStatusFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={statusFilter === filter ? "active" : ""}
+                    aria-pressed={statusFilter === filter}
+                    onClick={() => setStatusFilter(filter)}
+                  >
+                    {filter === "all" ? "All" : filter === "active" ? "Active" : "Inactive"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="editor-filter-group">
+              <span>Memory</span>
+              <div className="sort-toggle" role="group" aria-label="Memory filter">
+                {(["all", "living"] as CardMemoryFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={memoryFilter === filter ? "active" : ""}
+                    aria-pressed={memoryFilter === filter}
+                    onClick={() => setMemoryFilter(filter)}
+                  >
+                    {filter === "all" ? "Any" : "Living"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="editor-filter-group">
+              <span>Flags</span>
+              <div className="sort-toggle" role="group" aria-label="Card flag filter">
+                {(["all", "flagged", "pinned", "protected"] as CardFlagFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={flagFilter === filter ? "active" : ""}
+                    aria-pressed={flagFilter === filter}
+                    onClick={() => setFlagFilter(filter)}
+                  >
+                    {filter === "all" ? "Any" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="editor-filter-group">
+              <span>Order</span>
+              <div className="sort-toggle" role="group" aria-label="Sort Reference Cards">
+                {(["alpha", "recent"] as SortMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={sortMode === mode ? "active" : ""}
+                    aria-pressed={sortMode === mode}
+                    onClick={() => setSortMode(mode)}
+                  >
+                    {mode === "alpha" ? "A–Z" : "Recent"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </details>
       </div>
 
       {(onAuditStoryCards || onSuggestCardUpdates) && (
@@ -912,9 +897,6 @@ export function StoryCardsPage({
                         ))}
                       </div>
                     </div>
-                    <button type="button" className="danger" onClick={() => void deleteStoryCard(card)}>
-                      Delete
-                    </button>
                   </div>
                   <div className="grid three story-card-primary-fields">
                     <Field label="Title">
@@ -944,8 +926,8 @@ export function StoryCardsPage({
                       </select>
                     </Field>
                   </div>
-                  <details className="brain-secondary-details item-secondary-details">
-                    <summary>Trigger behavior</summary>
+                  <details className="brain-secondary-details item-secondary-details story-card-trigger-details">
+                    <summary>When this card appears</summary>
                   <Field label="Memory Mode">
                     <select
                       value={card.memoryMode ?? "static"}
@@ -973,14 +955,15 @@ export function StoryCardsPage({
                     </Field>
                   </div>
                   </details>
-                  <section className="item-focus-section">
-                    <div className="item-section-heading">
+                  <details className="item-focus-section story-card-compact-section">
+                    <summary className="item-section-heading">
                       <div>
-                        <p className="eyebrow">compact memory</p>
-                        <h4>Structured compact facts</h4>
+                        <p className="eyebrow">specialized memory</p>
+                        <h4>Structured facts (optional)</h4>
                       </div>
                       {card.compactKind && <span className="badge badge-priority">{card.compactStatus ?? "active"}</span>}
-                    </div>
+                    </summary>
+                    <div className="story-card-compact-fields">
                     <div className="grid two">
                       <Field label="Compact Kind">
                         <select
@@ -1048,15 +1031,17 @@ export function StoryCardsPage({
                         />
                       </Field>
                     ) : null}
-                  </section>
-                  <section className="item-focus-section">
+                    </div>
+                  </details>
+                  <section className="item-focus-section story-card-live-section">
                     <div className="item-section-heading">
                       <div>
-                        <p className="eyebrow">live memory</p>
-                        <h4>Reference Card text sent when triggered</h4>
+                        <p className="eyebrow">story memory</p>
+                        <h4>Memory the storyteller receives</h4>
                       </div>
                       <span className="muted">{cardFactLines(card.content).length} line{cardFactLines(card.content).length === 1 ? "" : "s"}</span>
                     </div>
+                  <p className="muted item-section-helper">Sent only when the card title or one of its trigger phrases is relevant.</p>
                   <Field label="Content">
                     <textarea
                       rows={6}
@@ -1085,8 +1070,8 @@ export function StoryCardsPage({
                       />
                     </details>
                   )}
-                  <details className="brain-secondary-details item-secondary-details">
-                    <summary>Context, automation, and ordering</summary>
+                  <details className="brain-secondary-details item-secondary-details story-card-advanced-details">
+                    <summary>Advanced context and automation</summary>
                   <div className="grid four">
                     <Field label="Priority (higher = loaded first)">
                       <NumberInput

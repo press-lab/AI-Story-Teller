@@ -18,7 +18,12 @@ describe("Render deployment contract", () => {
     expect(blueprint).toMatch(/^\s*buildCommand:\s+npm run api:render:build\s*$/m);
     expect(blueprint).not.toMatch(/^\s*preDeployCommand:/m);
     expect(blueprint).toMatch(/^\s*startCommand:\s+npm run api:hosted:free\s*$/m);
-    expect(blueprint).toMatch(/^\s*value:\s+disabled\s*$/m);
+    expect(blueprint).toMatch(
+      /^\s*-\s+key:\s+AIST_EMAIL_DELIVERY_MODE\s*\r?\n\s+value:\s+disabled\s*$/m,
+    );
+    expect(blueprint).toMatch(
+      /^\s*-\s+key:\s+AIST_PASSWORD_SIGNUP_MODE\s*\r?\n\s+value:\s+trustedInvite\s*$/m,
+    );
     expect(blueprint).toMatch(/^\s*autoDeployTrigger:\s+checksPass\s*$/m);
     expect(blueprint).not.toMatch(/^\s*autoDeploy:/m);
 

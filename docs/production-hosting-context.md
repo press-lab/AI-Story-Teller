@@ -25,10 +25,12 @@ auth, model calls, admin tools, policy decisions, and scenario publishing off
 the owner's local machine while minimizing fixed monthly cost.
 
 Current owner constraint: Render billing and Resend are deferred. The immediate
-architecture is therefore controlled UAT for existing accounts on Render Free
-and Neon, with email-dependent signup, verification delivery, and password
-recovery explicitly unavailable. See `docs/render-free-no-email-context.md`.
-Do not present this temporary mode as public production.
+architecture is therefore controlled UAT on Render Free and Neon. Existing
+accounts can log in, and a valid invite link may create an active unverified
+account and session. Signup without an invite, mailbox verification delivery,
+and password recovery remain unavailable. See
+`docs/render-free-no-email-context.md`. Do not present this temporary mode as
+public production.
 
 ## Cost-Minimized Starting Stack
 
@@ -37,7 +39,7 @@ Do not present this temporary mode as public production.
 | Web app | Cloudflare Pages | Free | Builds React/Vite with `npm run build`, serves `dist`, supports custom domains and preview deploys. |
 | API | Render Web Service | Free first | Good for UAT and low-traffic testing. Free service cold-starts after idle time, so upgrade when testers hit latency. |
 | Database | Neon Postgres | Free first | Better early persistence than Render free Postgres because Render free Postgres expires; Neon scales to zero and has no monthly minimum on paid usage. |
-| Email | Deferred | None for current UAT | Signup, verification delivery, and password recovery must remain explicitly unavailable until a reviewed provider is configured. |
+| Email | Deferred | None for current UAT | Trusted-invite account creation works without claiming mailbox verification; verification delivery and password recovery remain unavailable. |
 | DNS | Cloudflare | Free | Use `story.storymodeai.com` for web and `api.storymodeai.com` for API. |
 | Error tracking | Sentry | Free first | Add frontend and backend error capture before public testers depend on the service. |
 
@@ -150,6 +152,8 @@ AIST_PROVIDER_BASE_URL=<provider base URL>
 AIST_PROVIDER_MODEL=<model>
 AIST_PROVIDER_API_KEY=<secret>
 AIST_POLICY_MODE=reviewOnly
+AIST_PASSWORD_SIGNUP_MODE=emailVerification
+AIST_EMAIL_DELIVERY_MODE=resend
 AIST_GOOGLE_CLIENT_ID=<secret>
 AIST_GOOGLE_CLIENT_SECRET=<secret>
 AIST_GOOGLE_REDIRECT_URI=https://api.storymodeai.com/auth/google/callback
@@ -201,7 +205,14 @@ Minimum checks before treating the hosted stack as the live path:
 - `https://api.storymodeai.com/version` returns the API version.
 - Browser network traffic never calls `localhost`, `127.0.0.1`, or
   `*.trycloudflare.com`.
-- New account signup/login works through hosted OAuth/email flows.
+- Password account creation rejects missing or invalid invites. The configured
+  invite path (`trustedInvite` during no-email UAT or `emailVerification` after
+  Resend) creates an account with the documented verification state:
+  `trustedInvite` starts its session immediately, while `emailVerification`
+  remains pending until the one-use email link is completed.
+- Password recovery and verification delivery match the effective capability
+  settings, and unverified accounts do not receive admin access from the email
+  allowlist.
 - Backend adventure save/load persists through Neon after browser refresh.
 - Server-side generation works without browser provider keys.
 - Admin Console loads through the hosted API.

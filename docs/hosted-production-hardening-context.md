@@ -29,28 +29,33 @@ Render remains Free and Resend is intentionally deferred. The paid
 Starter/pre-deploy and Resend architecture remains the public-production target,
 but it is not the current operational mode.
 
-Before another live Render deployment, implement the explicit Free/no-email UAT
+The live Render deployment uses the explicit Free/no-email invite UAT
 architecture in `docs/render-free-no-email-context.md`. Do not weaken hosted
-token secrecy or silently accept signup/reset requests that cannot deliver
-email.
+token secrecy, permit signup without an invite, or silently accept recovery
+requests that cannot deliver email.
 
-### F0. Explicit Free Render and no-email UAT mode
+### F0. Explicit Free Render and no-email invite UAT mode
 
 Status: **Implemented and reconciled on live Render July 10, 2026**
 
-- Add an explicit disabled-email capability mode with safe route and frontend
-  behavior.
+- Add explicit email-delivery and password-signup modes with safe route and
+  frontend behavior.
 - Add a compiled Free startup path that serializes migrations before listening.
 - Reconcile branch, build, start, health-check, proxy, and auto-deploy settings.
-- Preserve existing-account UAT while keeping signup/reset visibly disabled.
+- Permit only valid-invite account creation while keeping recovery and
+  verification delivery visibly disabled.
 - Keep production Neon secrets out of GitHub Actions.
 
 Implemented evidence:
 
 - `AIST_EMAIL_DELIVERY_MODE=disabled|resend` is explicit and defaults safely to
   `resend`; disabled mode is limited to `reviewOnly` controlled UAT.
-- Disabled email routes fail before consuming invites or changing auth state,
-  while existing verified password users can still log in.
+- `AIST_PASSWORD_SIGNUP_MODE=disabled|emailVerification|trustedInvite` defaults
+  to `emailVerification`. Every mode requires an invite; `trustedInvite` is
+  limited to `reviewOnly` plus disabled email.
+- A trusted invite creates an active `emailVerified: false` account and session
+  without a verification token. Recovery and verification delivery stay off,
+  and unverified accounts cannot inherit admin access from the email allowlist.
 - `/capabilities` drives frontend signup/reset/Google availability without
   error-string parsing.
 - `api:hosted:free` applies advisory-lock-serialized compiled migrations before
@@ -79,6 +84,8 @@ Scope:
 Required outcomes:
 
 - Hosted signup never returns a verification token.
+- Hosted password signup always requires a valid invite; the controlled
+  `trustedInvite` path creates an active unverified session without email.
 - Password-reset request always returns the same generic `202` response.
 - Hosted reset requests never return reset tokens.
 - Verification/reset tokens remain hash-only at rest, expire, and are one-use.
@@ -258,8 +265,9 @@ Implementation context:
 
 Implemented evidence:
 
-- `render.yaml` uses a paid Starter service, `autoDeployTrigger: checksPass`,
-  `/readyz`, and the canonical `api:render:build` entrypoint.
+- `render.yaml` currently uses the Free plan, `autoDeployTrigger: checksPass`,
+  `/readyz`, the canonical `api:render:build` build entrypoint, and
+  `api:hosted:free` so migrations run before each hosted start.
 - The Render build explicitly includes build dependencies, emits both hosted
   server and migration entrypoints, copies SQL migrations, then prunes
   development dependencies.
@@ -307,6 +315,13 @@ July 10 follow-up: hosted Postgres mode now issues a host-only
 from browser storage, sends credentialed requests, and requires the explicit
 CSRF header on mutations. Browser/owner-local mode retains bearer compatibility.
 Legacy `#backendSession=<JSON>` fragments are erased and ignored.
+
+July 11 migration fix: `GET /auth/session` must set the hosted cookie when it
+accepts a legacy bearer session before returning the non-secret `"cookie"`
+sentinel. Browser API helpers must never serialize that sentinel as a bearer
+token, and hosted request authentication prefers the real session cookie so a
+stale or sentinel bearer header cannot mask it. This rule applies to adventure
+saves, turn generation, Context Preview, scenario mutations, and account tools.
 
 ### A2. Module and shared-contract boundaries
 
@@ -375,8 +390,9 @@ Newly confirmed defects and disposition:
 
 Email outbox work remains deliberately dormant while the owner-selected email
 capability is disabled. Before setting `AIST_EMAIL_DELIVERY_MODE=resend`, add a
-durable transactional delivery outbox and resend workflow; do not re-enable
-signup/reset merely by adding secrets.
+durable transactional delivery outbox and resend workflow; do not switch signup
+to `emailVerification` or enable recovery merely by adding secrets. Invites
+remain mandatory after email delivery is enabled.
 
 ### A5. Documentation and cutover cleanup
 

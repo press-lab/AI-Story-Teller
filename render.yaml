@@ -23,6 +23,8 @@ services:
         value: reviewOnly
       - key: AIST_EMAIL_DELIVERY_MODE
         value: disabled
+      - key: AIST_PASSWORD_SIGNUP_MODE
+        value: trustedInvite
       - key: AIST_DATABASE_URL
         sync: false
       - key: DATABASE_DIRECT_URL

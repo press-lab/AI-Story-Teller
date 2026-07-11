@@ -74,41 +74,49 @@ Neon is a database, not a branch deployment target. GitHub Actions must use
 disposable Postgres containers and must never receive production Neon secrets.
 Only the Render service receives the Neon connection string.
 
-## Required No-Email Capability Model
+## Required Invite And No-Email Capability Model
 
-Add one explicit hosted email capability setting. Recommended contract:
+Keep email delivery and password-account creation as separate explicit settings:
 
 ```text
 AIST_EMAIL_DELIVERY_MODE=disabled | resend
+AIST_PASSWORD_SIGNUP_MODE=disabled | emailVerification | trustedInvite
 ```
 
 Defaults and safety rules:
 
-- Hosted production defaults to `resend`; missing Resend configuration remains
-  a startup error in that mode.
-- `disabled` must be explicitly configured. Do not infer it silently from
-  missing secrets.
-- `disabled` is allowed only for controlled UAT while policy remains
-  `reviewOnly`.
+- Password signup defaults to `emailVerification`; email delivery defaults to
+  `resend`. Missing Resend configuration remains a startup error for that pair.
+- Every password signup mode still requires a valid, unused invite. There is no
+  unrestricted or no-invite signup mode.
+- `disabled` rejects password signup before consuming an invite or mutating auth
+  state.
+- `emailVerification` is available only with effective `resend` delivery. It
+  creates the pending account only after consuming a valid invite and sends its
+  verification link through the configured email provider.
+- `trustedInvite` is allowed only with `AIST_EMAIL_DELIVERY_MODE=disabled` and
+  `AIST_POLICY_MODE=reviewOnly`. A valid invite creates an active account with
+  `emailVerified: false` and immediately creates its session. It does not create
+  or return a verification token and does not claim the mailbox was verified.
+- A missing, invalid, expired, disabled, or exhausted invite never creates an
+  account or session in any mode.
+- An admin email allowlist may grant admin only after that account has a verified
+  email. Trusted-invite accounts remain non-admin while unverified.
 - Browser-local and owner-local behavior must remain unchanged unless their
   configuration explicitly opts into the same mode.
-- Never use fake API keys, dummy sender values, or a silent email sink.
-- Never return verification or reset tokens through hosted HTTP responses.
+- Never use fake API keys, dummy sender values, or a silent email sink. Never
+  return verification or reset tokens through hosted HTTP responses.
 
-When email delivery is disabled:
+When email delivery is disabled and signup uses `trustedInvite`:
 
-- Password signup must return a stable service-unavailable capability error
-  before consuming an invite or creating a user, credential, verification
-  token, or outbox record.
-- Verification resend and password-reset request/completion must be visibly
+- Verification resend and password-reset request/completion are visibly
   unavailable and must not mutate authentication state.
-- The response must be identical for existing and nonexistent accounts where
-  account enumeration would otherwise be possible.
-- Existing verified users may continue to use password login.
-- Existing sessions may continue to authenticate normally.
-- The frontend must hide or disable unavailable signup, verification, resend,
-  and reset controls and explain that account email is not enabled during UAT.
-- The frontend must not discover this state by parsing error strings.
+- Existing active password users and existing sessions continue to authenticate.
+- The frontend exposes account creation only after receiving a validly shaped
+  invite link; the API remains the authoritative invite validator.
+- The frontend must explain that account creation requires an invite and that
+  password recovery is unavailable, without discovering capabilities by parsing
+  error strings.
 
 Expose server capabilities through a small typed runtime contract, either in a
 dedicated authenticated/public-safe endpoint or as a safe extension of the
@@ -183,6 +191,7 @@ AIST_TRUST_PROXY_HOPS=1
 AIST_API_ALLOW_LOCAL_GOOGLE_STUB=false
 AIST_POLICY_MODE=reviewOnly
 AIST_EMAIL_DELIVERY_MODE=disabled
+AIST_PASSWORD_SIGNUP_MODE=trustedInvite
 ```
 
 Continue to require the Neon URL, explicit allowed origins, canonical web URL,
@@ -194,27 +203,30 @@ up Resend. Do not expose either as a Vite/Cloudflare Pages variable.
 
 ## Repository Configuration Strategy
 
-The checked-in deployment configuration must describe the architecture being
-used. The next implementation must choose one of these explicit strategies:
-
-1. Change `render.yaml` to the current Free/no-email UAT contract and preserve
-   the paid settings in documentation for the later upgrade; or
-2. Keep `render.yaml` as the paid-production target and add a separately named,
-   tested Free-UAT configuration that cannot be mistaken for production.
-
-Do not leave the live service as an undocumented dashboard-only override. CI
-must validate whichever Free configuration the owner actually deploys.
+The checked-in `render.yaml` describes the active Free/no-email UAT contract,
+including the exact `disabled` email plus `trustedInvite` signup pairing. Keep
+the live dashboard aligned with it; do not leave signup behavior as an
+undocumented dashboard-only override. The paid target remains documented for
+the later upgrade.
 
 ## Required Tests
 
 - Hosted `resend` mode still refuses to start without both Resend settings.
 - Hosted `disabled` mode starts without Resend settings only when explicitly
   configured.
-- Disabled signup does not consume an invite or write user/token records.
-- Disabled reset and verification delivery do not mutate auth state.
-- Existing verified password login and existing sessions still work.
+- Signup mode defaults to `emailVerification` and rejects unsupported values or
+  unsafe setting combinations.
+- `disabled` signup does not consume an invite or write user/token records.
+- `trustedInvite` rejects signup without a valid invite. A valid invite is
+  consumed once, creates an active `emailVerified: false` account and session,
+  and creates no verification token or delivery.
+- Reset and verification delivery remain disabled and do not mutate auth state.
+- Trusted-invite password login, existing verified password login, and existing
+  sessions work; unverified trusted-invite accounts do not inherit admin access
+  from the configured email allowlist.
 - Runtime capabilities match effective server configuration.
-- Frontend controls match capabilities without parsing error strings.
+- Frontend controls require an invite link and match capabilities without
+  parsing error strings.
 - The Free startup command migrates an empty disposable Postgres database,
   becomes ready, and shuts down cleanly.
 - A failed, locked, or future-schema migration prevents HTTP startup.
@@ -234,14 +246,13 @@ Also run the Postgres integration and Free Render deployment-parity suites.
 
 ## Launch Boundary
 
-Completing this interim architecture permits controlled UAT for existing
-accounts. It does not permit unrestricted public signup or reliable paid AI
-traffic.
+This interim architecture permits controlled UAT for existing accounts and
+testers who receive a valid invite link. It does not permit account creation
+without an invite or imply reliable paid AI traffic.
 
-Keep public signup visibly disabled until Resend or another reviewed durable
-email provider is configured. Do not mark transactional email, account
-recovery, or the paid Render pre-deploy architecture complete based on the
-Free/no-email path.
+Keep no-invite signup impossible. Do not mark transactional email, account
+recovery, mailbox verification, or the paid Render pre-deploy architecture
+complete based on the trusted-invite path.
 
 ## Later Upgrade To Starter And Resend
 
@@ -252,11 +263,13 @@ When the owner is ready:
 3. Configure `RESEND_API_KEY` and a sender such as
    `AI Story Teller <accounts@storymodeai.com>` in Render.
 4. Set `AIST_EMAIL_DELIVERY_MODE=resend`.
-5. Upgrade Render to Starter or higher.
-6. Restore `npm run api:db:migrate` as the pre-deploy command.
-7. Restore `npm run api:hosted` as the start command.
-8. Run signup, verification, reset, migration-failure, readiness, and rollback
-   checks before enabling public signup.
+5. Set `AIST_PASSWORD_SIGNUP_MODE=emailVerification`; valid invites remain
+   mandatory.
+6. Upgrade Render to Starter or higher.
+7. Restore `npm run api:db:migrate` as the pre-deploy command.
+8. Restore `npm run api:hosted` as the start command.
+9. Run invite signup, verification, reset, migration-failure, readiness, and
+   rollback checks before switching away from trusted-invite UAT.
 
 The sender address does not require an inbox merely to send, but a monitored
 reply path should be added before public launch.

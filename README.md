@@ -47,7 +47,11 @@ npm run api:hosted
 
 The current Render Free controlled-UAT service uses `npm run api:hosted:free`
 instead: it runs compiled, advisory-lock-serialized migrations before starting
-the hosted API and explicitly sets `AIST_EMAIL_DELIVERY_MODE=disabled`.
+the hosted API. It explicitly pairs `AIST_EMAIL_DELIVERY_MODE=disabled` with
+`AIST_PASSWORD_SIGNUP_MODE=trustedInvite`: account creation requires a valid
+invite link, creates an active account without claiming the mailbox is verified,
+and signs the tester in. Password recovery and verification delivery remain
+unavailable. No signup mode permits account creation without an invite.
 
 Render must health-check `/readyz`; `/livez` only proves the Node process is alive. Cloudflare Pages builds with `npm run build`, publishes `dist`, and sets `VITE_AIST_RUNTIME_MODE=hostedBackend` plus `VITE_AIST_API_BASE_URL=https://api.storymodeai.com`.
 

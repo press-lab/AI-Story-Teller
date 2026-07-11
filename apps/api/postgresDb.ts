@@ -736,11 +736,23 @@ export class PostgresDb implements BackendDb {
     const client = await this.pool.connect();
     try {
       const data = normalizeDbData({
-        users: await this.readRows(client, "users", "AND id = $2", [userId]),
-        profiles: await this.readRows(client, "profiles", "AND id = $2", [userId]),
+        users: await this.readRows(client, "users"),
+        profiles: await this.readRows(client, "profiles"),
         adventures: await this.readRows(client, "adventures", "AND data->>'ownerUserId' = $2", [userId]),
         scenarioDrafts: await this.readRows(client, "scenarioDrafts", "AND data->>'ownerUserId' = $2", [userId]),
         scenarioRevisions: await this.readRows(client, "scenarioRevisions", "AND data->>'ownerUserId' = $2", [userId]),
+        userFollows: await this.readRows(
+          client,
+          "userFollows",
+          "AND (data->>'followerUserId' = $2 OR data->>'followedUserId' = $2)",
+          [userId],
+        ),
+        friendships: await this.readRows(
+          client,
+          "friendships",
+          "AND (data->>'requesterUserId' = $2 OR data->>'addresseeUserId' = $2)",
+          [userId],
+        ),
       });
       return buildProfileSummary(data, userId);
     } finally {
@@ -748,13 +760,13 @@ export class PostgresDb implements BackendDb {
     }
   }
 
-  async readPublicProfileSummary(userId: string): Promise<PublicProfileSummary> {
+  async readPublicProfileSummary(userId: string, viewerUserId: string): Promise<PublicProfileSummary> {
     await this.init();
     const client = await this.pool.connect();
     try {
       const data = normalizeDbData({
-        users: await this.readRows(client, "users", "AND id = $2", [userId]),
-        profiles: await this.readRows(client, "profiles", "AND id = $2", [userId]),
+        users: await this.readRows(client, "users"),
+        profiles: await this.readRows(client, "profiles"),
         adventures: await this.readRows(client, "adventures", "AND data->>'ownerUserId' = $2", [userId]),
         scenarioDrafts: await this.readRows(client, "scenarioDrafts", "AND data->>'ownerUserId' = $2", [userId]),
         scenarioRevisions: await this.readRows(
@@ -763,14 +775,17 @@ export class PostgresDb implements BackendDb {
           "AND data->>'ownerUserId' = $2 AND data->>'status' = 'published' AND data ? 'publishedAt'",
           [userId],
         ),
+        scenarioLikes: await this.readRows(client, "scenarioLikes"),
+        userFollows: await this.readRows(client, "userFollows"),
+        friendships: await this.readRows(client, "friendships"),
       });
-      return buildPublicProfileSummary(data, userId);
+      return buildPublicProfileSummary(data, userId, viewerUserId);
     } finally {
       client.release();
     }
   }
 
-  async readExploreScenarios(): Promise<ExploreScenarioSummary[]> {
+  async readExploreScenarios(viewerUserId?: string): Promise<ExploreScenarioSummary[]> {
     await this.init();
     const client = await this.pool.connect();
     try {
@@ -783,8 +798,9 @@ export class PostgresDb implements BackendDb {
           "scenarioRevisions",
           "AND data->>'status' = 'published' AND data ? 'publishedAt'",
         ),
+        scenarioLikes: await this.readRows(client, "scenarioLikes"),
       });
-      return listExploreScenarios(data);
+      return listExploreScenarios(data, viewerUserId);
     } finally {
       client.release();
     }

@@ -20,10 +20,10 @@ const topics: DocTopic[] = [
       <>
         <p>
           Start by signing in with an invited account. This build does not expose the app shell until a backend session
-          exists. After sign-in, Profile is the home screen for account status, the new user guide, and your adventure library.
+          exists. After sign-in, Home shows account status, the new user guide, and your Story library.
         </p>
         <p>
-          Profile is your account library: Scenarios are reusable setups you can publish to Explore, while Adventures
+          Home is your account library: Scenarios are reusable setups you can publish to Explore, while Stories
           are private playthroughs you can open, edit, or publish as a scenario. Publishing copies setup surfaces such
           as the opening scene, World Blocks, Reference Cards, Characters, automations, and thumbnail, not your transcript.
         </p>
@@ -41,16 +41,15 @@ const topics: DocTopic[] = [
   },
   {
     id: "side-menu-library",
-    title: "Profile / Library",
-    category: "Top Menu",
-    summary: "Use Profile as the account home, tutorial surface, and adventure library.",
+    title: "Home / Library",
+    category: "Primary Navigation",
+    summary: "Use Home as the account hub, tutorial surface, and Story library.",
     tags: ["profile", "adventures", "library", "create", "open", "delete"],
     body: (
       <>
         <p>
-          Profile is the home surface. It shows account state, the new user guide, authored scenarios, and the embedded
-          adventure library. Use the library section to create a fresh adventure, reopen a saved adventure, duplicate an
-          existing adventure, publish a reusable scenario, or delete a private playthrough.
+          Home shows account state, the new user guide, authored Scenarios, and the Story library. Use the library to
+          create a Story, reopen a saved Story, duplicate one, publish a reusable Scenario, or delete a private playthrough.
         </p>
         <p>
           New Story includes optional setup before play: an opening scene, starter World Blocks, manual
@@ -60,8 +59,7 @@ const topics: DocTopic[] = [
           structured JSON output with thinking disabled for this schema-driven setup call.
         </p>
         <p>
-          Browser Local mode keeps its original local adventure tools inside the combined Profile surface. Backend
-          accounts save adventures to the owner-hosted server instead.
+          Browser Local mode keeps Stories on this device. Signed-in hosted accounts save Stories to the managed service.
         </p>
         <p>
           API keys are not stored in adventure records, so exporting, duplicating, or deleting an adventure
@@ -72,19 +70,18 @@ const topics: DocTopic[] = [
   },
   {
     id: "side-menu-dashboard",
-    title: "Dashboard",
-    category: "Side Menu",
-    summary: "The main cockpit for playing while keeping key adventure state visible.",
+    title: "Current Story Home",
+    category: "Primary Navigation",
+    summary: "The current Story overview, with its latest scene and important status at a glance.",
     tags: ["dashboard", "cockpit", "play", "overview"],
     body: (
       <>
         <p>
-          Dashboard is the default home screen for an open adventure. It shows the current scene, active
-          objective, context budget, character state, Memory Suggestions status, and latest evaluation log.
+          Current Story Home is the overview shown after opening a Story. It keeps the latest scene and important
+          Story status visible without turning Home into an engineering dashboard.
         </p>
         <p>
-          It also includes the AID-style turn controls, so you can play from the cockpit without opening
-          editor pages.
+          Choose <strong>Continue Story</strong> to return to Play, or open Story Studio when you want to edit the setup.
         </p>
       </>
     ),
@@ -92,7 +89,7 @@ const topics: DocTopic[] = [
   {
     id: "side-menu-play",
     title: "Play",
-    category: "Side Menu",
+    category: "Primary Navigation",
     summary: "The focused story screen for taking turns and editing the transcript.",
     tags: ["play", "turn", "continue", "retry", "undo", "redo"],
     body: (
@@ -110,18 +107,18 @@ const topics: DocTopic[] = [
   },
   {
     id: "side-menu-chronicle",
-    title: "Chronicle",
-    category: "Side Menu",
+    title: "History",
+    category: "Story Tools",
     summary: "The complete local transcript of the adventure.",
     tags: ["chronicle", "transcript", "history", "messages"],
     body: (
       <>
         <p>
-          Chronicle is the full user-readable story and message history. It is stored persistently and is
+          History is the full user-readable story and message record. It is stored persistently and is
           not compressed.
         </p>
         <p>
-          Chronicle is source material for summaries and memory proposals, but it does not automatically
+          History is source material for summaries and memory proposals, but it does not automatically
           flood the model context. Recent Messages and active memory surfaces are the model-facing versions.
         </p>
       </>
@@ -130,7 +127,7 @@ const topics: DocTopic[] = [
   {
     id: "side-menu-inbox",
     title: "Memory Suggestions",
-    category: "Side Menu",
+    category: "Story Studio",
     summary: "Review pending AI-suggested memories before they become active context.",
     tags: ["memory suggestions", "inbox", "proposals", "approve", "reject"],
     body: (
@@ -149,7 +146,7 @@ const topics: DocTopic[] = [
   {
     id: "side-menu-story-cards",
     title: "Reference Cards",
-    category: "Side Menu",
+    category: "Story Studio",
     summary: "Durable triggered facts that enter context only when relevant or pinned.",
     tags: ["reference cards", "memory", "triggers", "durable facts"],
     body: (
@@ -204,7 +201,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "side-menu-characters",
     title: "Characters",
-    category: "Side Menu",
+    category: "Story Studio",
     summary: "Opt-in Brain entries for major character inner state.",
     tags: ["characters", "brains", "brain entries", "inner state"],
     body: (
@@ -224,7 +221,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "current-story-arc",
     title: "Current Story Arc",
-    category: "Side Menu",
+    category: "Story Studio",
     summary: "Auto-updating arc log that tracks what's happening in the active story arc.",
     tags: ["current arc", "story arc", "arc log", "plot", "auto-update", "graduate"],
     body: (
@@ -278,7 +275,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "side-menu-plot-components",
     title: "World Blocks",
-    category: "Side Menu",
+    category: "Story Studio",
     summary: "Manage AI Instructions, Plot Essentials, Current Story Arc, Author's Note, and custom components.",
     tags: ["World Blocks", "components", "plot essentials", "current arc", "author note", "ai instructions"],
     body: (
@@ -299,14 +296,14 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "side-menu-context-preview",
-    title: "Context Preview",
-    category: "Side Menu",
+    title: "Context Inspector",
+    category: "Story Studio — Advanced",
     summary: "Inspect exactly what text will be sent to the provider and why.",
     tags: ["context preview", "provider payload", "tokens", "inspect"],
     body: (
       <>
         <p>
-          Context Preview shows every context section, included item, excluded item, token estimate,
+          Context Inspector shows every context section, included item, excluded item, token estimate,
           priority decision, pinned/protected state, and generated-by source.
         </p>
         <p>
@@ -319,7 +316,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "side-menu-automations",
     title: "Automations",
-    category: "Side Menu",
+    category: "Story Studio — Advanced",
     summary: "Edit trigger rules and inspect keyword, regex, and semantic evaluation logs.",
     tags: ["automations", "triggers", "semantic", "logs"],
     body: (
@@ -344,14 +341,14 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   },
   {
     id: "side-menu-import-export",
-    title: "Import / Export",
-    category: "Side Menu",
+    title: "Backups & Transfer",
+    category: "Story Tools",
     summary: "Move adventure JSON in or out of the browser.",
     tags: ["import", "export", "backup"],
     body: (
       <>
         <p>
-          Import / Export handles full adventure JSON backup and restore flows. Reference Card JSON can be reused
+          Backups & Transfer handles full Story JSON backup and restore flows. Reference Card JSON can be reused
           when setting up a new adventure or editing Reference Cards.
         </p>
         <p>
@@ -363,7 +360,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "side-menu-settings",
     title: "Settings",
-    category: "Side Menu",
+    category: "App",
     summary: "Manage account access, interface preferences, and optional personal model source settings.",
     tags: ["settings", "account", "model", "dark mode", "preferences"],
     body: (
@@ -388,7 +385,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
   {
     id: "side-menu-documentation",
     title: "Documentation",
-    category: "Side Menu",
+    category: "App",
     summary: "The searchable technical reference for the system.",
     tags: ["documentation", "help", "reference", "topics"],
     body: (
@@ -398,7 +395,7 @@ Example lines: "[line in their actual voice]" / "[another line]" / "[a third lin
           sidebar entries, architecture contracts, memory rules, and testing commands.
         </p>
         <p>
-          When a new sidebar surface is added, it should get a matching Documentation topic so users can
+          When a new product surface is added, it should get a matching Documentation topic so users can
           inspect what it is for.
         </p>
       </>
@@ -1104,25 +1101,35 @@ export function HelpPage() {
   return (
     <section className="page docs-page">
       <header className="docs-header">
-        <div>
-          <p className="eyebrow">Reference</p>
-          <h2>AI Story Teller Documentation</h2>
-          <p className="muted">Technical reference for context, memory, triggers, persistence, and testing.</p>
+        <div className="docs-header-copy">
+          <p className="eyebrow">Help &amp; guidance</p>
+          <h2>Story Mode AI Documentation</h2>
+          <p className="muted">
+            Learn the storytelling basics first, then dig into memory, automation, and technical details when you need them.
+          </p>
         </div>
         <label className="docs-search">
-          <span>Search docs</span>
+          <span>Search the guide</span>
           <input
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="context, brain, provider, trigger..."
+            placeholder="start a story, memory, settings..."
           />
         </label>
       </header>
 
       <div className="docs-layout">
         <aside className="docs-toc panel">
-          <strong>Topics</strong>
+          <div className="docs-toc-heading">
+            <div>
+              <span className="eyebrow">Browse</span>
+              <strong>Topics</strong>
+            </div>
+            <span className="docs-result-count" aria-live="polite">
+              {filteredTopics.length} {filteredTopics.length === 1 ? "guide" : "guides"}
+            </span>
+          </div>
           {filteredTopics.length === 0 ? (
             <p className="muted">No matches.</p>
           ) : (
@@ -1144,23 +1151,34 @@ export function HelpPage() {
         </aside>
 
         <div className="docs-content">
-          {filteredTopics.map((topic) => (
-            <article key={topic.id} id={topic.id} className="panel docs-topic">
-              <div className="docs-topic-heading">
-                <div>
-                  <span className="docs-category">{topic.category}</span>
-                  <h3>{topic.title}</h3>
-                </div>
-                <div className="docs-tags">
-                  {topic.tags.slice(0, 4).map((tag) => (
-                    <span key={tag}>{tag}</span>
-                  ))}
-                </div>
+          {filteredTopics.length === 0 ? (
+            <div className="panel docs-empty-state">
+              <div role="status">
+                <span className="eyebrow">No results</span>
+                <h3>Try a broader search</h3>
+                <p className="muted">Search for a task such as “start a story,” “memory,” or “settings.”</p>
               </div>
-              <p className="muted">{topic.summary}</p>
-              <div className="docs-body">{topic.body}</div>
-            </article>
-          ))}
+              <button type="button" onClick={() => setQuery("")}>Clear search</button>
+            </div>
+          ) : (
+            filteredTopics.map((topic) => (
+              <article key={topic.id} id={topic.id} className="panel docs-topic">
+                <div className="docs-topic-heading">
+                  <div>
+                    <span className="docs-category">{topic.category}</span>
+                    <h3>{topic.title}</h3>
+                  </div>
+                  <div className="docs-tags" aria-label={`${topic.title} topics`}>
+                    {topic.tags.slice(0, 4).map((tag) => (
+                      <span key={tag}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <p className="docs-summary">{topic.summary}</p>
+                <div className="docs-body">{topic.body}</div>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </section>

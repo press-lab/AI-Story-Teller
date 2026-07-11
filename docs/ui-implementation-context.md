@@ -60,6 +60,78 @@ The current developer-console feeling is primarily an information-architecture p
 - Moving the existing crowded navigation into a hamburger without regrouping it.
 - Deleting advanced features instead of placing them in an intentional expert layer.
 
+## Post-Redesign Refinement Principles
+
+The July 10, 2026 desktop review confirmed that the story-first shell is a substantial improvement, while also exposing a second-order class of problems: persistent empty panes, cramped button groups, mismatched type roles, and tools that visually belong to one workspace but are launched from another. Apply these principles in future UI work.
+
+### R1. Persistent space must earn its footprint
+
+A pane that permanently consumes reading width must contain an active task, a useful summary, or a clear next action. Do not reserve a large blank inspector merely because it can display a tool later. Use three explicit states for companion panes:
+
+1. **Closed:** the story receives the space.
+2. **Summary:** a narrow status strip shows only information needed during play.
+3. **Working:** the pane expands after the user selects a tool and provides an obvious close/collapse action.
+
+This follows progressive disclosure (P2), aesthetic minimalism (P3), and focused play without context loss (P9).
+
+### R2. A control group needs breathing room and readable labels
+
+Peer buttons must not visually merge. Use a consistent 8-12px gap, approximately 40-44px minimum control height for important actions, and reflow to a grid or stacked layout before labels truncate. When more than five peer actions remain, group secondary actions under a labelled disclosure or overflow menu. Never rely on a row of clipped labels as navigation.
+
+This follows one-clear-primary-action hierarchy (P4), consistency (P6), and accessible touch targets (P8).
+
+### R3. Put tools where their mental model lives
+
+Automation and Context Inspector operate on the open Story, so their discovery path belongs inside **Story Studio > Advanced Story Tools**. They should not look like app-level destinations in the primary rail. Admin remains an account-role destination; History and Backups remain current-Story utilities.
+
+This follows user-goal information architecture (P1), recognition over recall (P6), and progressive disclosure (P2).
+
+### R4. Typography communicates mode
+
+Use the application sans-serif for navigation, page titles, settings, labels, status, and operational screens. Reserve the serif story typeface for story prose, story/scenario titles, and editorial moments where a literary voice is intentional. A utility heading such as **Backups & Transfer** should not look like story prose.
+
+This follows consistency and standards (P6) and aesthetic hierarchy (P3).
+
+### R5. User-controlled layout changes must be reversible and durable
+
+A collapsible desktop rail needs a visible labelled control, a useful icon-only state, accessible names/tooltips, keyboard operation, and a persisted preference. Collapsing navigation must increase working space without removing any destination or changing mobile navigation.
+
+This follows user control and freedom (P5), adaptive navigation (P7), and semantic interaction (P8).
+
+### R6. Show one actionable status, not repeated raw failures
+
+Do not repeat the same authentication or save failure in the header, tool pane, and page body. Show a concise status at the shell level and put the explanation plus recovery action at the point where the user can resolve it. Errors must identify whether the problem is session state, permission, connectivity, or data conflict.
+
+This follows visibility of system status and error recovery (P5).
+
+### R7. Choice cards must reflow before their copy collides
+
+A choice card is a self-contained decision, not a fixed-width label holder. Its title, description, and supporting copy must stay inside its own bounds at every supported width. Use `min-width: 0` on grid/flex children, allow natural wrapping, and move from a multi-column row to fewer columns before truncating meaningful text. Ellipsis is acceptable for a known identifier; it is not acceptable for the consequence of a choice.
+
+This follows responsive adaptation (P7), readable labels and touch targets (P8), and recognition over recall (P6).
+
+### R8. Authoring density needs hierarchy, not smaller controls
+
+Deep Story Studio screens may remain powerful, but the default view should make the current editing task obvious: a short orientation, one search/filter command bar, the selected item, and clearly labelled maintenance or generation disclosures. Use whitespace, surface tone, and section headings before adding another border. Keep trigger policy, context policy, raw metadata, and bulk maintenance collapsed until requested.
+
+This follows progressive disclosure (P2), aesthetic minimalism (P3), one-primary-action hierarchy (P4), and user-goal information architecture (P1).
+
+### R9. The Play composer is one coherent action area
+
+Treat input mode, response length, the text field, send, and recovery actions as one composer. The text field and send action receive the strongest visual relationship. Continue/retry/undo/remember remain available but must read as secondary or recovery controls, reflow cleanly, and never resemble a flat row of equally important developer buttons. Preserve a comfortable prose measure and visibly separate story content from operational metadata.
+
+This follows focused play (P9), one clear primary action (P4), consistency (P6), and accessible interaction (P8).
+
+### R10. Documentation is part of the product experience
+
+Docs should use the same shell typography, spacing scale, surface treatment, search behavior, and responsive navigation as the rest of the app. Lead with task-oriented topics and plain-language summaries; put implementation reference after common workflows. Keep body text to a readable measure, make the topic navigation collapsible or drawer-based on mobile, and avoid presenting every internal system as an equal first-level destination.
+
+This follows user-needs organization (P1), progressive disclosure (P2), aesthetic hierarchy (P3), and mobile parity (P7).
+
+### Deferred Play side-panel recommendation
+
+The reviewed Play screenshot shows a wide right pane with a compact status block, a crowded row of tool buttons, and a large unused area. Do not patch that symptom with decoration. A future focused pass should test a narrow summary rail that expands only after a tool is selected, preserve Story tools parity, and compare reading width and task-completion time at common desktop sizes. This recommendation is intentionally documented rather than implemented as part of the July 10 follow-up request.
+
 ## Research And Design Basis
 
 Every major recommendation in this document is grounded in the following practices.
@@ -195,18 +267,16 @@ Current Story
     |-- Story & Direction
     |-- Characters
     |-- World & Lore
-    `-- Suggestions
+    |-- Suggestions
+    `-- Advanced Story Tools
+        |-- Automation
+        `-- Context Inspector
 
 More
 |-- History
 |-- Backups & Transfer
 |-- Settings
-|-- Help
-`-- Advanced
-    |-- Automation
-    |-- Context Inspector
-    |-- Memory Policies
-    `-- Raw Data Tools
+`-- Help
 
 Admin - separate, role-gated workspace
 ```

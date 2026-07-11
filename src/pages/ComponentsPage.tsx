@@ -376,6 +376,7 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
   const [graduateConfirm, setGraduateConfirm] = useState<string | null>(null);
   const [graduateStatus, setGraduateStatus] = useState<{ componentId: string; message: string } | null>(null);
   const [openComponentId, setOpenComponentId] = useState<string | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [componentAuditTurns, setComponentAuditTurns] = useState(20);
   const [componentAuditIncludeAI, setComponentAuditIncludeAI] = useState(false);
   const [componentAudit, setComponentAudit] = useState<ComponentAuditState | null>(null);
@@ -631,13 +632,22 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
     setPlotBuilderDescription("");
   }
 
+  function addWorldBlock(type: ComponentType, title: string) {
+    dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title, content: "", type }) });
+    setCreateMenuOpen(false);
+  }
+
   return (
     <section className="page editor-surface components-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Always-on plot truth, narration rules, author direction, and custom context blocks.
-          Use Reference Cards for facts that should only load when relevant.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Story &amp; Direction</p>
+          <h2>World Blocks</h2>
+          <p className="muted">
+            Shape the plot truth, narrator behavior, and author direction that should guide every turn.
+            Use Reference Cards for people, places, and facts that only matter in certain scenes.
+          </p>
+        </div>
         <div className="editor-stat-row" aria-label="World Block counts">
           <span>{adventure.components.length} total</span>
           <span>{activeCount} active</span>
@@ -809,27 +819,44 @@ export function ComponentsPage({ adventure, dispatch, loading, onSuggestPlotUpda
       )}
 
       <div className="editor-command-bar">
-        <input
-          type="search"
-          placeholder="Search blocks…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        {availableTypes.filter((t) => SINGLETON_TYPES.has(t)).map((type) => (
-          <button
-            key={type}
-            type="button"
-            onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: TYPE_LABELS[type], content: "", type }) })}
-          >
-            Add {TYPE_LABELS[type]}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => dispatch({ type: "UPSERT_COMPONENT", component: makeComponent({ title: "New Block", content: "", type: "custom" }) })}
+        <label className="editor-search-field">
+          <span>Search World Blocks</span>
+          <input
+            type="search"
+            placeholder="Name or story guidance"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </label>
+        <details
+          className="editor-create-menu"
+          open={createMenuOpen}
+          onToggle={(event) => setCreateMenuOpen(event.currentTarget.open)}
         >
-          Add Custom Block
-        </button>
+          <summary>Add World Block</summary>
+          <div className="editor-create-options">
+            {availableTypes.filter((t) => SINGLETON_TYPES.has(t)).map((type) => (
+              <button
+                key={type}
+                type="button"
+                aria-label={`Add ${TYPE_LABELS[type]}`}
+                onClick={() => addWorldBlock(type, TYPE_LABELS[type])}
+              >
+                <strong>{TYPE_LABELS[type]}</strong>
+                <span>{TYPE_DESCRIPTIONS[type]}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              className="primary-action"
+              aria-label="Add Custom Block"
+              onClick={() => addWorldBlock("custom", "New Block")}
+            >
+              <strong>Custom Block</strong>
+              <span>Reusable always-on guidance for this Story.</span>
+            </button>
+          </div>
+        </details>
       </div>
 
       {(onAuditComponents || onSuggestPlotUpdates) && (

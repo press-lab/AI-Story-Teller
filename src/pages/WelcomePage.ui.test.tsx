@@ -48,10 +48,10 @@ describe("WelcomePage", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps existing login available while hiding disabled email capabilities", () => {
+  it("keeps login available while hiding signup without an invite link", () => {
     render(
       <WelcomePage
-        capabilities={{ passwordLogin: true, passwordSignup: false, passwordReset: false, emailVerificationDelivery: false, googleOAuth: false }}
+        capabilities={{ passwordLogin: true, passwordSignup: true, inviteRequired: true, passwordReset: false, emailVerificationDelivery: false, googleOAuth: false }}
         onSignupPassword={vi.fn(async () => signupResult())}
         onVerifyEmail={vi.fn(async () => session())}
         onLoginPassword={vi.fn(async () => session())}
@@ -63,13 +63,15 @@ describe("WelcomePage", () => {
     expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
-    expect(screen.getByText(/disabled during controlled UAT/i)).toBeInTheDocument();
+    expect(screen.getByText("Account creation requires an invite link.")).toBeInTheDocument();
+    expect(screen.getByText("Password recovery is unavailable during controlled UAT.")).toBeInTheDocument();
   });
 
-  it("signs up with an invite and waits for email verification without exposing a token", async () => {
+  it("captures an invite link, scrubs it from the URL, and waits for email verification", async () => {
     const user = userEvent.setup();
     const onSignupPassword = vi.fn(async () => signupResult());
     const onVerifyEmail = vi.fn(async () => session());
+    window.location.hash = "invite=invite-1";
 
     render(
       <WelcomePage
@@ -82,8 +84,11 @@ describe("WelcomePage", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Sign up" }));
-    await user.type(screen.getByLabelText("Invite token"), "invite-1");
+    expect(await screen.findByRole("heading", { name: "Sign Up" })).toBeInTheDocument();
+    expect(window.location.hash).toBe("");
+    expect(screen.getByText("Invite link accepted.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Invite token")).not.toBeInTheDocument();
+    expect(screen.queryByText("invite-1")).not.toBeInTheDocument();
     await user.type(screen.getByLabelText("Email"), "player@example.com");
     await user.type(screen.getByLabelText("Display name"), "Player");
     await user.type(screen.getByLabelText("Password"), "correct horse battery staple");
@@ -163,6 +168,7 @@ describe("WelcomePage", () => {
     expect(screen.queryByLabelText("Email")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Log in" }));
     expect(screen.getByRole("heading", { name: "Log In" })).toBeInTheDocument();
@@ -175,13 +181,7 @@ describe("WelcomePage", () => {
     expect(onLoginPassword).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Back" }));
-    await user.click(screen.getByRole("button", { name: "Sign up" }));
-    expect(screen.getByRole("heading", { name: "Sign Up" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Invite token")).toBeInTheDocument();
-    expect(screen.getByLabelText("Display name")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Continue with Google" }));
-    expect(screen.getByText("Enter an invite token to continue with Google.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
     expect(onStartGoogleOAuth).not.toHaveBeenCalled();
   });
 

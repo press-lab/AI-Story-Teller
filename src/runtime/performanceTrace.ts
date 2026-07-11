@@ -7,7 +7,7 @@ export interface ClientPerformanceTrace {
   id: string;
   traceId: string;
   source: "device";
-  phase: "http_round_trip";
+  phase: string;
   route: string;
   method: string;
   status: "ok" | "error";
@@ -60,6 +60,7 @@ export function submitClientPerformanceTrace(
 
 export function clientNetworkMetadata(): ClientPerformanceTrace["metadata"] {
   const nav = navigator as Navigator & {
+    deviceMemory?: number;
     connection?: {
       effectiveType?: string;
       downlink?: number;
@@ -74,8 +75,29 @@ export function clientNetworkMetadata(): ClientPerformanceTrace["metadata"] {
     downlinkMbps: nav.connection?.downlink,
     rttMs: nav.connection?.rtt,
     saveData: nav.connection?.saveData,
+    hardwareConcurrency: navigator.hardwareConcurrency,
+    deviceMemoryGb: nav.deviceMemory,
     appVersion: typeof __COMMIT_HASH__ === "string" ? __COMMIT_HASH__ : undefined,
   };
+}
+
+/**
+ * Adds a coarse, controlled cause hint without recording page content, user
+ * input, URLs, or secrets. Correlated server/database/AI traces with the same
+ * trace id remain the authoritative source when a request is slow.
+ */
+export function clientTimingMetadata(durationMs: number): ClientPerformanceTrace["metadata"] {
+  const metadata = clientNetworkMetadata() ?? {};
+  const connectionType = typeof metadata.connectionType === "string" ? metadata.connectionType : undefined;
+  const rttMs = typeof metadata.rttMs === "number" ? metadata.rttMs : undefined;
+  let causeHint: string | undefined;
+  if (metadata.online === false) causeHint = "offline";
+  else if (connectionType === "slow-2g" || connectionType === "2g" || (rttMs !== undefined && rttMs >= 300)) {
+    causeHint = "network_quality";
+  } else if (durationMs >= 1_000) {
+    causeHint = "server_or_network";
+  }
+  return { ...metadata, causeHint };
 }
 
 export function bodyByteLength(body: BodyInit | null | undefined): number | undefined {

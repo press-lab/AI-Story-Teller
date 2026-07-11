@@ -174,6 +174,178 @@ describe("backend offline local fallback", () => {
   });
 });
 
+describe("hosted backend Play actions", () => {
+  it("submits, continues, and retries with the backend turn semantics", async () => {
+    const initial = createDefaultAdventure("Hosted Play Actions");
+    initial.id = "adv-hosted-play-actions";
+    initial.messages = [
+      { id: "opening-user", role: "user", content: "I reach the door.", createdAt: "2026-07-11T00:00:00.000Z" },
+      { id: "opening-ai", role: "assistant", content: "The lock is cold.", createdAt: "2026-07-11T00:00:01.000Z" },
+    ];
+    let serverAdventure = initial;
+    let messageSequence = 0;
+    const nextMessage = (role: "user" | "assistant", content: string) => ({
+      id: `hosted-message-${++messageSequence}`,
+      role,
+      content,
+      createdAt: `2026-07-11T00:00:${String(messageSequence + 1).padStart(2, "0")}.000Z`,
+    });
+    const store: AdventureStore = {
+      list: vi.fn(async () => []),
+      get: vi.fn(async () => serverAdventure),
+      save: vi.fn(async () => undefined),
+      saveForGeneration: vi.fn(async (next) => {
+        serverAdventure = next;
+        return next;
+      }),
+      delete: vi.fn(async () => undefined),
+    };
+    const backendTurnRunner: TurnRunner = {
+      runTurn: vi.fn(async (request) => {
+        if (request.regenerateLastAssistant) {
+          const withoutLatestAssistant = [...serverAdventure.messages];
+          let latestAssistantIndex = -1;
+          for (let index = withoutLatestAssistant.length - 1; index >= 0; index -= 1) {
+            if (withoutLatestAssistant[index].role === "assistant") {
+              latestAssistantIndex = index;
+              break;
+            }
+          }
+          if (latestAssistantIndex >= 0) withoutLatestAssistant.splice(latestAssistantIndex, 1);
+          serverAdventure = {
+            ...serverAdventure,
+            messages: [...withoutLatestAssistant, nextMessage("assistant", "The lock opens differently this time.")],
+          };
+          return { adventure: serverAdventure, responseContent: "The lock opens differently this time." };
+        }
+        if (request.recordUserInput === false) {
+          serverAdventure = {
+            ...serverAdventure,
+            messages: [...serverAdventure.messages, nextMessage("assistant", "The hinges answer with a whisper.")],
+          };
+          return { adventure: serverAdventure, responseContent: "The hinges answer with a whisper." };
+        }
+        serverAdventure = {
+          ...serverAdventure,
+          messages: [
+            ...serverAdventure.messages,
+            { ...nextMessage("user", request.input), inputMode: request.mode },
+            nextMessage("assistant", "The tumblers shift beneath your hand."),
+          ],
+        };
+        return { adventure: serverAdventure, responseContent: "The tumblers shift beneath your hand." };
+      }),
+    };
+    const refreshAdventures = vi.fn(async () => undefined);
+
+    const { result } = renderHook(() => {
+      const [current, setCurrent] = useState<Adventure | undefined>(initial);
+      const runtime = useAdventureRuntime(
+        current,
+        setCurrent,
+        baseConfig,
+        store,
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+        refreshAdventures,
+        { enabled: false, generateContent: false, everyNTurns: 1 },
+        backendTurnRunner,
+      );
+      return { current, runtime };
+    });
+
+    await act(async () => {
+      await result.current.runtime.submitTurn("You test the lock.", "do");
+    });
+    expect(backendTurnRunner.runTurn).toHaveBeenNthCalledWith(1, {
+      adventureId: initial.id,
+      input: "You test the lock.",
+      mode: "do",
+    });
+    expect(result.current.current?.messages.slice(-2)).toEqual([
+      expect.objectContaining({ role: "user", content: "You test the lock.", inputMode: "do" }),
+      expect.objectContaining({ role: "assistant", content: "The tumblers shift beneath your hand." }),
+    ]);
+
+    await act(async () => {
+      await result.current.runtime.continueTurn();
+    });
+    expect(backendTurnRunner.runTurn).toHaveBeenNthCalledWith(2, {
+      adventureId: initial.id,
+      input: "[continue]",
+      mode: "story",
+      recordUserInput: false,
+      providerCue: "[continue]",
+    });
+    expect(result.current.current?.messages.at(-1)).toMatchObject({
+      role: "assistant",
+      content: "The hinges answer with a whisper.",
+    });
+
+    const messageCountBeforeRetry = result.current.current?.messages.length;
+    await act(async () => {
+      await result.current.runtime.regenerateLastResponse();
+    });
+    expect(backendTurnRunner.runTurn).toHaveBeenNthCalledWith(3, {
+      adventureId: initial.id,
+      input: "[regenerate]",
+      mode: "story",
+      recordUserInput: false,
+      regenerateLastAssistant: true,
+    });
+    expect(result.current.current?.messages).toHaveLength(messageCountBeforeRetry!);
+    expect(result.current.current?.messages.at(-1)).toMatchObject({
+      role: "assistant",
+      content: "The lock opens differently this time.",
+    });
+  });
+
+  it("rejects a non-retryable backend turn so Play can preserve the draft", async () => {
+    const initial = createDefaultAdventure("Hosted Play Failure");
+    initial.id = "adv-hosted-play-failure";
+    const store: AdventureStore = {
+      list: vi.fn(async () => []),
+      get: vi.fn(async () => initial),
+      save: vi.fn(async () => undefined),
+      saveForGeneration: vi.fn(async (next) => next),
+      delete: vi.fn(async () => undefined),
+    };
+    const backendTurnRunner: TurnRunner = {
+      runTurn: vi.fn(async () => {
+        throw new Error("Authentication is required.");
+      }),
+    };
+    const { result } = renderHook(() => {
+      const [current, setCurrent] = useState<Adventure | undefined>(initial);
+      return useAdventureRuntime(
+        current,
+        setCurrent,
+        baseConfig,
+        store,
+        vi.fn(),
+        vi.fn(),
+        vi.fn(),
+        vi.fn(async () => undefined),
+        { enabled: false, generateContent: false, everyNTurns: 1 },
+        backendTurnRunner,
+      );
+    });
+
+    let caught: unknown;
+    await act(async () => {
+      try {
+        await result.current.submitTurn("You test the lock.", "do");
+      } catch (error) {
+        caught = error;
+      }
+    });
+
+    expect(caught).toEqual(expect.objectContaining({ message: "Authentication is required." }));
+    expect(result.current.error).toBe("Authentication is required.");
+  });
+});
+
 describe("adventure-scoped async results", () => {
   it("discards a backend result when the user switched adventures before completion", async () => {
     const adventureA = createDefaultAdventure("Adventure A");

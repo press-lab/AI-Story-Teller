@@ -152,6 +152,7 @@ export function deleteScenarioDraft(
   data.scenarioRevisions = data.scenarioRevisions.filter(
     (entry) => !(entry.scenarioId === scenarioId && entry.ownerUserId === userId),
   );
+  data.scenarioLikes = data.scenarioLikes.filter((entry) => entry.scenarioId !== scenarioId);
 
   const shareLinkCountBefore = data.shareLinks.length;
   data.shareLinks = data.shareLinks.filter(

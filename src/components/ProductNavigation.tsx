@@ -7,8 +7,6 @@ export type ProductDestination =
   | "studio"
   | "history"
   | "backups"
-  | "automation"
-  | "context"
   | "settings"
   | "help"
   | "admin";
@@ -21,6 +19,8 @@ interface ProductNavigationProps {
   onNavigate: (destination: ProductDestination) => void;
 }
 
+const RAIL_COLLAPSED_KEY = "story-mode-ai-navigation-collapsed";
+
 type IconName = ProductDestination | "more";
 
 function NavIcon({ name }: { name: IconName }) {
@@ -31,8 +31,6 @@ function NavIcon({ name }: { name: IconName }) {
     studio: <><path d="m4 20 4.4-1 10.8-10.8a2.1 2.1 0 0 0-3-3L5.4 16 4 20Z" /><path d="m14.8 6.6 3 3" /></>,
     history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></>,
     backups: <><path d="M4 7h16v13H4z" /><path d="M7 4h10l2 3H5l2-3Z" /><path d="M9 12h6" /></>,
-    automation: <><path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z" /></>,
-    context: <><path d="m12 3-9 5 9 5 9-5-9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 16 9 5 9-5" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6 1.7 1.7 0 0 0 10 3v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z" /></>,
     help: <><circle cx="12" cy="12" r="9" /><path d="M9.8 9a2.3 2.3 0 1 1 3.6 1.9c-.9.6-1.4 1-1.4 2.1" /><path d="M12 17h.01" /></>,
     admin: <><path d="M12 3 4.5 6v5.2c0 4.5 3.1 8.1 7.5 9.8 4.4-1.7 7.5-5.3 7.5-9.8V6L12 3Z" /><path d="m9 12 2 2 4-4" /></>,
@@ -65,7 +63,9 @@ function NavButton({
     <button
       type="button"
       className={`product-nav-item${active ? " active" : ""}`}
+      aria-label={badge != null && badge > 0 ? `${label}, ${badge} pending suggestions` : label}
       aria-current={active ? "page" : undefined}
+      title={label}
       onClick={onClick}
       disabled={disabled}
     >
@@ -84,7 +84,22 @@ export function ProductNavigation({
   onNavigate,
 }: ProductNavigationProps) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(() => {
+    try {
+      return window.localStorage.getItem(RAIL_COLLAPSED_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(RAIL_COLLAPSED_KEY, String(railCollapsed));
+    } catch {
+      // Navigation still works when browser storage is unavailable.
+    }
+  }, [railCollapsed]);
 
   useEffect(() => {
     if (!moreOpen) return;
@@ -106,11 +121,11 @@ export function ProductNavigation({
 
   return (
     <>
-      <aside className="product-rail">
-        <button type="button" className="product-brand" onClick={() => go("home")} aria-label="AI Story Teller home">
-          <span className="product-brand-mark" aria-hidden="true">A</span>
+      <aside id="product-navigation-rail" className={`product-rail${railCollapsed ? " is-collapsed" : ""}`}>
+        <button type="button" className="product-brand" onClick={() => go("home")} aria-label="Story Mode AI home" title="Story Mode AI">
+          <span className="product-brand-mark" aria-hidden="true">S</span>
           <span>
-            <strong>AI Story Teller</strong>
+            <strong>Story Mode AI</strong>
             <small>Stories that remember</small>
           </span>
         </button>
@@ -137,20 +152,27 @@ export function ProductNavigation({
               <span className="product-nav-group-label">Story tools</span>
               <NavButton destination="history" label="History" active={active === "history"} onClick={() => go("history")} />
               <NavButton destination="backups" label="Backups & Transfer" active={active === "backups"} onClick={() => go("backups")} />
-              <details className="product-advanced-nav" open={active === "automation" || active === "context" ? true : undefined}>
-                <summary>Advanced</summary>
-                <NavButton destination="automation" label="Automation" active={active === "automation"} onClick={() => go("automation")} />
-                <NavButton destination="context" label="Context Inspector" active={active === "context"} onClick={() => go("context")} />
-              </details>
             </div>
           )}
 
           <div className="product-nav-group product-utility-nav">
             <NavButton destination="settings" label="Settings" active={active === "settings"} onClick={() => go("settings")} />
             <NavButton destination="help" label="Help" active={active === "help"} onClick={() => go("help")} />
-            {isAdmin && <NavButton destination="admin" label="Admin" active={active === "admin"} onClick={() => go("admin")} />}
+            {isAdmin && <NavButton destination="admin" label="Admin Console" active={active === "admin"} onClick={() => go("admin")} />}
           </div>
         </nav>
+        <button
+          type="button"
+          className="product-rail-toggle"
+          aria-label={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+          aria-controls="product-navigation-rail"
+          aria-expanded={!railCollapsed}
+          title={railCollapsed ? "Expand navigation" : "Collapse navigation"}
+          onClick={() => setRailCollapsed((collapsed) => !collapsed)}
+        >
+          <span className="product-rail-toggle-icon" aria-hidden="true">{railCollapsed ? "›" : "‹"}</span>
+          <span className="product-nav-label">{railCollapsed ? "Expand" : "Collapse"}</span>
+        </button>
       </aside>
 
       <nav className="mobile-bottom-nav" aria-label="Mobile primary navigation">
@@ -178,7 +200,7 @@ export function ProductNavigation({
             <header>
               <div>
                 <p className="eyebrow">More</p>
-                <h2>{currentStoryTitle || "AI Story Teller"}</h2>
+                <h2>{currentStoryTitle || "Story Mode AI"}</h2>
               </div>
               <button type="button" onClick={() => setMoreOpen(false)}>Close</button>
             </header>
@@ -187,15 +209,13 @@ export function ProductNavigation({
                 <h3>Current story</h3>
                 <NavButton destination="history" label="History" active={active === "history"} onClick={() => go("history")} />
                 <NavButton destination="backups" label="Backups & Transfer" active={active === "backups"} onClick={() => go("backups")} />
-                <NavButton destination="automation" label="Automation (Advanced)" active={active === "automation"} onClick={() => go("automation")} />
-                <NavButton destination="context" label="Context Inspector (Advanced)" active={active === "context"} onClick={() => go("context")} />
               </div>
             )}
             <div className="mobile-more-group">
               <h3>App</h3>
               <NavButton destination="settings" label="Settings" active={active === "settings"} onClick={() => go("settings")} />
               <NavButton destination="help" label="Help" active={active === "help"} onClick={() => go("help")} />
-              {isAdmin && <NavButton destination="admin" label="Admin" active={active === "admin"} onClick={() => go("admin")} />}
+              {isAdmin && <NavButton destination="admin" label="Admin Console" active={active === "admin"} onClick={() => go("admin")} />}
             </div>
           </section>
         </>

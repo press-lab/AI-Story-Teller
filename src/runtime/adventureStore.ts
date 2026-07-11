@@ -11,7 +11,7 @@ import type { Adventure, ContextBuildResult, InputMode, ProviderConfig } from ".
 import type { RuntimeConfig } from "./runtimeConfig";
 import {
   bodyByteLength,
-  clientNetworkMetadata,
+  clientTimingMetadata,
   createClientTraceId,
   recordClientPerformanceTrace,
   sanitizeClientError,
@@ -184,7 +184,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
         responseBytes,
         errorCategory: traceErrorCategory(error, statusCode),
         errorMessage: sanitizeClientError(error),
-        metadata: clientNetworkMetadata(),
+        metadata: clientTimingMetadata(Math.max(0, Math.round(performance.now() - startedAt))),
         createdAt,
       }, initHeaders.Authorization);
     }
@@ -203,7 +203,7 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
         durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
         requestBytes,
         responseBytes,
-        metadata: clientNetworkMetadata(),
+        metadata: clientTimingMetadata(Math.max(0, Math.round(performance.now() - startedAt))),
         createdAt,
       }, initHeaders.Authorization);
     }
@@ -276,7 +276,7 @@ function recordAndSubmitDeviceTrace(config: RuntimeConfig, trace: ClientPerforma
 }
 
 export function createBackendAdventureStore(config: RuntimeConfig, authToken?: string): AdventureStore {
-  const authHeaders: Record<string, string> = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+  const authHeaders = backendBearerHeaders(authToken);
   const revisions = new Map<string, number>();
   const saveChains = new Map<string, Promise<void>>();
   function rememberRevision(adventure: Adventure | undefined): Adventure | undefined {
@@ -657,7 +657,7 @@ export function createBackendTurnRunner(config: RuntimeConfig, authToken: string
         method: "POST",
         keepalive: true,
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          ...backendBearerHeaders(authToken),
           "Idempotency-Key": crypto.randomUUID(),
         },
         body: JSON.stringify({
@@ -677,8 +677,14 @@ export function createBackendContextPreviewSource(config: RuntimeConfig, authTok
   return {
     build(adventureId) {
       return apiJson<ContextBuildResult>(config, `/adventures/${encodeURIComponent(adventureId)}/context-preview`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: backendBearerHeaders(authToken),
       });
     },
   };
+}
+
+function backendBearerHeaders(authToken?: string): Record<string, string> {
+  return authToken && authToken !== "cookie"
+    ? { Authorization: `Bearer ${authToken}` }
+    : {};
 }

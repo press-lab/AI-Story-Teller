@@ -295,7 +295,10 @@ describe("AdminConsolePage", () => {
     const onSetUserStatus = vi.fn(async () => undefined);
     const onCreateRestriction = vi.fn(async () => undefined);
     const onUpdateSafetyEvent = vi.fn(async () => undefined);
-    const onCreateInvite = vi.fn(async () => ({ token: "invite-token-test" }));
+    const onCreateInvite = vi.fn(async () => ({
+      token: "invite-token-test",
+      inviteUrl: "https://example.com/app/#invite=invite-token-test",
+    }));
     const onDisableInvite = vi.fn(async () => undefined);
     const onSavePlatformSettings = vi.fn(async (settings: Partial<BackendAdminConsoleData["platformSettings"]>) => ({
       ...adminData().platformSettings,
@@ -333,7 +336,8 @@ describe("AdminConsolePage", () => {
     await user.type(screen.getByLabelText("Invite note"), "UAT tester");
     await user.click(screen.getByRole("button", { name: "Create Invite" }));
     expect(onCreateInvite).toHaveBeenCalledWith(expect.objectContaining({ note: "UAT tester", maxUses: 1, expiresInDays: 14 }));
-    expect(await screen.findByDisplayValue("invite-token-test")).toBeInTheDocument();
+    expect(await screen.findByLabelText("Created invite link")).toHaveValue("https://example.com/app/#invite=invite-token-test");
+    expect(screen.queryByDisplayValue("invite-token-test")).not.toBeInTheDocument();
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
     await user.click(screen.getByRole("tab", { name: "Operations" }));
@@ -460,6 +464,9 @@ describe("AdminConsolePage", () => {
 
     expect(screen.getByRole("heading", { name: "Latency Traces" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Policy Decisions" })).not.toBeInTheDocument();
+    expect(screen.getByText("p50")).toBeInTheDocument();
+    expect(screen.getByText("p95")).toBeInTheDocument();
+    expect(screen.getAllByText(/model provider/i).length).toBeGreaterThan(0);
 
     await user.selectOptions(screen.getByLabelText("Focus"), "attention");
 

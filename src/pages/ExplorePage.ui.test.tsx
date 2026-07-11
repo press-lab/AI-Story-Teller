@@ -193,4 +193,27 @@ describe("ExplorePage", () => {
 
     expect(screen.getAllByRole("img", { name: "Community cover art" })).toHaveLength(2);
   });
+
+  it("shows like totals and wires likes from cards and previews", async () => {
+    const user = userEvent.setup();
+    const onToggleScenarioLike = vi.fn(async () => undefined);
+    render(
+      <ExplorePage
+        backendMode
+        backendSession={session()}
+        scenarios={[backendScenario({ likeCount: 7, likedByViewer: false })]}
+        premadeAdventures={[]}
+        onToggleScenarioLike={onToggleScenarioLike}
+      />,
+    );
+
+    expect(screen.getByText("7 likes")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Like Community Scenario" }));
+    expect(onToggleScenarioLike).toHaveBeenCalledWith("scenario-1", true);
+
+    await user.click(screen.getByRole("button", { name: "View details for Community Scenario" }));
+    const likeButtons = screen.getAllByRole("button", { name: "Like Community Scenario" });
+    await user.click(likeButtons[0]);
+    expect(onToggleScenarioLike).toHaveBeenCalledTimes(2);
+  });
 });

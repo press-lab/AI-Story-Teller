@@ -122,7 +122,7 @@ describe("App adventure tool workspace", () => {
     expect(within(nav).getByRole("button", { name: "Play" })).toBeEnabled();
     expect(within(nav).getByRole("button", { name: "Story Studio" })).toBeEnabled();
     expect(within(nav).getByRole("button", { name: "History" })).toBeInTheDocument();
-    expect(within(nav).getByRole("button", { name: "Context Inspector" })).toBeInTheDocument();
+    expect(within(nav).queryByRole("button", { name: "Context Inspector" })).not.toBeInTheDocument();
 
     await user.click(within(nav).getByRole("button", { name: "Story Studio" }));
     const editorNav = screen.getByRole("navigation", { name: "Adventure editor" });
@@ -132,6 +132,19 @@ describe("App adventure tool workspace", () => {
       "Characters",
       "Suggestions",
     ]);
+    const advancedStoryTools = screen.getByText("Advanced Story Tools").closest("details");
+    expect(advancedStoryTools).toBeTruthy();
+    await user.click(screen.getByText("Advanced Story Tools"));
+    const automationButton = within(advancedStoryTools as HTMLElement).getByRole("button", { name: "Automation" });
+    const contextButton = within(advancedStoryTools as HTMLElement).getByRole("button", { name: "Context Inspector" });
+    expect(automationButton).toBeInTheDocument();
+    expect(contextButton).toBeInTheDocument();
+    await user.click(automationButton);
+    expect(screen.getByText(/Automations watch turns/)).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Story Studio" })).toHaveAttribute("aria-current", "page");
+    await user.click(within(screen.getByText("Advanced Story Tools").closest("details") as HTMLElement).getByRole("button", { name: "Context Inspector" }));
+    expect(screen.getByRole("button", { name: "Rebuild Preview" })).toBeInTheDocument();
+    expect(within(nav).getByRole("button", { name: "Story Studio" })).toHaveAttribute("aria-current", "page");
     await user.click(within(editorNav).getByRole("button", { name: "World & Lore" }));
 
     // Now in the editor — title is an editable input
@@ -153,6 +166,8 @@ describe("App adventure tool workspace", () => {
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Library" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New Story" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Log in" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
   });
 
   it("opens Browser Local directly without requiring a backend account", async () => {
