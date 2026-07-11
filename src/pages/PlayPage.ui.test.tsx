@@ -266,7 +266,7 @@ describe("PlayPage AID-style controls", () => {
     expect(localStorage.getItem(draftKey)).toBe("draw your sword");
   });
 
-  it("keeps every essential story destination reachable from the mobile Story tools sheet", async () => {
+  it("keeps every essential story destination reachable from the mobile Story companion sheet", async () => {
     setMobileComposerViewport();
     const user = userEvent.setup();
     const onOpenPlayTool = vi.fn();
@@ -289,17 +289,17 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    const trigger = screen.getByRole("button", { name: "Story tools" });
+    const trigger = screen.getByRole("button", { name: "Story companion" });
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    const sheet = screen.getByRole("region", { name: "Story tools" });
-    await user.click(within(sheet).getByRole("button", { name: "Story & Direction" }));
-    await user.click(within(sheet).getByRole("button", { name: "World & Lore" }));
+    const sheet = screen.getByRole("region", { name: "Story companion" });
+    await user.click(within(sheet).getByRole("button", { name: "Shape the story" }));
+    await user.click(within(sheet).getByRole("button", { name: "World & lore" }));
     await user.click(within(sheet).getByRole("button", { name: "Characters" }));
-    await user.click(within(sheet).getByRole("button", { name: "Suggestions" }));
-    await user.click(within(sheet).getByRole("button", { name: "Context details" }));
+    await user.click(within(sheet).getByRole("button", { name: "Memory suggestions" }));
+    await user.click(within(sheet).getByRole("button", { name: "What the AI knows" }));
 
     expect(onOpenPlayTool.mock.calls.map(([destination]) => destination)).toEqual([
       "components",
@@ -310,7 +310,7 @@ describe("PlayPage AID-style controls", () => {
     ]);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
 
-    await user.click(within(sheet).getByRole("button", { name: "Studio / Edit all" }));
+    await user.click(within(sheet).getByRole("button", { name: "Open Story Studio" }));
     expect(onOpenTab).toHaveBeenCalledWith("edit");
   });
 
@@ -467,7 +467,7 @@ describe("PlayPage AID-style controls", () => {
       />,
     );
 
-    const contextBtn = screen.getAllByRole("button", { name: "Context details" })[0];
+    const contextBtn = screen.getAllByRole("button", { name: "What the AI knows" })[0];
     await user.click(contextBtn);
     expect(onBuildContext).toHaveBeenCalledTimes(1);
     expect(onOpenTab).toHaveBeenCalledWith("context");
@@ -509,7 +509,7 @@ describe("PlayPage AID-style controls", () => {
 
     await user.click(screen.getByText("Next Turn Note (empty)", { exact: false }));
     await user.type(
-      screen.getByLabelText("Visible next-output steering note"),
+      screen.getByLabelText("One-turn story guidance"),
       "Do not resolve the argument yet.",
     );
     expect(screen.getByDisplayValue("Do not resolve the argument yet.")).toBeInTheDocument();

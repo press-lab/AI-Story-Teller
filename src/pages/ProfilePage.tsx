@@ -304,7 +304,7 @@ export function ProfilePage({
               <h3 id="profile-connections-heading">Connections</h3>
             </div>
           </div>
-          <div className="library-grid">
+          <div className="profile-connections-grid">
             <SocialPeopleList
               title="Followers"
               people={publicSocial.followers}
@@ -736,8 +736,8 @@ function SocialPeopleList({
   onOpenProfile?: (userId: string) => Promise<void>;
 }) {
   return (
-    <article className="library-card">
-      <div className="library-card-body">
+    <article className="profile-connection-card">
+      <div className="profile-connection-card-body">
         <h4>{title}</h4>
         {hidden ? (
           <p className="muted">Private</p>

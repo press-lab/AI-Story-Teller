@@ -6,18 +6,20 @@ import path from "node:path";
 import net from "node:net";
 
 const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/";
-const viewport = { width: 1920, height: 917 };
+const viewports = [
+  { name: "desktop", width: 1440, height: 900, mobile: false },
+  { name: "mobile", width: 390, height: 844, mobile: true },
+];
 
-function chromePath() {
-  const candidates = [
+function browserPath() {
+  return [
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-  ];
-  return candidates.find((candidate) => existsSync(candidate));
+  ].find(existsSync);
 }
 
-async function freePort() {
+function freePort() {
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.listen(0, "127.0.0.1", () => {
@@ -28,19 +30,18 @@ async function freePort() {
   });
 }
 
-async function waitForJson(url, timeoutMs = 15000) {
+async function waitForJson(url, timeoutMs = 15_000) {
   const started = Date.now();
-  let lastError;
   while (Date.now() - started < timeoutMs) {
     try {
       const response = await fetch(url);
       if (response.ok) return response.json();
-    } catch (error) {
-      lastError = error;
+    } catch {
+      // Browser startup is still in progress.
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw lastError ?? new Error(`Timed out waiting for ${url}`);
+  throw new Error(`Timed out waiting for ${url}`);
 }
 
 class CdpClient {
@@ -50,12 +51,11 @@ class CdpClient {
     this.ws = new WebSocket(wsUrl);
     this.ws.addEventListener("message", (event) => {
       const message = JSON.parse(event.data);
-      if (message.id && this.pending.has(message.id)) {
-        const { resolve, reject } = this.pending.get(message.id);
-        this.pending.delete(message.id);
-        if (message.error) reject(new Error(message.error.message));
-        else resolve(message.result);
-      }
+      if (!message.id || !this.pending.has(message.id)) return;
+      const { resolve, reject } = this.pending.get(message.id);
+      this.pending.delete(message.id);
+      if (message.error) reject(new Error(message.error.message));
+      else resolve(message.result);
     });
   }
 
@@ -75,18 +75,16 @@ class CdpClient {
     });
   }
 
-  close() {
-    this.ws.close();
-  }
+  close() { this.ws.close(); }
 }
 
 async function main() {
-  const executablePath = chromePath();
+  const executablePath = browserPath();
   if (!executablePath) throw new Error("Could not find Chrome or Edge.");
 
   const port = await freePort();
-  const profileDir = await mkdtemp(path.join(tmpdir(), "aist-chrome-profile-"));
-  const auditDir = await mkdtemp(path.join(tmpdir(), "aist-full-ui-audit-"));
+  const profileDir = await mkdtemp(path.join(tmpdir(), "story-mode-ai-audit-profile-"));
+  const auditDir = await mkdtemp(path.join(tmpdir(), "story-mode-ai-full-ui-audit-"));
   const chrome = spawn(executablePath, [
     "--headless=new",
     "--disable-gpu",
@@ -94,377 +92,232 @@ async function main() {
     "--no-default-browser-check",
     "--disable-background-networking",
     "--disable-extensions",
-    "--hide-scrollbars",
     `--remote-debugging-port=${port}`,
     `--user-data-dir=${profileDir}`,
     "about:blank",
   ], { stdio: ["ignore", "pipe", "pipe"] });
 
+  let cdp;
   try {
-    const targetsUrl = `http://127.0.0.1:${port}/json`;
     await waitForJson(`http://127.0.0.1:${port}/json/version`);
-    const targets = await waitForJson(targetsUrl);
+    const targets = await waitForJson(`http://127.0.0.1:${port}/json`);
     const pageTarget = targets.find((target) => target.type === "page");
-    if (!pageTarget?.webSocketDebuggerUrl) throw new Error("Could not find Chrome page target.");
-
-    const cdp = new CdpClient(pageTarget.webSocketDebuggerUrl);
+    if (!pageTarget?.webSocketDebuggerUrl) throw new Error("Could not find browser page target.");
+    cdp = new CdpClient(pageTarget.webSocketDebuggerUrl);
     await cdp.open();
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");
-    await cdp.send("Emulation.setDeviceMetricsOverride", {
-      width: viewport.width,
-      height: viewport.height,
-      deviceScaleFactor: 1,
-      mobile: false,
-    });
 
     const evaluate = async (fn, arg) => {
-      const expression = `(${fn.toString()})(${JSON.stringify(arg ?? null)})`;
       const result = await cdp.send("Runtime.evaluate", {
-        expression,
+        expression: `(${fn.toString()})(${JSON.stringify(arg ?? null)})`,
         awaitPromise: true,
         returnByValue: true,
       });
-      if (result.exceptionDetails) {
-        throw new Error(result.exceptionDetails.text ?? "Runtime.evaluate failed");
-      }
+      if (result.exceptionDetails) throw new Error(result.exceptionDetails.text ?? "Browser evaluation failed");
       return result.result.value;
     };
+    const wait = (ms = 180) => new Promise((resolve) => setTimeout(resolve, ms));
 
-    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-    const clickButton = async (scopeSelector, text, { contains = false } = {}) => {
-      const result = await evaluate(({ scopeSelector, text, contains }) => {
-        const scope = document.querySelector(scopeSelector) ?? document;
-        const buttons = [...scope.querySelectorAll("button")].filter((button) => {
-          const label = (button.textContent || "").replace(/\s+/g, " ").trim();
-          return contains ? label.includes(text) : label === text;
-        });
-        if (buttons.length !== 1) {
-          return { ok: false, count: buttons.length, labels: buttons.map((button) => (button.textContent || "").trim()).slice(0, 12) };
-        }
-        buttons[0].click();
+    const clickExact = async (label, scope = "document") => {
+      const result = await evaluate(({ label, scope }) => {
+        const root = scope === "document" ? document : document.querySelector(scope);
+        if (!root) return { ok: false, reason: `missing scope ${scope}` };
+        const visible = (element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+        };
+        const matches = [...root.querySelectorAll("button")].filter((button) =>
+          visible(button) && (button.textContent || "").replace(/\s+/g, " ").trim() === label,
+        );
+        if (matches.length !== 1) return { ok: false, reason: `${matches.length} matches`, labels: matches.map((item) => item.textContent?.trim()) };
+        matches[0].click();
         return { ok: true };
-      }, { scopeSelector, text, contains });
-      if (!result.ok) throw new Error(`Expected one button ${text} in ${scopeSelector}, found ${result.count}: ${JSON.stringify(result.labels)}`);
-      await wait(450);
+      }, { label, scope });
+      if (!result.ok) throw new Error(`Could not click ${label}: ${result.reason} ${JSON.stringify(result.labels ?? [])}`);
+      await wait();
     };
-    const ensureNav = async () => {
-      await evaluate(() => {
-        const menu = document.querySelector(".nav-show-btn");
-        if (menu && getComputedStyle(menu).display !== "none") menu.click();
+
+    const ensureDesktopStory = async () => {
+      await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+      await cdp.send("Page.navigate", { url: baseUrl });
+      await wait(900);
+      const hasStory = await evaluate(() => !document.querySelector('.product-rail-nav button[disabled]') &&
+        [...document.querySelectorAll(".product-rail-nav button")].some((button) => button.textContent?.trim() === "Play"));
+      if (hasStory) return;
+      await clickExact("Explore", ".product-rail-nav");
+      const opened = await evaluate(() => {
+        const button = [...document.querySelectorAll("button")].find((item) => item.getAttribute("aria-label") === "View details for Arcane: After the Rocket");
+        button?.click();
+        return Boolean(button);
       });
-      await wait(200);
-    };
-    const top = async (label) => {
-      await ensureNav();
-      await clickButton(".app-nav", label);
-    };
-    const header = async (label) => {
-      await ensureNav();
-      await clickButton(".header-meta", label);
-    };
-    const openDetails = async (scopeSelector = ".main-content") => {
-      await evaluate((scopeSelector) => {
-        const scope = document.querySelector(scopeSelector) ?? document;
-        for (const detail of scope.querySelectorAll("details")) detail.open = true;
-      }, scopeSelector);
-      await wait(150);
+      if (!opened) throw new Error("Arcane scenario details button was not found.");
+      await wait();
+      await clickExact("Start Story");
+      await wait(600);
     };
 
-    const screenshot = async (fileName) => {
-      const image = await cdp.send("Page.captureScreenshot", { format: "png", fromSurface: true });
-      const filePath = path.join(auditDir, fileName);
-      await writeFile(filePath, Buffer.from(image.data, "base64"));
-      return filePath;
-    };
+    await ensureDesktopStory();
+    const results = [];
 
-    const auditScreen = async (name, { detailsScope } = {}) => {
-      if (detailsScope) await openDetails(detailsScope);
+    const auditCurrentScreen = async (viewportName, screenName) => {
       await evaluate(() => {
         window.scrollTo(0, 0);
-        document.querySelector(".main-content")?.scrollTo?.(0, 0);
-        document.querySelector(".play-sidebar-panel-body")?.scrollTo?.(0, 0);
-        document.querySelector(".play-sidebar")?.scrollTo?.(0, 0);
+        for (const element of document.querySelectorAll(".main-content,.transcript,.play-sidebar-panel-body")) element.scrollTop = 0;
       });
-      await wait(200);
-      const metrics = await evaluate((name) => {
-        const root = document.documentElement;
-        const body = document.body;
+      await wait(120);
+      const metrics = await evaluate(({ viewportName, screenName }) => {
         const viewport = { width: innerWidth, height: innerHeight };
-        const selectors = [
-          ".app-header", ".main-content", ".page", ".editor-body", ".editor-tabs",
-          ".play-layout", ".play-main", ".story-scroll", ".play-sidebar", ".play-sidebar-panel",
-          ".play-sidebar-panel-body", ".composer", ".composer-input-row", ".story-card-item",
-          ".brain-item", ".component-editor-item", ".context-preview-table", ".context-preview-shell",
-          ".library-page", ".settings-page", ".import-export-page", ".memory-inbox-page",
-          ".chronicle-page", ".triggers-page",
-        ];
-        const isVisible = (el) => {
-          const rect = el.getBoundingClientRect();
-          const style = getComputedStyle(el);
-          return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity || "1") > 0.01;
+        const visible = (element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          if (rect.width <= 0 || rect.height <= 0 || style.display === "none" || style.visibility === "hidden" || Number(style.opacity || 1) <= 0.01) return false;
+          const x = Math.max(0, Math.min(innerWidth - 1, rect.left + Math.min(rect.width / 2, 8)));
+          const y = Math.max(0, Math.min(innerHeight - 1, rect.top + Math.min(rect.height / 2, 8)));
+          const topElement = document.elementFromPoint(x, y);
+          return !topElement || element.contains(topElement) || topElement.contains(element);
         };
-        const selectorFor = (el) => {
-          if (el.id) return `${el.tagName.toLowerCase()}#${el.id}`;
-          const classes = String(el.className || "").trim().split(/\s+/).filter(Boolean).slice(0, 4).join(".");
-          return `${el.tagName.toLowerCase()}${classes ? `.${classes}` : ""}`;
+        const selector = (element) => {
+          if (element.id) return `${element.tagName.toLowerCase()}#${element.id}`;
+          const classes = String(element.className || "").split(/\s+/).filter(Boolean).slice(0, 3).join(".");
+          return `${element.tagName.toLowerCase()}${classes ? `.${classes}` : ""}`;
         };
-        const overflowChildrenFor = (el, containerRect) => {
-          const children = [];
-          for (const child of el.querySelectorAll("*")) {
-            if (!isVisible(child)) continue;
-            const rect = child.getBoundingClientRect();
-            const scrollDelta = child.scrollWidth - child.clientWidth;
-            const rightDelta = rect.right - containerRect.right;
-            const leftDelta = containerRect.left - rect.left;
-            if (scrollDelta > 2 || rightDelta > 2 || leftDelta > 2) {
-              children.push({
-                selector: selectorFor(child),
-                className: String(child.className || ""),
-                scrollDelta: Math.round(scrollDelta),
-                rightDelta: Math.round(rightDelta),
-                leftDelta: Math.round(leftDelta),
-                rect: {
-                  left: Math.round(rect.left),
-                  right: Math.round(rect.right),
-                  width: Math.round(rect.width),
-                  height: Math.round(rect.height),
-                },
-              });
-            }
-          }
-          return children.slice(0, 8);
-        };
-        const directChildrenFor = (el) => {
-          const children = [];
-          for (const child of el.children) {
-            if (!isVisible(child)) continue;
-            const rect = child.getBoundingClientRect();
-            const style = getComputedStyle(child);
-            children.push({
-              selector: selectorFor(child),
-              className: String(child.className || ""),
-              clientWidth: child.clientWidth,
-              scrollWidth: child.scrollWidth,
-              rect: {
-                left: Math.round(rect.left),
-                right: Math.round(rect.right),
-                width: Math.round(rect.width),
-                height: Math.round(rect.height),
-              },
-              computedStyle: {
-                display: style.display,
-                overflowX: style.overflowX,
-                paddingLeft: style.paddingLeft,
-                paddingRight: style.paddingRight,
-                marginLeft: style.marginLeft,
-                marginRight: style.marginRight,
-                listStylePosition: style.listStylePosition,
-              },
-            });
-          }
-          return children.slice(0, 8);
-        };
-        const containersWithOverflow = [];
-        for (const selector of selectors) {
-          for (const el of document.querySelectorAll(selector)) {
-            if (!isVisible(el)) continue;
-            const delta = el.scrollWidth - el.clientWidth;
-            if (delta > 2) {
-              const rect = el.getBoundingClientRect();
-              const style = getComputedStyle(el);
-              containersWithOverflow.push({
-                selector,
-                className: String(el.className || ""),
-                overflowX: delta,
-                clientWidth: el.clientWidth,
-                scrollWidth: el.scrollWidth,
-                rect: { left: Math.round(rect.left), right: Math.round(rect.right), width: Math.round(rect.width), height: Math.round(rect.height) },
-                computedStyle: {
-                  display: style.display,
-                  overflowX: style.overflowX,
-                  paddingLeft: style.paddingLeft,
-                  paddingRight: style.paddingRight,
-                  marginLeft: style.marginLeft,
-                  marginRight: style.marginRight,
-                  listStylePosition: style.listStylePosition,
-                },
-                directChildren: directChildrenFor(el),
-                overflowChildren: overflowChildrenFor(el, rect),
-              });
-            }
-          }
-        }
+        const interactive = [...document.querySelectorAll("button,input,select,textarea,summary,[role=button]")].filter(visible);
         const protrusions = [];
-        const collapsedText = [];
-        const collapsedControls = [];
-        const internalOverflow = [];
-        for (const el of document.querySelectorAll("body *")) {
-          if (!isVisible(el)) continue;
-          const rect = el.getBoundingClientRect();
-          const visibleY = rect.bottom >= 0 && rect.top <= viewport.height;
-          const selector = selectorFor(el);
-          const style = getComputedStyle(el);
-          const tag = el.tagName.toLowerCase();
-          const role = el.getAttribute("role") || "";
-          if (visibleY && (rect.right > viewport.width + 2 || rect.left < -2)) {
-            protrusions.push({ selector, className: String(el.className || ""), rect: { left: Math.round(rect.left), right: Math.round(rect.right), top: Math.round(rect.top), bottom: Math.round(rect.bottom), width: Math.round(rect.width), height: Math.round(rect.height) } });
+        const clippedText = [];
+        const tinyTargets = [];
+        const overlaps = [];
+        for (const element of document.querySelectorAll("body *")) {
+          if (!visible(element)) continue;
+          const rect = element.getBoundingClientRect();
+          if (rect.bottom < 0 || rect.top > viewport.height) continue;
+          if (rect.left < -2 || rect.right > viewport.width + 2) protrusions.push({ selector: selector(element), left: Math.round(rect.left), right: Math.round(rect.right) });
+          const text = (element.textContent || "").replace(/\s+/g, " ").trim();
+          const style = getComputedStyle(element);
+          if (element.children.length === 0 && text.length > 18 && element.scrollWidth - element.clientWidth > 2 && !["auto", "scroll"].includes(style.overflowX) && style.textOverflow !== "ellipsis") {
+            clippedText.push({ selector: selector(element), text: text.slice(0, 80), delta: element.scrollWidth - element.clientWidth });
           }
-          const isNativeTinyControl = tag === "input" && ["checkbox", "radio"].includes(el.type);
-          if (!isNativeTinyControl && visibleY && (tag === "button" || tag === "input" || tag === "select" || tag === "textarea" || tag === "summary" || role === "button") && (rect.height < 16 || rect.width < 16)) {
-            collapsedControls.push({ selector, tag, role, rect: { width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top), left: Math.round(rect.left) } });
-          }
-          const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-          if (visibleY && text.length > 30 && rect.height < 8 && !["script", "style", "option"].includes(tag)) {
-            collapsedText.push({ selector, className: String(el.className || ""), textLength: text.length, rect: { width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top), left: Math.round(rect.left) } });
-          }
-          if (visibleY && el.clientWidth > 0 && el.scrollWidth - el.clientWidth > 2) {
-            const important = /context|story-card|brain|component|editor|play|composer|library|settings|import|memory|trigger|chronicle/.test(selector);
-            if (important && style.overflowX !== "auto" && style.overflowX !== "scroll") {
-              internalOverflow.push({ selector, className: String(el.className || ""), overflowX: style.overflowX, delta: el.scrollWidth - el.clientWidth, rect: { width: Math.round(rect.width), height: Math.round(rect.height), top: Math.round(rect.top), left: Math.round(rect.left) } });
+        }
+        for (const element of interactive) {
+          const rect = element.getBoundingClientRect();
+          const tag = element.tagName.toLowerCase();
+          const nativeSmall = tag === "input" && ["checkbox", "radio", "range"].includes(element.type);
+          if (!nativeSmall && (rect.width < 24 || rect.height < 24)) tinyTargets.push({ selector: selector(element), width: Math.round(rect.width), height: Math.round(rect.height) });
+        }
+        for (let index = 0; index < interactive.length; index += 1) {
+          const first = interactive[index].getBoundingClientRect();
+          if (first.bottom < 0 || first.top > viewport.height) continue;
+          for (let next = index + 1; next < interactive.length; next += 1) {
+            const second = interactive[next].getBoundingClientRect();
+            const width = Math.min(first.right, second.right) - Math.max(first.left, second.left);
+            const height = Math.min(first.bottom, second.bottom) - Math.max(first.top, second.top);
+            const deliberateOverlay = interactive[index].closest(".mobile-bottom-nav,.mobile-more-backdrop,.toast-stack,.composer-input-row") ||
+              interactive[next].closest(".mobile-bottom-nav,.mobile-more-backdrop,.toast-stack,.composer-input-row");
+            if (width > 3 && height > 3 && !deliberateOverlay && !interactive[index].contains(interactive[next]) && !interactive[next].contains(interactive[index])) {
+              overlaps.push({
+                first: selector(interactive[index]),
+                firstText: (interactive[index].textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+                second: selector(interactive[next]),
+                secondText: (interactive[next].textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+                width: Math.round(width),
+                height: Math.round(height),
+              });
             }
           }
         }
-        const documentOverflowX = Math.max(root.scrollWidth, body.scrollWidth) - innerWidth;
+        const headings = [...document.querySelectorAll("h1,h2,h3,h4")].filter(visible).map((heading) => ({
+          selector: selector(heading),
+          text: heading.textContent?.trim().slice(0, 70),
+          size: Number.parseFloat(getComputedStyle(heading).fontSize),
+          family: getComputedStyle(heading).fontFamily,
+        }));
+        const oversizedEmptyCards = [...document.querySelectorAll(".library-card-body,.profile-connection-card-body,.panel,.card")]
+          .filter(visible)
+          .map((element) => ({ element, rect: element.getBoundingClientRect(), text: (element.textContent || "").replace(/\s+/g, " ").trim() }))
+          .filter(({ rect, text }) => rect.height > 180 && text.length < 40)
+          .map(({ element, rect, text }) => ({ selector: selector(element), height: Math.round(rect.height), text }));
         return {
-          name,
+          viewportName,
+          screenName,
           viewport,
-          activeNav: [...document.querySelectorAll(".app-nav button.active")].map((button) => button.textContent?.trim()),
-          activeEditorTabs: [...document.querySelectorAll(".editor-tabs button.active")].map((button) => button.textContent?.trim()),
-          activePlayTools: [...document.querySelectorAll(".play-tool-nav button.active-tool,.play-tool-row button.active-tool")].map((button) => button.textContent?.trim()),
-          h1: document.querySelector("h1")?.textContent?.trim() || "",
-          h2: document.querySelector("h2")?.textContent?.trim() || "",
-          documentOverflowX,
-          containersWithOverflow: containersWithOverflow.slice(0, 10),
-          protrusions: protrusions.slice(0, 10),
-          collapsedText: collapsedText.slice(0, 10),
-          collapsedControls: collapsedControls.slice(0, 10),
-          internalOverflow: internalOverflow.slice(0, 10),
-          counts: {
-            protrusions: protrusions.length,
-            collapsedText: collapsedText.length,
-            collapsedControls: collapsedControls.length,
-            internalOverflow: internalOverflow.length,
-          },
+          heading: document.querySelector("h1")?.textContent?.trim() || document.querySelector("h2")?.textContent?.trim() || "",
+          documentOverflowX: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
+          protrusions: protrusions.slice(0, 12),
+          clippedText: clippedText.slice(0, 12),
+          tinyTargets: tinyTargets.slice(0, 12),
+          overlaps: overlaps.slice(0, 12),
+          headings,
+          oversizedEmptyCards,
         };
-      }, name);
+      }, { viewportName, screenName });
       const failures = [];
-      if (metrics.documentOverflowX > 2) failures.push(`documentOverflowX=${metrics.documentOverflowX}`);
-      if (metrics.containersWithOverflow.length) failures.push(`containersWithOverflow=${metrics.containersWithOverflow.length}`);
-      if (metrics.protrusions.length) failures.push(`protrusions=${metrics.counts.protrusions}`);
-      if (metrics.collapsedText.length) failures.push(`collapsedText=${metrics.counts.collapsedText}`);
-      if (metrics.collapsedControls.length) failures.push(`collapsedControls=${metrics.counts.collapsedControls}`);
-      if (metrics.internalOverflow.length) failures.push(`internalOverflow=${metrics.counts.internalOverflow}`);
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
-      const screenshotPath = await screenshot(`${String(results.length + 1).padStart(2, "0")}-${slug}.png`);
-      results.push({ name, screenshotPath, failures, metrics });
+      if (metrics.documentOverflowX > 2) failures.push(`document overflow ${metrics.documentOverflowX}px`);
+      if (metrics.protrusions.length) failures.push(`${metrics.protrusions.length} viewport protrusions`);
+      if (metrics.clippedText.length) failures.push(`${metrics.clippedText.length} clipped text elements`);
+      if (metrics.tinyTargets.length) failures.push(`${metrics.tinyTargets.length} controls below 24px`);
+      if (metrics.overlaps.length) failures.push(`${metrics.overlaps.length} overlapping controls`);
+      if (metrics.oversizedEmptyCards.length) failures.push(`${metrics.oversizedEmptyCards.length} oversized empty cards`);
+      const slug = `${viewportName}-${screenName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const capture = await cdp.send("Page.captureScreenshot", { format: "png", fromSurface: true });
+      const screenshotPath = path.join(auditDir, `${String(results.length + 1).padStart(2, "0")}-${slug}.png`);
+      await writeFile(screenshotPath, Buffer.from(capture.data, "base64"));
+      results.push({ ...metrics, failures, screenshotPath });
     };
 
-    const navigateApp = async () => {
-      await cdp.send("Page.navigate", { url: baseUrl });
-      await wait(1200);
-      const hasAdventure = await evaluate(() => {
-        const button = [...document.querySelectorAll(".app-nav button")].find((item) => item.textContent?.trim() === "Adventure");
-        return !!button && !button.disabled;
+    const rail = async (label) => clickExact(label, ".product-rail-nav");
+    const studioTab = async (label) => clickExact(label, ".editor-tabs");
+    for (const viewport of viewports) {
+      await cdp.send("Emulation.setDeviceMetricsOverride", {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: viewport.mobile,
       });
-      if (hasAdventure) return;
-      const loaded = await evaluate(() => {
-        const arcane = [...document.querySelectorAll(".library-card")].find((card) => card.textContent?.includes("Arcane: After the Rocket"));
-        const select = arcane ? [...arcane.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Select") : null;
-        if (select) { select.click(); return "saved"; }
-        return "";
-      });
-      if (loaded) { await wait(900); return; }
-      await clickButton(".library-header", "Premade Library");
-      await evaluate(() => {
-        const arcane = [...document.querySelectorAll(".library-card")].find((card) => card.textContent?.includes("Arcane: After the Rocket"));
-        const load = arcane ? [...arcane.querySelectorAll("button")].find((button) => button.textContent?.trim() === "Load") : null;
-        if (!load) throw new Error("Arcane premade load button not found");
-        load.click();
-      });
-      await wait(900);
-    };
-
-    const results = [];
-    await navigateApp();
-
-    await top("Library");
-    await auditScreen("Library - saved adventures");
-    await clickButton(".library-header", "Premade Library");
-    await auditScreen("Library - premade library", { detailsScope: ".main-content" });
-    await clickButton(".main-content", "Library", { contains: true });
-    await clickButton(".library-header", "Load from GitHub");
-    await auditScreen("Library - GitHub save slots", { detailsScope: ".main-content" });
-    await clickButton(".main-content", "Library", { contains: true });
-    await clickButton(".library-header", "New Adventure");
-    await auditScreen("Library - new adventure", { detailsScope: ".main-content" });
-
-    await top("Adventure");
-    await auditScreen("Adventure dashboard", { detailsScope: ".main-content" });
-
-    await top("Play");
-    await openDetails(".play-sidebar");
-    await auditScreen("Play - base with story layout open");
-    const composerOpen = await evaluate(() => !!document.querySelector(".composer:not(.composer-input-closed)"));
-    if (!composerOpen) await clickButton(".composer-actions", "Take a Turn");
-    await auditScreen("Play - composer open");
-    for (const tool of ["Plot", "Cards", "Characters", "Memory", "Context"]) {
-      await clickButton(".play-sidebar .play-tool-nav", tool, { contains: tool === "Context" ? false : false });
-      await auditScreen(`Play sidebar - ${tool}`, { detailsScope: ".play-sidebar-panel-body" });
-    }
-    await clickButton(".play-sidebar .play-tool-nav", "Edit All");
-    await auditScreen("Play toolbar - Edit All destination", { detailsScope: ".main-content" });
-
-    await top("Edit");
-    for (const label of ["Plot", "Story Cards", "Characters", "Memory", "Chronicle", "Automation", "Context", "Saves", "Import / Export"]) {
-      await clickButton(".editor-tabs", label);
-      await auditScreen(`Edit - ${label}`, { detailsScope: ".editor-body" });
-      if (label === "Import / Export") {
-        for (const mode of ["Back Up", "Restore", "Migrate"]) {
-          await clickButton(".import-export-mode-switch", mode, { contains: true });
-          await auditScreen(`Edit - Import Export - ${mode}`, { detailsScope: ".editor-body" });
+      await wait(250);
+      if (viewport.mobile) {
+        const mobilePages = ["Home", "Explore", "Play", "Studio"];
+        for (const label of mobilePages) {
+          await clickExact(label, ".mobile-bottom-nav");
+          await auditCurrentScreen(viewport.name, label === "Studio" ? "Story Studio" : label);
+        }
+        await clickExact("More", ".mobile-bottom-nav");
+        await auditCurrentScreen(viewport.name, "More menu");
+        for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
+          await clickExact(label, ".mobile-more-sheet");
+          await auditCurrentScreen(viewport.name, label);
+          await clickExact("More", ".mobile-bottom-nav");
+        }
+      } else {
+        for (const label of ["Home", "Explore", "Play", "Story Studio"]) {
+          await rail(label);
+          await auditCurrentScreen(viewport.name, label);
+        }
+        for (const label of ["Story & Direction", "World & Lore", "Characters", "Suggestions"]) {
+          await studioTab(label);
+          await auditCurrentScreen(viewport.name, `Story Studio - ${label}`);
+        }
+        for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
+          await clickExact(label, ".product-rail-nav");
+          await auditCurrentScreen(viewport.name, label);
         }
       }
     }
 
-    await header("Settings");
-    await auditScreen("Settings - all sections open", { detailsScope: ".main-content" });
-    await header("Docs");
-    await auditScreen("Docs - help", { detailsScope: ".main-content" });
-
-    const report = {
-      baseUrl,
-      viewport,
-      auditDir,
-      screenCount: results.length,
-      failures: results.filter((result) => result.failures.length),
-      screens: results.map((result) => ({
-        name: result.name,
-        screenshotPath: result.screenshotPath,
-        failures: result.failures,
-        activeNav: result.metrics.activeNav,
-        activeEditorTabs: result.metrics.activeEditorTabs,
-        activePlayTools: result.metrics.activePlayTools,
-        documentOverflowX: result.metrics.documentOverflowX,
-        counts: result.metrics.counts,
-      })),
-    };
     const reportPath = path.join(auditDir, "report.json");
-    await writeFile(reportPath, JSON.stringify(report, null, 2));
-    console.log(JSON.stringify({ reportPath, screenCount: report.screenCount, failureCount: report.failures.length, failures: report.failures.map((failure) => ({ name: failure.name, failures: failure.failures, screenshotPath: failure.screenshotPath })) }, null, 2));
-    if (report.failures.length > 0) process.exitCode = 1;
-    cdp.close();
+    const failed = results.filter((result) => result.failures.length > 0);
+    await writeFile(reportPath, JSON.stringify({ baseUrl, generatedAt: new Date().toISOString(), results }, null, 2));
+    console.log(JSON.stringify({ auditDir, reportPath, screens: results.length, failedScreens: failed.map((item) => ({ screen: `${item.viewportName}: ${item.screenName}`, failures: item.failures })) }, null, 2));
+    if (failed.length) process.exitCode = 1;
   } finally {
+    cdp?.close();
     chrome.kill();
-    try {
-      await rm(profileDir, { recursive: true, force: true });
-    } catch {
-      // Chrome may keep Crashpad metrics files open briefly after exit.
-    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    await rm(profileDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(error instanceof Error ? error.stack : error);
   process.exitCode = 1;
 });

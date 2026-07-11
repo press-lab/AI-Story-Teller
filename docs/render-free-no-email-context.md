@@ -261,7 +261,7 @@ When the owner is ready:
 1. Add and verify `storymodeai.com` in Resend.
 2. Create a sending-only Resend API key restricted to the verified domain.
 3. Configure `RESEND_API_KEY` and a sender such as
-   `AI Story Teller <accounts@storymodeai.com>` in Render.
+   `Story Mode AI <accounts@storymodeai.com>` in Render.
 4. Set `AIST_EMAIL_DELIVERY_MODE=resend`.
 5. Set `AIST_PASSWORD_SIGNUP_MODE=emailVerification`; valid invites remain
    mandatory.

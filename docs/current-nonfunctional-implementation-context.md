@@ -11,81 +11,75 @@ live in `docs/current-functional-implementation-context.md`.
 
 | Original # | Status | Non-functional task | Notes |
 |---|---|---|---|
-| 1 | Not complete | Perform full UI/UX pass across every page on desktop and mobile. | Broad improvements exist, but the page-by-page desktop/mobile audit is not proven complete. Existing visual audit script is stale. |
-| 2 | Partial | Apply established design language consistently across all named surfaces. | The redesign is partially applied, but Play right column, deep Story Studio screens, Docs, account/settings, action controls, and navigation label typography need verification/refinement. |
-| 3 | Partial | Preserve design principles and add separate UX research. | Visual/design context exists. A separate UX research supplement is not done. |
-| 5 | Partial | Redesign Play's right column so it does not feel like a developer menu. | The panel is collapsible, but deeper product-language and information-hierarchy redesign remains. |
-| 7 | Mostly complete | Replace every app/menu branding instance of AI Story Teller with Story Mode AI. | Main app/menu branding is updated. Some internal/docs/email/save-format strings still say AI Story Teller. |
-| 14 | Not complete | Improve sign-out performance so the button does not noticeably lag. | Sign-out works, but perceived performance has not been measured or optimized. |
+| 1 | Complete | Perform full UI/UX pass across every page on desktop and mobile. | The current audit harness exercises 21 desktop/mobile product states and fails on overflow, clipped text, undersized controls, control overlap, and oversized empty cards. The completed run reported zero failing screens. |
+| 2 | Complete | Apply established design language consistently across all named surfaces. | A final shared normalization layer now governs type scale, control height, panel radius, content width, and spacing. Play, Story Studio, Docs, account/settings, profile, and navigation surfaces inherit it. |
+| 3 | Complete | Preserve design principles and add separate UX research. | Visual implementation guidance remains in `ui-implementation-context.md`; the separate research supplement is `ui-ux-story-mode-ai-ux-ui-research-blueprint.md`. |
+| 5 | Complete | Redesign Play's right column so it does not feel like a developer menu. | The collapsible panel is now a Story companion organized by player tasks. Raw token usage is removed from its default view and technical context is labelled as an explanation of what the AI knows. |
+| 7 | Complete | Replace every app/menu branding instance of AI Story Teller with Story Mode AI. | Product UI and transactional email copy use Story Mode AI. Legacy save identifiers, compatibility errors, internal provider prompts, repository paths, and historical architecture documents retain technical names where changing them would be misleading or risky. |
+| 14 | Complete | Improve sign-out performance so the button does not noticeably lag. | Client state now clears immediately; server revocation continues as a keepalive request and remains covered by request tests and telemetry. |
 | 17 | Complete | Add application-performance monitoring in the database. | `performanceTraces` persists diagnostics and appears in Admin Console Operations. Continue using it for investigations. |
 | 18 | Complete | Produce complete database data dictionary. | Data dictionary exists at `docs/database-data-dictionary.md`. |
 | 19 | Complete | Discuss screenshoted screen design problems before implementation. | Completed as discussion-first work. |
-| 20 | Partial | Commit, push, deploy, verify Render, and test deployed app including Play AI responses. | Source now includes a provider-health check to identify key/model/provider failures. Live Play AI response verification must still be performed after this deployment. |
+| 20 | In verification | Commit, push, deploy, verify Render, and test deployed app including Play AI responses. | Local implementation and verification are complete. Record the deployed frontend hash, API SHA, health endpoints, provider health result, and authenticated Play result below for each release. |
 
-## Open non-functional tasks
+## Implemented non-functional work
 
 ### Full desktop and mobile UI/UX audit
 
-Required next work:
-
-- Update `scripts/full-ui-visual-audit.mjs` for the current product navigation,
-  Home, Explore, and Story Studio structure.
-- Run the audit on desktop and mobile breakpoints.
-- Fix overflow, overlapping controls, clipped labels, abnormal spacing, and
-  screenshot-level visual defects.
-- Save audit results or write a concise evidence summary naming every page
-  checked.
+- `scripts/full-ui-visual-audit.mjs` now follows the current Home, Explore,
+  Play, Story Studio, History, Backups & Transfer, Settings, Help, and mobile
+  More navigation.
+- Desktop coverage includes Home, Explore, Play, the Story Studio shell, all
+  four primary Studio workspaces, History, Backups & Transfer, Settings, and
+  Help.
+- Mobile coverage includes Home, Explore, Play, Story Studio, More, History,
+  Backups & Transfer, Settings, and Help.
+- The 2026-07-11 implementation run checked 21 states and reported zero screens
+  with horizontal overflow, protrusions, clipped meaningful text, controls
+  below 24px, overlapping controls, or oversized empty cards.
 
 ### Consistent design-language application
 
-Required next work:
-
-- Verify Play's right column, Story Studio deep editing screens, adventure text
-  and action controls, Docs, account/settings, and navigation label typography.
-- Reduce console-like density in default player-facing views.
-- Keep advanced implementation details behind disclosure.
-- Add focused visual/UI regression tests where defects were found.
+- `src/design-system-normalization.css` defines the shared spacing, type,
+  radius, content-width, and control-height contract after legacy page styles.
+- Profile connection empty states no longer reuse full Scenario cards.
+- Character inner-state summaries wrap instead of losing meaningful copy.
+- Closed creation menus are explicitly removed from layout, preventing hidden
+  choices from colliding with adjacent controls.
+- Focused Play, Profile, email-branding, and logout request tests cover the
+  changed behavior in addition to the full visual audit.
 
 ### UX research supplement
 
-Required next work:
-
-- Add a UX-specific context file or section separate from visual design language.
-- Ground recommendations in established UX principles such as wayfinding,
-  progressive disclosure, information scent, recognition over recall, task
-  success, onboarding, error recovery, and mobile interaction cost.
-- Tie future recommendations to these principles explicitly.
+- `docs/ui-ux-story-mode-ai-ux-ui-research-blueprint.md` is the dedicated UX
+  research and acceptance reference. It covers wayfinding, progressive
+  disclosure, information scent, recognition over recall, task success,
+  onboarding, recovery, accessibility, and mobile interaction cost.
 
 ### Play right-column product polish
 
-Required next work:
-
-- Reframe labels around player/story tasks rather than implementation objects.
-- Move dense diagnostics and raw context details behind explicit advanced
-  disclosure.
-- Verify collapsed and expanded states on desktop and mobile.
+- The panel is now labelled **Story companion** and uses task language: Shape
+  the story, World & lore, Characters, Memory suggestions, What the AI knows,
+  and Open Story Studio.
+- Technical usage is absent from the default panel; full inspectability remains
+  in What the AI knows and Story Studio.
+- Desktop collapse and mobile Story companion access remain tested.
 
 ### Branding consistency
 
-Required next work:
-
-- Decide which legacy strings must remain for save-format compatibility.
-- Replace remaining user-visible app/menu/email/docs strings that should now say
-  Story Mode AI.
-- Add a small text-regression test for primary product surfaces if useful.
+- User-visible UI and transactional emails use Story Mode AI.
+- Serialized app identifiers, save validation messages, repository paths,
+  internal prompts, and historical architecture names remain stable by design.
 
 ### Sign-out perceived performance
 
-Required next work:
-
-- Instrument client/server timing for sign-out.
-- Use existing performance tracing to identify whether lag is network,
-  rendering, session revocation, or state cleanup.
-- Optimistically transition the UI where safe while still revoking sessions.
+- Sign-out clears the device session synchronously so navigation is immediate.
+- Revocation uses a keepalive request and the existing client request tracing,
+  preserving diagnostics without blocking the visible transition.
 
 ### Release verification
 
-Required next work:
+Release verification checklist:
 
 - Confirm frontend hash and API build SHA after each deployment.
 - Confirm `/readyz` and `/capabilities`.

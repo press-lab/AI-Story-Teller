@@ -9,7 +9,7 @@ describe("transactional email delivery", () => {
     ));
     const delivery = configuredEmailDelivery(loadApiConfig({
       resendApiKey: "resend-secret",
-      emailFrom: "AI Story Teller <accounts@example.com>",
+      emailFrom: "Story Mode AI <accounts@example.com>",
       fetchImpl,
     }));
 
@@ -24,16 +24,16 @@ describe("transactional email delivery", () => {
     expect(url).toBe("https://api.resend.com/emails");
     expect(init?.headers).toMatchObject({ Authorization: "Bearer resend-secret" });
     expect(JSON.parse(String(init?.body))).toMatchObject({
-      from: "AI Story Teller <accounts@example.com>",
+      from: "Story Mode AI <accounts@example.com>",
       to: ["player@example.com"],
-      subject: "Verify your AI Story Teller account",
+      subject: "Verify your Story Mode AI account",
     });
   });
 
   it("reports only the Resend status when delivery fails", async () => {
     const delivery = configuredEmailDelivery(loadApiConfig({
       resendApiKey: "resend-secret",
-      emailFrom: "AI Story Teller <accounts@example.com>",
+      emailFrom: "Story Mode AI <accounts@example.com>",
       fetchImpl: async () => new Response("provider-internal-detail", { status: 503 }),
     }));
 

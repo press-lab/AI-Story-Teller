@@ -497,6 +497,7 @@ export function loadBackendSession(config: RuntimeConfig, session: BackendSessio
 export function logoutBackendSession(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<{ ok: true }>(config, "/auth/logout", {
     method: "POST",
+    keepalive: true,
     headers: authHeaders(session),
   });
 }
