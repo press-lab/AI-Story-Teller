@@ -2,11 +2,11 @@
  * @vitest-environment jsdom
  */
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PremadeAdventureDefinition } from "../dev/premadeAdventures";
-import type { BackendExploreScenarioSummary, BackendSessionState } from "../runtime/backendApi";
+import type { BackendExploreScenarioSummary, BackendPublicProfileSearchResult, BackendSessionState } from "../runtime/backendApi";
 import { createDefaultAdventure } from "../state/defaults";
 import { ExplorePage } from "./ExplorePage";
 
@@ -45,6 +45,21 @@ function backendScenario(overrides: Partial<BackendExploreScenarioSummary> = {})
     version: 1,
     createdAt,
     publishedAt: createdAt,
+    ...overrides,
+  };
+}
+
+function profileResult(overrides: Partial<BackendPublicProfileSearchResult> = {}): BackendPublicProfileSearchResult {
+  return {
+    userId: "user-creator",
+    displayName: "Creator",
+    bio: "Writes weird little clockwork tragedies.",
+    createdAt,
+    scenarioCount: 1,
+    followerCount: 2,
+    isFollowing: true,
+    friendshipStatus: "friends",
+    scenarios: [backendScenario({ title: "Clockwork City" })],
     ...overrides,
   };
 }
@@ -215,5 +230,35 @@ describe("ExplorePage", () => {
     const likeButtons = screen.getAllByRole("button", { name: "Like Community Scenario" });
     await user.click(likeButtons[0]);
     expect(onToggleScenarioLike).toHaveBeenCalledTimes(2);
+  });
+
+  it("searches creator profiles and opens profile results", async () => {
+    const user = userEvent.setup();
+    const onSearchProfiles = vi.fn(async () => undefined);
+    const onOpenProfile = vi.fn(async () => undefined);
+
+    render(
+      <ExplorePage
+        backendMode
+        backendSession={session()}
+        scenarios={[backendScenario()]}
+        profileResults={[profileResult()]}
+        premadeAdventures={[]}
+        onSearchProfiles={onSearchProfiles}
+        onOpenProfile={onOpenProfile}
+      />,
+    );
+
+    await user.type(screen.getByRole("searchbox", { name: "Search scenarios" }), "creator");
+
+    await waitFor(() => expect(onSearchProfiles).toHaveBeenLastCalledWith("creator"));
+    const people = screen.getByRole("region", { name: "Creator profiles" });
+    expect(within(people).getByRole("heading", { name: "Creator" })).toBeInTheDocument();
+    expect(within(people).getByText(/Clockwork City/)).toBeInTheDocument();
+    expect(within(people).getByText("Following")).toBeInTheDocument();
+    expect(within(people).getByText("Friends")).toBeInTheDocument();
+
+    await user.click(within(people).getByRole("button", { name: "View profile" }));
+    expect(onOpenProfile).toHaveBeenCalledWith("user-creator");
   });
 });

@@ -181,6 +181,18 @@ export interface BackendPublicProfileSummary {
   social?: BackendPublicProfileSocial;
 }
 
+export interface BackendPublicProfileSearchResult {
+  userId: string;
+  displayName: string;
+  bio: string;
+  createdAt: string;
+  scenarioCount: number;
+  followerCount: number;
+  isFollowing: boolean;
+  friendshipStatus: "self" | "none" | "outgoing_pending" | "incoming_pending" | "friends";
+  scenarios: BackendExploreScenarioSummary[];
+}
+
 export interface BackendExploreScenarioSummary {
   scenarioId: string;
   revisionId: string;
@@ -225,6 +237,23 @@ export interface BackendPlatformSettings {
   };
   updatedAt?: string;
   updatedByUserId?: string;
+}
+
+export interface BackendProviderHealthResult {
+  ok: true;
+  providerName: string;
+  model: string;
+  durationMs: number;
+  statusCode?: number;
+  retryCount: number;
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+  };
+  contentPreview: string;
 }
 
 export interface BackendAdminConsoleData {
@@ -521,6 +550,13 @@ export function loadBackendPublicProfile(config: RuntimeConfig, session: Backend
   });
 }
 
+export function searchBackendPublicProfiles(config: RuntimeConfig, session: BackendSessionState, query: string) {
+  const params = new URLSearchParams({ q: query });
+  return apiJson<{ profiles: BackendPublicProfileSearchResult[] }>(config, `/profiles/search?${params.toString()}`, {
+    headers: authHeaders(session),
+  });
+}
+
 export function loadBackendExploreScenarios(config: RuntimeConfig, session: BackendSessionState) {
   return apiJson<{ scenarios: BackendExploreScenarioSummary[] }>(config, "/explore/scenarios", {
     headers: authHeaders(session),
@@ -607,6 +643,13 @@ export function saveBackendPlatformSettings(
     method: "PUT",
     headers: authHeaders(session),
     body: JSON.stringify(settings),
+  });
+}
+
+export function checkBackendProviderHealth(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<BackendProviderHealthResult>(config, "/admin/provider-health", {
+    method: "POST",
+    headers: providerMutationHeaders(session),
   });
 }
 

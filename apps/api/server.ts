@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { normalizeAdventure, sanitizeAdventureForPersistence } from "../../src/state/defaults";
 import type { Adventure } from "../../src/types/adventure";
+import { sendOpenAICompatibleChatCompletion } from "../../src/providers/openAICompatible";
 import type { BackendDb } from "./backendDb";
 import { loadApiConfig, type ApiConfig, type PasswordSignupMode } from "./config";
 import { createBackendDb } from "./db";
@@ -51,8 +52,8 @@ import {
   publishScenarioRevision,
   unpublishScenarioRevision,
 } from "./scenarioSharing";
-import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
-import { effectiveAdminEmails, getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
+import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios, searchPublicProfiles } from "./profileReadModels";
+import { effectiveAdminEmails, effectiveProviderConfig, getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
 import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserRole, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { createTraceId, elapsedMs, performanceTrace, sanitizeErrorMessage } from "./performanceTrace";
@@ -508,6 +509,25 @@ async function handleRequest(
       return;
     }
 
+    if (request.method === "GET" && route.pathname === "/profiles/search") {
+      const session = await requireSession(request, db);
+      const query = String(new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`).searchParams.get("q") ?? "");
+      const dbStartedAt = performance.now();
+      const profiles = searchPublicProfiles(await db.read(), session.user.id, query);
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "database",
+        phase: "profile_search_read",
+        route: route.pathname,
+        method: request.method,
+        status: "ok",
+        durationMs: elapsedMs(dbStartedAt),
+        metadata: { resultCount: profiles.length },
+      }));
+      sendJson(response, 200, { profiles }, corsHeaders);
+      return;
+    }
+
     if (request.method === "GET" && route.segments[0] === "profiles" && route.segments.length === 2) {
       const session = await requireSession(request, db);
       const dbStartedAt = performance.now();
@@ -731,6 +751,86 @@ async function handleRequest(
       const { body } = await readJsonBody<PlatformSettingsInput>(request);
       const settings = await db.update((data) => updatePlatformSettings(data, config, body, adminUserId));
       sendJson(response, 200, settings, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/admin/provider-health") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const data = await db.read();
+      const providerConfig = effectiveProviderConfig(data, config);
+      if (!providerConfig.apiKey?.trim()) {
+        throw new ApiError(
+          400,
+          "provider_key_missing",
+          "The platform provider API key is not configured on the backend. Add the secret in Render, then redeploy or restart the API.",
+        );
+      }
+      const providerStartedAt = performance.now();
+      let result: Awaited<ReturnType<typeof sendOpenAICompatibleChatCompletion>>;
+      try {
+        result = await sendOpenAICompatibleChatCompletion({
+          config: {
+            ...providerConfig,
+            maxOutputTokens: Math.min(providerConfig.maxOutputTokens, 16),
+            temperature: 0,
+          },
+          messages: [
+            { role: "system", content: "You are a health check. Reply with exactly OK." },
+            { role: "user", content: "Return OK." },
+          ],
+          thinking: "disabled",
+        });
+      } catch (error) {
+        const apiError = normalizeApiError(error);
+        await recordTrace(db, performanceTrace({
+          traceId,
+          source: "ai",
+          phase: "provider_health_check",
+          route: route.pathname,
+          method: request.method,
+          userId: adminUserId,
+          providerName: providerConfig.name,
+          model: providerConfig.model,
+          status: "error",
+          statusCode: apiError.status,
+          durationMs: elapsedMs(providerStartedAt),
+          errorCategory: apiError.code,
+          errorMessage: apiError.message,
+        }));
+        throw error;
+      }
+      await recordTrace(db, performanceTrace({
+        traceId,
+        source: "ai",
+        phase: "provider_health_check",
+        route: route.pathname,
+        method: request.method,
+        userId: adminUserId,
+        providerName: providerConfig.name,
+        model: providerConfig.model,
+        status: "ok",
+        statusCode: result.metrics?.statusCode,
+        durationMs: elapsedMs(providerStartedAt),
+        promptTokens: result.usage?.promptTokens,
+        completionTokens: result.usage?.completionTokens,
+        totalTokens: result.usage?.totalTokens,
+        throttleWaitMs: result.metrics?.throttleWaitMs,
+        retryCount: result.metrics?.retryCount,
+        metadata: {
+          endpoint: result.metrics?.endpoint,
+          retriedProviderPolicy: result.metrics?.retriedProviderPolicy,
+        },
+      }));
+      sendJson(response, 200, {
+        ok: true,
+        providerName: providerConfig.name,
+        model: providerConfig.model,
+        durationMs: elapsedMs(providerStartedAt),
+        statusCode: result.metrics?.statusCode,
+        retryCount: result.metrics?.retryCount ?? 0,
+        usage: result.usage,
+        contentPreview: result.content.slice(0, 120),
+      }, corsHeaders);
       return;
     }
 
@@ -1629,6 +1729,7 @@ const CLIENT_TELEMETRY_STATIC_API_ROUTES = new Set<string>([
   "/account/export",
   "/account",
   "/profile/me",
+  "/profiles/search",
   "/explore/scenarios",
   "/adventures",
   "/adventures/import",
@@ -1638,6 +1739,7 @@ const CLIENT_TELEMETRY_STATIC_API_ROUTES = new Set<string>([
   "/admin/console",
   "/admin/console/details",
   "/admin/platform-settings",
+  "/admin/provider-health",
   "/admin/maintenance/retention",
 ] as const);
 

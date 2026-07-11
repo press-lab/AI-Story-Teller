@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useActionFeedback } from "../components/ActionFeedback";
-import type { BackendAdminConsoleData, BackendPlatformSettings, BackendSessionState } from "../runtime/backendApi";
+import type { BackendAdminConsoleData, BackendPlatformSettings, BackendProviderHealthResult, BackendSessionState } from "../runtime/backendApi";
 import { CheckboxField, Field, NumberInput } from "./shared";
 
 type RestrictionLevel = "none" | "watched" | "restricted" | "generation_hold" | "banned";
@@ -34,6 +34,7 @@ interface AdminConsolePageProps {
   onCreateInvite: (input: { note?: string; maxUses?: number; expiresInDays?: number }) => Promise<{ token: string; inviteUrl: string }>;
   onDisableInvite: (inviteId: string) => Promise<void>;
   onSavePlatformSettings: (settings: Partial<BackendPlatformSettings>) => Promise<BackendPlatformSettings>;
+  onCheckProviderHealth?: () => Promise<BackendProviderHealthResult>;
 }
 
 function formatDate(iso?: string): string {
@@ -221,6 +222,7 @@ export function AdminConsolePage({
   onCreateInvite,
   onDisableInvite,
   onSavePlatformSettings,
+  onCheckProviderHealth,
 }: AdminConsolePageProps) {
   const { confirmAction, notify } = useActionFeedback();
   const totals = adminTotals(data);
@@ -238,6 +240,7 @@ export function AdminConsolePage({
   const [safetyEventActionId, setSafetyEventActionId] = useState("");
   const [inviteActionId, setInviteActionId] = useState("");
   const [platformDraft, setPlatformDraft] = useState<BackendPlatformSettings | undefined>();
+  const [providerHealth, setProviderHealth] = useState<BackendProviderHealthResult | undefined>();
   const [activeView, setActiveView] = useState<AdminConsoleView>("overview");
   const [operationsSearch, setOperationsSearch] = useState("");
   const [operationsUserId, setOperationsUserId] = useState("");
@@ -502,6 +505,23 @@ export function AdminConsolePage({
     }
   }
 
+  async function checkProviderHealth() {
+    if (!onCheckProviderHealth) return;
+    setAdminActionStatus("Checking platform model provider...");
+    notify("Checking platform model provider...", { type: "info" });
+    try {
+      const result = await onCheckProviderHealth();
+      setProviderHealth(result);
+      setAdminActionStatus(`Provider check passed in ${formatDuration(result.durationMs)}.`);
+      notify("Provider check passed.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Provider health check failed.";
+      setProviderHealth(undefined);
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
+    }
+  }
+
   async function updateSafetyEvent(eventId: string, nextStatus: "open" | "reviewed" | "dismissed") {
     setSafetyEventActionId(eventId);
     setAdminActionStatus(`Updating safety event ${shortId(eventId)}...`);
@@ -740,9 +760,14 @@ export function AdminConsolePage({
                 <h3>Platform Settings</h3>
                 <p className="muted">Backend-wide non-secret defaults. Provider API keys and OAuth secrets stay in environment files.</p>
               </div>
-              <button type="button" onClick={() => void savePlatformSettings()} disabled={!platformDraft}>
-                Save Platform Settings
-              </button>
+              <div className="toolbar">
+                <button type="button" onClick={() => void checkProviderHealth()} disabled={!onCheckProviderHealth}>
+                  Test Model Provider
+                </button>
+                <button type="button" onClick={() => void savePlatformSettings()} disabled={!platformDraft}>
+                  Save Platform Settings
+                </button>
+              </div>
             </div>
             {platformDraft ? (
               <>
@@ -806,6 +831,13 @@ export function AdminConsolePage({
                     </select>
                   </Field>
                 </div>
+                  {providerHealth && (
+                    <p className="notice" role="status">
+                      Provider check passed: {providerHealth.providerName} / {providerHealth.model} replied
+                      in {formatDuration(providerHealth.durationMs)}
+                      {providerHealth.usage?.totalTokens ? ` using ${formatTokenCount(providerHealth.usage.totalTokens)} tokens` : ""}.
+                    </p>
+                  )}
                   <p className="muted">
                     OpenRouter routing is platform-wide when users use the platform model. Balanced default lets OpenRouter
                     weigh cost and uptime; price, latency, or throughput force a stronger preference. Data policy controls

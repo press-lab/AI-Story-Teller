@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AdventureThumbnailFrame } from "../components/AdventureThumbnail";
 import type { PremadeAdventureDefinition, PremadeAdventureId } from "../dev/premadeAdventures";
-import type { BackendExploreScenarioSummary, BackendSessionState } from "../runtime/backendApi";
+import type { BackendExploreScenarioSummary, BackendPublicProfileSearchResult, BackendSessionState } from "../runtime/backendApi";
 import { getAdventureThumbnail } from "../utils/adventureImages";
 
 interface ExplorePageProps {
   backendMode: boolean;
   backendSession?: BackendSessionState | null;
   scenarios: BackendExploreScenarioSummary[];
+  profileResults?: BackendPublicProfileSearchResult[];
   premadeAdventures?: PremadeAdventureDefinition[];
   status?: string;
   onStartScenario?: (revisionId: string) => Promise<void>;
   onStartPremade?: (premadeId: PremadeAdventureId) => Promise<void>;
   onOpenProfile?: (userId: string) => Promise<void>;
+  onSearchProfiles?: (query: string) => Promise<void>;
   onToggleScenarioLike?: (scenarioId: string, liked: boolean) => Promise<void>;
 }
 
@@ -41,11 +43,13 @@ export function ExplorePage({
   backendMode,
   backendSession,
   scenarios,
+  profileResults = [],
   premadeAdventures = [],
   status,
   onStartScenario,
   onStartPremade,
   onOpenProfile,
+  onSearchProfiles,
   onToggleScenarioLike,
 }: ExplorePageProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -96,6 +100,7 @@ export function ExplorePage({
       : null;
   const canStartSelected = selectedPremade ? Boolean(onStartPremade) : Boolean(selectedCommunityScenario && onStartScenario);
   const resultCount = visiblePremades.length + visibleCommunityScenarios.length;
+  const canSearchProfiles = backendMode && Boolean(backendSession) && Boolean(onSearchProfiles);
 
   useEffect(() => {
     if (selectedKey) {
@@ -104,6 +109,14 @@ export function ExplorePage({
       lastDetailTriggerRef.current?.focus();
     }
   }, [selectedKey]);
+
+  useEffect(() => {
+    if (!canSearchProfiles) return;
+    const handle = window.setTimeout(() => {
+      void onSearchProfiles?.(searchQuery);
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [canSearchProfiles, onSearchProfiles, searchQuery]);
 
   function selectSource(source: ExploreSourceFilter) {
     setSourceFilter(source);
@@ -160,7 +173,7 @@ export function ExplorePage({
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search by title, premise, tag, or creator"
+            placeholder={canSearchProfiles ? "Search scenarios, creators, or profiles" : "Search by title, premise, tag, or creator"}
           />
         </label>
 
@@ -211,6 +224,50 @@ export function ExplorePage({
         <p className="notice">Built-in Scenarios are ready to play. Sign in from Settings to browse Community Scenarios.</p>
       )}
       {status && <p className="notice" role="status" aria-live="polite">{status}</p>}
+
+      {canSearchProfiles && normalizedQuery.length >= 2 && (
+        <section className="explore-section" aria-labelledby="profile-search-heading">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">People</p>
+              <h3 id="profile-search-heading">Creator profiles</h3>
+            </div>
+          </div>
+          {profileResults.length ? (
+            <div className="profile-search-grid">
+              {profileResults.map((profile) => (
+                <article key={profile.userId} className="panel profile-search-card">
+                  <div>
+                    <h4>{profile.displayName}</h4>
+                    {profile.bio && <p className="muted">{profile.bio}</p>}
+                    <div className="editor-stat-row">
+                      <span>{profile.scenarioCount} published scenarios</span>
+                      <span>{profile.followerCount} followers</span>
+                      {profile.isFollowing && <span>Following</span>}
+                      {profile.friendshipStatus === "friends" && <span>Friends</span>}
+                    </div>
+                    {profile.scenarios.length > 0 && (
+                      <p className="muted">
+                        Featured: {profile.scenarios.map((scenario) => scenario.title).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    disabled={!onOpenProfile}
+                    onClick={() => void onOpenProfile?.(profile.userId)}
+                  >
+                    View profile
+                  </button>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No creator profiles match this search yet.</p>
+          )}
+        </section>
+      )}
 
       {(selectedPremade || selectedCommunityScenario) && (
         <section
