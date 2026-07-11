@@ -39,6 +39,11 @@ export interface PasswordCredential {
   userId: string;
   passwordHash: string;
   salt: string;
+  algorithm?: "scrypt";
+  parameterVersion?: number;
+  scryptN?: number;
+  scryptR?: number;
+  scryptP?: number;
   createdAt: string;
   updatedAt: string;
 }

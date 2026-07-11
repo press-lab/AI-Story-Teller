@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import type { EmailDelivery } from "./emailDelivery";
 
 export type PolicyMode = "reviewOnly" | "enforce";
+export type EmailDeliveryMode = "disabled" | "resend";
 
 export interface GoogleOAuthConfig {
   clientId: string;
@@ -33,6 +34,7 @@ export interface ApiConfig {
   allowLocalGoogleStub: boolean;
   googleOAuth: GoogleOAuthConfig;
   policyMode: PolicyMode;
+  emailDeliveryMode: EmailDeliveryMode;
   providerConfig: ProviderConfig;
   resendApiKey?: string;
   emailFrom?: string;
@@ -86,6 +88,8 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   };
   const policyModeRaw = stringEnv("AIST_POLICY_MODE", "reviewOnly");
   const policyMode: PolicyMode = policyModeRaw === "enforce" ? "enforce" : "reviewOnly";
+  const emailDeliveryModeRaw = stringEnv("AIST_EMAIL_DELIVERY_MODE", "resend");
+  const emailDeliveryMode: EmailDeliveryMode = emailDeliveryModeRaw === "disabled" ? "disabled" : "resend";
   const config: ApiConfig = {
     host: stringEnv("AIST_API_HOST", "127.0.0.1"),
     port: numberEnv("AIST_API_PORT", numberEnv("PORT", 8787)),
@@ -116,6 +120,7 @@ export function loadApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
       tokenInfoUrl: stringEnv("AIST_GOOGLE_TOKEN_INFO_URL", "https://oauth2.googleapis.com/tokeninfo"),
     },
     policyMode,
+    emailDeliveryMode,
     providerConfig,
     resendApiKey: process.env.RESEND_API_KEY?.trim() || undefined,
     emailFrom: process.env.AIST_EMAIL_FROM?.trim() || undefined,

@@ -10,13 +10,22 @@ The owner is not adding Render billing or Resend yet. Read
 Render service.
 
 The Starter + Resend configuration below remains the later production target.
-It is not the current deployable configuration. The existing hosted server
-intentionally refuses missing email delivery, and Render Free cannot run the
-pre-deploy migration command. Do not work around either boundary with fake
-email credentials or an undocumented dashboard-only command.
+The current controlled-UAT repository contract is now implemented as:
 
-Until the explicit Free/no-email mode is implemented and tested, preserve the
-older live deployment and keep public signup disabled.
+```text
+Plan: Free
+Branch: backend-local-implementation
+Build Command: npm run api:render:build
+Pre-Deploy Command: blank
+Start Command: npm run api:hosted:free
+Health Check Path: /readyz
+AIST_EMAIL_DELIVERY_MODE=disabled
+AIST_POLICY_MODE=reviewOnly
+```
+
+`api:hosted:free` serializes compiled migrations before listening. Reconcile
+the live dashboard to these values before redeploying and keep public signup
+disabled. Do not use fake email credentials.
 
 ## Render Web Service
 
@@ -114,6 +123,7 @@ not increase it to accept arbitrary client-supplied forwarding chains.
 | `AIST_PROVIDER_OPENROUTER_SORT` | Render | No | Optional: `price`, `latency`, or `throughput` |
 | `AIST_PROVIDER_OPENROUTER_DATA_COLLECTION` | Render | No | Optional: `allow` or `deny` |
 | `AIST_POLICY_MODE` | Render | No | `reviewOnly` until owner approval, then `enforce` |
+| `AIST_EMAIL_DELIVERY_MODE` | Render | No | Current UAT: `disabled`; later production: `resend` |
 | `RESEND_API_KEY` | Render/Resend | Yes | Required for hosted verification/reset email |
 | `AIST_EMAIL_FROM` | Render/Resend | No | Required verified sender |
 

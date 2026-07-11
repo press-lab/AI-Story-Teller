@@ -568,6 +568,13 @@ export class PostgresDb implements BackendDb {
     });
   }
 
+  async updateAuth<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T> {
+    return this.updateInTransaction(async (data) => {
+      const result = await mutate(data);
+      return { result, data };
+    }, true);
+  }
+
   async updatePersistingOnError<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T> {
     await this.init();
     const client = await this.pool.connect();
@@ -626,6 +633,26 @@ export class PostgresDb implements BackendDb {
     } finally {
       client.release();
     }
+  }
+
+  async cleanupLifecycle(): Promise<number> {
+    await this.init();
+    const records = await this.pool.query(`
+      DELETE FROM aist_records
+      WHERE
+        (collection = 'sessions' AND (
+          (data->>'expiresAt')::timestamptz < now() - interval '7 days'
+          OR (data ? 'revokedAt' AND (data->>'revokedAt')::timestamptz < now() - interval '7 days')
+        ))
+        OR (collection = 'verificationTokens' AND (data->>'expiresAt')::timestamptz < now() - interval '7 days')
+        OR (collection IN ('oauthStates', 'oauthExchangeCodes') AND (data->>'expiresAt')::timestamptz < now() - interval '1 day')
+        OR (collection IN ('performanceTraces', 'contextBuildEvents') AND (data->>'createdAt')::timestamptz < now() - interval '30 days')
+        OR (collection IN ('policyDecisions', 'accountSafetyEvents', 'usageLogs') AND (data->>'createdAt')::timestamptz < now() - interval '365 days')
+        OR (collection = 'adminActions' AND (data->>'createdAt')::timestamptz < now() - interval '730 days')
+    `);
+    const idempotency = await this.pool.query("DELETE FROM aist_idempotency WHERE expires_at < now()");
+    const rateLimits = await this.pool.query("DELETE FROM aist_rate_limits WHERE expires_at < now()");
+    return (records.rowCount ?? 0) + (idempotency.rowCount ?? 0) + (rateLimits.rowCount ?? 0);
   }
 
   async readProfileSummary(userId: string): Promise<BackendProfileSummary> {
@@ -788,11 +815,13 @@ export class PostgresDb implements BackendDb {
 
   private async updateInTransaction<T>(
     run: (data: LocalDbData) => Promise<{ result: T; data: LocalDbData }>,
+    serializeAuth = false,
   ): Promise<T> {
     await this.init();
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      if (serializeAuth) await client.query("SELECT pg_advisory_xact_lock($1)", [ADVISORY_LOCK_KEY + 1]);
       const data = await this.readWithClient(client);
       const before = structuredClone(data);
       const { result, data: nextData } = await run(data);

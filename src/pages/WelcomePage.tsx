@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import type { BackendPasswordSignupResult, BackendSessionState } from "../runtime/backendApi";
+import type { BackendCapabilities, BackendPasswordSignupResult, BackendSessionState } from "../runtime/backendApi";
 import { Field } from "./shared";
 
 type AuthMode = "start" | "signup" | "login" | "forgot" | "reset";
 
 interface WelcomePageProps {
+  capabilities?: BackendCapabilities;
   onSignupPassword: (input: { inviteToken: string; email: string; password: string; displayName?: string }) => Promise<BackendPasswordSignupResult>;
   onVerifyEmail: (token: string) => Promise<BackendSessionState>;
   onLoginPassword: (input: { email: string; password: string }) => Promise<BackendSessionState>;
@@ -14,6 +15,13 @@ interface WelcomePageProps {
 }
 
 export function WelcomePage({
+  capabilities = {
+    passwordLogin: true,
+    passwordSignup: true,
+    passwordReset: true,
+    emailVerificationDelivery: true,
+    googleOAuth: true,
+  },
   onSignupPassword,
   onVerifyEmail,
   onLoginPassword,
@@ -90,6 +98,9 @@ export function WelcomePage({
             <span>Backend-saved adventures</span>
             <span>Scenario publishing</span>
           </div>
+          <p className="muted">
+            Hosted adventures and model context are stored by the service and sent to the configured model provider for generation. They are not end-to-end encrypted correspondence.
+          </p>
         </div>
 
         <section className="welcome-panel panel" aria-label="Sign in">
@@ -112,6 +123,9 @@ export function WelcomePage({
           </div>
 
           {status && <p className="notice">{status}</p>}
+          {!capabilities.passwordSignup && (
+            <p className="notice">New account signup and email recovery are disabled during controlled UAT. Existing verified users can still log in.</p>
+          )}
 
           {mode === "signup" && (
             <div className="grid two">
@@ -155,12 +169,10 @@ export function WelcomePage({
                 <button type="button" className="primary-action" disabled={busy} onClick={() => chooseMode("login")}>
                   Log in
                 </button>
-                <button type="button" disabled={busy} onClick={() => chooseMode("signup")}>
-                  Sign up
-                </button>
+                {capabilities.passwordSignup && <button type="button" disabled={busy} onClick={() => chooseMode("signup")}>Sign up</button>}
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !capabilities.googleOAuth}
                   onClick={() => void run("Opening Google", async () => {
                     const result = await onStartGoogleOAuth({ returnTo: window.location.href });
                     window.location.assign(result.authUrl);
@@ -224,12 +236,10 @@ export function WelcomePage({
                 >
                   Log in
                 </button>
-                <button type="button" disabled={busy} onClick={() => chooseMode("forgot")}>
-                  Forgot password?
-                </button>
+                {capabilities.passwordReset && <button type="button" disabled={busy} onClick={() => chooseMode("forgot")}>Forgot password?</button>}
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={busy || !capabilities.googleOAuth}
                   onClick={() => void run("Opening Google", async () => {
                     const result = await onStartGoogleOAuth({ returnTo: window.location.href });
                     window.location.assign(result.authUrl);

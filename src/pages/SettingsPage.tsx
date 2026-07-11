@@ -86,6 +86,10 @@ interface SettingsPageProps {
   onLoginBackendPassword?: (input: { email: string; password: string }) => Promise<BackendSessionState>;
   onStartBackendGoogleOAuth?: (input: { inviteToken?: string; returnTo?: string }) => Promise<{ authUrl: string; expiresAt: string }>;
   onLogoutBackend?: () => void;
+  onListBackendSessions?: () => Promise<{ sessions: Array<{ id: string; createdAt: string; expiresAt: string; current: boolean }> }>;
+  onRevokeAllBackendSessions?: () => Promise<void>;
+  onExportBackendAccount?: () => Promise<Record<string, unknown>>;
+  onDeleteBackendAccount?: () => Promise<void>;
   onBackendImport?: (input: BackendImportRequest) => Promise<Adventure>;
   cloudSyncSettings?: CloudSyncSettings;
   cloudSyncStatus?: string;
@@ -119,6 +123,10 @@ export function SettingsPage({
   onLoginBackendPassword,
   onStartBackendGoogleOAuth,
   onLogoutBackend,
+  onListBackendSessions,
+  onRevokeAllBackendSessions,
+  onExportBackendAccount,
+  onDeleteBackendAccount,
   onBackendImport,
   cloudSyncSettings,
   cloudSyncStatus,
@@ -142,6 +150,7 @@ export function SettingsPage({
   const [backendImportSource, setBackendImportSource] = useState<BackendImportRequest["sourceType"]>("aist");
   const [backendImportText, setBackendImportText] = useState("");
   const [backendImportTitle, setBackendImportTitle] = useState("");
+  const [backendSessions, setBackendSessions] = useState<Array<{ id: string; createdAt: string; expiresAt: string; current: boolean }>>([]);
 
   const activePreset = providerPresets.find((p) => p.id === activePresetId) ?? providerPresets[0];
   const showRuntimeTechnicalControls = showLocalDeveloperControls;
@@ -178,6 +187,28 @@ export function SettingsPage({
       notify(message, { type: "error" });
       return undefined;
     }
+  }
+
+  async function revokeEveryBackendSession() {
+    if (!onRevokeAllBackendSessions) return;
+    const confirmed = await confirmAction({
+      title: "Sign out every session?",
+      message: "This signs this account out on every device, including this one.",
+      confirmLabel: "Sign out everywhere",
+      danger: true,
+    });
+    if (confirmed) await runBackendAction("Revoking sessions", onRevokeAllBackendSessions);
+  }
+
+  async function deleteCurrentBackendAccount() {
+    if (!onDeleteBackendAccount) return;
+    const confirmed = await confirmAction({
+      title: "Permanently delete this account?",
+      message: "This permanently deletes the account, hosted adventures, scenarios, and related account data.",
+      confirmLabel: "Delete account",
+      danger: true,
+    });
+    if (confirmed) await runBackendAction("Deleting account", onDeleteBackendAccount);
   }
 
   async function signupWithBackendPassword() {
@@ -521,7 +552,32 @@ export function SettingsPage({
             <button type="button" onClick={onLogoutBackend} disabled={!backendSession}>
               Log out
             </button>
+            {backendSession && onListBackendSessions && (
+              <button type="button" onClick={() => void runBackendAction("Loading sessions", async () => {
+                const result = await onListBackendSessions();
+                setBackendSessions(result.sessions);
+              })}>Sessions</button>
+            )}
+            {backendSession && onRevokeAllBackendSessions && (
+              <button type="button" onClick={() => void revokeEveryBackendSession()}>Sign out everywhere</button>
+            )}
+            {backendSession && onExportBackendAccount && (
+              <button type="button" onClick={() => void runBackendAction("Exporting account", async () => {
+                const exported = await onExportBackendAccount();
+                downloadJson("ai-story-teller-account-export.json", JSON.stringify(exported, null, 2));
+              })}>Export account</button>
+            )}
+            {backendSession && onDeleteBackendAccount && (
+              <button type="button" className="danger" onClick={() => void deleteCurrentBackendAccount()}>Delete account</button>
+            )}
           </div>
+          {backendSessions.length > 0 && (
+            <ul className="compact-list" aria-label="Active sessions">
+              {backendSessions.map((session) => (
+                <li key={session.id}>{session.current ? "Current session" : "Session"} · created {new Date(session.createdAt).toLocaleString()} · expires {new Date(session.expiresAt).toLocaleString()}</li>
+              ))}
+            </ul>
+          )}
 
           {showBackendModelSource && (
             <details className="setup-panel">

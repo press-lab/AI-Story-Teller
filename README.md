@@ -45,6 +45,10 @@ npm run api:db:migrate
 npm run api:hosted
 ```
 
+The current Render Free controlled-UAT service uses `npm run api:hosted:free`
+instead: it runs compiled, advisory-lock-serialized migrations before starting
+the hosted API and explicitly sets `AIST_EMAIL_DELIVERY_MODE=disabled`.
+
 Render must health-check `/readyz`; `/livez` only proves the Node process is alive. Cloudflare Pages builds with `npm run build`, publishes `dist`, and sets `VITE_AIST_RUNTIME_MODE=hostedBackend` plus `VITE_AIST_API_BASE_URL=https://api.storymodeai.com`.
 
 The GitHub Pages workflow is manual-only and retained as rollback. It is not the production deployment path.

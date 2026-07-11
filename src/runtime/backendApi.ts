@@ -32,6 +32,18 @@ export interface BackendSessionState {
   expiresAt?: string;
 }
 
+export interface BackendCapabilities {
+  passwordLogin: boolean;
+  passwordSignup: boolean;
+  passwordReset: boolean;
+  emailVerificationDelivery: boolean;
+  googleOAuth: boolean;
+}
+
+export function loadBackendCapabilities(config: RuntimeConfig) {
+  return apiJson<BackendCapabilities>(config, "/capabilities");
+}
+
 export interface BackendPasswordSignupResult {
   user: BackendUser;
   profile: BackendProfile;
@@ -314,7 +326,7 @@ export type BackendAdminConsoleDetailsData = Pick<
 > & { detailsLoaded: true };
 
 function authHeaders(session?: BackendSessionState): Record<string, string> {
-  return session?.sessionToken ? { Authorization: `Bearer ${session.sessionToken}` } : {};
+  return session?.sessionToken && session.sessionToken !== "cookie" ? { Authorization: `Bearer ${session.sessionToken}` } : {};
 }
 
 function providerMutationHeaders(session: BackendSessionState): Record<string, string> {
@@ -411,6 +423,31 @@ export function logoutBackendSession(config: RuntimeConfig, session: BackendSess
   return apiJson<{ ok: true }>(config, "/auth/logout", {
     method: "POST",
     headers: authHeaders(session),
+  });
+}
+
+export function listBackendSessions(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<{ sessions: Array<{ id: string; createdAt: string; expiresAt: string; current: boolean }> }>(config, "/auth/sessions", {
+    headers: authHeaders(session),
+  });
+}
+
+export function revokeAllBackendSessions(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<{ ok: true }>(config, "/auth/sessions/revoke-all", {
+    method: "POST",
+    headers: authHeaders(session),
+  });
+}
+
+export function exportBackendAccount(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<Record<string, unknown>>(config, "/account/export", { headers: authHeaders(session) });
+}
+
+export function deleteBackendAccount(config: RuntimeConfig, session: BackendSessionState) {
+  return apiJson<{ ok: true }>(config, "/account", {
+    method: "DELETE",
+    headers: authHeaders(session),
+    body: JSON.stringify({ confirmation: "DELETE" }),
   });
 }
 

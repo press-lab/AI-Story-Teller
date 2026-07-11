@@ -57,15 +57,19 @@ import {
   createBackendScenarioRevision,
   createBackendAdminRestriction,
   deleteBackendScenario,
+  deleteBackendAccount,
   disableBackendInvite,
   exchangeBackendGoogleOAuth,
+  exportBackendAccount,
   forkBackendScenarioRevision,
   generateBackendAdventureSetup,
   generateBackendBrain,
   importAndOpenBackendAdventure,
   listBackendAdventureSnapshots,
+  listBackendSessions,
   loadBackendAdminConsole,
   loadBackendAdminConsoleDetails,
+  loadBackendCapabilities,
   loadBackendExploreScenarios,
   loadBackendProfile,
   loadBackendPublicProfile,
@@ -77,6 +81,7 @@ import {
   confirmBackendPasswordReset,
   requestBackendPasswordReset,
   restoreBackendAdventureSnapshot,
+  revokeAllBackendSessions,
   reconcileBackendMemory,
   saveBackendPlatformSettings,
   signupBackendPassword,
@@ -88,6 +93,7 @@ import {
   updateBackendAdminUserStatus,
   verifyBackendEmail,
   type BackendAdminConsoleData,
+  type BackendCapabilities,
   type BackendExploreScenarioSummary,
   type BackendImportRequest,
   type BackendProfileSummary,
@@ -354,6 +360,13 @@ export default function App() {
     "ai-story-teller-backend-session",
     null,
   );
+  const [backendCapabilities, setBackendCapabilities] = useState<BackendCapabilities>({
+    passwordLogin: true,
+    passwordSignup: true,
+    passwordReset: true,
+    emailVerificationDelivery: true,
+    googleOAuth: true,
+  });
   const [backendModelMode, setBackendModelMode] = useLocalStorage<BackendModelMode>(
     "ai-story-teller-backend-model-mode",
     "platform",
@@ -460,6 +473,15 @@ export default function App() {
     localAdventureStore,
   ]);
   useEffect(() => {
+    if (normalizedRuntimeConfig.mode === "local") return;
+    let cancelled = false;
+    void loadBackendCapabilities(normalizedRuntimeConfig)
+      .then((capabilities) => { if (!cancelled) setBackendCapabilities(capabilities); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [normalizedRuntimeConfig]);
+
+  useEffect(() => {
     void refreshAdminDeviceOnlyScenarios();
   }, [refreshAdminDeviceOnlyScenarios]);
   const unavailableBackendStore = useMemo(
@@ -558,17 +580,9 @@ export default function App() {
       }
       return;
     }
-    if (!window.location.hash.includes("backendSession=")) return;
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const rawSession = params.get("backendSession");
-    if (!rawSession) return;
-    try {
-      setBackendPublicProfileUserId(null);
-      setBackendPublicProfile(undefined);
-      setBackendSession(JSON.parse(rawSession) as BackendSessionState);
+    if (window.location.hash.includes("backendSession=")) {
       history.replaceState(history.state, "", `${window.location.pathname}${window.location.search}`);
-    } catch {
-      // Ignore malformed OAuth callback fragments.
+      console.warn("Ignored legacy raw-session URL fragment.");
     }
   }, [normalizedRuntimeConfig, setBackendSession]);
 
@@ -1506,6 +1520,16 @@ export default function App() {
             }}
             onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
             onLogoutBackend={() => void logoutBackend()}
+            onListBackendSessions={() => listBackendSessions(normalizedRuntimeConfig, backendSession!)}
+            onRevokeAllBackendSessions={async () => {
+              await revokeAllBackendSessions(normalizedRuntimeConfig, backendSession!);
+              setBackendSession(null);
+            }}
+            onExportBackendAccount={() => exportBackendAccount(normalizedRuntimeConfig, backendSession!)}
+            onDeleteBackendAccount={async () => {
+              await deleteBackendAccount(normalizedRuntimeConfig, backendSession!);
+              setBackendSession(null);
+            }}
             onBackendImport={importToBackend}
             cloudSyncSettings={cloudSyncSettings}
             cloudSyncStatus={cloudSyncStatus}
@@ -1729,6 +1753,16 @@ export default function App() {
           }}
           onStartBackendGoogleOAuth={(input) => startBackendGoogleOAuth(normalizedRuntimeConfig, input)}
           onLogoutBackend={() => void logoutBackend()}
+          onListBackendSessions={() => listBackendSessions(normalizedRuntimeConfig, backendSession!)}
+          onRevokeAllBackendSessions={async () => {
+            await revokeAllBackendSessions(normalizedRuntimeConfig, backendSession!);
+            setBackendSession(null);
+          }}
+          onExportBackendAccount={() => exportBackendAccount(normalizedRuntimeConfig, backendSession!)}
+          onDeleteBackendAccount={async () => {
+            await deleteBackendAccount(normalizedRuntimeConfig, backendSession!);
+            setBackendSession(null);
+          }}
           onBackendImport={importToBackend}
           cloudSyncSettings={cloudSyncSettings}
           cloudSyncStatus={cloudSyncStatus}
@@ -1863,6 +1897,7 @@ export default function App() {
   if (!backendSession?.sessionToken) {
     return (
       <WelcomePage
+        capabilities={backendCapabilities}
         onSignupPassword={(input) => signupBackendPassword(
           { ...normalizedRuntimeConfig, mode: normalizedRuntimeConfig.mode === "local" ? "backendLocal" : normalizedRuntimeConfig.mode },
           input,

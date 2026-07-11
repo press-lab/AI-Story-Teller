@@ -29,10 +29,11 @@ export async function loadSqlMigrations(directory = resolve(__dirname, "migratio
 export async function runSqlMigrations(connectionString: string, directory?: string): Promise<number[]> {
   const pool = new Pool({ connectionString, max: 1 });
   const applied: number[] = [];
+  const client = await pool.connect();
   try {
+    await client.query("SELECT pg_advisory_lock(hashtext('ai-story-teller-schema-migrations'))");
     const migrations = await loadSqlMigrations(directory);
     for (const migration of migrations) {
-      const client = await pool.connect();
       try {
         await client.query("BEGIN");
         await client.query(`
@@ -64,11 +65,9 @@ export async function runSqlMigrations(connectionString: string, directory?: str
       } catch (error) {
         await client.query("ROLLBACK").catch(() => undefined);
         throw error;
-      } finally {
-        client.release();
       }
     }
-    const result = await pool.query<{ version: number | null }>(
+    const result = await client.query<{ version: number | null }>(
       "SELECT max(version)::int AS version FROM schema_migrations",
     );
     const version = result.rows[0]?.version ?? 0;
@@ -79,6 +78,8 @@ export async function runSqlMigrations(connectionString: string, directory?: str
     }
     return applied;
   } finally {
+    await client.query("SELECT pg_advisory_unlock(hashtext('ai-story-teller-schema-migrations'))").catch(() => undefined);
+    client.release();
     await pool.end();
   }
 }

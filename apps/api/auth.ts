@@ -16,8 +16,16 @@ import type {
 import type { ApiConfig } from "./config";
 import { addDays, addHours, createId, hashToken, isPast, nowIso, randomToken } from "./ids";
 
-const scrypt = promisify(scryptCallback);
+const scrypt = promisify(scryptCallback) as unknown as (
+  password: string,
+  salt: string,
+  keyLength: number,
+  options: { N: number; r: number; p: number; maxmem: number },
+) => Promise<Buffer>;
 const PASSWORD_KEY_BYTES = 64;
+const PASSWORD_PARAMETER_VERSION = 2;
+const PRODUCTION_SCRYPT = { N: 1 << 17, r: 8, p: 1, maxmem: 256 * 1024 * 1024 };
+const TEST_SCRYPT = { N: 1 << 12, r: 8, p: 1, maxmem: 16 * 1024 * 1024 };
 
 export interface CreatedInvite {
   invite: InviteLink;
@@ -68,13 +76,25 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-async function hashPassword(password: string, salt = randomBytes(16).toString("hex")): Promise<{ hash: string; salt: string }> {
-  const key = await scrypt(password, salt, PASSWORD_KEY_BYTES) as Buffer;
-  return { hash: key.toString("hex"), salt };
+async function hashPassword(
+  password: string,
+  salt = randomBytes(16).toString("hex"),
+  parameters = process.env.NODE_ENV === "test" ? TEST_SCRYPT : PRODUCTION_SCRYPT,
+): Promise<{ hash: string; salt: string; N: number; r: number; p: number }> {
+  const key = await scrypt(password, salt, PASSWORD_KEY_BYTES, parameters) as Buffer;
+  return { hash: key.toString("hex"), salt, N: parameters.N, r: parameters.r, p: parameters.p };
 }
 
 async function verifyPassword(password: string, credential: PasswordCredential): Promise<boolean> {
-  const { hash } = await hashPassword(password, credential.salt);
+  const parameters = credential.parameterVersion
+    ? {
+      N: credential.scryptN ?? PRODUCTION_SCRYPT.N,
+      r: credential.scryptR ?? PRODUCTION_SCRYPT.r,
+      p: credential.scryptP ?? PRODUCTION_SCRYPT.p,
+      maxmem: Math.max(16 * 1024 * 1024, 256 * (credential.scryptN ?? PRODUCTION_SCRYPT.N) * (credential.scryptR ?? PRODUCTION_SCRYPT.r)),
+    }
+    : { N: 1 << 14, r: 8, p: 1, maxmem: 32 * 1024 * 1024 };
+  const { hash } = await hashPassword(password, credential.salt, parameters);
   const left = Buffer.from(hash, "hex");
   const right = Buffer.from(credential.passwordHash, "hex");
   return left.length === right.length && timingSafeEqual(left, right);
@@ -271,6 +291,11 @@ export async function signupWithPassword(
     userId: user.id,
     passwordHash: password.hash,
     salt: password.salt,
+    algorithm: "scrypt",
+    parameterVersion: PASSWORD_PARAMETER_VERSION,
+    scryptN: password.N,
+    scryptR: password.r,
+    scryptP: password.p,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   });
@@ -381,6 +406,17 @@ export async function loginWithPassword(data: LocalDbData, input: { email: strin
   if (!credential || !(await verifyPassword(input.password, credential))) {
     throw new Error("Invalid email or password.");
   }
+  if ((credential.parameterVersion ?? 1) < PASSWORD_PARAMETER_VERSION) {
+    const upgraded = await hashPassword(input.password);
+    credential.passwordHash = upgraded.hash;
+    credential.salt = upgraded.salt;
+    credential.algorithm = "scrypt";
+    credential.parameterVersion = PASSWORD_PARAMETER_VERSION;
+    credential.scryptN = upgraded.N;
+    credential.scryptR = upgraded.r;
+    credential.scryptP = upgraded.p;
+    credential.updatedAt = nowIso();
+  }
   const profile = data.profiles.find((entry) => entry.userId === user.id);
   if (!profile) throw new Error("Account profile is missing.");
   return createSession(data, user, profile);
@@ -393,7 +429,7 @@ export function createSession(data: LocalDbData, user: BackendUser, profile: Use
     userId: user.id,
     tokenHash: hashToken(sessionToken),
     createdAt: nowIso(),
-    expiresAt: addDays(30),
+    expiresAt: addDays(7),
   };
   data.sessions.push(session);
   return { user, profile, sessionToken, session };
@@ -457,12 +493,22 @@ export async function confirmPasswordReset(data: LocalDbData, input: { token: st
   if (existing) {
     existing.passwordHash = password.hash;
     existing.salt = password.salt;
+    existing.algorithm = "scrypt";
+    existing.parameterVersion = PASSWORD_PARAMETER_VERSION;
+    existing.scryptN = password.N;
+    existing.scryptR = password.r;
+    existing.scryptP = password.p;
     existing.updatedAt = nowIso();
   } else {
     data.passwordCredentials.push({
       userId: record.userId,
       passwordHash: password.hash,
       salt: password.salt,
+      algorithm: "scrypt",
+      parameterVersion: PASSWORD_PARAMETER_VERSION,
+      scryptN: password.N,
+      scryptR: password.r,
+      scryptP: password.p,
       createdAt: nowIso(),
       updatedAt: nowIso(),
     });

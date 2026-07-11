@@ -104,6 +104,19 @@ export function createUnavailableAdventureStore(message: string): AdventureStore
   };
 }
 
+export class BackendApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+    readonly traceId?: string,
+    readonly retryAfter?: string,
+  ) {
+    super(message);
+    this.name = "BackendApiError";
+  }
+}
+
 export async function apiJson<T>(config: RuntimeConfig, path: string, init: RequestInit = {}): Promise<T> {
   const base = config.apiBaseUrl.replace(/\/+$/, "");
   const startedAt = performance.now();
@@ -120,9 +133,11 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
   try {
     const response = await fetch(`${base}${path}`, {
       ...init,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...initHeaders,
+        ...(method === "GET" || method === "HEAD" ? {} : { "X-AIST-CSRF": "1" }),
         "X-AIST-Trace-Id": traceId,
         "X-AIST-Client-Sent-At": createdAt,
         "X-AIST-Client-Path": path,
@@ -133,10 +148,17 @@ export async function apiJson<T>(config: RuntimeConfig, path: string, init: Requ
     responseBytes = new TextEncoder().encode(text).byteLength;
     const body = parseJsonBody(text);
     if (!response.ok) {
-      const message = body && typeof body === "object" && "error" in body
-        ? String((body as { error: unknown }).error)
+      const errorBody = body && typeof body === "object" ? body as Record<string, unknown> : undefined;
+      const message = errorBody && "error" in errorBody
+        ? String(errorBody.error)
         : backendHttpErrorMessage(config, response.status, text);
-      throw new Error(message);
+      throw new BackendApiError(
+        message,
+        response.status,
+        typeof errorBody?.code === "string" ? errorBody.code : undefined,
+        typeof errorBody?.traceId === "string" ? errorBody.traceId : response.headers.get("X-AIST-Trace-Id") ?? undefined,
+        response.headers.get("Retry-After") ?? undefined,
+      );
     }
     if (text && body === undefined) {
       throw new Error(`Backend returned invalid JSON with HTTP ${response.status}.`);

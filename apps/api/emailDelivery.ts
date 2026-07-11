@@ -19,10 +19,21 @@ export interface EmailDelivery {
 
 export function configuredEmailDelivery(config: ApiConfig): EmailDelivery {
   if (config.emailDelivery) return config.emailDelivery;
+  if (config.emailDeliveryMode === "disabled") return new DisabledEmailDelivery();
   if (config.resendApiKey && config.emailFrom) {
     return new ResendEmailDelivery(config.resendApiKey, config.emailFrom, config.fetchImpl);
   }
   return new MissingEmailDelivery();
+}
+
+class DisabledEmailDelivery implements EmailDelivery {
+  async sendVerificationEmail(): Promise<void> {
+    throw new Error("Account email is disabled during controlled UAT.");
+  }
+
+  async sendPasswordResetEmail(): Promise<void> {
+    throw new Error("Account email is disabled during controlled UAT.");
+  }
 }
 
 class MissingEmailDelivery implements EmailDelivery {

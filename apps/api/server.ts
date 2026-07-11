@@ -60,6 +60,7 @@ import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
 import { configuredEmailDelivery, type EmailDelivery } from "./emailDelivery";
 import { hashToken } from "./ids";
 import { ApiError, normalizeApiError } from "./apiError";
+import { deleteUserData, pruneExpiredAndRetainedData } from "./dataLifecycle";
 
 export interface ApiServer {
   server: Server;
@@ -74,7 +75,19 @@ export function createApiServer(overrides: Partial<ApiConfig> = {}): ApiServer {
   const db = createBackendDb(config);
   const emailDelivery = configuredEmailDelivery(config);
   const server = createServer((request, response) => {
-    void handleRequest(request, response, config, db, emailDelivery);
+    void handleRequest(request, response, config, db, emailDelivery).catch((error) => {
+      if (response.headersSent || response.writableEnded) {
+        response.destroy(error instanceof Error ? error : undefined);
+        return;
+      }
+      const apiError = normalizeApiError(error);
+      const traceId = requestTraceId(request);
+      console.error(`[${traceId}] ${apiError.code}:`, sanitizeErrorMessage(apiError.cause ?? error));
+      sendJson(response, apiError.status, { error: apiError.message, code: apiError.code, traceId }, {
+        ...corsFor(request, config),
+        "X-AIST-Trace-Id": traceId,
+      });
+    });
   });
   return {
     server,
@@ -116,6 +129,9 @@ async function handleRequest(
   const requestStartedAt = performance.now();
   const requestBytes = numericHeader(request.headers["content-length"]);
   try {
+    if (config.databaseUrl && !["GET", "HEAD", "OPTIONS"].includes(request.method ?? "GET") && request.headers["x-aist-csrf"] !== "1") {
+      throw new ApiError(403, "csrf_required", "This request is missing CSRF protection.");
+    }
     if (request.method === "GET" && (route.pathname === "/readyz" || route.pathname === "/health")) {
       const readiness = await db.readiness();
       sendJson(response, 200, {
@@ -131,24 +147,33 @@ async function handleRequest(
     if (request.method === "GET" && route.pathname === "/version") {
       sendJson(response, 200, {
         app: "ai-story-teller-api",
-        mode: "local",
+        version: process.env.npm_package_version ?? "0.1.0",
+        buildSha: process.env.RENDER_GIT_COMMIT ?? process.env.AIST_BUILD_SHA ?? "development",
+        buildTimestamp: process.env.AIST_BUILD_TIMESTAMP,
+        mode: config.databaseUrl ? "hosted" : "local",
         database: config.databaseUrl ? "postgres" : "local-json",
         policyMode: config.policyMode,
+        capabilities: serverCapabilities(config),
       }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/capabilities") {
+      sendJson(response, 200, serverCapabilities(config), corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/admin/invites") {
       const adminUserId = await assertAdmin(request, config, db);
       const { body } = await readJsonBody<{ expiresInDays?: number; maxUses?: number; note?: string }>(request);
-      const created = await db.update((data) => createInvite(data, { ...body, createdByUserId: adminUserId }));
+      const created = await authUpdate(db, (data) => createInvite(data, { ...body, createdByUserId: adminUserId }));
       sendJson(response, 201, created, corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.segments.length === 4 && route.segments[0] === "admin" && route.segments[1] === "invites" && route.segments[3] === "disable") {
       const adminUserId = await assertAdmin(request, config, db);
-      const consoleData = await db.update((data) => {
+      const consoleData = await authUpdate(db, (data) => {
         disableInviteLink(data, adminUserId, route.segments[2]);
         return buildAdminConsole(data, config);
       });
@@ -158,16 +183,17 @@ async function handleRequest(
 
     if (request.method === "GET" && route.segments[0] === "invites" && route.segments[2] === "preview") {
       const token = route.segments[1];
-      const preview = await db.update((data) => previewInvite(data, token));
+      const preview = await authUpdate(db, (data) => previewInvite(data, token));
       sendJson(response, preview.valid ? 200 : 404, preview, corsHeaders);
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/signup/password") {
+      assertEmailCapability(config);
       const { body } = await readJsonBody<{ inviteToken: string; email: string; password: string; displayName?: string }>(request);
       requireStringFields(body, ["inviteToken", "email", "password"]);
       await enforceRateLimit(db, config, request, "signup", body.email, 8, 60_000);
-      const result = await db.update(async (data) => {
+      const result = await authUpdate(db, async (data) => {
         const signup = await signupWithPassword(data, body);
         applyConfiguredAdminRole(data, signup.user, config);
         return signup;
@@ -187,14 +213,15 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/auth/email/verify") {
+      assertEmailCapability(config);
       const { body } = await readJsonBody<{ token: string }>(request);
       requireStringFields(body, ["token"]);
-      const result = await db.update((data) => {
+      const result = await authUpdate(db, (data) => {
         const session = verifyEmailToken(data, body.token);
         applyConfiguredAdminRole(data, session.user, config);
         return session;
       });
-      sendJson(response, 200, publicSession(result, config), corsHeaders);
+      sendJson(response, 200, publicSession(result, config), authSessionHeaders(config, corsHeaders, result));
       return;
     }
 
@@ -202,28 +229,21 @@ async function handleRequest(
       const { body } = await readJsonBody<{ email: string; password: string }>(request);
       requireStringFields(body, ["email", "password"]);
       await enforceRateLimit(db, config, request, "login", body.email, 12, 60_000);
-      const result = db.loadPasswordLoginWorkspace && db.savePasswordLoginWorkspace
-        ? await (async () => {
-          const data = await db.loadPasswordLoginWorkspace!(body.email.trim().toLowerCase());
-          const session = await loginWithPassword(data, body);
-          applyConfiguredAdminRole(data, session.user, config);
-          await db.savePasswordLoginWorkspace!(session.user.id, data);
-          return session;
-        })()
-        : await db.update(async (data) => {
-          const session = await loginWithPassword(data, body);
-          applyConfiguredAdminRole(data, session.user, config);
-          return session;
-        });
-      sendJson(response, 200, publicSession(result, config), corsHeaders);
+      const result = await authUpdate(db, async (data) => {
+        const session = await loginWithPassword(data, body);
+        applyConfiguredAdminRole(data, session.user, config);
+        return session;
+      });
+      sendJson(response, 200, publicSession(result, config), authSessionHeaders(config, corsHeaders, result));
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/password-reset/request") {
+      assertEmailCapability(config);
       const { body } = await readJsonBody<{ email: string }>(request);
       requireStringFields(body, ["email"]);
       await enforceRateLimit(db, config, request, "password-reset", body.email, 5, 60_000);
-      const result = await db.update((data) => requestPasswordReset(data, body.email));
+      const result = await authUpdate(db, (data) => requestPasswordReset(data, body.email));
       if (result.reset) {
         try {
           await emailDelivery.sendPasswordResetEmail({
@@ -240,9 +260,10 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/auth/password-reset/confirm") {
+      assertEmailCapability(config);
       const { body } = await readJsonBody<{ token: string; password: string }>(request);
       requireStringFields(body, ["token", "password"]);
-      await db.update((data) => confirmPasswordReset(data, body));
+      await authUpdate(db, (data) => confirmPasswordReset(data, body));
       sendJson(response, 200, { ok: true }, corsHeaders);
       return;
     }
@@ -252,19 +273,19 @@ async function handleRequest(
       const { body } = await readJsonBody<{ inviteToken: string; email: string; googleSubject: string; displayName?: string }>(request);
       requireStringFields(body, ["inviteToken", "email", "googleSubject"]);
       await enforceRateLimit(db, config, request, "google-local", body.email, 12, 60_000);
-      const result = await db.update((data) => {
+      const result = await authUpdate(db, (data) => {
         const session = signupWithLocalGoogle(data, body);
         applyConfiguredAdminRole(data, session.user, config);
         return session;
       });
-      sendJson(response, 200, publicSession(result, config), corsHeaders);
+      sendJson(response, 200, publicSession(result, config), authSessionHeaders(config, corsHeaders, result));
       return;
     }
 
     if (request.method === "POST" && route.pathname === "/auth/google/start") {
       const { body } = await readJsonBody<{ inviteToken?: string; returnTo?: string }>(request);
       await enforceRateLimit(db, config, request, "google-start", undefined, 24, 60_000);
-      const result = await db.update((data) => createGoogleOAuthStart(data, body, config));
+      const result = await authUpdate(db, (data) => createGoogleOAuthStart(data, body, config));
       sendJson(response, 200, result, corsHeaders);
       return;
     }
@@ -272,12 +293,12 @@ async function handleRequest(
     if (request.method === "POST" && route.pathname === "/auth/google/exchange") {
       const { body } = await readJsonBody<{ exchangeCode: string }>(request);
       requireStringFields(body, ["exchangeCode"]);
-      const result = await db.update((data) => {
+      const result = await authUpdate(db, (data) => {
         const session = consumeOAuthExchange(data, body.exchangeCode);
         applyConfiguredAdminRole(data, session.user, config);
         return session;
       });
-      sendJson(response, 200, publicSession(result, config), corsHeaders);
+      sendJson(response, 200, publicSession(result, config), authSessionHeaders(config, corsHeaders, result));
       return;
     }
 
@@ -285,9 +306,9 @@ async function handleRequest(
       const code = route.url.searchParams.get("code") ?? "";
       const state = route.url.searchParams.get("state") ?? "";
       await enforceRateLimit(db, config, request, "google-callback", undefined, 24, 60_000);
-      const oauthState = await db.update((data) => consumeOAuthState(data, state));
+      const oauthState = await authUpdate(db, (data) => consumeOAuthState(data, state));
       const googleProfile = await fetchGoogleOAuthProfile(code, config);
-      const exchange = await db.update((data) => {
+      const exchange = await authUpdate(db, (data) => {
         const session = completeGoogleSignin(data, googleProfile, oauthState.inviteId);
         applyConfiguredAdminRole(data, session.user, config);
         return createOAuthExchange(data, session, oauthState.returnTo);
@@ -318,7 +339,66 @@ async function handleRequest(
         const stored = data.sessions.find((entry) => entry.id === session.session.id);
         if (stored) stored.revokedAt = new Date().toISOString();
       });
-      sendJson(response, 200, { ok: true }, corsHeaders);
+      sendJson(response, 200, { ok: true }, config.databaseUrl ? { ...corsHeaders, "Set-Cookie": expiredSessionCookie() } : corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/auth/sessions") {
+      const session = await requireSession(request, db);
+      const data = await db.read();
+      sendJson(response, 200, {
+        sessions: data.sessions
+          .filter((entry) => entry.userId === session.user.id && !entry.revokedAt && Date.parse(entry.expiresAt) > Date.now())
+          .map((entry) => ({ id: entry.id, createdAt: entry.createdAt, expiresAt: entry.expiresAt, current: entry.id === session.session.id })),
+      }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/auth/sessions/revoke-all") {
+      const session = await requireSession(request, db);
+      await db.update((data) => {
+        const revokedAt = new Date().toISOString();
+        for (const entry of data.sessions) if (entry.userId === session.user.id && !entry.revokedAt) entry.revokedAt = revokedAt;
+      });
+      sendJson(response, 200, { ok: true }, config.databaseUrl ? { ...corsHeaders, "Set-Cookie": expiredSessionCookie() } : corsHeaders);
+      return;
+    }
+
+    if (request.method === "GET" && route.pathname === "/account/export") {
+      const session = await requireSession(request, db);
+      const data = await db.read();
+      const scenarioIds = new Set(data.scenarioDrafts.filter((entry) => entry.ownerUserId === session.user.id).map((entry) => entry.id));
+      sendJson(response, 200, {
+        exportedAt: new Date().toISOString(),
+        user: publicUser(session.user, config),
+        profile: session.profile,
+        adventures: data.adventures.filter((entry) => entry.ownerUserId === session.user.id).map((entry) => entry.adventure),
+        scenarios: data.scenarioDrafts.filter((entry) => entry.ownerUserId === session.user.id),
+        scenarioRevisions: data.scenarioRevisions.filter((entry) => scenarioIds.has(entry.scenarioId)),
+      }, corsHeaders);
+      return;
+    }
+
+    if (request.method === "DELETE" && route.pathname === "/account") {
+      const session = await requireSession(request, db);
+      const { body } = await readJsonBody<{ confirmation: string }>(request, 1_024);
+      if (body.confirmation !== "DELETE") throw new ApiError(400, "confirmation_required", "Enter DELETE to permanently delete the account.");
+      await db.update((data) => deleteUserData(data, session.user.id));
+      sendJson(response, 200, { ok: true }, config.databaseUrl ? { ...corsHeaders, "Set-Cookie": expiredSessionCookie() } : corsHeaders);
+      return;
+    }
+
+    if (request.method === "POST" && route.pathname === "/admin/maintenance/retention") {
+      await assertAdmin(request, config, db);
+      const deletedRecords = db.cleanupLifecycle
+        ? await db.cleanupLifecycle()
+        : await db.update((data) => {
+          const before = Object.values(data).reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+          pruneExpiredAndRetainedData(data);
+          const after = Object.values(data).reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+          return before - after;
+        });
+      sendJson(response, 200, { ok: true, deletedRecords }, corsHeaders);
       return;
     }
 
@@ -476,21 +556,25 @@ async function handleRequest(
     }
 
     if (request.method === "POST" && route.pathname === "/telemetry/client") {
-      const { body } = await readJsonBody<Partial<PerformanceTraceRecord>>(request, 200_000);
+      const session = await requireSession(request, db);
+      await enforceRateLimit(db, config, request, "telemetry", session.user.id, 60, 60_000);
+      const { body } = await readJsonBody<Partial<PerformanceTraceRecord>>(request, 16_384);
+      const trace = validatedClientTrace(body);
       await recordTrace(db, performanceTrace({
-        traceId: typeof body.traceId === "string" ? body.traceId : traceId,
+        traceId: trace.traceId ?? traceId,
         source: "device",
-        phase: typeof body.phase === "string" ? body.phase : "http_round_trip",
-        route: typeof body.route === "string" ? body.route : undefined,
-        method: typeof body.method === "string" ? body.method : undefined,
-        status: body.status === "error" ? "error" : "ok",
-        statusCode: typeof body.statusCode === "number" ? body.statusCode : undefined,
-        durationMs: typeof body.durationMs === "number" ? body.durationMs : 0,
-        requestBytes: typeof body.requestBytes === "number" ? body.requestBytes : undefined,
-        responseBytes: typeof body.responseBytes === "number" ? body.responseBytes : undefined,
-        errorCategory: typeof body.errorCategory === "string" ? body.errorCategory : undefined,
-        errorMessage: typeof body.errorMessage === "string" ? body.errorMessage : undefined,
-        metadata: typeof body.metadata === "object" && body.metadata ? body.metadata as PerformanceTraceRecord["metadata"] : undefined,
+        userId: session.user.id,
+        phase: trace.phase,
+        route: trace.route,
+        method: trace.method,
+        status: trace.status,
+        statusCode: trace.statusCode,
+        durationMs: trace.durationMs,
+        requestBytes: trace.requestBytes,
+        responseBytes: trace.responseBytes,
+        errorCategory: trace.errorCategory,
+        errorMessage: trace.errorMessage,
+        metadata: trace.metadata,
       }));
       sendJson(response, 202, { ok: true }, corsHeaders);
       return;
@@ -1009,7 +1093,7 @@ async function handleScenarioRevisionRoute(
 }
 
 async function requireSession(request: IncomingMessage, db: BackendDb): Promise<AuthSessionResult> {
-  const token = bearerToken(request);
+  const token = bearerToken(request) ?? sessionCookie(request);
   let session: AuthSessionResult | undefined;
   if (db.resolveSessionByTokenHash) {
     const resolved = token ? await db.resolveSessionByTokenHash(hashToken(token)) : undefined;
@@ -1170,7 +1254,7 @@ function publicSession(result: AuthSessionResult, config: ApiConfig) {
   return {
     user: publicUser(result.user, config),
     profile: result.profile,
-    sessionToken: result.sessionToken,
+    sessionToken: config.databaseUrl ? "cookie" : result.sessionToken,
     expiresAt: result.session.expiresAt,
   };
 }
@@ -1182,15 +1266,57 @@ function publicUser(user: AuthSessionResult["user"], config: ApiConfig) {
   };
 }
 
-function applyConfiguredAdminRole(data: { users: AuthSessionResult["user"][] }, user: AuthSessionResult["user"], config: ApiConfig): void {
-  if (!config.adminEmails.includes(user.email.toLowerCase())) return;
-  user.role = "admin";
+function applyConfiguredAdminRole(
+  data: { users: AuthSessionResult["user"][]; adminActions?: LocalDbData["adminActions"] },
+  user: AuthSessionResult["user"],
+  config: ApiConfig,
+): void {
+  if (config.adminEmails.length === 0) return;
+  const nextRole = config.adminEmails.includes(user.email.toLowerCase()) ? "admin" : "user";
+  const previousRole = user.role ?? "user";
+  user.role = nextRole;
   const stored = data.users.find((entry) => entry.id === user.id);
-  if (stored) stored.role = "admin";
+  if (stored) stored.role = nextRole;
+  if (previousRole !== nextRole && data.adminActions) {
+    data.adminActions.push({
+      id: `admin_role_${createTraceId()}`,
+      action: nextRole === "admin" ? "configured_admin_granted" : "configured_admin_revoked",
+      targetType: "user",
+      targetId: user.id,
+      reason: "Reconciled from AIST_ADMIN_EMAILS.",
+      createdAt: new Date().toISOString(),
+    });
+  }
+}
+
+function authSessionHeaders(config: ApiConfig, headers: Record<string, string>, result: AuthSessionResult): Record<string, string> {
+  return config.databaseUrl
+    ? { ...headers, "Set-Cookie": hostedSessionCookie(result.sessionToken, result.session.expiresAt) }
+    : headers;
+}
+
+function hostedSessionCookie(token: string, expiresAt: string): string {
+  return `__Host-aist_session=${encodeURIComponent(token)}; Path=/; Expires=${new Date(expiresAt).toUTCString()}; Secure; HttpOnly; SameSite=Lax`;
+}
+
+function expiredSessionCookie(): string {
+  return "__Host-aist_session=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax";
+}
+
+function sessionCookie(request: IncomingMessage): string | undefined {
+  const raw = request.headers.cookie;
+  if (!raw) return undefined;
+  for (const part of raw.split(";")) {
+    const [name, ...value] = part.trim().split("=");
+    if (name === "__Host-aist_session") return decodeURIComponent(value.join("="));
+  }
+  return undefined;
 }
 
 function isAdminUser(user: AuthSessionResult["user"], config: ApiConfig): boolean {
-  return user.role === "admin" || config.adminEmails.includes(user.email.toLowerCase());
+  return config.adminEmails.length > 0
+    ? config.adminEmails.includes(user.email.toLowerCase())
+    : user.role === "admin";
 }
 
 function assertScenarioPublishingEnabled(data: Parameters<typeof getPlatformSettings>[0], config: ApiConfig): void {
@@ -1227,12 +1353,79 @@ function genericPasswordResetResponse(): { ok: true; message: string } {
   };
 }
 
+function authUpdate<T>(db: BackendDb, mutate: (data: LocalDbData) => T | Promise<T>): Promise<T> {
+  return db.updateAuth ? db.updateAuth(mutate) : db.update(mutate);
+}
+
+function assertEmailCapability(config: ApiConfig): void {
+  if (config.emailDeliveryMode === "disabled") {
+    throw new ApiError(503, "email_delivery_disabled", "Account signup and recovery email are disabled during controlled UAT.");
+  }
+}
+
+function serverCapabilities(config: ApiConfig) {
+  const emailEnabled = config.emailDeliveryMode === "resend"
+    && Boolean(config.emailDelivery || (config.resendApiKey && config.emailFrom));
+  const googleOAuth = Boolean(
+    config.googleOAuth.clientId
+    && config.googleOAuth.clientSecret
+    && config.googleOAuth.redirectUri.startsWith("https://"),
+  );
+  return {
+    passwordLogin: true,
+    passwordSignup: emailEnabled,
+    passwordReset: emailEnabled,
+    emailVerificationDelivery: emailEnabled,
+    googleOAuth,
+  };
+}
+
+function validatedClientTrace(body: Partial<PerformanceTraceRecord>) {
+  if (body.source !== undefined && body.source !== "device") {
+    throw new ApiError(400, "invalid_telemetry", "Telemetry source must be device.");
+  }
+  if (body.status !== "ok" && body.status !== "error") {
+    throw new ApiError(400, "invalid_telemetry", "Telemetry status must be ok or error.");
+  }
+  if (typeof body.durationMs !== "number" || !Number.isFinite(body.durationMs) || body.durationMs < 0 || body.durationMs > 3_600_000) {
+    throw new ApiError(400, "invalid_telemetry", "Telemetry duration is invalid.");
+  }
+  const short = (value: unknown, max: number): string | undefined =>
+    typeof value === "string" && value.length <= max ? value : undefined;
+  const boundedNumber = (value: unknown, max: number): number | undefined =>
+    typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max ? value : undefined;
+  const metadata: NonNullable<PerformanceTraceRecord["metadata"]> = {};
+  if (body.metadata && typeof body.metadata === "object") {
+    for (const [key, value] of Object.entries(body.metadata).slice(0, 20)) {
+      if (!/^[A-Za-z0-9_.-]{1,50}$/.test(key)) continue;
+      if (typeof value === "string") metadata[key] = value.slice(0, 200);
+      else if (typeof value === "number" && Number.isFinite(value)) metadata[key] = value;
+      else if (typeof value === "boolean") metadata[key] = value;
+    }
+  }
+  return {
+    traceId: short(body.traceId, 200),
+    phase: short(body.phase, 80) ?? "http_round_trip",
+    route: short(body.route, 300),
+    method: short(body.method, 12),
+    status: body.status,
+    statusCode: boundedNumber(body.statusCode, 599),
+    durationMs: body.durationMs,
+    requestBytes: boundedNumber(body.requestBytes, 20_000_000),
+    responseBytes: boundedNumber(body.responseBytes, 20_000_000),
+    errorCategory: short(body.errorCategory, 80),
+    errorMessage: body.errorMessage === undefined ? undefined : sanitizeErrorMessage(short(body.errorMessage, 500) ?? "invalid client error"),
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+  };
+}
+
 function corsFor(request: IncomingMessage, config: ApiConfig): Record<string, string> {
   const origin = request.headers.origin;
   const allowOrigin = typeof origin === "string" && config.allowedOrigins.includes(origin) ? origin : undefined;
   return {
     ...(allowOrigin ? { "Access-Control-Allow-Origin": allowOrigin } : {}),
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-AIST-Trace-Id, X-AIST-Client-Sent-At, X-AIST-Client-Path",
+    ...(allowOrigin ? { "Access-Control-Allow-Credentials": "true" } : {}),
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Idempotency-Key, X-Admin-Key, X-AIST-CSRF, X-AIST-Trace-Id, X-AIST-Client-Sent-At, X-AIST-Client-Path",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Vary": "Origin",
   };

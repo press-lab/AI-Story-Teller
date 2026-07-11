@@ -46,10 +46,12 @@ export function submitClientPerformanceTrace(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-AIST-Trace-Id": trace.traceId,
+    "X-AIST-CSRF": "1",
   };
   if (authHeader) headers.Authorization = authHeader;
   void fetch(`${base}/telemetry/client`, {
     method: "POST",
+    credentials: "include",
     keepalive: true,
     headers,
     body,

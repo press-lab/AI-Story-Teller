@@ -1,5 +1,6 @@
 import { createApiServer } from "./server";
 import type { ApiConfig } from "./config";
+import { pruneExpiredAndRetainedData } from "./dataLifecycle";
 
 async function main(): Promise<void> {
   const api = createApiServer({
@@ -10,7 +11,14 @@ async function main(): Promise<void> {
 
   assertHostedServerConfig(api.config);
   await api.db.readiness();
+  await cleanupLifecycle(api);
   const { port } = await api.listen();
+  const cleanupTimer = setInterval(() => {
+    void cleanupLifecycle(api).catch((error) => {
+      console.warn("Scheduled retention cleanup failed:", error instanceof Error ? error.message : String(error));
+    });
+  }, 6 * 60 * 60 * 1000);
+  cleanupTimer.unref();
 
   console.log("AI Story Teller hosted API is running.");
   console.log(`Database: ${api.config.databaseUrl ? "postgres" : "local-json"}`);
@@ -23,6 +31,7 @@ async function main(): Promise<void> {
     process.on(signal, () => {
       if (shuttingDown) return;
       shuttingDown = true;
+      clearInterval(cleanupTimer);
       const forcedExit = setTimeout(() => {
         console.error(`Hosted API did not shut down cleanly after ${signal}.`);
         process.exit(1);
@@ -40,6 +49,12 @@ async function main(): Promise<void> {
         });
     });
   }
+}
+
+function cleanupLifecycle(api: ReturnType<typeof createApiServer>): Promise<unknown> {
+  return api.db.cleanupLifecycle
+    ? api.db.cleanupLifecycle()
+    : api.db.update((data) => pruneExpiredAndRetainedData(data));
 }
 
 void main().catch((error) => {
@@ -83,7 +98,10 @@ function assertHostedServerConfig(config: ApiConfig): void {
   if (!config.providerConfig.apiKey) {
     errors.push("Set AIST_PROVIDER_API_KEY so hosted backend generation can use the platform provider key.");
   }
-  if (!config.emailDelivery && (!config.resendApiKey || !config.emailFrom)) {
+  if (config.emailDeliveryMode === "disabled" && config.policyMode !== "reviewOnly") {
+    errors.push("AIST_EMAIL_DELIVERY_MODE=disabled is allowed only with AIST_POLICY_MODE=reviewOnly for controlled UAT.");
+  }
+  if (config.emailDeliveryMode === "resend" && !config.emailDelivery && (!config.resendApiKey || !config.emailFrom)) {
     errors.push("Set RESEND_API_KEY and AIST_EMAIL_FROM so hosted verification and password reset email can be delivered.");
   }
   if (config.googleOAuth.redirectUri && !config.googleOAuth.redirectUri.startsWith("https://")) {

@@ -48,6 +48,24 @@ describe("WelcomePage", () => {
     vi.restoreAllMocks();
   });
 
+  it("keeps existing login available while hiding disabled email capabilities", () => {
+    render(
+      <WelcomePage
+        capabilities={{ passwordLogin: true, passwordSignup: false, passwordReset: false, emailVerificationDelivery: false, googleOAuth: false }}
+        onSignupPassword={vi.fn(async () => signupResult())}
+        onVerifyEmail={vi.fn(async () => session())}
+        onLoginPassword={vi.fn(async () => session())}
+        onRequestPasswordReset={vi.fn(async () => ({ ok: true as const, message: "unused" }))}
+        onConfirmPasswordReset={vi.fn(async () => ({ ok: true as const }))}
+        onStartGoogleOAuth={vi.fn(async () => ({ authUrl: "https://accounts.google.com/", expiresAt: timestamp }))}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Log in" })).toBeEnabled();
+    expect(screen.queryByRole("button", { name: "Sign up" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeDisabled();
+    expect(screen.getByText(/disabled during controlled UAT/i)).toBeInTheDocument();
+  });
+
   it("signs up with an invite and waits for email verification without exposing a token", async () => {
     const user = userEvent.setup();
     const onSignupPassword = vi.fn(async () => signupResult());

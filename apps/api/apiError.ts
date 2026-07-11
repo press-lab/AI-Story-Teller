@@ -19,6 +19,7 @@ export function normalizeApiError(error: unknown): ApiError {
   if (error instanceof PolicyBlockedError) return new ApiError(422, "policy_blocked", error.message, error);
   if (error instanceof StaleAdventureRevisionError) return new ApiError(409, error.code, error.message, error);
   if (error instanceof SyntaxError) return new ApiError(400, "invalid_json", "Request body contains invalid JSON.", error);
+  if (error instanceof URIError) return new ApiError(400, "malformed_url", "Request URL contains invalid percent encoding.", error);
   const message = error instanceof Error ? error.message : String(error);
   if (message.endsWith("not found.")) return new ApiError(404, "not_found", message, error);
   if (message.startsWith("Network error") && /timeout|timed out|abort/i.test(message)) {

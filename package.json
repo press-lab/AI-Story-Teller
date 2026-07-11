@@ -13,6 +13,7 @@
     "api:build": "node scripts/prepare-api-dist.mjs --clean && tsc -p tsconfig.api.json && node scripts/prepare-api-dist.mjs",
     "api:render:build": "npm ci --include=dev && npm run api:build && npm prune --omit=dev",
     "api:hosted": "node dist-api/apps/api/hostedServer.js",
+    "api:hosted:free": "node dist-api/apps/api/freeHostedServer.js",
     "api:db:migrate": "node dist-api/apps/api/migrateSchema.js",
     "api:db:migrate:dev": "tsx apps/api/migrateSchema.ts",
     "api:deploy:parity": "node scripts/api-deployment-parity.mjs",

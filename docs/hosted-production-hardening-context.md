@@ -36,7 +36,7 @@ email.
 
 ### F0. Explicit Free Render and no-email UAT mode
 
-Status: **Planned; blocks the next Render deploy**
+Status: **Implemented July 10, 2026; live Render reconciliation still required**
 
 - Add an explicit disabled-email capability mode with safe route and frontend
   behavior.
@@ -44,6 +44,19 @@ Status: **Planned; blocks the next Render deploy**
 - Reconcile branch, build, start, health-check, proxy, and auto-deploy settings.
 - Preserve existing-account UAT while keeping signup/reset visibly disabled.
 - Keep production Neon secrets out of GitHub Actions.
+
+Implemented evidence:
+
+- `AIST_EMAIL_DELIVERY_MODE=disabled|resend` is explicit and defaults safely to
+  `resend`; disabled mode is limited to `reviewOnly` controlled UAT.
+- Disabled email routes fail before consuming invites or changing auth state,
+  while existing verified password users can still log in.
+- `/capabilities` drives frontend signup/reset/Google availability without
+  error-string parsing.
+- `api:hosted:free` applies advisory-lock-serialized compiled migrations before
+  importing the same compiled hosted server.
+- `render.yaml` now describes the actual Free/no-email UAT contract. The live
+  dashboard must still be reconciled to this file before redeployment.
 
 ## P0 Workstreams
 
@@ -285,6 +298,12 @@ only a hash-stored, five-minute, one-use exchange code; the SPA removes it from
 the URL before POSTing it for a bearer session. Google network calls occur
 outside database transactions. Tests cover replay, expiry, and URL leakage.
 
+July 10 follow-up: hosted Postgres mode now issues a host-only
+`__Host-aist_session` Secure, HttpOnly, SameSite cookie, omits the credential
+from browser storage, sends credentialed requests, and requires the explicit
+CSRF header on mutations. Browser/owner-local mode retains bearer compatibility.
+Legacy `#backendSession=<JSON>` fragments are erased and ignored.
+
 ### A2. Module and shared-contract boundaries
 
 - Split `src/App.tsx`, `src/hooks/useAdventureRuntime.ts`,
@@ -301,11 +320,59 @@ outside database transactions. Tests cover replay, expiry, and URL leakage.
 
 ### A4. Observability, retention, recovery, and deletion
 
+Status: **Application lifecycle controls implemented; external alerting and a
+Neon restore rehearsal remain operational work**
+
 - Add frontend/backend error capture, structured logs, alerting, and trace
   correlation.
 - Define raw prompt/output, policy, usage, and audit retention.
 - Add account export/deletion and server-session management.
 - Configure Neon backup/restore expectations and rehearse a recovery.
+
+Implemented application controls include authenticated 16 KB schema-bounded
+client telemetry with an independent rate bucket and server-owned user id,
+redaction, explicit retention pruning, account export/deletion, seven-day
+sessions, a session list, revoke-all, configured-admin reconciliation with
+audit records, and cleanup of expired auth artifacts. Story content remains
+server-stored and is disclosed as model-provider-visible; it is not represented
+as end-to-end encrypted.
+
+## July 10 Pro Follow-up Review Integration
+
+Both supplied Pro reviews inspected stale commit `54210ce`; current work was
+reviewed and implemented against the later branch. Keep the useful findings,
+but do not reopen controls already completed and tested in H1-H8.
+
+Newly confirmed defects and disposition:
+
+- Raw session URL ingestion: **fixed**; only one-use OAuth exchange codes are
+  accepted.
+- Pre-route promise rejection/malformed percent URL: **fixed** with a terminal
+  request-promise catch, headers-sent guard, and stable `400 malformed_url`.
+- Anonymous oversized telemetry: **fixed** with session authentication, 16 KB
+  limit, strict bounds, sanitization, account attribution, and a separate rate
+  bucket.
+- Implicit weak password KDF settings: **fixed** with versioned explicit scrypt
+  parameters, production `N=2^17,r=8,p=1`, legacy verification, and login-time
+  rehashing.
+- Thirty-day localStorage hosted bearer: **fixed for hosted Postgres mode** with
+  a seven-day HttpOnly cookie and CSRF gate; local mode compatibility remains.
+- Missing repository security headers: **fixed** in `public/_headers`. Inline
+  styles remain temporarily allowed because the existing React UI uses style
+  attributes; scripts do not allow inline or eval execution.
+- Inaccurate `/version`: **fixed** with actual mode, application version, build
+  SHA/timestamp, policy mode, database mode, and safe capability data.
+- Auth races: **fixed at the application transaction boundary** by serializing
+  auth state transitions in Postgres. Relational auth tables remain a later
+  scaling refactor, not a launch-integrity prerequisite.
+- Retention/export/deletion/session/admin lifecycle: **implemented at the
+  application layer**. Production restore rehearsal and external alert routing
+  remain owner/operations acceptance items.
+
+Email outbox work remains deliberately dormant while the owner-selected email
+capability is disabled. Before setting `AIST_EMAIL_DELIVERY_MODE=resend`, add a
+durable transactional delivery outbox and resend workflow; do not re-enable
+signup/reset merely by adding secrets.
 
 ### A5. Documentation and cutover cleanup
 

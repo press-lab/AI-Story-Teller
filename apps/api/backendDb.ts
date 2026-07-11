@@ -35,6 +35,7 @@ export interface BackendDb {
   read(options?: BackendReadOptions): Promise<LocalDbData>;
   write(data: LocalDbData): Promise<void>;
   update<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T>;
+  updateAuth?<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T>;
   updatePersistingOnError<T>(mutate: (data: LocalDbData) => T | Promise<T>): Promise<T>;
   readiness(): Promise<DatabaseReadiness>;
   resolveSessionByTokenHash?(tokenHash: string): Promise<ResolvedSessionData | undefined>;
@@ -60,5 +61,6 @@ export interface BackendDb {
   readAdminConsoleSummary?(config: ApiConfig): Promise<AdminConsoleData>;
   readAdminConsoleDetails?(config: ApiConfig): Promise<AdminConsoleDetailsData>;
   recordPerformanceTrace?(record: PerformanceTraceRecord): Promise<void>;
+  cleanupLifecycle?(): Promise<number>;
   close(): Promise<void>;
 }

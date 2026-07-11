@@ -176,6 +176,78 @@ describe("local API auth and invite gate", () => {
     expect(body.error).not.toContain("stack");
   });
 
+  it("contains malformed percent-encoded routes inside the HTTP error boundary", async () => {
+    const response = await fetch(`${baseUrl}/adventures/%E0%A4%A`);
+    const body = await response.json() as { code: string; traceId: string };
+    expect(response.status).toBe(400);
+    expect(body.code).toBe("malformed_url");
+    expect(body.traceId).toBeTruthy();
+  });
+
+  it("requires authentication for bounded client telemetry", async () => {
+    const response = await requestJson<{ code: string }>("/telemetry/client", {
+      method: "POST",
+      body: JSON.stringify({ source: "device", phase: "http_round_trip", status: "ok", durationMs: 5 }),
+    });
+    expect(response.status).toBe(401);
+    expect(response.body.code).toBe("unauthenticated");
+  });
+
+  it("exposes safe runtime capabilities", async () => {
+    const response = await requestJson<{ passwordLogin: boolean; passwordSignup: boolean; googleOAuth: boolean }>("/capabilities");
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ passwordLogin: true, passwordSignup: true, googleOAuth: false });
+  });
+
+  it("disables email auth mutations before consuming invites or creating users", async () => {
+    const inviteToken = await createInvite();
+    const before = await api.db.read();
+    api.config.emailDeliveryMode = "disabled";
+    const signup = await requestJson<{ code: string }>("/auth/signup/password", {
+      method: "POST",
+      body: JSON.stringify({
+        inviteToken,
+        email: "disabled-email@example.com",
+        password: "correct horse battery staple",
+      }),
+    });
+    const after = await api.db.read();
+    expect(signup.status).toBe(503);
+    expect(signup.body.code).toBe("email_delivery_disabled");
+    expect(after.inviteLinks).toEqual(before.inviteLinks);
+    expect(after.users).toEqual(before.users);
+    expect(after.passwordCredentials).toEqual(before.passwordCredentials);
+    expect(after.verificationTokens).toEqual(before.verificationTokens);
+  });
+
+  it("lists sessions, exports safe account data, revokes all, and deletes account data", async () => {
+    const sessionToken = await passwordSession("lifecycle@example.com");
+    const auth = { Authorization: `Bearer ${sessionToken}` };
+    const sessions = await requestJson<{ sessions: Array<{ current: boolean }> }>("/auth/sessions", { headers: auth });
+    expect(sessions.status).toBe(200);
+    expect(sessions.body.sessions).toEqual([expect.objectContaining({ current: true })]);
+
+    const exported = await requestJson<Record<string, unknown>>("/account/export", { headers: auth });
+    expect(exported.status).toBe(200);
+    expect(JSON.stringify(exported.body)).not.toContain("passwordHash");
+    expect(JSON.stringify(exported.body)).not.toContain(sessionToken);
+
+    const revoke = await requestJson<{ ok: true }>("/auth/sessions/revoke-all", { method: "POST", headers: auth });
+    expect(revoke.status).toBe(200);
+    const revokedSession = await requestJson<{ code: string }>("/auth/session", { headers: auth });
+    expect(revokedSession.status).toBe(401);
+
+    const secondToken = await passwordSession("delete-lifecycle@example.com");
+    const deleted = await requestJson<{ ok: true }>("/account", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${secondToken}` },
+      body: JSON.stringify({ confirmation: "DELETE" }),
+    });
+    expect(deleted.status).toBe(200);
+    const afterDelete = await requestJson<{ code: string }>("/auth/session", { headers: { Authorization: `Bearer ${secondToken}` } });
+    expect(afterDelete.status).toBe(401);
+  });
+
   it("shares stable authentication rate-limit responses without account disclosure", async () => {
     let last: Response | undefined;
     for (let index = 0; index < 13; index += 1) {
