@@ -220,6 +220,9 @@ export interface BackendPlatformSettings {
     scenarioPublishingEnabled: boolean;
     developerToolsVisibleToAdmins: boolean;
   };
+  administration: {
+    adminEmails: string[];
+  };
   updatedAt?: string;
   updatedByUserId?: string;
 }
@@ -629,6 +632,19 @@ export function updateBackendAdminUserStatus(
     method: "PATCH",
     headers: authHeaders(session),
     body: JSON.stringify({ status }),
+  });
+}
+
+export function updateBackendAdminUserRole(
+  config: RuntimeConfig,
+  session: BackendSessionState,
+  userId: string,
+  role: BackendUser["role"],
+) {
+  return apiJson<BackendAdminConsoleData>(config, `/admin/users/${encodeURIComponent(userId)}/role`, {
+    method: "PATCH",
+    headers: authHeaders(session),
+    body: JSON.stringify({ role }),
   });
 }
 

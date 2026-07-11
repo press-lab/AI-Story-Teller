@@ -213,6 +213,9 @@ function adminData(): BackendAdminConsoleData {
         scenarioPublishingEnabled: true,
         developerToolsVisibleToAdmins: true,
       },
+      administration: {
+        adminEmails: ["admin@example.com"],
+      },
       updatedAt: createdAt,
     },
   };
@@ -230,6 +233,7 @@ describe("AdminConsolePage", () => {
         backendMode
         backendSession={session("user")}
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}
@@ -249,6 +253,7 @@ describe("AdminConsolePage", () => {
         backendSession={session("admin")}
         status="Loading admin console..."
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}
@@ -273,6 +278,7 @@ describe("AdminConsolePage", () => {
         status="Load failed"
         onRefresh={onRefresh}
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}
@@ -293,6 +299,7 @@ describe("AdminConsolePage", () => {
   it("lets backend admin sessions review users and safety events", async () => {
     const user = userEvent.setup();
     const onSetUserStatus = vi.fn(async () => undefined);
+    const onSetUserRole = vi.fn(async () => undefined);
     const onCreateRestriction = vi.fn(async () => undefined);
     const onUpdateSafetyEvent = vi.fn(async () => undefined);
     const onCreateInvite = vi.fn(async () => ({
@@ -306,6 +313,7 @@ describe("AdminConsolePage", () => {
       provider: { ...adminData().platformSettings.provider, ...(settings.provider ?? {}) },
       background: { ...adminData().platformSettings.background, ...(settings.background ?? {}) },
       features: { ...adminData().platformSettings.features, ...(settings.features ?? {}) },
+      administration: { ...adminData().platformSettings.administration, ...(settings.administration ?? {}) },
     }));
 
     render(
@@ -314,6 +322,7 @@ describe("AdminConsolePage", () => {
         backendSession={session("admin")}
         data={adminData()}
         onSetUserStatus={onSetUserStatus}
+        onSetUserRole={onSetUserRole}
         onCreateRestriction={onCreateRestriction}
         onUpdateSafetyEvent={onUpdateSafetyEvent}
         onCreateInvite={onCreateInvite}
@@ -328,7 +337,7 @@ describe("AdminConsolePage", () => {
     expect(screen.getByRole("heading", { name: "Platform Settings" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Users" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Open Safety Events" })).toBeInTheDocument();
-    expect(screen.getByText(/Admin role is read-only here/)).toBeInTheDocument();
+    expect(screen.getByText(/Promote admins here after bootstrap/)).toBeInTheDocument();
     expect(screen.getByText("3 calls")).toBeInTheDocument();
     expect(screen.getByText(/1,650 tokens/)).toBeInTheDocument();
 
@@ -349,6 +358,8 @@ describe("AdminConsolePage", () => {
     await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");
     await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "latency");
     await user.selectOptions(screen.getByLabelText("OpenRouter data policy"), "allow");
+    await user.clear(screen.getByLabelText("Bootstrap admin emails"));
+    await user.type(screen.getByLabelText("Bootstrap admin emails"), "ops@example.com");
     await user.click(screen.getByRole("button", { name: "Save Platform Settings" }));
     expect(onSavePlatformSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -357,11 +368,16 @@ describe("AdminConsolePage", () => {
           openRouterProviderSort: "latency",
           openRouterDataCollection: "allow",
         }),
+        administration: expect.objectContaining({
+          adminEmails: ["ops@example.com"],
+        }),
       }),
     );
 
     await user.selectOptions(screen.getByLabelText("Account status"), "disabled");
     expect(onSetUserStatus).toHaveBeenCalledWith("user-target", "disabled");
+    await user.selectOptions(screen.getByLabelText("Account role"), "admin");
+    expect(onSetUserRole).toHaveBeenCalledWith("user-target", "admin");
 
     await user.click(screen.getByRole("button", { name: "Apply Restriction" }));
     expect(onCreateRestriction).toHaveBeenCalledWith(
@@ -401,6 +417,7 @@ describe("AdminConsolePage", () => {
         backendSession={session("admin")}
         data={data}
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={onUpdateSafetyEvent}
         onCreateInvite={vi.fn()}
@@ -445,6 +462,7 @@ describe("AdminConsolePage", () => {
         backendSession={session("admin")}
         data={data}
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}
@@ -497,6 +515,7 @@ describe("AdminConsolePage", () => {
         backendSession={session("admin")}
         data={data}
         onSetUserStatus={vi.fn()}
+        onSetUserRole={vi.fn()}
         onCreateRestriction={vi.fn()}
         onUpdateSafetyEvent={vi.fn()}
         onCreateInvite={vi.fn()}

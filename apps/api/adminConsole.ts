@@ -8,7 +8,7 @@ import type {
 import type { ApiConfig } from "./config";
 import { currentRestriction, reconcileRestrictionFromOpenEvents } from "./accountSafety";
 import { summarizeAdventure } from "./adventureStore";
-import { getPlatformSettings } from "./platformSettings";
+import { effectiveAdminEmails, getPlatformSettings } from "./platformSettings";
 import { createId, nowIso } from "./ids";
 
 export interface AdminUserUsageStats {
@@ -123,6 +123,7 @@ export function buildAdminConsole(
   const includeDetails = options.includeDetails ?? true;
   const details = includeDetails ? buildAdminConsoleDetails(data) : emptyAdminConsoleDetails();
   const usageStatsByUser = summarizeUsageByUser(data.usageLogs);
+  const adminEmails = effectiveAdminEmails(data, config);
   return {
     totals: {
       users: data.users.length,
@@ -142,7 +143,7 @@ export function buildAdminConsole(
         const userScenarioIds = new Set(userScenarios.map((scenario) => scenario.id));
         const safetyEvents = data.accountSafetyEvents.filter((event) => event.userId === user.id);
         const role: "user" | "admin" = user.role === "admin"
-          || (user.emailVerified && config.adminEmails.includes(user.email.toLowerCase()))
+          || (user.emailVerified && adminEmails.includes(user.email.toLowerCase()))
           ? "admin"
           : "user";
         return {
@@ -311,6 +312,31 @@ export function updateUserStatus(
     targetType: "user",
     targetId: userId,
     reason: `Set user status to ${status}.`,
+    createdAt: nowIso(),
+  });
+}
+
+export function updateUserRole(
+  data: LocalDbData,
+  adminUserId: string | undefined,
+  userId: string,
+  role: "user" | "admin",
+): void {
+  if (role !== "user" && role !== "admin") throw new Error("Invalid account role.");
+  const user = data.users.find((entry) => entry.id === userId);
+  if (!user) throw new Error("User not found.");
+  if (adminUserId === userId && role !== "admin") {
+    throw new Error("Admins cannot remove their own admin role.");
+  }
+  user.role = role;
+  user.updatedAt = nowIso();
+  data.adminActions.push({
+    id: createId("admin_action"),
+    adminUserId,
+    action: "update_user_role",
+    targetType: "user",
+    targetId: userId,
+    reason: `Set user role to ${role}.`,
     createdAt: nowIso(),
   });
 }

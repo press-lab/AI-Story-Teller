@@ -64,11 +64,11 @@ For OpenRouter, `AIST_PROVIDER_OPENROUTER_SORT` can be `price`, `latency`, or `t
 
 Provider secrets live only in `.env` or environment variables. Admin-editable platform settings live in the local backend database and can override non-secret platform-wide defaults such as provider name, base URL, model, sampling values, background cadence, and scenario publishing. The provider API key is never stored in the platform settings record.
 
-Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role.
+Admin routes are available locally when both `AIST_API_ADMIN_KEY` and `AIST_ADMIN_EMAILS` are empty. For a stricter local run, set `AIST_API_ADMIN_KEY` and send `X-Admin-Key`, or set `AIST_ADMIN_EMAILS` so matching signed-in accounts receive the admin role. In shared/hosted data, `users.role` is the durable admin source of truth; configured emails are bootstrap/repair input and do not silently demote stored admins.
 
 `npm.cmd run api:serve` is stricter than `api:dev`: it refuses to start without `AIST_ADMIN_EMAILS` or `AIST_API_ADMIN_KEY`, disables the local Google stub, and binds to `127.0.0.1` by default so it can be exposed through an HTTPS tunnel without opening a raw inbound port.
 
-The frontend Admin Console appears only when the signed-in backend session returns `user.role === "admin"`. There is no frontend control to promote a user to admin. Mark admin accounts through backend configuration (`AIST_ADMIN_EMAILS`) or backend data only.
+The frontend Admin Console appears only when the signed-in backend session returns `user.role === "admin"`. Existing admins can promote or demote accounts from Admin Console; initial bootstrap still requires backend configuration, a break-glass admin key, or a direct trusted database repair.
 
 ## Google OAuth
 

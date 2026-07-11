@@ -168,6 +168,9 @@ export function PlayPage({
   const [turnSubmissionPending, setTurnSubmissionPending] = useState(false);
   const [compactLayout, setCompactLayout] = useState(isCompactPlayLayout);
   const [mobileStoryToolsOpen, setMobileStoryToolsOpen] = useState(false);
+  const [toolkitCollapsed, setToolkitCollapsed] = useState(() => {
+    try { return localStorage.getItem("play-toolkit-collapsed") === "true"; } catch { return false; }
+  });
   const [openMessageActionsId, setOpenMessageActionsId] = useState<string | undefined>();
   const [editingMessageId, setEditingMessageId] = useState<string | undefined>();
   const [editingOpeningScene, setEditingOpeningScene] = useState(false);
@@ -247,11 +250,16 @@ export function PlayPage({
     try { localStorage.setItem("play-toolkit-width", String(next)); } catch { /* ignore */ }
   }
 
+  function updateToolkitCollapsed(next: boolean) {
+    setToolkitCollapsed(next);
+    try { localStorage.setItem("play-toolkit-collapsed", String(next)); } catch { /* ignore */ }
+  }
+
   useEffect(() => {
-    if (!playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return;
+    if (toolkitCollapsed || !playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return;
     updateToolkitWidth(PLAY_TOOLKIT_PANEL_MIN_WIDTH);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playPanelContent, toolkitWidth]);
+  }, [playPanelContent, toolkitWidth, toolkitCollapsed]);
 
   function startToolkitResize(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -848,20 +856,45 @@ export function PlayPage({
       </div>
 
       {/* Drag handle between story column and Toolkit */}
-      <div
-        className="play-toolkit-handle"
-        onPointerDown={startToolkitResize}
-        title="Drag to resize Toolkit"
-        role="separator"
-        aria-orientation="vertical"
-      />
+      {!toolkitCollapsed && (
+        <div
+          className="play-toolkit-handle"
+          onPointerDown={startToolkitResize}
+          title="Drag to resize story tools"
+          role="separator"
+          aria-orientation="vertical"
+        />
+      )}
 
       {/* Toolkit — compact nav + optional tool panel */}
       <aside
-        className={`play-sidebar${playPanelContent ? " has-panel" : ""}`}
-        style={{ width: toolkitWidth }}
+        className={`play-sidebar${playPanelContent ? " has-panel" : ""}${toolkitCollapsed ? " is-collapsed" : ""}`}
+        style={{ width: toolkitCollapsed ? 48 : toolkitWidth }}
       >
+        {toolkitCollapsed ? (
+          <button
+            type="button"
+            className="play-toolkit-expand"
+            onClick={() => updateToolkitCollapsed(false)}
+            title="Show story tools"
+            aria-label="Show story tools"
+          >
+            Tools
+          </button>
+        ) : (
+        <>
         <div className="play-status">
+          <div className="play-toolkit-heading">
+            <span>Story tools</span>
+            <button
+              type="button"
+              onClick={() => updateToolkitCollapsed(true)}
+              title="Collapse story tools"
+              aria-label="Collapse story tools"
+            >
+              Hide
+            </button>
+          </div>
           <span className="muted">Turn {adventure.activeState.turn}</span>
           <strong>{playerFacingSaveStatus(saveStatus)}</strong>
           {providerPresets && providerPresets.length > 1 && onSelectPreset && (
@@ -962,6 +995,8 @@ export function PlayPage({
             <button type="button" onClick={() => dispatch({ type: "CLEAR_NEXT_TURN_NOTE" })}>Clear</button>
           </div>
         </details>
+        </>
+        )}
       </aside>
     </section>
   );

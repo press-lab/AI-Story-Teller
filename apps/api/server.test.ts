@@ -1591,6 +1591,7 @@ describe("local API policy gates and sharing", () => {
       }>;
       safetyEvents: Array<{ id: string; status: string }>;
       adminActions: Array<{ action: string }>;
+      platformSettings: { administration: { adminEmails: string[] } };
     }>("/admin/console", {
       headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
     });
@@ -1605,6 +1606,22 @@ describe("local API policy gates and sharing", () => {
       completionTokens: 7,
       totalTokens: 18,
     });
+    expect(consoleData.body.platformSettings.administration.adminEmails).toContain("backend-admin@example.com");
+
+    const roleUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/role`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${verified.body.sessionToken}` },
+      body: JSON.stringify({ role: "admin" }),
+    });
+    expect(roleUpdate.status).toBe(200);
+    expect(roleUpdate.body.users.find((user) => user.id === member!.id)?.role).toBe("admin");
+
+    api.config.adminEmails = [];
+    const promotedMemberSession = await requestJson<{ user: { role: string } }>("/auth/session", {
+      headers: { Authorization: `Bearer ${memberSession}` },
+    });
+    expect(promotedMemberSession.status).toBe(200);
+    expect(promotedMemberSession.body.user.role).toBe("admin");
 
     const statusUpdate = await requestJson<typeof consoleData.body>(`/admin/users/${member!.id}/status`, {
       method: "PATCH",
@@ -1636,7 +1653,7 @@ describe("local API policy gates and sharing", () => {
     expect(reviewed.status).toBe(200);
     expect(reviewed.body.safetyEvents.find((event) => event.id === eventId)?.status).toBe("reviewed");
     expect(reviewed.body.adminActions.map((action) => action.action)).toEqual(
-      expect.arrayContaining(["update_user_status", "create_manual_restriction", "update_safety_event_status"]),
+      expect.arrayContaining(["update_user_status", "update_user_role", "create_manual_restriction", "update_safety_event_status"]),
     );
   });
 

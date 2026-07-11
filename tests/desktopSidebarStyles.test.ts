@@ -8,8 +8,9 @@ describe("desktop play sidebar layout contract", () => {
 
     expect(source).toContain("const PLAY_TOOLKIT_COMPACT_WIDTH = 160");
     expect(source).toContain("const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420");
-    expect(source).toContain("if (!playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return");
+    expect(source).toContain("if (toolkitCollapsed || !playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return");
     expect(source).toContain("const minWidth = playPanelContent ? PLAY_TOOLKIT_PANEL_MIN_WIDTH : PLAY_TOOLKIT_MIN_WIDTH");
+    expect(source).toContain("localStorage.setItem(\"play-toolkit-collapsed\", String(next))");
   });
 
   it("keeps compact editor summaries inside the desktop play panel", () => {

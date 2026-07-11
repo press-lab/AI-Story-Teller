@@ -107,7 +107,7 @@ not increase it to accept arbitrary client-supplied forwarding chains.
 | `AIST_API_ALLOWED_ORIGINS` | Render | No | Required exact comma-separated Pages origins; no wildcards |
 | `AIST_WEB_APP_URL` | Render | No | Required canonical Pages URL for auth links/redirects |
 | `AIST_API_ADMIN_KEY` | Render | Yes | Optional break-glass admin credential |
-| `AIST_ADMIN_EMAILS` | Render | Sensitive | Required owner/admin email allowlist |
+| `AIST_ADMIN_EMAILS` | Render | Sensitive | Optional bootstrap/repair admin email list. Durable admin roles live in backend data (`users.role`) and can be managed from Admin Console. |
 | `AIST_API_ALLOW_LOCAL_GOOGLE_STUB` | Render | No | Required: `false` |
 | `AIST_GOOGLE_CLIENT_ID` | Render/Google | Sensitive | Required for Google sign-in |
 | `AIST_GOOGLE_CLIENT_SECRET` | Render/Google | Yes | Required for Google sign-in |
@@ -145,8 +145,10 @@ Leave `AIST_API_PORT` unset on Render. Render provides `PORT`, and
 `emailVerification` signup refuses to run without complete Resend delivery
 configuration because tokens are never exposed through HTTP responses.
 `trustedInvite` is valid only with disabled email and `reviewOnly`; it leaves
-recovery and verification delivery unavailable. Configured admin emails grant
-admin only after the account email has been verified.
+recovery and verification delivery unavailable. Configured or database-stored
+bootstrap admin emails grant admin only after the account email has been
+verified. Once granted, `users.role` is the durable source of truth; removing an
+email from configuration must not silently demote an existing admin.
 
 After Render deploys, verify the temporary Render URL first:
 

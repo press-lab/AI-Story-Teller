@@ -388,6 +388,9 @@ audit trail and intentionally outlives ordinary diagnostics.
   `openRouterProviderSort`, `openRouterDataCollection`;
 - `background`: semantic-evaluation and memory-detection enable/frequency fields;
 - `features`: `scenarioPublishingEnabled`, `developerToolsVisibleToAdmins`;
+- `administration`: `adminEmails`, a bootstrap/repair list for verified
+  accounts. The durable admin authority is still `users.role`; configured
+  emails can grant admin but do not silently demote an existing admin role;
 - optional update attribution timestamps/user id.
 
 Provider API keys are deliberately absent.

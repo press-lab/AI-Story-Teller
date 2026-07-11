@@ -100,6 +100,7 @@ import {
   updateBackendSocialVisibility,
   updateBackendBrain,
   updateBackendAdminSafetyEventStatus,
+  updateBackendAdminUserRole,
   updateBackendAdminUserStatus,
   verifyBackendEmail,
   type BackendAdminConsoleData,
@@ -1113,6 +1114,19 @@ export default function App() {
     }
   }, [backendSession, normalizedRuntimeConfig]);
 
+  const setBackendAdminUserRole = useCallback(async (userId: string, role: "user" | "admin") => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Saving user role...");
+    try {
+      const result = await updateBackendAdminUserRole(normalizedRuntimeConfig, backendSession, userId, role);
+      setBackendAdminConsole(result);
+      setBackendAdminStatus("User role updated.");
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "User role update failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
   const createBackendAdminUserRestriction = useCallback(async (
     userId: string,
     input: {
@@ -1870,6 +1884,7 @@ export default function App() {
           status={backendAdminStatus}
           onRefresh={refreshBackendAdminConsole}
           onSetUserStatus={setBackendAdminUserStatus}
+          onSetUserRole={setBackendAdminUserRole}
           onCreateRestriction={createBackendAdminUserRestriction}
           onUpdateSafetyEvent={setBackendAdminSafetyEventStatus}
           onCreateInvite={createBackendAdminInviteLink}

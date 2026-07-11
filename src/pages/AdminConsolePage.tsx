@@ -19,6 +19,7 @@ interface AdminConsolePageProps {
   status?: string;
   onRefresh?: () => Promise<void> | void;
   onSetUserStatus: (userId: string, status: "pending_verification" | "active" | "disabled") => Promise<void>;
+  onSetUserRole: (userId: string, role: "user" | "admin") => Promise<void>;
   onCreateRestriction: (
     userId: string,
     input: {
@@ -214,6 +215,7 @@ export function AdminConsolePage({
   status,
   onRefresh,
   onSetUserStatus,
+  onSetUserRole,
   onCreateRestriction,
   onUpdateSafetyEvent,
   onCreateInvite,
@@ -454,6 +456,11 @@ export function AdminConsolePage({
     setPlatformDraft({ ...platformDraft, features: { ...platformDraft.features, ...patch } });
   }
 
+  function updatePlatformAdministration(patch: Partial<BackendPlatformSettings["administration"]>) {
+    if (!platformDraft) return;
+    setPlatformDraft({ ...platformDraft, administration: { ...platformDraft.administration, ...patch } });
+  }
+
   async function createInvite() {
     setAdminActionStatus("Creating invite...");
     notify("Creating invite...", { type: "info" });
@@ -529,6 +536,28 @@ export function AdminConsolePage({
       notify("Account status updated.", { type: "success" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "User status update failed.";
+      setAdminActionStatus(message);
+      notify(message, { type: "error" });
+    }
+  }
+
+  async function updateUserRole(userId: string, nextRole: "user" | "admin") {
+    const userLabel = formatUserReference(userId, usersById);
+    const confirmed = await confirmAction({
+      title: "Change account role?",
+      message: `Set ${userLabel} to ${nextRole}? Admin accounts can manage users, invites, platform settings, and operations data.`,
+      confirmLabel: "Change Role",
+      danger: nextRole !== "admin",
+    });
+    if (!confirmed) return;
+    setAdminActionStatus(`Updating ${userLabel}...`);
+    notify("Updating account role...", { type: "info" });
+    try {
+      await onSetUserRole(userId, nextRole);
+      setAdminActionStatus(`${userLabel} set to ${nextRole}.`);
+      notify("Account role updated.", { type: "success" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "User role update failed.";
       setAdminActionStatus(message);
       notify(message, { type: "error" });
     }
@@ -681,7 +710,7 @@ export function AdminConsolePage({
             <div className="panel-heading">
               <div>
                 <h3>Invite Links</h3>
-                <p className="muted">Create account invites here. Admin role is still assigned only by backend configuration or backend data.</p>
+                <p className="muted">Create account invites here. Admin roles are stored in backend data and can be managed from this console.</p>
               </div>
               <button type="button" onClick={() => void createInvite()}>
                 Create Invite
@@ -811,6 +840,19 @@ export function AdminConsolePage({
                     onChange={(developerToolsVisibleToAdmins) => updatePlatformFeatures({ developerToolsVisibleToAdmins })}
                   />
                 </div>
+                <Field label="Bootstrap admin emails">
+                  <textarea
+                    rows={3}
+                    value={(platformDraft.administration?.adminEmails ?? []).join("\n")}
+                    onChange={(event) => updatePlatformAdministration({
+                      adminEmails: event.target.value.split(/[\n,]/).map((email) => email.trim()).filter(Boolean),
+                    })}
+                    placeholder="one@example.com"
+                  />
+                </Field>
+                <p className="muted">
+                  Stored account roles are authoritative. These emails are only a bootstrap/repair list: matching verified accounts become admin, but removing an email does not silently demote an existing admin.
+                </p>
               </>
             ) : (
               <p className="muted">Platform settings load with the admin console.</p>
@@ -819,7 +861,7 @@ export function AdminConsolePage({
 
           <article className="panel settings-card settings-section-full">
             <h3>Admin Actions</h3>
-            <p className="muted">Admin role is read-only here. Promote admins through backend configuration or backend data only.</p>
+            <p className="muted">Promote admins here after bootstrap. Keep at least one active admin account.</p>
             <div className="grid three">
               <Field label="Target user">
                 <select value={targetUserId} onChange={(event) => setTargetUserId(event.target.value)}>
@@ -838,6 +880,15 @@ export function AdminConsolePage({
                   <option value="pending_verification">pending_verification</option>
                   <option value="active">active</option>
                   <option value="disabled">disabled</option>
+                </select>
+              </Field>
+              <Field label="Account role">
+                <select
+                  value={targetUser?.role ?? "user"}
+                  onChange={(event) => targetUser && void updateUserRole(targetUser.id, event.target.value as "user" | "admin")}
+                >
+                  <option value="user">user</option>
+                  <option value="admin">admin</option>
                 </select>
               </Field>
               <Field label="Restriction level">

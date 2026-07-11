@@ -52,8 +52,8 @@ import {
   unpublishScenarioRevision,
 } from "./scenarioSharing";
 import { buildProfileSummary, buildPublicProfileSummary, listExploreScenarios } from "./profileReadModels";
-import { getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
-import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserStatus } from "./adminConsole";
+import { effectiveAdminEmails, getPlatformSettings, updatePlatformSettings, type PlatformSettingsInput } from "./platformSettings";
+import { buildAdminConsole, buildAdminConsoleDetails, createManualRestriction, disableInviteLink, updateSafetyEventStatus, updateUserRole, updateUserStatus } from "./adminConsole";
 import { bearerToken, readJsonBody, routePath, sendJson } from "./http";
 import { createTraceId, elapsedMs, performanceTrace, sanitizeErrorMessage } from "./performanceTrace";
 import type { LocalDbData, PerformanceTraceRecord } from "./apiTypes";
@@ -348,14 +348,19 @@ async function handleRequest(
 
     if (request.method === "GET" && route.pathname === "/auth/session") {
       const session = await requireSession(request, db);
-      applyConfiguredAdminRole({ users: [session.user] }, session.user, config);
       const data = db.readAccountRestrictions
-        ? { ...createEmptyDb(), accountRestrictions: await db.readAccountRestrictions(session.user.id) }
+        ? {
+          ...createEmptyDb(),
+          users: [session.user],
+          platformSettings: (await db.read({ includeAdventureSnapshots: false })).platformSettings,
+          accountRestrictions: await db.readAccountRestrictions(session.user.id),
+        }
         : await db.read();
+      applyConfiguredAdminRole(data, session.user, config);
       sendJson(
         response,
         200,
-        { ...publicSession(session, config), restriction: currentRestriction(data, session.user.id) },
+        { ...publicSession(session, config, data), restriction: currentRestriction(data, session.user.id) },
         authSessionHeaders(config, corsHeaders, session),
       );
       return;
@@ -666,6 +671,18 @@ async function handleRequest(
       const { body } = await readJsonBody<{ status: "pending_verification" | "active" | "disabled" }>(request);
       const data = await db.update((draft) => {
         updateUserStatus(draft, adminUserId, userId, body.status);
+        return buildAdminConsole(draft, config);
+      });
+      sendJson(response, 200, data, corsHeaders);
+      return;
+    }
+
+    if (request.method === "PATCH" && route.segments[0] === "admin" && route.segments[1] === "users" && route.segments[3] === "role") {
+      const adminUserId = await assertAdmin(request, config, db);
+      const userId = route.segments[2];
+      const { body } = await readJsonBody<{ role: "user" | "admin" }>(request);
+      const data = await db.update((draft) => {
+        updateUserRole(draft, adminUserId, userId, body.role);
         return buildAdminConsole(draft, config);
       });
       sendJson(response, 200, data, corsHeaders);
@@ -1352,49 +1369,58 @@ async function assertAdmin(request: IncomingMessage, config: ApiConfig, db: Back
   if (config.adminKey && request.headers["x-admin-key"] === config.adminKey) return undefined;
   const session = await requireSession(request, db).catch(() => undefined);
   if (session) {
-    applyConfiguredAdminRole({ users: [session.user] }, session.user, config);
     if (isAdminUser(session.user, config)) {
       return session.user.id;
     }
+    const data = await db.read({ includeAdventureSnapshots: false });
+    const storedUser = data.users.find((entry) => entry.id === session.user.id) ?? session.user;
+    applyConfiguredAdminRole(data, storedUser, config);
+    if (isAdminUser(storedUser, config, data)) return session.user.id;
   }
-  if (!config.adminKey && config.adminEmails.length === 0) return undefined;
+  if (!config.databaseUrl && !config.adminKey && config.adminEmails.length === 0) return undefined;
   throw new ApiError(403, "admin_required", "Admin access is required.");
 }
 
-function publicSession(result: AuthSessionResult, config: ApiConfig) {
+function publicSession(result: AuthSessionResult, config: ApiConfig, data?: LocalDbData) {
   return {
-    user: publicUser(result.user, config),
+    user: publicUser(result.user, config, data),
     profile: result.profile,
     sessionToken: config.databaseUrl ? "cookie" : result.sessionToken,
     expiresAt: result.session.expiresAt,
   };
 }
 
-function publicUser(user: AuthSessionResult["user"], config: ApiConfig) {
+function publicUser(user: AuthSessionResult["user"], config: ApiConfig, data?: LocalDbData) {
   return {
     ...user,
-    role: isAdminUser(user, config) ? "admin" : user.role ?? "user",
+    role: isAdminUser(user, config, data) ? "admin" : user.role ?? "user",
   };
 }
 
 function applyConfiguredAdminRole(
-  data: { users: AuthSessionResult["user"][]; adminActions?: LocalDbData["adminActions"] },
+  data: { users: AuthSessionResult["user"][]; platformSettings?: LocalDbData["platformSettings"]; adminActions?: LocalDbData["adminActions"] },
   user: AuthSessionResult["user"],
   config: ApiConfig,
 ): void {
-  if (config.adminEmails.length === 0) return;
-  const nextRole = user.emailVerified && config.adminEmails.includes(user.email.toLowerCase()) ? "admin" : "user";
+  const adminEmails = "platformSettings" in data
+    ? effectiveAdminEmails(data as LocalDbData, config)
+    : config.adminEmails;
+  if (adminEmails.length === 0) return;
   const previousRole = user.role ?? "user";
+  const nextRole = previousRole === "admin" || (user.emailVerified && adminEmails.includes(user.email.toLowerCase()))
+    ? "admin"
+    : previousRole;
+  if (nextRole === previousRole) return;
   user.role = nextRole;
   const stored = data.users.find((entry) => entry.id === user.id);
   if (stored) stored.role = nextRole;
   if (previousRole !== nextRole && data.adminActions) {
     data.adminActions.push({
       id: `admin_role_${createTraceId()}`,
-      action: nextRole === "admin" ? "configured_admin_granted" : "configured_admin_revoked",
+      action: "configured_admin_granted",
       targetType: "user",
       targetId: user.id,
-      reason: "Reconciled from AIST_ADMIN_EMAILS.",
+      reason: "Reconciled from configured admin email bootstrap.",
       createdAt: new Date().toISOString(),
     });
   }
@@ -1424,10 +1450,10 @@ function sessionCookie(request: IncomingMessage): string | undefined {
   return undefined;
 }
 
-function isAdminUser(user: AuthSessionResult["user"], config: ApiConfig): boolean {
-  return config.adminEmails.length > 0
-    ? user.emailVerified && config.adminEmails.includes(user.email.toLowerCase())
-    : user.role === "admin";
+function isAdminUser(user: AuthSessionResult["user"], config: ApiConfig, data?: LocalDbData): boolean {
+  if (user.role === "admin") return true;
+  const adminEmails = data ? effectiveAdminEmails(data, config) : config.adminEmails;
+  return user.emailVerified && adminEmails.includes(user.email.toLowerCase());
 }
 
 function assertScenarioPublishingEnabled(data: Parameters<typeof getPlatformSettings>[0], config: ApiConfig): void {
@@ -1624,6 +1650,7 @@ const CLIENT_TELEMETRY_DYNAMIC_API_ROUTES: Array<{ pattern: RegExp; template: st
   { pattern: /^\/profiles\/[^/]+\/friend-accept$/, template: "/profiles/:userId/friend-accept" },
   { pattern: /^\/profiles\/[^/]+\/friendship$/, template: "/profiles/:userId/friendship" },
   { pattern: /^\/admin\/users\/[^/]+\/status$/, template: "/admin/users/:userId/status" },
+  { pattern: /^\/admin\/users\/[^/]+\/role$/, template: "/admin/users/:userId/role" },
   { pattern: /^\/admin\/users\/[^/]+\/restrictions$/, template: "/admin/users/:userId/restrictions" },
   { pattern: /^\/admin\/account-safety-events\/[^/]+$/, template: "/admin/account-safety-events/:eventId" },
   { pattern: /^\/adventures\/[^/]+$/, template: "/adventures/:adventureId" },
