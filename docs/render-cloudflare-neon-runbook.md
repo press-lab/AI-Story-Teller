@@ -23,9 +23,9 @@ AIST_EMAIL_DELIVERY_MODE=disabled
 AIST_POLICY_MODE=reviewOnly
 ```
 
-`api:hosted:free` serializes compiled migrations before listening. Reconcile
-the live dashboard to these values before redeploying and keep public signup
-disabled. Do not use fake email credentials.
+`api:hosted:free` serializes compiled migrations before listening. The live
+dashboard was reconciled to these values on July 10, 2026; keep it aligned and
+keep public signup disabled. Do not use fake email credentials.
 
 ## Render Web Service
 

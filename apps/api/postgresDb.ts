@@ -37,6 +37,7 @@ import { createId, nowIso } from "./ids";
 const { Pool } = pg;
 const ADVISORY_LOCK_KEY = 4_263_117;
 const MAX_SNAPSHOTS_PER_ADVENTURE = 100;
+const QUERY_TIMEOUT_GRACE_MS = 5_000;
 
 export interface PostgresDbOptions {
   max?: number;
@@ -45,6 +46,61 @@ export interface PostgresDbOptions {
   statementTimeoutMs?: number;
   lockTimeoutMs?: number;
   idleTransactionTimeoutMs?: number;
+}
+
+interface PostgresTransactionSetting {
+  name: "statement_timeout" | "lock_timeout" | "idle_in_transaction_session_timeout";
+  value: string;
+}
+
+interface PostgresTransactionTimeoutQuery {
+  text: string;
+  values: string[];
+}
+
+export function buildPostgresPoolConfig(
+  connectionString: string,
+  options: PostgresDbOptions = {},
+): pg.PoolConfig {
+  // Neon pooled URLs use PgBouncer transaction mode, which rejects timeout
+  // values in the startup packet and cannot preserve session-level SET state.
+  // Apply server timeouts with SET LOCAL after BEGIN while PgBouncer guarantees
+  // a single backend connection. query_timeout is only a client-side failsafe,
+  // so keep it above the server's statement timeout instead of racing it.
+  return {
+    connectionString,
+    max: options.max,
+    connectionTimeoutMillis: options.connectionTimeoutMillis,
+    idleTimeoutMillis: options.idleTimeoutMillis,
+    query_timeout: options.statementTimeoutMs
+      ? Math.round(options.statementTimeoutMs) + QUERY_TIMEOUT_GRACE_MS
+      : undefined,
+  };
+}
+
+export function buildPostgresTransactionTimeoutQuery(
+  options: PostgresDbOptions = {},
+): PostgresTransactionTimeoutQuery | undefined {
+  const transactionSettings: PostgresTransactionSetting[] = [
+    options.statementTimeoutMs
+      ? { name: "statement_timeout", value: String(Math.round(options.statementTimeoutMs)) }
+      : undefined,
+    options.lockTimeoutMs
+      ? { name: "lock_timeout", value: String(Math.round(options.lockTimeoutMs)) }
+      : undefined,
+    options.idleTransactionTimeoutMs
+      ? { name: "idle_in_transaction_session_timeout", value: String(Math.round(options.idleTransactionTimeoutMs)) }
+      : undefined,
+  ].filter((setting): setting is PostgresTransactionSetting => setting !== undefined);
+  if (transactionSettings.length === 0) return undefined;
+
+  const expressions = transactionSettings.map(
+    (setting, index) => `set_config('${setting.name}', $${index + 1}, true)`,
+  );
+  return {
+    text: `SELECT ${expressions.join(", ")}`,
+    values: transactionSettings.map((setting) => setting.value),
+  };
 }
 
 interface DbMetadata {
@@ -95,32 +151,56 @@ interface UserUsageStatsRow {
 
 export class PostgresDb implements BackendDb {
   private readonly pool: pg.Pool;
+  private readonly transactionTimeoutQuery: PostgresTransactionTimeoutQuery | undefined;
   private initPromise: Promise<void> | undefined;
 
   constructor(connectionString: string, options: PostgresDbOptions = {}) {
-    const sessionOptions = [
-      options.statementTimeoutMs ? `-c statement_timeout=${Math.round(options.statementTimeoutMs)}` : "",
-      options.lockTimeoutMs ? `-c lock_timeout=${Math.round(options.lockTimeoutMs)}` : "",
-      options.idleTransactionTimeoutMs ? `-c idle_in_transaction_session_timeout=${Math.round(options.idleTransactionTimeoutMs)}` : "",
-    ].filter(Boolean).join(" ");
-    this.pool = new Pool({
-      connectionString,
-      max: options.max,
-      connectionTimeoutMillis: options.connectionTimeoutMillis,
-      idleTimeoutMillis: options.idleTimeoutMillis,
-      options: sessionOptions || undefined,
-    });
+    this.pool = new Pool(buildPostgresPoolConfig(connectionString, options));
+    this.transactionTimeoutQuery = buildPostgresTransactionTimeoutQuery(options);
+  }
+
+  private async beginTransaction(client: pg.PoolClient): Promise<void> {
+    await client.query("BEGIN");
+    if (this.transactionTimeoutQuery) {
+      await client.query(this.transactionTimeoutQuery.text, this.transactionTimeoutQuery.values);
+    }
+  }
+
+  private async query<T extends pg.QueryResultRow = pg.QueryResultRow>(
+    text: string,
+    values?: unknown[],
+  ): Promise<pg.QueryResult<T>> {
+    const client = await this.pool.connect();
+    let released = false;
+    try {
+      await this.beginTransaction(client);
+      const result = await client.query<T>(text, values);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      const rollbackError = await client.query("ROLLBACK").then(
+        () => undefined,
+        (caught: unknown) => caught instanceof Error ? caught : new Error(String(caught)),
+      );
+      if (rollbackError) {
+        client.release(rollbackError);
+        released = true;
+      }
+      throw error;
+    } finally {
+      if (!released) client.release();
+    }
   }
 
   async readiness() {
     await this.init();
-    const result = await this.pool.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
+    const result = await this.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
     return { database: "postgres" as const, schemaVersion: result.rows[0]?.version ?? 0 };
   }
 
   async resolveSessionByTokenHash(tokenHash: string) {
     await this.init();
-    const result = await this.pool.query<{
+    const result = await this.query<{
       session: LocalDbData["sessions"][number];
       user: LocalDbData["users"][number];
       profile: LocalDbData["profiles"][number];
@@ -142,7 +222,7 @@ export class PostgresDb implements BackendDb {
 
   async revokeSessionByTokenHash(tokenHash: string) {
     await this.init();
-    const result = await this.pool.query(`
+    const result = await this.query(`
       UPDATE aist_records
       SET data = jsonb_set(data, '{revokedAt}', to_jsonb(now()::text), true), updated_at = now()
       WHERE collection = 'sessions' AND data->>'tokenHash' = $1 AND NOT (data ? 'revokedAt')
@@ -177,7 +257,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       for (const user of data.users.filter((entry) => entry.id === userId)) await upsertRecord(client, "users", user.id, user);
       for (const profile of data.profiles.filter((entry) => entry.userId === userId)) await upsertRecord(client, "profiles", profile.userId, profile);
       for (const credential of data.passwordCredentials.filter((entry) => entry.userId === userId)) await upsertRecord(client, "passwordCredentials", credential.userId, credential);
@@ -214,7 +294,7 @@ export class PostgresDb implements BackendDb {
 
   async readAdventureRecord(ownerUserId: string, adventureId: string) {
     await this.init();
-    const result = await this.pool.query<{ data: LocalDbData["adventures"][number] }>(`
+    const result = await this.query<{ data: LocalDbData["adventures"][number] }>(`
       SELECT data FROM aist_records
       WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2
       LIMIT 1
@@ -226,7 +306,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       const existingResult = await client.query<{ data: LocalDbData["adventures"][number] }>(`
         SELECT data FROM aist_records
         WHERE collection = 'adventures' AND id = $1
@@ -298,7 +378,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       const deleted = await client.query(
         "DELETE FROM aist_records WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2",
         [adventureId, ownerUserId],
@@ -369,7 +449,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       const currentResult = await client.query<{ data: LocalDbData["adventures"][number] }>(`
         SELECT data FROM aist_records
         WHERE collection = 'adventures' AND id = $1 AND data->>'ownerUserId' = $2
@@ -452,7 +532,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       for (const collection of [
         "policyDecisions",
         "accountSafetyEvents",
@@ -476,15 +556,15 @@ export class PostgresDb implements BackendDb {
 
   async claimIdempotency(userId: string, operation: string, key: string, requestHash: string, expiresAt: string) {
     await this.init();
-    await this.pool.query("DELETE FROM aist_idempotency WHERE expires_at <= now()");
-    const inserted = await this.pool.query(`
+    await this.query("DELETE FROM aist_idempotency WHERE expires_at <= now()");
+    const inserted = await this.query(`
       INSERT INTO aist_idempotency (user_id, operation, idempotency_key, request_hash, state, expires_at)
       VALUES ($1, $2, $3, $4, 'pending', $5::timestamptz)
       ON CONFLICT DO NOTHING
       RETURNING state
     `, [userId, operation, key, requestHash, expiresAt]);
     if ((inserted.rowCount ?? 0) > 0) return { state: "claimed" as const };
-    const existing = await this.pool.query<{
+    const existing = await this.query<{
       requestHash: string;
       state: "pending" | "succeeded" | "failed";
       responseStatus: number | null;
@@ -506,7 +586,7 @@ export class PostgresDb implements BackendDb {
 
   async completeIdempotency(userId: string, operation: string, key: string, state: "succeeded" | "failed", responseStatus: number, responseBody: unknown) {
     await this.init();
-    await this.pool.query(`
+    await this.query(`
       UPDATE aist_idempotency
       SET state = $4, response_status = $5, response_body = $6::jsonb, updated_at = now()
       WHERE user_id = $1 AND operation = $2 AND idempotency_key = $3
@@ -518,7 +598,7 @@ export class PostgresDb implements BackendDb {
     const now = Date.now();
     const windowStartedAt = new Date(Math.floor(now / windowMs) * windowMs).toISOString();
     const expiresAt = new Date(Math.floor(now / windowMs) * windowMs + windowMs).toISOString();
-    const result = await this.pool.query<{ requestCount: number }>(`
+    const result = await this.query<{ requestCount: number }>(`
       INSERT INTO aist_rate_limits (bucket_key, window_started_at, request_count, expires_at)
       VALUES ($1, $2::timestamptz, 1, $3::timestamptz)
       ON CONFLICT (bucket_key, window_started_at) DO UPDATE
@@ -526,7 +606,7 @@ export class PostgresDb implements BackendDb {
         WHERE aist_rate_limits.request_count < $4
       RETURNING request_count AS "requestCount"
     `, [bucketKey, windowStartedAt, expiresAt, limit]);
-    await this.pool.query("DELETE FROM aist_rate_limits WHERE expires_at <= now()");
+    await this.query("DELETE FROM aist_rate_limits WHERE expires_at <= now()");
     return {
       allowed: (result.rowCount ?? 0) > 0,
       retryAfterSeconds: Math.max(1, Math.ceil((new Date(expiresAt).getTime() - now) / 1000)),
@@ -549,7 +629,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       await this.lock(client);
       await this.writeWithClient(client, normalizeDbData(data));
       await client.query("COMMIT");
@@ -579,7 +659,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       const data = await this.readWithClient(client);
       const before = structuredClone(data);
       try {
@@ -637,7 +717,7 @@ export class PostgresDb implements BackendDb {
 
   async cleanupLifecycle(): Promise<number> {
     await this.init();
-    const records = await this.pool.query(`
+    const records = await this.query(`
       DELETE FROM aist_records
       WHERE
         (collection = 'sessions' AND (
@@ -650,8 +730,8 @@ export class PostgresDb implements BackendDb {
         OR (collection IN ('policyDecisions', 'accountSafetyEvents', 'usageLogs') AND (data->>'createdAt')::timestamptz < now() - interval '365 days')
         OR (collection = 'adminActions' AND (data->>'createdAt')::timestamptz < now() - interval '730 days')
     `);
-    const idempotency = await this.pool.query("DELETE FROM aist_idempotency WHERE expires_at < now()");
-    const rateLimits = await this.pool.query("DELETE FROM aist_rate_limits WHERE expires_at < now()");
+    const idempotency = await this.query("DELETE FROM aist_idempotency WHERE expires_at < now()");
+    const rateLimits = await this.query("DELETE FROM aist_rate_limits WHERE expires_at < now()");
     return (records.rowCount ?? 0) + (idempotency.rowCount ?? 0) + (rateLimits.rowCount ?? 0);
   }
 
@@ -820,7 +900,7 @@ export class PostgresDb implements BackendDb {
     await this.init();
     const client = await this.pool.connect();
     try {
-      await client.query("BEGIN");
+      await this.beginTransaction(client);
       if (serializeAuth) await client.query("SELECT pg_advisory_xact_lock($1)", [ADVISORY_LOCK_KEY + 1]);
       const data = await this.readWithClient(client);
       const before = structuredClone(data);
@@ -838,7 +918,7 @@ export class PostgresDb implements BackendDb {
 
   private async assertSchemaCompatible(): Promise<void> {
     try {
-      const result = await this.pool.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
+      const result = await this.query<{ version: number }>("SELECT max(version)::int AS version FROM schema_migrations");
       const version = result.rows[0]?.version ?? 0;
       if (version !== CURRENT_SQL_SCHEMA_VERSION) {
         throw new Error(`Postgres schema version ${version} is incompatible; expected ${CURRENT_SQL_SCHEMA_VERSION}. Run npm run api:db:migrate.`);

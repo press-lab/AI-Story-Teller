@@ -1,7 +1,7 @@
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createEmptyDb } from "./dbShape";
-import { PostgresDb } from "./postgresDb";
+import { buildPostgresPoolConfig, buildPostgresTransactionTimeoutQuery, PostgresDb } from "./postgresDb";
 import { CURRENT_SQL_SCHEMA_VERSION, runSqlMigrations } from "./sqlMigrations";
 import { createDefaultAdventure } from "../../src/state/defaults";
 
@@ -49,6 +49,51 @@ suite("Postgres production integration", () => {
       const after = await pool.query<{ count: string }>("SELECT count(*)::text AS count FROM schema_migrations");
       expect(after.rows[0].count).toBe(before.rows[0].count);
     } finally {
+      await pool.end();
+    }
+  });
+
+  it("applies server timeouts only for the current pooled transaction", async () => {
+    const options = {
+      max: 1,
+      statementTimeoutMs: 5_000,
+      lockTimeoutMs: 2_000,
+      idleTransactionTimeoutMs: 3_000,
+    };
+    const transactionTimeouts = buildPostgresTransactionTimeoutQuery(options)!;
+    const pool = new Pool(buildPostgresPoolConfig(connectionString!, options));
+    const client = await pool.connect();
+    try {
+      const baseline = await client.query(`
+        SELECT
+          current_setting('statement_timeout') AS statement_timeout,
+          current_setting('lock_timeout') AS lock_timeout,
+          current_setting('idle_in_transaction_session_timeout') AS idle_timeout
+      `);
+      await client.query("BEGIN");
+      await client.query(transactionTimeouts.text, transactionTimeouts.values);
+      const active = await client.query(`
+        SELECT
+          current_setting('statement_timeout') AS statement_timeout,
+          current_setting('lock_timeout') AS lock_timeout,
+          current_setting('idle_in_transaction_session_timeout') AS idle_timeout
+      `);
+      expect(active.rows[0]).toEqual({
+        statement_timeout: "5s",
+        lock_timeout: "2s",
+        idle_timeout: "3s",
+      });
+      await client.query("COMMIT");
+      const reset = await client.query(`
+        SELECT
+          current_setting('statement_timeout') AS statement_timeout,
+          current_setting('lock_timeout') AS lock_timeout,
+          current_setting('idle_in_transaction_session_timeout') AS idle_timeout
+      `);
+      expect(reset.rows[0]).toEqual(baseline.rows[0]);
+    } finally {
+      await client.query("ROLLBACK").catch(() => undefined);
+      client.release();
       await pool.end();
     }
   });
