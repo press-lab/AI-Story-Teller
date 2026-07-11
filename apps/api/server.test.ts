@@ -201,6 +201,16 @@ describe("local API auth and invite gate", () => {
     expect(response.body).toMatchObject({ passwordLogin: true, passwordSignup: true, googleOAuth: false, inviteRequired: true });
   });
 
+  it("reports a clear admin provider-health error when the backend model key is missing", async () => {
+    const response = await requestJson<{ code: string; error: string }>("/admin/provider-health", {
+      method: "POST",
+    });
+    expect(response.status).toBe(400);
+    expect(response.body.code).toBe("provider_key_missing");
+    expect(response.body.error).toContain("platform provider API key");
+    expect(response.body.error).toContain("Render");
+  });
+
   it("does not silently turn disabled email delivery into trusted-invite signup", async () => {
     const inviteToken = await createInvite();
     const before = await api.db.read();
@@ -848,6 +858,21 @@ describe("social profile API", () => {
       headers: viewerAuth,
     });
     expect(explore.body.scenarios[0]).toMatchObject({ likeCount: 1, likedByViewer: true });
+
+    const profileSearch = await requestJson<{
+      profiles: Array<{
+        userId: string;
+        displayName: string;
+        scenarioCount: number;
+        scenarios: Array<{ title: string; likeCount: number; likedByViewer: boolean }>;
+      }>;
+    }>("/profiles/search?q=social", { headers: viewerAuth });
+    expect(profileSearch.status).toBe(200);
+    expect(profileSearch.body.profiles[0]).toMatchObject({
+      userId: creatorProfile.body.user.id,
+      scenarioCount: 1,
+      scenarios: [expect.objectContaining({ title: "Social Scenario", likeCount: 1, likedByViewer: true })],
+    });
 
     expect((await requestJson(`/profiles/${creatorProfile.body.user.id}/follow`, { method: "POST", headers: viewerAuth })).status).toBe(200);
     expect((await requestJson(`/profiles/${creatorProfile.body.user.id}/friend-request`, { method: "POST", headers: viewerAuth })).status).toBe(201);

@@ -54,6 +54,7 @@ import {
   auditBackendBrains,
   auditBackendStoryCards,
   buildBackendStoryCardMemory,
+  checkBackendProviderHealth,
   createBackendInvite,
   createBackendScenario,
   createBackendScenarioRevision,
@@ -93,6 +94,7 @@ import {
   saveBackendPlatformSettings,
   signupBackendPassword,
   suggestBackendStoryCardUpdates,
+  searchBackendPublicProfiles,
   startBackendGoogleOAuth,
   unpublishBackendScenarioRevision,
   unfollowBackendProfile,
@@ -107,7 +109,9 @@ import {
   type BackendCapabilities,
   type BackendExploreScenarioSummary,
   type BackendImportRequest,
+  type BackendProviderHealthResult,
   type BackendProfileSummary,
+  type BackendPublicProfileSearchResult,
   type BackendPublicProfileSummary,
   type BackendSessionState,
 } from "./runtime/backendApi";
@@ -423,6 +427,8 @@ export default function App() {
   const [backendPublicProfileUserId, setBackendPublicProfileUserId] = useState<string | null>(null);
   const [backendProfileStatus, setBackendProfileStatus] = useState("");
   const [backendExploreScenarios, setBackendExploreScenarios] = useState<BackendExploreScenarioSummary[]>([]);
+  const [backendProfileSearchResults, setBackendProfileSearchResults] = useState<BackendPublicProfileSearchResult[]>([]);
+  const [backendProfileSearchStatus, setBackendProfileSearchStatus] = useState("");
   const [backendExploreStatus, setBackendExploreStatus] = useState("");
   const [backendAdminConsole, setBackendAdminConsole] = useState<BackendAdminConsoleData | undefined>();
   const [backendAdminStatus, setBackendAdminStatus] = useState("");
@@ -997,6 +1003,25 @@ export default function App() {
     }
   }, [backendReady, backendSession, normalizedRuntimeConfig]);
 
+  const searchBackendProfiles = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!backendReady || !backendSession || trimmed.length < 2) {
+      setBackendProfileSearchResults([]);
+      setBackendProfileSearchStatus("");
+      return;
+    }
+    setBackendProfileSearchStatus("Searching profiles...");
+    try {
+      const result = await searchBackendPublicProfiles(normalizedRuntimeConfig, backendSession, trimmed);
+      setBackendProfileSearchResults(result.profiles);
+      setBackendProfileSearchStatus("");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Profile search failed.";
+      setBackendProfileSearchResults([]);
+      setBackendProfileSearchStatus(message);
+    }
+  }, [backendReady, backendSession, normalizedRuntimeConfig]);
+
   const toggleBackendScenarioLike = useCallback(async (scenarioId: string, liked: boolean) => {
     if (!backendReady || !backendSession) {
       setBackendExploreStatus("Sign in to like Community Scenarios.");
@@ -1212,6 +1237,21 @@ export default function App() {
       return result;
     } catch (error) {
       setBackendAdminStatus(error instanceof Error ? error.message : "Platform settings save failed.");
+      throw error;
+    }
+  }, [backendSession, normalizedRuntimeConfig]);
+
+  const runBackendProviderHealthCheck = useCallback(async (): Promise<BackendProviderHealthResult> => {
+    if (!backendSession || backendSession.user.role !== "admin") throw new Error("Admin access is required.");
+    setBackendAdminStatus("Checking platform model provider...");
+    try {
+      const result = await checkBackendProviderHealth(normalizedRuntimeConfig, backendSession);
+      setBackendAdminStatus(
+        `Provider check passed: ${result.providerName} / ${result.model} replied in ${Math.round(result.durationMs)}ms.`,
+      );
+      return result;
+    } catch (error) {
+      setBackendAdminStatus(error instanceof Error ? error.message : "Provider health check failed.");
       throw error;
     }
   }, [backendSession, normalizedRuntimeConfig]);
@@ -1768,11 +1808,13 @@ export default function App() {
           backendMode={backendMode}
           backendSession={backendSession}
           scenarios={backendExploreScenarios}
+          profileResults={backendProfileSearchResults}
           premadeAdventures={premadeAdventures}
-          status={backendExploreStatus}
+          status={backendExploreStatus || backendProfileSearchStatus}
           onStartScenario={backendAdventureDataReady ? startBackendExploreScenario : undefined}
           onStartPremade={(!backendMode || backendReady) ? startPremadeExploreScenario : undefined}
           onOpenProfile={backendReady ? openBackendPublicProfile : undefined}
+          onSearchProfiles={backendReady ? searchBackendProfiles : undefined}
           onToggleScenarioLike={backendAdventureDataReady ? toggleBackendScenarioLike : undefined}
         />
       );
@@ -1894,6 +1936,7 @@ export default function App() {
           onCreateInvite={createBackendAdminInviteLink}
           onDisableInvite={disableBackendAdminInviteLink}
           onSavePlatformSettings={saveBackendAdminPlatformSettings}
+          onCheckProviderHealth={runBackendProviderHealthCheck}
         />
       );
     }

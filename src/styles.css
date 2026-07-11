@@ -1963,6 +1963,33 @@ details.story-card-item:not([open]) > :not(summary) {
   margin-top: 18px;
 }
 
+.profile-search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.profile-search-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+.profile-search-card > div {
+  min-width: 0;
+}
+
+.profile-search-card h4 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.profile-search-card .secondary-action {
+  flex: 0 0 auto;
+}
+
 .explore-variable-warning {
   margin-top: 16px;
 }

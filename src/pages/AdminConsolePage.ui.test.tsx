@@ -315,6 +315,16 @@ describe("AdminConsolePage", () => {
       features: { ...adminData().platformSettings.features, ...(settings.features ?? {}) },
       administration: { ...adminData().platformSettings.administration, ...(settings.administration ?? {}) },
     }));
+    const onCheckProviderHealth = vi.fn(async () => ({
+      ok: true as const,
+      providerName: "test",
+      model: "model",
+      durationMs: 42,
+      statusCode: 200,
+      retryCount: 0,
+      usage: { promptTokens: 4, completionTokens: 1, totalTokens: 5 },
+      contentPreview: "OK",
+    }));
 
     render(
       <AdminConsolePage
@@ -328,6 +338,7 @@ describe("AdminConsolePage", () => {
         onCreateInvite={onCreateInvite}
         onDisableInvite={onDisableInvite}
         onSavePlatformSettings={onSavePlatformSettings}
+        onCheckProviderHealth={onCheckProviderHealth}
       />,
     );
 
@@ -356,6 +367,9 @@ describe("AdminConsolePage", () => {
     await user.click(screen.getByRole("tab", { name: "Overview" }));
     await user.clear(screen.getByLabelText("Provider model"));
     await user.type(screen.getByLabelText("Provider model"), "deepseek/deepseek-chat");
+    await user.click(screen.getByRole("button", { name: "Test Model Provider" }));
+    expect(onCheckProviderHealth).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(/Provider check passed: test \/ model replied/)).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("OpenRouter routing preference"), "latency");
     await user.selectOptions(screen.getByLabelText("OpenRouter data policy"), "allow");
     await user.clear(screen.getByLabelText("Bootstrap admin emails"));

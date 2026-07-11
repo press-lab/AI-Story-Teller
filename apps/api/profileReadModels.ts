@@ -72,6 +72,18 @@ export interface PublicProfileSummary {
   social: PublicProfileSocialSummary;
 }
 
+export interface PublicProfileSearchResult {
+  userId: string;
+  displayName: string;
+  bio: string;
+  createdAt: string;
+  scenarioCount: number;
+  followerCount: number;
+  isFollowing: boolean;
+  friendshipStatus: ViewerFriendshipStatus;
+  scenarios: ExploreScenarioSummary[];
+}
+
 export interface ExploreScenarioSummary {
   scenarioId: string;
   revisionId: string;
@@ -148,6 +160,51 @@ export function listExploreScenarios(data: LocalDbData, viewerUserId?: string): 
       };
     })
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
+}
+
+export function searchPublicProfiles(
+  data: LocalDbData,
+  viewerUserId: string,
+  query: string,
+  limit = 20,
+): PublicProfileSearchResult[] {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (normalizedQuery.length < 2) return [];
+  const scenarios = listExploreScenarios(data, viewerUserId);
+  return data.profiles
+    .map((profile) => {
+      const user = data.users.find((entry) => entry.id === profile.userId && entry.status === "active");
+      if (!user) return undefined;
+      const userScenarios = scenarios.filter((scenario) => scenario.ownerUserId === user.id);
+      const searchable = [
+        profile.displayName,
+        user.displayName,
+        profile.bio,
+        ...userScenarios.flatMap((scenario) => [scenario.title, scenario.description]),
+      ].join(" ").toLocaleLowerCase();
+      if (!searchable.includes(normalizedQuery)) return undefined;
+      const social = buildPublicSocialSummary(data, user.id, viewerUserId);
+      return {
+        userId: user.id,
+        displayName: profile.displayName || user.displayName,
+        bio: profile.bio,
+        createdAt: user.createdAt,
+        scenarioCount: userScenarios.length,
+        followerCount: data.userFollows.filter((entry) => entry.followedUserId === user.id).length,
+        isFollowing: social.viewer.isFollowing,
+        friendshipStatus: social.viewer.friendshipStatus,
+        scenarios: userScenarios.slice(0, 3),
+      };
+    })
+    .filter((entry): entry is PublicProfileSearchResult => Boolean(entry))
+    .sort((a, b) => {
+      if (a.userId === viewerUserId) return -1;
+      if (b.userId === viewerUserId) return 1;
+      if (b.scenarioCount !== a.scenarioCount) return b.scenarioCount - a.scenarioCount;
+      if (b.followerCount !== a.followerCount) return b.followerCount - a.followerCount;
+      return a.displayName.localeCompare(b.displayName);
+    })
+    .slice(0, Math.max(1, Math.min(50, Math.floor(limit))));
 }
 
 function buildOwnSocialSummary(data: LocalDbData, userId: string): OwnProfileSocialSummary {

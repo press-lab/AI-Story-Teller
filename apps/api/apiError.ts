@@ -25,11 +25,24 @@ export function normalizeApiError(error: unknown): ApiError {
   if (message.startsWith("Network error") && /timeout|timed out|abort/i.test(message)) {
     return new ApiError(504, "provider_timeout", "The model provider did not respond in time.", error);
   }
-  if (message.startsWith("Provider error") || message.startsWith("Provider returned") || message.startsWith("Network error")) {
-    return new ApiError(502, "provider_failure", "The model provider could not complete the request.", error);
+  if (message.startsWith("Provider error")) {
+    return new ApiError(502, "provider_failure", safeProviderMessage(message), error);
+  }
+  if (message.startsWith("Provider returned")) {
+    return new ApiError(502, "provider_failure", "The model provider returned an unusable response. Check the provider model, account status, and the trace in Admin Console.", error);
+  }
+  if (message.startsWith("Network error")) {
+    return new ApiError(502, "provider_failure", "The model provider could not be reached from the story server. Check the provider base URL, network status, and the trace in Admin Console.", error);
   }
   if (safeValidationMessage(message)) return new ApiError(400, "invalid_request", message, error);
   return new ApiError(500, "internal_error", "The server could not complete the request.", error);
+}
+
+function safeProviderMessage(message: string): string {
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/api[_-]?key[=:]\s*[A-Za-z0-9._~+/=-]+/gi, "api key=[redacted]")
+    .slice(0, 700);
 }
 
 function safeValidationMessage(message: string): boolean {
