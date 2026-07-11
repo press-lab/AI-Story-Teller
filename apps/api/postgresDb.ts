@@ -37,7 +37,6 @@ import { createId, nowIso } from "./ids";
 const { Pool } = pg;
 const ADVISORY_LOCK_KEY = 4_263_117;
 const MAX_SNAPSHOTS_PER_ADVENTURE = 100;
-const QUERY_TIMEOUT_GRACE_MS = 5_000;
 
 export interface PostgresDbOptions {
   max?: number;
@@ -65,16 +64,13 @@ export function buildPostgresPoolConfig(
   // Neon pooled URLs use PgBouncer transaction mode, which rejects timeout
   // values in the startup packet and cannot preserve session-level SET state.
   // Apply server timeouts with SET LOCAL after BEGIN while PgBouncer guarantees
-  // a single backend connection. query_timeout is only a client-side failsafe,
-  // so keep it above the server's statement timeout instead of racing it.
+  // a single backend connection. Do not use node-postgres query_timeout here:
+  // its client timer does not cancel uncertain server-side write work.
   return {
     connectionString,
     max: options.max,
     connectionTimeoutMillis: options.connectionTimeoutMillis,
     idleTimeoutMillis: options.idleTimeoutMillis,
-    query_timeout: options.statementTimeoutMs
-      ? Math.round(options.statementTimeoutMs) + QUERY_TIMEOUT_GRACE_MS
-      : undefined,
   };
 }
 

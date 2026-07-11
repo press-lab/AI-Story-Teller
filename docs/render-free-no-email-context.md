@@ -53,10 +53,9 @@ startup currently refuses missing email delivery configuration.
 The live service is now reconciled to the interim mode below. The first
 corrected deploy also exposed a Neon pooler incompatibility: server timeouts in
 the Postgres startup packet were rejected. Runtime database queries now avoid
-startup/session timeout state, use a client-side grace timeout, and apply
-server-enforced `SET LOCAL` timeouts inside explicit transactions. This was
-verified against the pooled Neon URL and the disposable Postgres deployment
-parity suite.
+startup/session timeout state and apply server-enforced `SET LOCAL` timeouts
+inside explicit transactions. This was verified against the pooled Neon URL
+and the disposable Postgres deployment parity suite.
 
 ## Interim Topology
 

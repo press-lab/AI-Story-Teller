@@ -46,7 +46,7 @@ describe("Postgres DB shape helpers", () => {
     expect(poolConfig).not.toHaveProperty("lock_timeout");
     expect(poolConfig).not.toHaveProperty("idle_in_transaction_session_timeout");
     expect(poolConfig.onConnect).toBeUndefined();
-    expect(poolConfig.query_timeout).toBe(35_000);
+    expect(poolConfig.query_timeout).toBeUndefined();
   });
 
   it("builds transaction-local server timeout settings for pooled connections", () => {

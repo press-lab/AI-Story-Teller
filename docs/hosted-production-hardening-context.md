@@ -58,7 +58,7 @@ Implemented evidence:
 - `render.yaml` now describes the actual Free/no-email UAT contract. The live
   dashboard is reconciled to this file.
 - The pooled Neon runtime no longer sends server timeouts as startup
-  parameters. It uses a client-side grace timeout plus transaction-local
+  parameters. Database work that needs those bounds uses transaction-local
   server timeouts, verified against the Neon pooler and the deployment-parity
   suite.
 
