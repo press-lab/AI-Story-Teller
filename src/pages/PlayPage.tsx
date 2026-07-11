@@ -37,8 +37,8 @@ const MODE_PLACEHOLDERS: Record<InputMode, string> = {
   comms: "Ask the AI a question or give it direction (out of character)...",
 };
 
-const PLAY_TOOLKIT_COMPACT_WIDTH = 160;
-const PLAY_TOOLKIT_MIN_WIDTH = 120;
+const PLAY_TOOLKIT_COMPACT_WIDTH = 320;
+const PLAY_TOOLKIT_MIN_WIDTH = 280;
 const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420;
 const PLAY_TOOLKIT_MAX_WIDTH = 600;
 const MOBILE_COMPOSER_QUERY = "(max-width: 640px), (hover: none) and (pointer: coarse)";
@@ -261,6 +261,15 @@ export function PlayPage({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playPanelContent, toolkitWidth, toolkitCollapsed]);
 
+  useEffect(() => {
+    if (!mobileStoryToolsOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileStoryToolsOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileStoryToolsOpen]);
+
   function startToolkitResize(e: React.PointerEvent<HTMLDivElement>) {
     e.currentTarget.setPointerCapture(e.pointerId);
     const startX = e.clientX;
@@ -408,37 +417,43 @@ export function PlayPage({
 
   const toolButtons = (
     <>
-      <button type="button" aria-label="Shape the story" onClick={() => openTool("components")}>
-        <span>Shape the story</span>
-        <small>Direction and active pressure</small>
-      </button>
-      <button type="button" aria-label="World & lore" onClick={() => openTool("storyCards")}>
-        <span>World &amp; lore</span>
-        <small>Places, facts, and recurring details</small>
-      </button>
-      <button type="button" aria-label="Characters" onClick={() => openTool("brains")}>
-        <span>Characters</span>
-        <small>Important people and their inner state</small>
-      </button>
-      <button type="button" aria-label="Memory suggestions" onClick={() => openTool("memoryInbox")}>
-        <span>
-          Memory suggestions
-          {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
-        </span>
-        <small>Review what the story should remember</small>
-      </button>
-      <button
-        type="button"
-        aria-label="What the AI knows"
-        onClick={() => { onBuildContext(); openTool("context"); }}
-      >
-        <span>What the AI knows</span>
-        <small>Context health and included details</small>
-      </button>
-      <button type="button" aria-label="Open Story Studio" onClick={() => onOpenTab?.("edit")}>
-        <span>Open Story Studio</span>
-        <small>Use the complete editing workspace</small>
-      </button>
+      <div className="play-tool-group play-tool-group-primary">
+        <span className="play-tool-group-label">Quick story edits</span>
+        <button type="button" aria-label="Shape the story" onClick={() => openTool("components")}>
+          <span>Shape the story</span>
+          <small>Direction and active pressure</small>
+        </button>
+        <button type="button" aria-label="World & lore" onClick={() => openTool("storyCards")}>
+          <span>World &amp; lore</span>
+          <small>Places, facts, and recurring details</small>
+        </button>
+        <button type="button" aria-label="Characters" onClick={() => openTool("brains")}>
+          <span>Characters</span>
+          <small>Important people and their inner state</small>
+        </button>
+        <button type="button" aria-label="Memory suggestions" onClick={() => openTool("memoryInbox")}>
+          <span>
+            Memory suggestions
+            {pendingMemoryCount > 0 && <span className="nav-badge">{pendingMemoryCount > 99 ? "99+" : pendingMemoryCount}</span>}
+          </span>
+          <small>Review what the story should remember</small>
+        </button>
+      </div>
+      <div className="play-tool-group play-tool-group-secondary">
+        <span className="play-tool-group-label">Deeper controls</span>
+        <button
+          type="button"
+          aria-label="What the AI knows"
+          onClick={() => { onBuildContext(); openTool("context"); }}
+        >
+          <span>What the AI knows</span>
+          <small>Context health and included details</small>
+        </button>
+        <button type="button" aria-label="Open Story Studio" onClick={() => onOpenTab?.("edit")}>
+          <span>Open Story Studio</span>
+          <small>Use the complete editing workspace</small>
+        </button>
+      </div>
     </>
   );
 
@@ -687,6 +702,11 @@ export function PlayPage({
                 id="mobile-story-tools-sheet"
                 className={`mobile-story-tools-sheet${playPanelContent ? " has-panel" : ""}`}
                 aria-labelledby="mobile-story-tools-title"
+                role="dialog"
+                aria-modal="false"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setMobileStoryToolsOpen(false);
+                }}
               >
                 <div className="mobile-story-tools-header">
                   <h2 id="mobile-story-tools-title">Story companion</h2>
@@ -813,9 +833,10 @@ export function PlayPage({
             </button>
             <div className={`secondary-actions${showOverflow ? " show-overflow" : ""}`}>
               <button type="button" disabled={loading || turnSubmissionPending} onClick={onContinue}>Continue</button>
-              <button type="button" disabled={loading || turnSubmissionPending || !lastAssistant} onClick={onRegenerate}>Retry</button>
+              <button type="button" className="action-recovery" disabled={loading || turnSubmissionPending || !lastAssistant} onClick={onRegenerate}>Retry</button>
               <button
                 type="button"
+                className="action-recovery"
                 disabled={loading || turnSubmissionPending || adventure.messages.length === 0}
                 onClick={() => void deleteLastMessage()}
               >
@@ -823,7 +844,7 @@ export function PlayPage({
               </button>
               <button
                 type="button"
-                className="length-cycle-btn"
+                className="length-cycle-btn action-recovery"
                 title="Response length — tap to cycle"
                 onClick={() => {
                   const presets = [75, 100, 150, 200, 250, 300, 400, 500];

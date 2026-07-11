@@ -1,14 +1,72 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import net from "node:net";
 
-const baseUrl = process.argv[2] ?? "http://127.0.0.1:5173/";
+const usage = `Usage: node scripts/full-ui-visual-audit.mjs [base-url] [options]
+
+Options:
+  --base-url <url>   App URL to audit (default: http://127.0.0.1:5173/)
+  --output <path>    Write screenshots and report.json to this durable directory
+  --help             Show this help
+
+The app must be running in Browser Local fixture mode, or already expose an
+authenticated product shell with the built-in Arcane scenario available.`;
+
+function parseArgs(args) {
+  let baseUrl = "http://127.0.0.1:5173/";
+  let outputDir;
+  let positionalBaseUrlSeen = false;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index];
+    if (argument === "--help" || argument === "-h") return { help: true, baseUrl, outputDir };
+    if (argument === "--base-url") {
+      const value = args[index + 1];
+      if (!value) throw new Error("--base-url requires a URL.");
+      baseUrl = value;
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("--base-url=")) {
+      baseUrl = argument.slice("--base-url=".length);
+      continue;
+    }
+    if (argument === "--output") {
+      const value = args[index + 1];
+      if (!value) throw new Error("--output requires a directory path.");
+      outputDir = value;
+      index += 1;
+      continue;
+    }
+    if (argument.startsWith("--output=")) {
+      outputDir = argument.slice("--output=".length);
+      continue;
+    }
+    if (argument.startsWith("-")) throw new Error(`Unknown option: ${argument}`);
+    if (positionalBaseUrlSeen) throw new Error(`Unexpected argument: ${argument}`);
+    baseUrl = argument;
+    positionalBaseUrlSeen = true;
+  }
+
+  return { help: false, baseUrl, outputDir };
+}
+
+const options = parseArgs(process.argv.slice(2));
+if (options.help) {
+  console.log(usage);
+  process.exit(0);
+}
+
+const baseUrl = options.baseUrl;
 const viewports = [
-  { name: "desktop", width: 1440, height: 900, mobile: false },
-  { name: "mobile", width: 390, height: 844, mobile: true },
+  { name: "desktop-1280x720", width: 1280, height: 720, mobile: false },
+  { name: "desktop-1440x900", width: 1440, height: 900, mobile: false },
+  { name: "desktop-1920x1080", width: 1920, height: 1080, mobile: false },
+  { name: "mobile-320x568", width: 320, height: 568, mobile: true },
+  { name: "mobile-390x844", width: 390, height: 844, mobile: true },
 ];
 
 function browserPath() {
@@ -84,7 +142,10 @@ async function main() {
 
   const port = await freePort();
   const profileDir = await mkdtemp(path.join(tmpdir(), "story-mode-ai-audit-profile-"));
-  const auditDir = await mkdtemp(path.join(tmpdir(), "story-mode-ai-full-ui-audit-"));
+  const auditDir = options.outputDir
+    ? path.resolve(process.cwd(), options.outputDir)
+    : await mkdtemp(path.join(tmpdir(), "story-mode-ai-full-ui-audit-"));
+  await mkdir(auditDir, { recursive: true });
   const chrome = spawn(executablePath, [
     "--headless=new",
     "--disable-gpu",
@@ -117,45 +178,110 @@ async function main() {
       if (result.exceptionDetails) throw new Error(result.exceptionDetails.text ?? "Browser evaluation failed");
       return result.result.value;
     };
-    const wait = (ms = 180) => new Promise((resolve) => setTimeout(resolve, ms));
+    const wait = (ms = 100) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const waitForCondition = async (fn, arg, description, timeoutMs = 12_000) => {
+      const started = Date.now();
+      let lastValue;
+      while (Date.now() - started < timeoutMs) {
+        lastValue = await evaluate(fn, arg);
+        if (lastValue) return lastValue;
+        await wait(100);
+      }
+      throw new Error(`Timed out waiting for ${description}. Last value: ${JSON.stringify(lastValue)}`);
+    };
+
+    const settleUi = async () => {
+      await evaluate(async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+      await wait(80);
+    };
+
+    const waitForProductShell = async () => {
+      await waitForCondition(
+        () => document.readyState === "complete"
+          && Boolean(document.querySelector(".app-shell .product-rail-nav"))
+          && Boolean(document.querySelector(".app-shell .mobile-bottom-nav")),
+        undefined,
+        "the product shell (run the app in Browser Local fixture mode or sign in first)",
+      );
+      await settleUi();
+    };
 
     const clickExact = async (label, scope = "document") => {
-      const result = await evaluate(({ label, scope }) => {
+      await waitForCondition(({ label, scope }) => {
         const root = scope === "document" ? document : document.querySelector(scope);
-        if (!root) return { ok: false, reason: `missing scope ${scope}` };
+        if (!root) return false;
         const visible = (element) => {
           const rect = element.getBoundingClientRect();
           const style = getComputedStyle(element);
           return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
         };
-        const matches = [...root.querySelectorAll("button")].filter((button) =>
-          visible(button) && (button.textContent || "").replace(/\s+/g, " ").trim() === label,
-        );
-        if (matches.length !== 1) return { ok: false, reason: `${matches.length} matches`, labels: matches.map((item) => item.textContent?.trim()) };
-        matches[0].click();
-        return { ok: true };
+        const matches = [...root.querySelectorAll("button")].filter((button) => {
+          const text = (button.textContent || "").replace(/\s+/g, " ").trim();
+          return visible(button) && (text === label || button.getAttribute("aria-label") === label);
+        });
+        return matches.length === 1;
+      }, { label, scope }, `one visible “${label}” button in ${scope}`);
+      await evaluate(({ label, scope }) => {
+        const root = scope === "document" ? document : document.querySelector(scope);
+        const visible = (element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+        };
+        const button = [...root.querySelectorAll("button")].find((item) => {
+          const text = (item.textContent || "").replace(/\s+/g, " ").trim();
+          return visible(item) && (text === label || item.getAttribute("aria-label") === label);
+        });
+        button.click();
       }, { label, scope });
-      if (!result.ok) throw new Error(`Could not click ${label}: ${result.reason} ${JSON.stringify(result.labels ?? [])}`);
-      await wait();
+      await settleUi();
+    };
+
+    const clickFirst = async (selector, description = selector) => {
+      await waitForCondition((value) => {
+        const element = document.querySelector(value);
+        if (!element) return false;
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+      }, selector, description);
+      await evaluate((value) => document.querySelector(value).click(), selector);
+      await settleUi();
+    };
+
+    const ensureDetailsOpen = async (selector) => {
+      const isOpen = await waitForCondition((value) => Boolean(document.querySelector(value)), selector, selector);
+      if (!isOpen) return;
+      const open = await evaluate((value) => document.querySelector(value).open, selector);
+      if (!open) await clickFirst(`${selector} > summary`, `${selector} summary`);
     };
 
     const ensureDesktopStory = async () => {
       await cdp.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
       await cdp.send("Page.navigate", { url: baseUrl });
-      await wait(900);
+      await waitForProductShell();
       const hasStory = await evaluate(() => !document.querySelector('.product-rail-nav button[disabled]') &&
         [...document.querySelectorAll(".product-rail-nav button")].some((button) => button.textContent?.trim() === "Play"));
       if (hasStory) return;
       await clickExact("Explore", ".product-rail-nav");
-      const opened = await evaluate(() => {
+      await waitForCondition(() => Boolean([...document.querySelectorAll("button")].find((item) =>
+        item.getAttribute("aria-label") === "View details for Arcane: After the Rocket")), undefined, "the Arcane fixture scenario");
+      await evaluate(() => {
         const button = [...document.querySelectorAll("button")].find((item) => item.getAttribute("aria-label") === "View details for Arcane: After the Rocket");
-        button?.click();
-        return Boolean(button);
+        button.click();
       });
-      if (!opened) throw new Error("Arcane scenario details button was not found.");
-      await wait();
+      await settleUi();
       await clickExact("Start Story");
-      await wait(600);
+      await waitForCondition(() => {
+        const play = [...document.querySelectorAll(".product-rail-nav button")]
+          .find((button) => button.textContent?.trim() === "Play");
+        return Boolean(play && !play.disabled);
+      }, undefined, "the Arcane fixture Story to open");
+      await settleUi();
     };
 
     await ensureDesktopStory();
@@ -166,7 +292,7 @@ async function main() {
         window.scrollTo(0, 0);
         for (const element of document.querySelectorAll(".main-content,.transcript,.play-sidebar-panel-body")) element.scrollTop = 0;
       });
-      await wait(120);
+      await settleUi();
       const metrics = await evaluate(({ viewportName, screenName }) => {
         const viewport = { width: innerWidth, height: innerHeight };
         const visible = (element) => {
@@ -258,15 +384,105 @@ async function main() {
       if (metrics.tinyTargets.length) failures.push(`${metrics.tinyTargets.length} controls below 24px`);
       if (metrics.overlaps.length) failures.push(`${metrics.overlaps.length} overlapping controls`);
       if (metrics.oversizedEmptyCards.length) failures.push(`${metrics.oversizedEmptyCards.length} oversized empty cards`);
-      const slug = `${viewportName}-${screenName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const slug = `${viewportName}--${screenName}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const capture = await cdp.send("Page.captureScreenshot", { format: "png", fromSurface: true });
-      const screenshotPath = path.join(auditDir, `${String(results.length + 1).padStart(2, "0")}-${slug}.png`);
+      const screenshotPath = path.join(auditDir, `${String(results.length + 1).padStart(3, "0")}--${slug}.png`);
       await writeFile(screenshotPath, Buffer.from(capture.data, "base64"));
       results.push({ ...metrics, failures, screenshotPath });
     };
 
     const rail = async (label) => clickExact(label, ".product-rail-nav");
     const studioTab = async (label) => clickExact(label, ".editor-tabs");
+    const mobileNav = async (label) => clickExact(label, ".mobile-bottom-nav");
+
+    const auditNewStory = async (viewportName) => {
+      await clickExact("New Story");
+      await auditCurrentScreen(viewportName, "New Story setup");
+    };
+
+    const auditStudioItemEditor = async (viewportName) => {
+      await studioTab("Story & Direction");
+      await clickFirst("details.component-editor-item > summary", "the first World Block editor row");
+      await auditCurrentScreen(viewportName, "Story Studio - opened World Block editor");
+    };
+
+    const openAdvancedStudioTool = async (label) => {
+      await ensureDetailsOpen("details.studio-advanced-tools");
+      await clickExact(label, ".studio-advanced-tool-actions");
+    };
+
+    const auditDesktopViewport = async (viewportName) => {
+      await rail("Home");
+      await auditCurrentScreen(viewportName, "Home");
+      await auditNewStory(viewportName);
+
+      await rail("Explore");
+      await auditCurrentScreen(viewportName, "Explore");
+
+      await rail("Play");
+      await auditCurrentScreen(viewportName, "Play");
+      await clickExact("Shape the story", ".play-tool-nav");
+      await auditCurrentScreen(viewportName, "Play - companion editor");
+
+      await rail("Story Studio");
+      await auditCurrentScreen(viewportName, "Story Studio");
+      await auditStudioItemEditor(viewportName);
+      for (const label of ["Story & Direction", "World & Lore", "Characters", "Suggestions"]) {
+        await studioTab(label);
+        await auditCurrentScreen(viewportName, `Story Studio - ${label}`);
+      }
+
+      await rail("Story Studio");
+      await openAdvancedStudioTool("Automation");
+      await auditCurrentScreen(viewportName, "Story Studio - Automation");
+      await rail("Story Studio");
+      await openAdvancedStudioTool("Context Inspector");
+      await auditCurrentScreen(viewportName, "Story Studio - Context Inspector");
+
+      for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
+        await rail(label);
+        await auditCurrentScreen(viewportName, label);
+      }
+    };
+
+    const auditMobileViewport = async (viewportName) => {
+      await mobileNav("Home");
+      await auditCurrentScreen(viewportName, "Home");
+      await auditNewStory(viewportName);
+
+      await mobileNav("Explore");
+      await auditCurrentScreen(viewportName, "Explore");
+
+      await mobileNav("Play");
+      await auditCurrentScreen(viewportName, "Play");
+      await clickExact("Story companion", ".mobile-story-tools-bar");
+      await auditCurrentScreen(viewportName, "Play - Story companion sheet");
+      await clickExact("Close", ".mobile-story-tools-sheet");
+
+      await mobileNav("Studio");
+      await auditCurrentScreen(viewportName, "Story Studio");
+      await auditStudioItemEditor(viewportName);
+      for (const label of ["Story & Direction", "World & Lore", "Characters", "Suggestions"]) {
+        await studioTab(label);
+        await auditCurrentScreen(viewportName, `Story Studio - ${label}`);
+      }
+
+      await mobileNav("Studio");
+      await openAdvancedStudioTool("Automation");
+      await auditCurrentScreen(viewportName, "Story Studio - Automation");
+      await mobileNav("Studio");
+      await openAdvancedStudioTool("Context Inspector");
+      await auditCurrentScreen(viewportName, "Story Studio - Context Inspector");
+
+      await mobileNav("More");
+      await auditCurrentScreen(viewportName, "More menu");
+      for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
+        await clickExact(label, ".mobile-more-sheet");
+        await auditCurrentScreen(viewportName, label);
+        await mobileNav("More");
+      }
+    };
+
     for (const viewport of viewports) {
       await cdp.send("Emulation.setDeviceMetricsOverride", {
         width: viewport.width,
@@ -274,40 +490,29 @@ async function main() {
         deviceScaleFactor: 1,
         mobile: viewport.mobile,
       });
-      await wait(250);
-      if (viewport.mobile) {
-        const mobilePages = ["Home", "Explore", "Play", "Studio"];
-        for (const label of mobilePages) {
-          await clickExact(label, ".mobile-bottom-nav");
-          await auditCurrentScreen(viewport.name, label === "Studio" ? "Story Studio" : label);
-        }
-        await clickExact("More", ".mobile-bottom-nav");
-        await auditCurrentScreen(viewport.name, "More menu");
-        for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
-          await clickExact(label, ".mobile-more-sheet");
-          await auditCurrentScreen(viewport.name, label);
-          await clickExact("More", ".mobile-bottom-nav");
-        }
-      } else {
-        for (const label of ["Home", "Explore", "Play", "Story Studio"]) {
-          await rail(label);
-          await auditCurrentScreen(viewport.name, label);
-        }
-        for (const label of ["Story & Direction", "World & Lore", "Characters", "Suggestions"]) {
-          await studioTab(label);
-          await auditCurrentScreen(viewport.name, `Story Studio - ${label}`);
-        }
-        for (const label of ["History", "Backups & Transfer", "Settings", "Help"]) {
-          await clickExact(label, ".product-rail-nav");
-          await auditCurrentScreen(viewport.name, label);
-        }
-      }
+      await settleUi();
+      if (viewport.mobile) await auditMobileViewport(viewport.name);
+      else await auditDesktopViewport(viewport.name);
     }
 
     const reportPath = path.join(auditDir, "report.json");
     const failed = results.filter((result) => result.failures.length > 0);
-    await writeFile(reportPath, JSON.stringify({ baseUrl, generatedAt: new Date().toISOString(), results }, null, 2));
-    console.log(JSON.stringify({ auditDir, reportPath, screens: results.length, failedScreens: failed.map((item) => ({ screen: `${item.viewportName}: ${item.screenName}`, failures: item.failures })) }, null, 2));
+    await writeFile(reportPath, JSON.stringify({
+      baseUrl,
+      generatedAt: new Date().toISOString(),
+      durableOutput: Boolean(options.outputDir),
+      auditDir,
+      viewports,
+      results,
+    }, null, 2));
+    console.log(JSON.stringify({
+      auditDir,
+      reportPath,
+      durableOutput: Boolean(options.outputDir),
+      viewports: viewports.map(({ name, width, height }) => ({ name, width, height })),
+      screens: results.length,
+      failedScreens: failed.map((item) => ({ screen: `${item.viewportName}: ${item.screenName}`, failures: item.failures })),
+    }, null, 2));
     if (failed.length) process.exitCode = 1;
   } finally {
     cdp?.close();

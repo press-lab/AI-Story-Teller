@@ -98,9 +98,12 @@ export function Highlight({ text, query }: { text: string; query: string }) {
 }
 
 export function contentSnippet(content: string, query: string, context = 60): string {
-  if (!query) return "";
+  const normalized = content.trim().replace(/\s+/g, " ");
+  if (!normalized) return "No guidance has been written yet.";
+  const defaultPreview = normalized.length > 150 ? `${normalized.slice(0, 147).trim()}…` : normalized;
+  if (!query) return defaultPreview;
   const idx = content.toLowerCase().indexOf(query.toLowerCase());
-  if (idx === -1) return "";
+  if (idx === -1) return defaultPreview;
   const start = Math.max(0, idx - context);
   const end = Math.min(content.length, idx + query.length + context);
   return (start > 0 ? "…" : "") + content.slice(start, end) + (end < content.length ? "…" : "");

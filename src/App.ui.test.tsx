@@ -140,22 +140,35 @@ describe("App adventure tool workspace", () => {
     expect(automationButton).toBeInTheDocument();
     expect(contextButton).toBeInTheDocument();
     await user.click(automationButton);
-    expect(screen.getByText(/Automations watch turns/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Automation", level: 2 })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Adventure editor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to Story Studio" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Story Studio" })).toHaveAttribute("aria-current", "page");
+    await user.click(within(nav).getByRole("button", { name: "Story Studio" }));
+    await user.click(screen.getByText("Advanced Story Tools"));
     await user.click(within(screen.getByText("Advanced Story Tools").closest("details") as HTMLElement).getByRole("button", { name: "Context Inspector" }));
     expect(screen.getByRole("button", { name: "Rebuild Preview" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to Story Studio" })).not.toBeInTheDocument();
     expect(within(nav).getByRole("button", { name: "Story Studio" })).toHaveAttribute("aria-current", "page");
-    await user.click(within(editorNav).getByRole("button", { name: "World & Lore" }));
-
-    // Now in the editor — title is an editable input
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await user.click(within(nav).getByRole("button", { name: "Story Studio" }));
+    const restoredEditorNav = screen.getByRole("navigation", { name: "Adventure editor" });
+    await user.click(screen.getByText("Story details"));
     expect(screen.getByDisplayValue("Workspace Test")).toBeInTheDocument();
+    await user.click(within(restoredEditorNav).getByRole("button", { name: "World & Lore" }));
+
+    // Now in the editor — tools stay in the shared workspace without a dialog.
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create Reference Card" })).toBeInTheDocument();
 
     // Adventure tab returns to dashboard — heading again
     await user.click(within(nav).getByRole("button", { name: "Home" }));
     expect(screen.getByRole("heading", { name: "Welcome back" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Continue Story" }).length).toBeGreaterThan(0);
+
+    await user.click(within(nav).getByRole("button", { name: "Help" }));
+    const appHeader = document.querySelector(".app-header") as HTMLElement;
+    expect(within(appHeader).queryByText("Workspace Test")).not.toBeInTheDocument();
+    expect(within(appHeader).queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("shows only the welcome account gate without a session", () => {

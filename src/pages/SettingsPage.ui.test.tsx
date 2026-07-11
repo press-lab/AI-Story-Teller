@@ -244,7 +244,7 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Verification token")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
-    expect(screen.getByText("Model Source")).toBeInTheDocument();
+    expect(screen.getByText("Story model")).toBeInTheDocument();
   });
 
   it("lets backend users opt into a personal model without showing the full model panel", async () => {
@@ -302,7 +302,7 @@ describe("SettingsPage API throttle controls", () => {
 
     render(<StatefulSettingsPage />);
 
-    await user.click(screen.getByText("Model Source"));
+    await user.click(screen.getByText("Story model"));
     await user.selectOptions(screen.getByLabelText("Generation model source"), "personal");
     expect(onBackendModelModeChange).toHaveBeenCalledWith("personal");
     expect(screen.queryByRole("heading", { name: "Models" })).not.toBeInTheDocument();
@@ -364,7 +364,7 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByLabelText("Import source")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Backend import JSON")).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Account" })).toBeInTheDocument();
-    expect(screen.getByText("Model Source")).toBeInTheDocument();
+    expect(screen.getByText("Story model")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Platform Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Create invite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();

@@ -329,22 +329,26 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
 
   async function deleteBrain(brain: BrainEntry) {
     const confirmed = await confirmAction({
-      title: "Delete character brain?",
-      message: `Delete "${brain.characterName || "Unnamed"}" from this adventure?`,
+      title: "Delete character?",
+      message: `Remove "${brain.characterName || "Unnamed"}" and their private character notes from this Story?`,
       confirmLabel: "Delete",
       danger: true,
     });
     if (!confirmed) return;
     dispatch({ type: "DELETE_BRAIN", brainId: brain.id });
-    notify("Character brain deleted.", { type: "success" });
+    notify("Character removed.", { type: "success" });
   }
 
   return (
     <section className="page editor-surface brains-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Character-internal state for major recurring characters. Keep durable public facts in Reference Cards.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Characters</p>
+          <h2>Character perspectives</h2>
+          <p className="muted">
+            Keep the private thoughts and changing perspective of major recurring characters. Public facts belong in World &amp; Lore.
+          </p>
+        </div>
         <div className="editor-stat-row" aria-label="Character counts">
           <span>{adventure.brains.length} total</span>
           <span>{activeCount} active</span>
@@ -372,7 +376,7 @@ export function BrainsPage({ adventure, dispatch, loading, onUpdateBrainNow, onA
             setOpenBrainId(brain.id);
           }}
         >
-          Create Character Self
+          New character
         </button>
       </div>
 

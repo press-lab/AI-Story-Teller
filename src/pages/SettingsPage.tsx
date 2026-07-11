@@ -400,40 +400,26 @@ export function SettingsPage({
       <div className="editor-page-summary">
         <div>
           <p className="eyebrow">Preferences</p>
-          <p className="muted">Reading and appearance settings affect this app. Story behavior settings below affect {adventure ? `only “${adventure.title}”` : "new Stories by default"}. Advanced diagnostics stay collapsed until you ask for them.</p>
+          <h2>Make Story Mode AI feel right for you</h2>
+          <p className="muted">Choose how the app reads and behaves. Technical controls stay out of the way until you open them.</p>
         </div>
-        <div className="editor-stat-row" aria-label="Settings summary">
-          <span>{adventure ? "Current Story" : "App defaults"}</span>
-          <span>{uiPreferences.density}</span>
-          <span>{uiPreferences.darkMode ? "dark" : "light"}</span>
-          {showLocalDeveloperControls && <span>{activeModelLabel}</span>}
-          {showLocalDeveloperControls && <span>background {backgroundStatus}</span>}
-          {deviceOnlyDataMode && <span>device-only adventure</span>}
-          {isBackendMode && showBackendModelSource && <span>{backendModelMode === "personal" ? "personal model" : "platform model"}</span>}
-          {advanced && <span>advanced</span>}
-        </div>
+        <p className="settings-scope-copy" aria-label="Settings scope">
+          {adventure ? `Story-specific choices apply to “${adventure.title}”.` : "These choices become the default for new Stories."}
+          {deviceOnlyDataMode ? " This Story stays on this device." : ""}
+          {showLocalDeveloperControls ? ` Active model: ${activeModelLabel}; background review is ${backgroundStatus}.` : ""}
+        </p>
       </div>
 
       <div className="settings-section-grid">
 
         {/* ── Interface ─────────────────────────────── */}
         <article className="panel settings-card settings-interface-panel">
-          <h3>Interface</h3>
-          <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
-          <div className="grid two">
-            <Field label="Dark mode text color">
-              <input
-                type="color"
-                value={uiPreferences.darkModeTextColor || defaultUiPreferences.darkModeTextColor}
-                onChange={(e) => updateUi({ darkModeTextColor: e.target.value })}
-              />
-            </Field>
-            <Field label="Reset text color">
-              <button type="button" onClick={() => updateUi({ darkModeTextColor: defaultUiPreferences.darkModeTextColor })}>
-                Reset
-              </button>
-            </Field>
+          <div className="settings-card-heading">
+            <p className="eyebrow">Reading</p>
+            <h3>Appearance</h3>
+            <p className="muted">Set a comfortable reading experience. Changes apply immediately.</p>
           </div>
+          <CheckboxField label="Dark mode" checked={uiPreferences.darkMode} onChange={(darkMode) => updateUi({ darkMode })} />
           <Field label="Density">
             <select
               value={uiPreferences.density}
@@ -443,27 +429,54 @@ export function SettingsPage({
               <option value="compact">Compact</option>
             </select>
           </Field>
-          <div className="grid two">
-            <Field label="Story text size (px)">
-              <NumberInput min={12} max={24} value={uiPreferences.storyFontSize} onChange={(storyFontSize) => updateUi({ storyFontSize })} />
-            </Field>
-            <Field label="Story box width (px)">
-              <NumberInput min={520} max={1800} value={uiPreferences.storyContentWidth} onChange={(storyContentWidth) => updateUi({ storyContentWidth })} />
-            </Field>
-            <Field label="Story box position">
-              <select
-                value={uiPreferences.storyContentAlign}
-                onChange={(e) => updateUi({ storyContentAlign: e.target.value as UiPreferences["storyContentAlign"] })}
-              >
-                <option value="left">Left</option>
-                <option value="center">Center</option>
-                <option value="right">Right</option>
-              </select>
-            </Field>
-            <Field label="Max content width (px)">
-              <NumberInput min={600} max={1800} value={uiPreferences.maxContentWidth} onChange={(maxContentWidth) => updateUi({ maxContentWidth })} />
-            </Field>
-          </div>
+          <Field label="Story text size">
+            <select
+              value={uiPreferences.storyFontSize}
+              onChange={(event) => updateUi({ storyFontSize: Number(event.target.value) })}
+            >
+              {![16, 18, 20, 22].includes(uiPreferences.storyFontSize) && (
+                <option value={uiPreferences.storyFontSize}>Custom ({uiPreferences.storyFontSize}px)</option>
+              )}
+              <option value={16}>Small</option>
+              <option value={18}>Standard</option>
+              <option value={20}>Large</option>
+              <option value={22}>Extra large</option>
+            </select>
+          </Field>
+          <details className="setup-panel settings-advanced-appearance">
+            <summary>Fine-tune reading layout</summary>
+            <p className="muted">Optional controls for exact color, column width, and alignment.</p>
+            <div className="grid two">
+              <Field label="Dark-mode text color">
+                <input
+                  type="color"
+                  value={uiPreferences.darkModeTextColor || defaultUiPreferences.darkModeTextColor}
+                  onChange={(e) => updateUi({ darkModeTextColor: e.target.value })}
+                />
+              </Field>
+              <Field label="Reset text color">
+                <button type="button" onClick={() => updateUi({ darkModeTextColor: defaultUiPreferences.darkModeTextColor })}>
+                  Use default
+                </button>
+              </Field>
+              <Field label="Story column width (px)">
+                <NumberInput min={520} max={1800} value={uiPreferences.storyContentWidth} onChange={(storyContentWidth) => updateUi({ storyContentWidth })} />
+              </Field>
+              <Field label="Story column position">
+                <select
+                  value={uiPreferences.storyContentAlign}
+                  onChange={(e) => updateUi({ storyContentAlign: e.target.value as UiPreferences["storyContentAlign"] })}
+                >
+                  <option value="left">Left</option>
+                  <option value="center">Center</option>
+                  <option value="right">Right</option>
+                </select>
+              </Field>
+              <Field label="App content width (px)">
+                <NumberInput min={600} max={1800} value={uiPreferences.maxContentWidth} onChange={(maxContentWidth) => updateUi({ maxContentWidth })} />
+              </Field>
+            </div>
+          </details>
           {advanced && (
             <CheckboxField
               label="Show exact token estimates in Play"
@@ -482,7 +495,11 @@ export function SettingsPage({
 
         {/* ── Models ────────────────────────────────── */}
         <article className="panel settings-card settings-runtime-panel">
-          <h3>{isBackendMode ? "Account" : "Runtime"}</h3>
+          <div className="settings-card-heading">
+            <p className="eyebrow">Identity &amp; access</p>
+            <h3>{isBackendMode ? "Account" : "Runtime"}</h3>
+            <p className="muted">Manage this account, its sessions, and the model used for your Stories.</p>
+          </div>
           {showRuntimeTechnicalControls && (
             <>
               <Field label="Execution mode">
@@ -504,9 +521,9 @@ export function SettingsPage({
               </Field>
             </>
           )}
-          <div className="editor-stat-row" aria-label="Backend account summary">
-            <span>{backendSession ? backendSession.user.email : "not signed in"}</span>
-            <span>{backendSession ? backendSession.user.status : "local only"}</span>
+          <div className="settings-account-identity" aria-label="Backend account summary">
+            <strong>{backendSession ? backendSession.user.email : "Not signed in"}</strong>
+            <span className="muted">{backendSession ? `Account ${backendSession.user.status}` : "This browser is using local-only mode."}</span>
           </div>
           {backendStatus && <p className="notice">{backendStatus}</p>}
 
@@ -550,7 +567,7 @@ export function SettingsPage({
               </div>
             </>
           )}
-          <div className="toolbar settings-account-actions">
+          <div className="toolbar settings-account-actions" aria-label="Account actions">
             <button type="button" onClick={onLogoutBackend} disabled={!backendSession}>
               Log out
             </button>
@@ -560,19 +577,27 @@ export function SettingsPage({
                 setBackendSessions(result.sessions);
               })}>Sessions</button>
             )}
-            {backendSession && onRevokeAllBackendSessions && (
-              <button type="button" onClick={() => void revokeEveryBackendSession()}>Sign out everywhere</button>
-            )}
             {backendSession && onExportBackendAccount && (
               <button type="button" onClick={() => void runBackendAction("Exporting account", async () => {
                 const exported = await onExportBackendAccount();
                 downloadJson("ai-story-teller-account-export.json", JSON.stringify(exported, null, 2));
               })}>Export account</button>
             )}
-            {backendSession && onDeleteBackendAccount && (
-              <button type="button" className="danger" onClick={() => void deleteCurrentBackendAccount()}>Delete account</button>
-            )}
           </div>
+          {backendSession && (onRevokeAllBackendSessions || onDeleteBackendAccount) && (
+            <details className="setup-panel settings-security-actions">
+              <summary>Security and account removal</summary>
+              <p className="muted">Use these controls to end every session or permanently remove the account.</p>
+              <div className="toolbar">
+                {onRevokeAllBackendSessions && (
+                  <button type="button" onClick={() => void revokeEveryBackendSession()}>Sign out everywhere</button>
+                )}
+                {onDeleteBackendAccount && (
+                  <button type="button" className="danger" onClick={() => void deleteCurrentBackendAccount()}>Delete account</button>
+                )}
+              </div>
+            </details>
+          )}
           {backendSessions.length > 0 && (
             <ul className="compact-list" aria-label="Active sessions">
               {backendSessions.map((session) => (
@@ -583,7 +608,7 @@ export function SettingsPage({
 
           {showBackendModelSource && (
             <details className="setup-panel">
-              <summary>Model Source</summary>
+              <summary>Story model</summary>
               <p className="muted">
                 Platform model uses the owner-hosted backend model. Personal model uses your key for generation requests while backend policy checks and saves stay active.
               </p>

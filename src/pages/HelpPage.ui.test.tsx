@@ -63,6 +63,16 @@ describe("HelpPage documentation UI", () => {
     expect(document.querySelector(".docs-page")).toBeInTheDocument();
     expect(document.querySelector(".docs-toc")).toBeInTheDocument();
     expect(document.querySelector(".docs-content")).toBeInTheDocument();
+    expect(document.querySelectorAll(".docs-topic")).toHaveLength(1);
+  });
+
+  it("shows one readable topic at a time and lets the reader choose another", async () => {
+    const user = userEvent.setup();
+    render(<HelpPage />);
+
+    await user.click(screen.getByRole("link", { name: "Context Contract" }));
+    expect(screen.getByRole("heading", { name: "Context Contract" })).toBeInTheDocument();
+    expect(document.querySelectorAll(".docs-topic")).toHaveLength(1);
   });
 
   it("offers a useful empty search state and lets the reader return to all guides", async () => {

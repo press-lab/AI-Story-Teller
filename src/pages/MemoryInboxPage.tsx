@@ -159,9 +159,11 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
   return (
     <section className="page editor-surface memory-inbox-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Review proposed memory writes before they become active story context.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Suggestions</p>
+          <h2>Memory suggestions</h2>
+          <p className="muted">Review what the story should remember before it becomes active context.</p>
+        </div>
         <div className="editor-stat-row" aria-label="Memory suggestion counts">
           <span>{totalPending} pending</span>
           <span>{totalResolved} resolved</span>
@@ -178,8 +180,20 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         />
       </div>
 
-      <details className="panel editor-tools-panel">
-        <summary>Rules &amp; auto-approve</summary>
+      <div className="list memory-suggestion-list">
+        {pending.length === 0 && (
+          <div className="profile-scenarios-empty explore-empty-state" role="status">
+            <strong>You are caught up</strong>
+            <p className="muted">New memory suggestions will appear here after relevant story turns.</p>
+          </div>
+        )}
+        {pending.map((proposal) => (
+          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
+        ))}
+      </div>
+
+      <details className="panel editor-tools-panel memory-suggestion-tools">
+        <summary>Suggestion settings and tools</summary>
         <h3>Memory Suggestions</h3>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Reference Cards, Character Self updates,
@@ -252,13 +266,6 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
           Create Suggestion
         </button>
       </details>
-
-      <div className="list">
-        {pending.length === 0 && <p className="muted">No pending memory suggestions.</p>}
-        {pending.map((proposal) => (
-          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
-        ))}
-      </div>
 
       {resolved.length > 0 && (
         <details className="panel memory-history-panel">

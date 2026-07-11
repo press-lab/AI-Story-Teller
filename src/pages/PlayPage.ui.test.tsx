@@ -294,7 +294,7 @@ describe("PlayPage AID-style controls", () => {
     await user.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    const sheet = screen.getByRole("region", { name: "Story companion" });
+    const sheet = screen.getByRole("dialog", { name: "Story companion" });
     await user.click(within(sheet).getByRole("button", { name: "Shape the story" }));
     await user.click(within(sheet).getByRole("button", { name: "World & lore" }));
     await user.click(within(sheet).getByRole("button", { name: "Characters" }));
@@ -312,6 +312,11 @@ describe("PlayPage AID-style controls", () => {
 
     await user.click(within(sheet).getByRole("button", { name: "Open Story Studio" }));
     expect(onOpenTab).toHaveBeenCalledWith("edit");
+
+    await user.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Story companion" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Story companion" })).not.toBeInTheDocument();
   });
 
   it("makes Edit and Delete reachable from a touch-friendly mobile message action control", async () => {

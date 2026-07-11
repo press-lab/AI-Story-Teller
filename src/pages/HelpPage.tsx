@@ -1091,12 +1091,16 @@ function searchableText(topic: DocTopic): string {
 
 export function HelpPage() {
   const [query, setQuery] = useState("");
+  const [selectedTopicId, setSelectedTopicId] = useState(topics[0].id);
+  const [topicsOpen, setTopicsOpen] = useState(false);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const filteredTopics = useMemo(
     () => topics.filter((topic) => !normalizedQuery || searchableText(topic).includes(normalizedQuery)),
     [normalizedQuery],
   );
   const categories = Array.from(new Set(filteredTopics.map((topic) => topic.category)));
+  const selectedTopic = filteredTopics.find((topic) => topic.id === selectedTopicId) ?? filteredTopics[0];
+  const selectedTopicIndex = selectedTopic ? filteredTopics.findIndex((topic) => topic.id === selectedTopic.id) : -1;
 
   return (
     <section className="page docs-page">
@@ -1129,18 +1133,36 @@ export function HelpPage() {
             <span className="docs-result-count" aria-live="polite">
               {filteredTopics.length} {filteredTopics.length === 1 ? "guide" : "guides"}
             </span>
+            <button
+              type="button"
+              className="docs-topic-toggle"
+              aria-expanded={topicsOpen}
+              aria-controls="documentation-topics"
+              onClick={() => setTopicsOpen((open) => !open)}
+            >
+              {topicsOpen ? "Hide" : "Choose"}
+            </button>
           </div>
           {filteredTopics.length === 0 ? (
             <p className="muted">No matches.</p>
           ) : (
-            <nav>
+            <nav id="documentation-topics" className={topicsOpen ? "is-open" : ""}>
               {categories.map((category) => (
                 <div key={category} className="docs-toc-group">
                   <span>{category}</span>
                   {filteredTopics
                     .filter((topic) => topic.category === category)
                     .map((topic) => (
-                      <a key={topic.id} href={`#${topic.id}`}>
+                      <a
+                        key={topic.id}
+                        href={`#${topic.id}`}
+                        aria-current={selectedTopic?.id === topic.id ? "page" : undefined}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          setSelectedTopicId(topic.id);
+                          setTopicsOpen(false);
+                        }}
+                      >
                         {topic.title}
                       </a>
                     ))}
@@ -1160,25 +1182,42 @@ export function HelpPage() {
               </div>
               <button type="button" onClick={() => setQuery("")}>Clear search</button>
             </div>
-          ) : (
-            filteredTopics.map((topic) => (
-              <article key={topic.id} id={topic.id} className="panel docs-topic">
+          ) : selectedTopic ? (
+              <article key={selectedTopic.id} id={selectedTopic.id} className="panel docs-topic">
                 <div className="docs-topic-heading">
                   <div>
-                    <span className="docs-category">{topic.category}</span>
-                    <h3>{topic.title}</h3>
+                    <span className="docs-category">{selectedTopic.category}</span>
+                    <h3>{selectedTopic.title}</h3>
                   </div>
-                  <div className="docs-tags" aria-label={`${topic.title} topics`}>
-                    {topic.tags.slice(0, 4).map((tag) => (
+                  <div className="docs-tags" aria-label={`${selectedTopic.title} topics`}>
+                    {selectedTopic.tags.slice(0, 4).map((tag) => (
                       <span key={tag}>{tag}</span>
                     ))}
                   </div>
                 </div>
-                <p className="docs-summary">{topic.summary}</p>
-                <div className="docs-body">{topic.body}</div>
+                <p className="docs-summary">{selectedTopic.summary}</p>
+                <div className="docs-body">{selectedTopic.body}</div>
+                {filteredTopics.length > 1 && (
+                  <nav className="docs-topic-pagination" aria-label="Documentation topics">
+                    <button
+                      type="button"
+                      disabled={selectedTopicIndex <= 0}
+                      onClick={() => setSelectedTopicId(filteredTopics[selectedTopicIndex - 1].id)}
+                    >
+                      Previous
+                    </button>
+                    <span className="muted">{selectedTopicIndex + 1} of {filteredTopics.length}</span>
+                    <button
+                      type="button"
+                      disabled={selectedTopicIndex >= filteredTopics.length - 1}
+                      onClick={() => setSelectedTopicId(filteredTopics[selectedTopicIndex + 1].id)}
+                    >
+                      Next
+                    </button>
+                  </nav>
+                )}
               </article>
-            ))
-          )}
+          ) : null}
         </div>
       </div>
     </section>

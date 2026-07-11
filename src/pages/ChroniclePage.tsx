@@ -20,25 +20,27 @@ export function ChroniclePage({ adventure, dispatch }: AdventurePageProps) {
 
   async function deleteMessage(messageId: string) {
     const confirmed = await confirmAction({
-      title: "Delete chronicle entry?",
-      message: "Delete this transcript entry from the adventure?",
+      title: "Delete story entry?",
+      message: "Delete this entry from the Story history?",
       confirmLabel: "Delete",
       danger: true,
     });
     if (!confirmed) return;
     dispatch({ type: "DELETE_MESSAGE", messageId });
     setEditingId(undefined);
-    notify("Chronicle entry deleted.", { type: "success" });
+    notify("Story entry deleted.", { type: "success" });
   }
 
   return (
     <section className="page editor-surface chronicle-page">
       <div className="editor-page-summary">
-        <h3>Adventure Chronicle — {messages.length} entries</h3>
-        <p className="muted">
-          Complete story transcript stored locally. Not sent to the AI — only the Recent Messages window
-          and active memory surfaces reach the model. Use an entry's Edit button to make changes.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Story tools</p>
+          <h2>Story history</h2>
+          <p className="muted">
+            Your complete transcript. Only recent entries and active memory are included when the AI writes the next turn.
+          </p>
+        </div>
         <div className="editor-stat-row" aria-label="Chronicle counts">
           <span>{messages.length} entries</span>
           {searchLower && <span>{filtered.length} shown</span>}

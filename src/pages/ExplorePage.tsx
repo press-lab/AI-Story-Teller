@@ -177,6 +177,14 @@ export function ExplorePage({
           />
         </label>
 
+        <details className="explore-filter-disclosure">
+          <summary>
+            <span>Filters</span>
+            <span className="muted">
+              {sourceFilter === "all" && tagFilter === "all" ? "All scenarios" : "Custom filters"}
+            </span>
+          </summary>
+          <div className="explore-filter-body">
         <fieldset className="explore-source-filter">
           <legend>Source</legend>
           <div className="toolbar explore-filter-options">
@@ -218,6 +226,8 @@ export function ExplorePage({
             </select>
           </label>
         )}
+          </div>
+        </details>
       </section>
 
       {backendMode && !backendSession && (

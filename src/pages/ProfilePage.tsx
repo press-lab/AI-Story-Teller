@@ -94,12 +94,14 @@ function HomeStoryHero({
     );
   }
 
+  const thumbnail = getAdventureThumbnail(story);
+
   return (
     <section className="home-story-hero">
       <AdventureThumbnailFrame
-        thumbnail={getAdventureThumbnail(story)}
+        thumbnail={thumbnail}
         title={story.title}
-        className="home-story-cover"
+        className={`home-story-cover${thumbnail ? "" : " home-story-cover--fallback"}`}
       />
       <div className="home-story-content">
         <div>
@@ -240,7 +242,7 @@ export function ProfilePage({
           {isPublicProfile && bio && <p className="muted">{bio}</p>}
         </div>
         {isPublicProfile ? (
-          <div className="toolbar">
+          <div className="toolbar profile-header-actions">
             {publicSocial && publicUserId && (
               <button
                 type="button"
@@ -271,8 +273,8 @@ export function ProfilePage({
                 Remove Friend
               </button>
             )}
-            <button type="button" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
-              Your Profile
+            <button type="button" className="profile-return-link" onClick={onViewOwnProfile} disabled={!onViewOwnProfile}>
+              ← Your profile
             </button>
           </div>
         ) : (
@@ -343,20 +345,25 @@ export function ProfilePage({
         </div>
         {isPublicProfile ? (
           <>
-            <p className="notice">{publicScenarioStartWarning}</p>
             {publicProfile!.scenarios.length ? (
-              <div className="library-grid">
-                {publicProfile!.scenarios.map((scenario) => (
-                  <PublicScenarioCard
-                    key={scenario.revisionId}
-                    scenario={scenario}
-                    onStartScenario={onStartScenario}
-                    onToggleScenarioLike={onToggleScenarioLike}
-                  />
-                ))}
-              </div>
+              <>
+                <p className="notice">{publicScenarioStartWarning}</p>
+                <div className="library-grid">
+                  {publicProfile!.scenarios.map((scenario) => (
+                    <PublicScenarioCard
+                      key={scenario.revisionId}
+                      scenario={scenario}
+                      onStartScenario={onStartScenario}
+                      onToggleScenarioLike={onToggleScenarioLike}
+                    />
+                  ))}
+                </div>
+              </>
             ) : (
-              <p className="muted">No published scenarios yet.</p>
+              <div className="profile-scenarios-empty explore-empty-state" role="status">
+                <strong>No published scenarios yet</strong>
+                <p className="muted">This creator has not shared a Scenario here yet.</p>
+              </div>
             )}
           </>
         ) : (profile?.scenarios.length || localScenarios.length) ? (

@@ -637,15 +637,15 @@ export function AdventuresPage({
                 ← Library
               </button>
               <p className="eyebrow">New Story</p>
-              <h3>Set up before playing</h3>
+              <h3>Start with an idea</h3>
               <p className="muted">
-                Add starter context and Reference Cards now, or leave everything blank and build it later.
+                Describe what you want to play. You can review or fine-tune the generated setup before starting.
               </p>
             </div>
             <div className="toolbar">
               {onImportAdventure && (
                 <button type="button" onClick={() => setView("aistImport")}>
-                  Import from AIST
+                  Restore a backup
                 </button>
               )}
               {allowDeviceOnlyScenarioCreation && (
@@ -665,7 +665,7 @@ export function AdventuresPage({
 
           {canGenerateAdventureSetup && (
             <details className="setup-panel" open={!title || title === "New Story"}>
-              <summary>Generate with AI</summary>
+              <summary>Draft a Story with AI</summary>
               <p className="muted">
                 Pick a setup guide or stay custom, then describe your Story idea. The AI drafts a title, opening scene, World Blocks, and Reference Cards for review.
               </p>
@@ -703,6 +703,8 @@ export function AdventuresPage({
                   placeholder="e.g. A disgraced knight in a crumbling empire must choose between loyalty to a corrupt emperor and a rebel cause led by his estranged sister…"
                 />
               </Field>
+              <details className="setup-panel generation-options">
+                <summary>Customize the draft</summary>
               <div className="grid two">
                 <Field label="Story setup">
                   <select aria-label="Story setup" value={storyShape} onChange={(event) => setStoryShape(event.target.value as AdventureStoryShape)}>
@@ -757,6 +759,7 @@ export function AdventuresPage({
                   />
                 </Field>
               )}
+              </details>
               {genError && <p className="error-box">{genError}</p>}
               {genNotice && <p className="status-pill">{genNotice}</p>}
               <div className="toolbar">
@@ -773,7 +776,7 @@ export function AdventuresPage({
             </details>
           )}
 
-          <Field label="Adventure title">
+          <Field label="Story title">
             <input value={title} onChange={(event) => setTitle(event.target.value)} />
           </Field>
 
@@ -889,7 +892,7 @@ export function AdventuresPage({
             )}
           </details>
 
-          <details className="setup-panel" open>
+          <details className="setup-panel">
             <summary>Starter Reference Cards ({totalStoryCardCount})</summary>
             <p className="muted">
               Reference Cards should be self-contained. Add names, aliases, and nicknames as triggers; unpinned cards need at

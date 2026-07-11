@@ -63,7 +63,7 @@ describe("side menu page smoke coverage", () => {
     renderWithAdventure((adventure, dispatch) => (
       <BrainsPage adventure={adventure} dispatch={dispatch} loading={false} onUpdateBrainNow={async () => undefined} />
     ));
-    await user.click(screen.getByRole("button", { name: "Create Character Self" }));
+    await user.click(screen.getByRole("button", { name: "New character" }));
     expect(screen.getByDisplayValue("New Character")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Additional Triggers / Aliases"), "Blazer, Blonde Blazer, Mandy");
     expect(screen.getByDisplayValue("Blazer, Blonde Blazer, Mandy")).toBeInTheDocument();
@@ -672,7 +672,7 @@ describe("side menu page smoke coverage", () => {
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <TriggersPage adventure={adventure} dispatch={dispatch} />);
-    await user.click(screen.getByRole("button", { name: "Create Trigger" }));
+    await user.click(screen.getByRole("button", { name: "New automation" }));
     expect(screen.getByDisplayValue("New Trigger")).toBeInTheDocument();
     cleanup();
 
@@ -685,7 +685,7 @@ describe("side menu page smoke coverage", () => {
         cloudSaveStatus="Cloud ready."
       />
     ));
-    expect(screen.getByText("Back up this adventure")).toBeInTheDocument();
+    expect(screen.getByText("Back up this Story")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /Back Up/i })).toHaveAttribute("aria-selected", "true");
     await user.click(screen.getByRole("button", { name: "Save to Cloud" }));
     expect(onSaveToCloud).toHaveBeenCalledTimes(1);

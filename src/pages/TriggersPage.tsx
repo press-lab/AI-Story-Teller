@@ -74,10 +74,11 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
   return (
     <section className="page editor-surface triggers-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Automations watch turns for authored conditions, then update memory, plot state, flags, or review proposals.
-          Keep rules searchable and expand only the one you are editing.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Advanced story tools</p>
+          <h2>Automation</h2>
+          <p className="muted">Create optional when-and-then rules for memory, plot state, and story events.</p>
+        </div>
         <div className="editor-stat-row" aria-label="Automation counts">
           <span>{adventure.triggerRules.length} rules</span>
           <span>{enabledRuleCount} enabled</span>
@@ -94,12 +95,12 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
           onChange={(event) => setRuleSearch(event.target.value)}
         />
         <button type="button" onClick={createTrigger}>
-          Create Trigger
+          New automation
         </button>
       </div>
 
-      <details className="panel editor-tools-panel" open>
-        <summary>System memory triggers</summary>
+      <details className="panel editor-tools-panel">
+        <summary>Automatic memory</summary>
         <p className="muted">
           Inline reference card detection runs without extra API calls. The model flags permanent story facts while writing
           each response, then proposals go to Memory Suggestions for approval.
@@ -114,6 +115,8 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
             { key: "plot_beat", label: "Plot Beat", description: "Alliance, betrayal, new threat, or permanent consequence sealed" },
             { key: "status_change", label: "Status Change", description: "Rank, title, allegiance, or relationship status changes" },
           ];
+          const usesQuietPreset = categories.every(({ key }) => (st.categories[key] !== false) === quietMemoryCategories[key]);
+          const usesBalancedPreset = categories.every(({ key }) => (st.categories[key] !== false) === balancedMemoryCategories[key]);
           return (
             <>
               <CheckboxField
@@ -124,15 +127,19 @@ export function TriggersPage({ adventure, dispatch }: AdventurePageProps) {
               <div className="toolbar">
                 <button
                   type="button"
+                  className={usesQuietPreset ? "active" : ""}
+                  aria-pressed={usesQuietPreset}
                   onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: quietMemoryCategories } })}
                 >
-                  Quiet entity-only
+                  Quiet
                 </button>
                 <button
                   type="button"
+                  className={usesBalancedPreset ? "active" : ""}
+                  aria-pressed={usesBalancedPreset}
                   onClick={() => dispatch({ type: "SET_SYSTEM_TRIGGER_SETTINGS", settings: { ...st, enabled: true, categories: balancedMemoryCategories } })}
                 >
-                  Balanced story memory
+                  Balanced
                 </button>
               </div>
               <p className="muted">

@@ -144,6 +144,7 @@ describe("ExplorePage", () => {
     expect(screen.queryByRole("heading", { name: "The Rookery" })).not.toBeInTheDocument();
 
     await user.clear(search);
+    await user.click(screen.getByText("Filters"));
     await user.click(screen.getByRole("button", { name: "Built in" }));
     expect(screen.getByRole("heading", { name: "The Rookery" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Community Scenario" })).not.toBeInTheDocument();

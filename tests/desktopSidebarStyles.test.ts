@@ -6,11 +6,16 @@ describe("desktop play sidebar layout contract", () => {
   it("opens embedded tool panels at a usable desktop width", () => {
     const source = readFileSync(resolve("src/pages/PlayPage.tsx"), "utf8");
 
-    expect(source).toContain("const PLAY_TOOLKIT_COMPACT_WIDTH = 160");
+    expect(source).toContain("const PLAY_TOOLKIT_COMPACT_WIDTH = 320");
+    expect(source).toContain("const PLAY_TOOLKIT_MIN_WIDTH = 280");
     expect(source).toContain("const PLAY_TOOLKIT_PANEL_MIN_WIDTH = 420");
     expect(source).toContain("if (toolkitCollapsed || !playPanelContent || toolkitWidth >= PLAY_TOOLKIT_PANEL_MIN_WIDTH) return");
     expect(source).toContain("const minWidth = playPanelContent ? PLAY_TOOLKIT_PANEL_MIN_WIDTH : PLAY_TOOLKIT_MIN_WIDTH");
     expect(source).toContain("localStorage.setItem(\"play-toolkit-collapsed\", String(next))");
+
+    const normalizedCss = readFileSync(resolve("src/design-system-normalization.css"), "utf8");
+    expect(normalizedCss).toMatch(/\.play-tool-nav\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s);
+    expect(normalizedCss).toContain(".play-tool-group-secondary");
   });
 
   it("keeps compact editor summaries inside the desktop play panel", () => {

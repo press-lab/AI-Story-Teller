@@ -2070,33 +2070,19 @@ export default function App() {
             onResolveSyncConflict={backendAdventureDataReady ? (resolution) => library.resolveSyncConflict(adventure.id, resolution) : undefined}
           />
         );
-      case "edit":
+      case "edit": {
+        const isPrimaryStudioTab = studioTabs.some((tab) => tab.id === editorTab);
+
+        if (!isPrimaryStudioTab) {
+          return (
+            <section className="page editor-workspace editor-workspace-tool-only">
+              <div className="editor-body">{renderAdventureTool(editorTab)}</div>
+            </section>
+          );
+        }
+
         return (
           <section className="page editor-workspace">
-            <header className="editor-header panel">
-              <div className="editor-title-block">
-                <div className="editor-title-copy">
-                  <p className="eyebrow">Story Studio</p>
-                <input
-                  className="editor-title-input"
-                  value={adventure.title}
-                  onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
-                    aria-label="Story title"
-                  placeholder="Story title"
-                />
-                  <p className="muted">Shape the story, people, world, and suggestions without leaving the current Story.</p>
-                </div>
-                <AdventureThumbnailPicker
-                  thumbnail={getAdventureThumbnail(adventure)}
-                  title={adventure.title}
-                  compact
-                  onChange={(thumbnail) =>
-                    dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
-                  }
-                />
-              </div>
-              <p className="muted editor-save-status">{saveStatus}</p>
-            </header>
             <nav className="editor-tabs" aria-label="Adventure editor">
               {visibleEditorTabs.map((tab) => {
                 const badge = tab.badge === "memory" ? pendingProposalCount : 0;
@@ -2113,6 +2099,36 @@ export default function App() {
                 );
               })}
             </nav>
+            {editorTab === "components" && (
+              <details className="studio-story-details">
+                <summary>
+                  <span>Story details</span>
+                  <span className="muted">Title and cover</span>
+                </summary>
+                <header className="editor-header panel">
+                  <div className="editor-title-block">
+                    <div className="editor-title-copy">
+                      <label htmlFor="studio-story-title">Story title</label>
+                      <input
+                        id="studio-story-title"
+                        className="editor-title-input"
+                        value={adventure.title}
+                        onChange={(e) => dispatch({ type: "SET_TITLE", title: e.target.value })}
+                        placeholder="Story title"
+                      />
+                    </div>
+                    <AdventureThumbnailPicker
+                      thumbnail={getAdventureThumbnail(adventure)}
+                      title={adventure.title}
+                      compact
+                      onChange={(thumbnail) =>
+                        dispatch({ type: "UPDATE_METADATA", metadata: thumbnailMetadataPatch(thumbnail ?? null) })
+                      }
+                    />
+                  </div>
+                </header>
+              </details>
+            )}
             <details
               className="studio-advanced-tools"
               open={advancedStoryToolsOpen}
@@ -2136,18 +2152,10 @@ export default function App() {
                 </button>
               </div>
             </details>
-            {!studioTabs.some((tab) => tab.id === editorTab) && (
-              <div className="advanced-tool-banner" role="status">
-                <div>
-                  <p className="eyebrow">Advanced story tool</p>
-                  <strong>{modalTitles[editorTab] ?? "Advanced"}</strong>
-                </div>
-                <button type="button" onClick={() => setEditorTab("components")}>Back to Story Studio</button>
-              </div>
-            )}
             <div className="editor-body">{renderAdventureTool(editorTab)}</div>
           </section>
         );
+      }
       case "chronicle":
         return <ChroniclePage {...common} />;
       case "context":
@@ -2185,6 +2193,10 @@ export default function App() {
         : /conflict|failed|error/.test(normalizedSaveStatus)
           ? "Save needs attention"
           : saveStatus;
+  const showStoryShellContext = activeProductDestination === "play"
+    || activeProductDestination === "studio"
+    || activeProductDestination === "history"
+    || activeProductDestination === "backups";
 
   if (backendMode && !backendSession?.sessionToken) {
     return (
@@ -2246,14 +2258,14 @@ export default function App() {
           </button>
           <div className="app-page-context">
             <h1>{pageTitle[activeProductDestination]}</h1>
-            {adventure && activeProductDestination !== "home" && activeProductDestination !== "explore" && (
+            {adventure && showStoryShellContext && (
               <span className="muted" title={adventure.title}>{adventure.title}</span>
             )}
           </div>
         </div>
         <div className="header-meta">
-          {adventure && <span className={`status-pill status-${normalizedSaveStatus.replace(/[^a-z0-9]+/g, "-")}`} role="status">{saveStatusLabel}</span>}
-          {adventure && canSaveOpenAdventureAsScenarioRevision && (
+          {adventure && showStoryShellContext && <span className={`status-pill status-${normalizedSaveStatus.replace(/[^a-z0-9]+/g, "-")}`} role="status">{saveStatusLabel}</span>}
+          {adventure && activeProductDestination === "studio" && canSaveOpenAdventureAsScenarioRevision && (
             <button type="button" className="primary-action nav-scenario-save" onClick={() => void saveScenarioRevisionFromAdventure(adventure)}>
               Save Scenario Revision
             </button>

@@ -49,8 +49,8 @@ describe("AdventuresPage new adventure setup", () => {
     const { onCreate } = renderAdventuresPage();
 
     await user.click(screen.getByRole("button", { name: "New Story" }));
-    await user.clear(screen.getByLabelText("Adventure title"));
-    await user.type(screen.getByLabelText("Adventure title"), "Setup Test");
+    await user.clear(screen.getByLabelText("Story title"));
+    await user.type(screen.getByLabelText("Story title"), "Setup Test");
     await user.type(screen.getByPlaceholderText(/The scene opens/), "Rain cuts across the bridge.");
 
     await user.click(screen.getByRole("button", { name: "Add Plot Essentials" }));
@@ -219,7 +219,7 @@ describe("AdventuresPage new adventure setup", () => {
     renderAdventuresPage(undefined, { onImportAdventure });
 
     await user.click(screen.getByRole("button", { name: "New Story" }));
-    await user.click(screen.getByRole("button", { name: "Import from AIST" }));
+    await user.click(screen.getByRole("button", { name: "Restore a backup" }));
     await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
 
     await waitFor(() => expect(screen.getByText("Long Running Story")).toBeInTheDocument());
@@ -243,7 +243,7 @@ describe("AdventuresPage new adventure setup", () => {
     renderAdventuresPage(undefined, { onImportAdventure });
 
     await user.click(screen.getByRole("button", { name: "New Story" }));
-    await user.click(screen.getByRole("button", { name: "Import from AIST" }));
+    await user.click(screen.getByRole("button", { name: "Restore a backup" }));
     await user.upload(screen.getByLabelText("Upload AIST .json backup"), file);
     await user.click(screen.getByRole("button", { name: "Import and Continue" }));
 

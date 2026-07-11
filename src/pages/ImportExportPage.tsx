@@ -174,10 +174,11 @@ export function ImportExportPage({
   return (
     <section className="page editor-surface import-export-page">
       <div className="editor-page-summary">
-        <p className="muted">
-          Back up the current adventure or restore a saved JSON file.
-          Full backups keep the playable save together; partial exports are for reuse and editing.
-        </p>
+        <div className="editor-page-copy">
+          <p className="eyebrow">Story tools</p>
+          <h2>Backups &amp; transfer</h2>
+          <p className="muted">Download a safe copy of this Story or restore one you saved earlier.</p>
+        </div>
         <div className="editor-stat-row" aria-label="Adventure export counts">
           <span>Turn {adventure.activeState.turn}</span>
           <span>{transcriptCount} messages</span>
@@ -236,7 +237,7 @@ export function ImportExportPage({
         <article className="panel import-export-card import-export-card-primary">
           <div className="import-export-card-copy">
             <p className="eyebrow">backup</p>
-            <h3>Back up this adventure</h3>
+            <h3>Back up this Story</h3>
             <p className="muted">
               Includes transcript, World Blocks, reference cards, brains, triggers, and settings. Runtime API keys stay out.
             </p>

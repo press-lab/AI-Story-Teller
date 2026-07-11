@@ -296,6 +296,7 @@ describe("ProfilePage", () => {
     expect(screen.getByText("Builds shared worlds.")).toBeInTheDocument();
     expect(screen.getByText("Published World")).toBeInTheDocument();
     expect(screen.getByAltText("Published scenario cover")).toBeInTheDocument();
+    expect(screen.getByText(/starts exactly as published/i)).toBeInTheDocument();
     expect(screen.queryByText("player@example.com")).not.toBeInTheDocument();
     expect(screen.queryByText("Private Playthrough")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
@@ -303,8 +304,43 @@ describe("ProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Start Story" }));
     expect(onStartScenario).toHaveBeenCalledWith("revision-public");
 
-    await user.click(screen.getByRole("button", { name: "Your Profile" }));
+    await user.click(screen.getByRole("button", { name: /Your profile/i }));
     expect(onViewOwnProfile).toHaveBeenCalledOnce();
+  });
+
+  it("uses a compact public-profile empty state without irrelevant start guidance", () => {
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        publicProfile={{ ...publicProfile(), scenarios: [] }}
+        viewMode="public"
+      />,
+    );
+
+    const emptyState = screen.getByRole("status");
+    expect(emptyState).toHaveClass("profile-scenarios-empty", "explore-empty-state");
+    expect(emptyState).toHaveTextContent("No published scenarios yet");
+    expect(emptyState).toHaveTextContent("has not shared a Scenario here yet");
+    expect(screen.queryByText(/starts exactly as published/i)).not.toBeInTheDocument();
+  });
+
+  it("marks a missing Home Story cover for intentional fallback positioning", () => {
+    const liveAdventure = createDefaultAdventure("Private Playthrough");
+    liveAdventure.id = "adventure-1";
+
+    render(
+      <ProfilePage
+        backendMode
+        backendSession={session()}
+        profile={profile()}
+        liveAdventure={liveAdventure}
+      />,
+    );
+
+    const cover = document.querySelector(".home-story-cover");
+    expect(cover).toHaveClass("home-story-cover--fallback");
+    expect(cover?.querySelector(".adventure-thumbnail-fallback span")).toHaveTextContent("P");
   });
 
   it("shows public connections and wires follow, friend, profile, and scenario-like actions", async () => {
