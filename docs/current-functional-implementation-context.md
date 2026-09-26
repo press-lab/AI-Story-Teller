@@ -1,11 +1,24 @@
 # Current functional implementation context
 
-Last reviewed: 2026-07-11.
+Last reviewed: 2026-09-26.
 
 This file tracks product behavior and user/admin capabilities from the current
 implementation checklist. Visual polish, UX research, performance quality,
 documentation, and release verification live in
 `docs/current-nonfunctional-implementation-context.md`.
+
+## Frontend deployment policy
+
+- GitHub Pages is the only hosted frontend for this repository.
+- Every push to `main` must build and deploy the current frontend through
+  `.github/workflows/deploy.yml`. The workflow also keeps a manual dispatch for
+  recovery and explicit redeployment.
+- Do not configure, recommend, or treat Cloudflare Pages as a frontend host.
+  Cloudflare tunnels may still be used strictly as backend connectivity for the
+  owner-hosted API; they are not a frontend deployment target.
+- A completed implementation merged to `main` is not fully delivered until the
+  `Deploy to GitHub Pages` workflow succeeds. Check and report that workflow's
+  result after every `main` push.
 
 ## Functional status table
 

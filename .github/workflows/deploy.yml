@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Rollback-only. Cloudflare Pages is the production frontend deployment.
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -33,7 +35,7 @@ jobs:
       - name: Build
         env:
           VITE_AIST_API_BASE_URL: ${{ vars.AIST_PUBLIC_API_BASE_URL }}
-          VITE_AIST_RUNTIME_MODE: backendLocal
+          VITE_AIST_RUNTIME_MODE: hosted
         run: npm run build
 
       - name: Upload artifact
