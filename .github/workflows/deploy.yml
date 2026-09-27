@@ -1,9 +1,8 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches:
-      - main
+  # The public frontend is deployed from press-lab/AI-Story-Teller-Pages.
+  # Keep this legacy workflow manual-only; private-repository Pages is unsupported.
   workflow_dispatch:
 
 permissions:
