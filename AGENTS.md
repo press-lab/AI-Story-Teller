@@ -4,13 +4,11 @@
 
 This repository supports three explicit modes:
 
-- **Hosted Production:** GitHub Pages is the only frontend host and serves React/Vite from the separate public repository `press-lab/AI-Story-Teller-Pages`. This private repository is the source of truth. Render runs the compiled Node API in `apps/api/hostedServer.ts`, and Neon provides Postgres. The provider key and account secrets are backend-only.
-- **Owner/UAT Rollback:** the owner API/Postgres and optional Cloudflare tunnel remain a backend recovery path. GitHub Pages continues to serve the frontend.
+- **Hosted Production:** Cloudflare Pages serves React/Vite, Render runs the compiled Node API in `apps/api/hostedServer.ts`, and Neon provides Postgres. The provider key and account secrets are backend-only.
+- **Owner/UAT Rollback:** the owner API/Postgres/Cloudflare tunnel and optional GitHub Pages frontend remain a recovery path. They are not the production topology.
 - **Browser Local:** no backend is required. Adventures persist in IndexedDB through `src/db/adventureDb.ts`; small settings and a user-supplied provider key remain in localStorage through `src/hooks/useLocalStorage.ts`.
 
-For hosted backend deployment or production incidents, read `docs/render-cloudflare-neon-runbook.md` and `docs/hosted-production-hardening-context.md` first, but disregard their older Cloudflare Pages frontend guidance. For owner rollback incidents, read `docs/agent-cloudflare-owner-backend-context.md` first. Do not route the hosted backend through an owner laptop or Quick Tunnel.
-
-Every completed frontend change must also be applied to `press-lab/AI-Story-Teller-Pages/main`; a push there triggers its `Deploy to GitHub Pages` workflow. This private repository's legacy Pages workflow is manual-only because the current GitHub plan does not support Pages for the private repository. After updating the public repository, verify its deployment workflow succeeds and report the result. Do not use Cloudflare Pages as a frontend deployment target.
+For hosted deployment or production incidents, read `docs/render-cloudflare-neon-runbook.md` and `docs/hosted-production-hardening-context.md` first. For owner rollback incidents, read `docs/agent-cloudflare-owner-backend-context.md` first. Do not route hosted production through an owner laptop or Quick Tunnel.
 
 The core rule is that adventure state changes go through:
 

@@ -368,61 +368,6 @@ describe("sendOpenAICompatibleChatCompletion", () => {
     });
   });
 
-  it("disables DeepSeek thinking for Anthropic-format requests when requested", async () => {
-    const spy = mockFetch(200, { content: [{ type: "text", text: "ok" }] });
-
-    await sendOpenAICompatibleChatCompletion({
-      messages: [{ role: "user", content: "Rewrite this." }],
-      config: { ...config, baseUrl: "https://api.deepseek.com/anthropic" },
-      thinking: "disabled",
-    });
-
-    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
-    expect(body.thinking).toEqual({ type: "disabled" });
-    expect(body.reasoning).toBeUndefined();
-  });
-
-  it("defaults DeepSeek Anthropic-format requests to non-thinking output", async () => {
-    const spy = mockFetch(200, { content: [{ type: "text", text: "ok" }] });
-
-    await sendOpenAICompatibleChatCompletion({
-      messages: [{ role: "user", content: "Update the plot essentials." }],
-      config: { ...config, baseUrl: "https://api.deepseek.com/anthropic" },
-    });
-
-    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
-    expect(body.thinking).toEqual({ type: "disabled" });
-    expect(body.reasoning).toBeUndefined();
-  });
-
-  it("enables DeepSeek Anthropic reasoning only when explicitly requested", async () => {
-    const spy = mockFetch(200, { content: [{ type: "text", text: "ok" }] });
-
-    await sendOpenAICompatibleChatCompletion({
-      messages: [{ role: "user", content: "Solve this carefully." }],
-      config: { ...config, baseUrl: "https://api.deepseek.com/anthropic" },
-      thinking: "enabled",
-    });
-
-    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
-    expect(body.thinking).toEqual({ type: "enabled" });
-    expect(body.reasoning).toBeUndefined();
-  });
-
-  it("does not send DeepSeek reasoning controls to other Anthropic-compatible providers", async () => {
-    const spy = mockFetch(200, { content: [{ type: "text", text: "ok" }] });
-
-    await sendOpenAICompatibleChatCompletion({
-      messages: [{ role: "user", content: "Rewrite this." }],
-      config: { ...config, baseUrl: "https://api.example.com/anthropic/v1" },
-      thinking: "disabled",
-    });
-
-    const body = JSON.parse(spy.mock.calls[0][1]?.body as string);
-    expect(body.reasoning).toBeUndefined();
-    expect(body.thinking).toBeUndefined();
-  });
-
   it("does not modify messages when promptCaching is false or unset", async () => {
     const spy = mockFetch(200, { choices: [{ message: { content: "ok" } }] });
     await sendOpenAICompatibleChatCompletion({

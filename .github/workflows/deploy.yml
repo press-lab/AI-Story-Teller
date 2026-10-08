@@ -1,8 +1,7 @@
 name: Deploy to GitHub Pages
 
 on:
-  # The public frontend is deployed from press-lab/AI-Story-Teller-Pages.
-  # Keep this legacy workflow manual-only; private-repository Pages is unsupported.
+  # Rollback-only. Cloudflare Pages is the production frontend deployment.
   workflow_dispatch:
 
 permissions:
@@ -34,7 +33,7 @@ jobs:
       - name: Build
         env:
           VITE_AIST_API_BASE_URL: ${{ vars.AIST_PUBLIC_API_BASE_URL }}
-          VITE_AIST_RUNTIME_MODE: hosted
+          VITE_AIST_RUNTIME_MODE: backendLocal
         run: npm run build
 
       - name: Upload artifact

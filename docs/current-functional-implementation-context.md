@@ -1,29 +1,11 @@
 # Current functional implementation context
 
-Last reviewed: 2026-09-26.
+Last reviewed: 2026-07-11.
 
 This file tracks product behavior and user/admin capabilities from the current
 implementation checklist. Visual polish, UX research, performance quality,
 documentation, and release verification live in
 `docs/current-nonfunctional-implementation-context.md`.
-
-## Frontend deployment policy
-
-- GitHub Pages is the only hosted frontend. It is published from the separate
-  public repository `press-lab/AI-Story-Teller-Pages` at
-  `https://press-lab.github.io/AI-Story-Teller-Pages/`.
-- The private source repository `press-lab/AI-Story-Teller` cannot publish a
-  Pages site under the current GitHub plan. Its legacy `.github/workflows/deploy.yml`
-  is manual-only and must not be treated as the production deployment.
-- Every completed source change must also be applied to
-  `AI-Story-Teller-Pages/main`; that repository's push-triggered workflow builds
-  and deploys the frontend automatically.
-- Do not configure, recommend, or treat Cloudflare Pages as a frontend host.
-  Cloudflare tunnels may still be used strictly as backend connectivity for the
-  owner-hosted API; they are not a frontend deployment target.
-- A completed implementation is not fully delivered until the
-  `Deploy to GitHub Pages` workflow succeeds in `AI-Story-Teller-Pages`. Check
-  and report that workflow's result after every frontend update.
 
 ## Functional status table
 
