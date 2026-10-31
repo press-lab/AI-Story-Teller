@@ -16,7 +16,7 @@ import { useAdventureAutosave } from "./hooks/useAdventureAutosave";
 import { useCloudSyncController } from "./hooks/useCloudSyncController";
 import type { Adventure, AdventureAction, CloudSyncSettings, ContextBuildResult, GitHubSaveSettings, NewAdventureSetup } from "./types/adventure";
 import type { GlobalAdventureSettings, ProviderPreset, RuntimeProviderSettings, UiPreferences } from "./pages/pageTypes";
-import { defaultGlobalAdventureSettings, defaultUiPreferences } from "./pages/pageTypes";
+import { defaultGlobalAdventureSettings, normalizeGlobalAdventureSettings, defaultUiPreferences } from "./pages/pageTypes";
 import { AdventuresPage, type AdventureLibraryView } from "./pages/AdventuresPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { PlayPage } from "./pages/PlayPage";
@@ -411,6 +411,7 @@ export default function App() {
   const [globalAdventureSettings, setGlobalAdventureSettings] = useLocalStorage<GlobalAdventureSettings>(
     "ai-story-teller-adventure-settings",
     defaultGlobalAdventureSettings,
+    normalizeGlobalAdventureSettings,
   );
   const [runtimeConfig, setRuntimeConfig] = useLocalStorage<RuntimeConfig>(
     "ai-story-teller-runtime-config",

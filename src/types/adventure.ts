@@ -362,8 +362,8 @@ export interface SemanticEvaluationSettings {
   enabled: boolean;
   showLog: boolean;
   maxParallelUpdateCalls: number;
-  /** When true, all LLM-generated memory updates go to the inbox for approval instead of applying directly. */
-  requireApprovalForAutoUpdates: boolean;
+  /** @deprecated Ignored legacy save field. Category toggles alone control approval. */
+  requireApprovalForAutoUpdates?: boolean;
   /** When set, all background LLM calls (eval, brain updates, scene state) use this provider instead of the active preset. */
   backgroundProviderConfig?: BackgroundProviderConfig;
   /** Global cooldown: skip story-card update conditions if any card was updated within this many turns. 0 or undefined = no global limit. */
@@ -449,6 +449,8 @@ export interface MemoryProposal {
   appendContent?: boolean;
   memoryMode?: StoryCardMemoryMode;
   storyCardType?: StoryCardType;
+  /** Explicit generated Brain operation; legacy proposals retain append behavior. */
+  brainUpdateMode?: "replace" | "append";
   autoUpdate?: boolean;
   autoUpdateCooldownTurns?: number;
   storyCardPatch?: Partial<Pick<StoryCard, "active" | "pinned" | "protected" | "inclusionPolicy" | "priority" | "state" | "compactKind" | "compactStatus">>;
@@ -614,7 +616,9 @@ export interface MemoryAutoApproveSettings {
   arcProposal: boolean;
   plotPressureUpdate: boolean;
   plotMomentumUpdate: boolean;
-  storyCard: boolean;
+  characterStoryCard: boolean;
+  loreStoryCard: boolean;
+  otherStoryCard: boolean;
   brainUpdate: boolean;
 }
 

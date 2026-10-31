@@ -95,9 +95,9 @@ Turns on a debug log showing what the evaluator saw and decided. Useful for diag
 
 When multiple Automations trigger on the same turn, how many update LLM calls run simultaneously. Default 3. Higher is faster but increases peak API load.
 
-### Require approval before applying auto-updates
+### Memory approval
 
-When on, all AI-generated Automation updates (brain updates, plot essentials, etc.) go to Memory Suggestions for your review instead of applying directly. Recommended if you're protective of brain or plot essentials data.
+Approval controls live in **Memory Suggestions → Suggestion tools and settings**. Each category has one toggle: Legacy Summary, Plot Essentials, Active Pressure, Current Arc, Arc Proposals, Character Story Cards, Lore Cards, Other Story Cards, and Character Self. ON automatically applies valid suggestions; OFF requires manual approval. There is no global override, and approval does not depend on Memory Detection being enabled.
 
 ### Background Provider
 
@@ -149,6 +149,6 @@ When **on**: the AI writes the full proposal body (title + content + triggers) i
 
 When **off**: the AI only identifies *what* to store (title and type), leaving the body blank for you to fill in. Useful if you prefer to write card content yourself and just want the AI to flag *that* something is noteworthy.
 
-### Auto-approve brain state updates
+### Character Self approval
 
-Brain state (Brains panel — character mental state) is typically lower-stakes than reference cards. When on, brain update proposals skip your inbox and apply directly. Story cards and plot essentials still go to Memory Suggestions for review.
+Use the Character Self toggle in Memory Suggestions. It controls semantic updates, manual AI update tools, and inline thoughts. Companion card notes and historical-card proposals use their own Story Card categories. Changing a toggle affects subsequent proposals; existing pending suggestions stay pending.

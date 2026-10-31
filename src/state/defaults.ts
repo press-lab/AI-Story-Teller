@@ -82,7 +82,6 @@ export const defaultSemanticEvaluationSettings: SemanticEvaluationSettings = {
   enabled: true,
   showLog: true,
   maxParallelUpdateCalls: 3,
-  requireApprovalForAutoUpdates: true,
   semanticEvalEveryNTurns: 1,
 };
 
@@ -99,9 +98,29 @@ export const defaultMemoryAutoApproveSettings: MemoryAutoApproveSettings = {
   arcProposal: false,
   plotPressureUpdate: true,
   plotMomentumUpdate: false,
-  storyCard: false,
+  characterStoryCard: false,
+  loreStoryCard: false,
+  otherStoryCard: false,
   brainUpdate: false,
 };
+
+/** Migrate only approval preferences; never borrow another adventure's defaults. */
+export function normalizeMemoryAutoApproveSettings(
+  old: Partial<MemoryAutoApproveSettings> & { storyCard?: boolean } = {},
+): MemoryAutoApproveSettings {
+  return {
+    summaryUpdate: old.summaryUpdate ?? defaultMemoryAutoApproveSettings.summaryUpdate,
+    plotEssentialsUpdate: old.plotEssentialsUpdate ?? defaultMemoryAutoApproveSettings.plotEssentialsUpdate,
+    plotPressureUpdate: old.plotPressureUpdate ?? defaultMemoryAutoApproveSettings.plotPressureUpdate,
+    currentArcUpdate: old.currentArcUpdate ?? defaultMemoryAutoApproveSettings.currentArcUpdate,
+    arcProposal: old.arcProposal ?? defaultMemoryAutoApproveSettings.arcProposal,
+    characterStoryCard: old.characterStoryCard ?? old.storyCard ?? false,
+    loreStoryCard: old.loreStoryCard ?? old.storyCard ?? false,
+    otherStoryCard: old.otherStoryCard ?? old.storyCard ?? false,
+    brainUpdate: old.brainUpdate ?? defaultMemoryAutoApproveSettings.brainUpdate,
+    plotMomentumUpdate: false,
+  };
+}
 
 export const defaultSystemTriggerSettings: SystemTriggerSettings = {
   enabled: true,
@@ -477,9 +496,10 @@ export function persistedBackgroundProviderConfig(
 export function persistedSemanticEvaluationSettings(
   settings: SemanticEvaluationSettings | undefined,
 ): SemanticEvaluationSettings {
+  const { requireApprovalForAutoUpdates: _retired, ...current } = settings ?? {};
   const merged = {
     ...defaultSemanticEvaluationSettings,
-    ...(settings ?? {}),
+    ...current,
     semanticEvalEveryNTurns: settings?.semanticEvalEveryNTurns ?? 1,
   };
   const backgroundProviderConfig = persistedBackgroundProviderConfig(merged.backgroundProviderConfig);
@@ -613,11 +633,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       updatePrompt: rule.updatePrompt ?? "",
     })),
     semanticEvaluationSettings: persistedSemanticEvaluationSettings(adventure.semanticEvaluationSettings),
-    memoryAutoApprove: {
-      ...defaultMemoryAutoApproveSettings,
-      ...(adventure.memoryAutoApprove ?? {}),
-      plotMomentumUpdate: false,
-    },
+    memoryAutoApprove: normalizeMemoryAutoApproveSettings(adventure.memoryAutoApprove),
     memoryDetectionSettings: {
       ...defaultMemoryDetectionSettings,
       ...(adventure.memoryDetectionSettings ?? {}),

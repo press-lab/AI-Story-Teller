@@ -414,6 +414,7 @@ describe("full turn smoke path", () => {
 
   it("appends inline brain thoughts without replacing the existing thought log", async () => {
     let adventure = createDefaultAdventure("Thought Capture");
+    adventure.memoryAutoApprove.brainUpdate = true;
     adventure = dispatch(adventure, {
       type: "UPSERT_BRAIN",
       brain: makeBrain({
@@ -447,6 +448,7 @@ describe("full turn smoke path", () => {
 
   it("ignores inline brain thoughts that repeat an existing thought", async () => {
     let adventure = createDefaultAdventure("Thought Capture");
+    adventure.memoryAutoApprove.brainUpdate = true;
     adventure = dispatch(adventure, {
       type: "UPSERT_BRAIN",
       brain: makeBrain({

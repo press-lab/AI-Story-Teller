@@ -21,7 +21,7 @@ import type {
 } from "../types/adventure";
 import { isNativeDeepSeekProvider, sendOpenAICompatibleChatCompletion } from "../providers/openAICompatible";
 import { backgroundProviderConfigIssue, resolveBackgroundProviderConfig } from "../providers/backgroundProvider";
-import { applyAIMemoryUpdate } from "../memory/applyAIMemoryUpdate";
+import { shouldAutoApprove } from "../memory/approvalPolicy";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
 import {
   PLOT_ESSENTIALS_BEST_PRACTICES,
@@ -453,6 +453,8 @@ function makeProposal(
     targetId?: string;
     appendContent?: boolean;
     memoryMode?: MemoryProposal["memoryMode"];
+    storyCardType?: StoryCardType;
+    brainUpdateMode?: "replace" | "append";
     rationale?: string;
   },
   adventure: Adventure,
@@ -472,6 +474,8 @@ function makeProposal(
     targetId: fields.targetId,
     appendContent: fields.appendContent ?? (fields.proposedType === "summaryUpdate" || fields.proposedType === "currentArcUpdate"),
     memoryMode: fields.memoryMode,
+    storyCardType: fields.storyCardType,
+    brainUpdateMode: fields.brainUpdateMode,
     createdAt: now,
     updatedAt: now,
   };
@@ -485,14 +489,10 @@ async function generatedActionsFor(
   rule?: TriggerRule,
   accum?: { promptTokens: number; completionTokens: number },
 ): Promise<{ actions: AdventureAction[]; generated?: GeneratedContentPreview; error?: string }> {
-  const requireApproval = adventure.semanticEvaluationSettings.requireApprovalForAutoUpdates;
   try {
     if (triggerAction.type === "updateBrain" || triggerAction.type === "appendBrain") {
       const brain = adventure.brains.find((entry) => entry.id === triggerAction.brainId);
       if (!brain) return { actions: [], error: `Brain not found: ${triggerAction.brainId}` };
-      if (adventure.activeState.memoryProposals.some((p) => p.status === "pending" && p.proposedType === "brainUpdate" && p.targetId === brain.id)) {
-        return { actions: [] };
-      }
       const raw = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || brain.updatePrompt || defaultBrainPrompt(brain, adventure.activeState.turn), accum);
       const rawParsed = parseJsonResponse<unknown>(raw);
       const storyCardNote = rawParsed && typeof rawParsed === "object" && "storyCardNote" in rawParsed && typeof (rawParsed as Record<string, unknown>).storyCardNote === "string"
@@ -500,48 +500,23 @@ async function generatedActionsFor(
         : undefined;
       const patch = sanitizeBrainPatch(rawParsed);
       if (Object.keys(patch).length === 0) return { actions: [], error: `Brain update returned no recognized keys for ${brain.characterName}.` };
-      if (requireApproval) {
-        const proposal = makeProposal(
-          { proposedType: "brainUpdate", title: brain.characterName, content: JSON.stringify(patch), targetId: brain.id, rationale: `Auto-update for ${brain.characterName}.` },
-          adventure,
-        );
-        return {
-          actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }],
-          generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: preview(raw) },
-        };
-      }
-      const updateMode = triggerAction.type === "appendBrain" ? "append" : brain.updateMode;
-      // Simulate post-update state to check condense threshold
+      const updateMode = triggerAction.type === "appendBrain" ? "append" : brain.updateMode ?? "replace";
+      const proposal = makeProposal(
+        { proposedType: "brainUpdate", title: brain.characterName, content: JSON.stringify(patch), targetId: brain.id, brainUpdateMode: updateMode, rationale: `Auto-update for ${brain.characterName}.` },
+        adventure,
+      );
+      // Preserve the existing condensation behavior for eligible automatic writes.
       const postThoughtsRecord: Record<string, string> = updateMode === "append"
         ? Object.fromEntries([...Object.entries(brain.thoughts), ...Object.entries(patch.thoughts ?? {}).filter(([, v]) => v !== null)] as [string, string][])
         : Object.fromEntries(Object.entries(patch.thoughts ?? brain.thoughts).filter(([, v]) => v !== null) as [string, string][]);
-      const postThoughtsText = Object.values(postThoughtsRecord).join("\n");
-      const condenseNeeded = postThoughtsText.length > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD);
-      if (condenseNeeded) {
+      if (shouldAutoApprove(adventure, proposal) && Object.values(postThoughtsRecord).join("\n").length > (brain.condenseThreshold ?? BRAIN_CONDENSE_THRESHOLD)) {
         const condensedRaw = await sendTargetedUpdate(adventure, providerConfig, condenseBrainPrompt(brain, postThoughtsRecord), accum);
         const condensed = sanitizeBrainPatch(parseJsonResponse<unknown>(condensedRaw));
         if (Object.keys(condensed).length > 0) {
-          const condenseUpdate = applyAIMemoryUpdate(adventure, [{
-            type: "brainPatch", brainId: brain.id, patch: condensed, mode: "replace",
-            turn: adventure.activeState.turn, preview: `[condensed] ${preview(condensedRaw)}`,
-          }]);
-          return {
-            actions: condenseUpdate.actions,
-            generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: `[condensed] ${preview(condensedRaw)}` },
-            error: condenseUpdate.rejectedUpdates[0]?.reason,
-          };
+          proposal.content = JSON.stringify(condensed);
+          proposal.brainUpdateMode = "replace";
         }
       }
-      const memoryUpdate = applyAIMemoryUpdate(adventure, [
-        {
-          type: "brainPatch",
-          brainId: brain.id,
-          patch,
-          mode: updateMode,
-          turn: adventure.activeState.turn,
-          preview: preview(raw),
-        },
-      ]);
       const extraActions: AdventureAction[] = [];
       if (storyCardNote && brain.linkedStoryCardId) {
         const card = adventure.storyCards.find((c) => c.id === brain.linkedStoryCardId);
@@ -555,6 +530,7 @@ async function generatedActionsFor(
               targetId: card.id,
               appendContent: true,
               memoryMode: card.memoryMode,
+              storyCardType: card.type,
               rationale: `Brain thought for ${brain.characterName} revealed a stable character trait.`,
             },
             adventure,
@@ -563,9 +539,8 @@ async function generatedActionsFor(
         }
       }
       return {
-        actions: [...memoryUpdate.actions, ...extraActions],
+        actions: [{ type: "ADD_MEMORY_PROPOSAL", proposal }, ...extraActions],
         generated: { targetType: "brain", targetId: brain.id, title: brain.characterName, preview: preview(raw) },
-        error: memoryUpdate.rejectedUpdates[0]?.reason,
       };
     }
 
@@ -573,35 +548,22 @@ async function generatedActionsFor(
       const card = adventure.storyCards.find((entry) => entry.id === triggerAction.storyCardId);
       if (!card) return { actions: [], error: `Story card not found: ${triggerAction.storyCardId}` };
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || storyCardPrompt(card), accum);
-      if (requireApproval) {
-        const proposal = makeProposal(
-          { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, appendContent: false, memoryMode: card.memoryMode, rationale: `Auto-update for reference card "${card.title}".` },
-          adventure,
-        );
-        return {
-          actions: [
-            { type: "ADD_MEMORY_PROPOSAL", proposal },
-            { type: "MARK_STORY_CARD_UPDATED", storyCardId: card.id, turn: adventure.activeState.turn },
-          ],
-          generated: { targetType: "storyCard", targetId: card.id, title: card.title, preview: preview(content) },
-        };
-      }
-      const memoryUpdate = applyAIMemoryUpdate(adventure, [
-        { type: "storyCardUpdate", storyCardId: card.id, content },
-      ]);
+      const proposal = makeProposal(
+        { proposedType: "storyCard", title: card.title, content, suggestedTriggers: card.keys, targetId: card.id, appendContent: false, memoryMode: card.memoryMode, storyCardType: card.type, rationale: `Auto-update for reference card "${card.title}".` },
+        adventure,
+      );
       return {
         actions: [
-          ...memoryUpdate.actions,
+          { type: "ADD_MEMORY_PROPOSAL", proposal },
           { type: "MARK_STORY_CARD_UPDATED", storyCardId: card.id, turn: adventure.activeState.turn },
         ],
         generated: { targetType: "storyCard", targetId: card.id, title: card.title, preview: preview(content) },
-        error: memoryUpdate.rejectedUpdates[0]?.reason,
       };
     }
 
     if (triggerAction.type === "updateComponent") {
       const component = adventure.components.find((entry) => entry.id === triggerAction.componentId);
-      if (!component) return { actions: [], error: `Component not found: ${triggerAction.componentId}` };
+      if (!component || component.type !== "plotEssentials") return { actions: [], error: `Plot Essentials component not found: ${triggerAction.componentId}` };
       const content = await sendTargetedUpdate(adventure, providerConfig, rule?.updatePrompt || componentPrompt(component), accum);
       if (!content.trim()) return { actions: [] };
       const proposal = makeProposal(
@@ -788,14 +750,8 @@ export async function runManualPlotEssentialsUpdate(
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 
-  // Always route to Memory Inbox regardless of requireApprovalForAutoUpdates setting
-  const forcePropose = {
-    ...adventure,
-    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
-  };
-
   const tasks = components.map((component) => () =>
-    generatedActionsFor(forcePropose, providerConfig, { type: "updateComponent", componentId: component.id }, `manualPlot:${component.id}`),
+    generatedActionsFor(adventure, providerConfig, { type: "updateComponent", componentId: component.id }, `manualPlot:${component.id}`),
   );
   const results = await runLimited(adventure.semanticEvaluationSettings.maxParallelUpdateCalls, tasks);
 
@@ -835,13 +791,8 @@ export async function runManualStoryCardsUpdate(
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: logEntry }], logEntry };
   }
 
-  const forcePropose = {
-    ...adventure,
-    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
-  };
-
   const tasks = cards.map((card) => () =>
-    generatedActionsFor(forcePropose, providerConfig, { type: "updateStoryCard", storyCardId: card.id }, `manualCard:${card.id}`),
+    generatedActionsFor(adventure, providerConfig, { type: "updateStoryCard", storyCardId: card.id }, `manualCard:${card.id}`),
   );
   const results = await runLimited(adventure.semanticEvaluationSettings.maxParallelUpdateCalls, tasks);
 
@@ -1064,7 +1015,7 @@ ${recentBlock}`;
 
     for (const p of parsed.proposals.slice(0, requestedCardCount)) {
       const memoryMode = validMemoryMode(p.memoryMode) ?? requestedMode ?? "static";
-      const storyCardType = validStoryCardType(p.storyCardType ?? p.type) ?? requestedType ?? "custom";
+      const storyCardType = validStoryCardType(p.storyCardType ?? p.type) ?? requestedType;
       const targetId = p.action === "update" ? (p.cardId ?? selectedCard?.id) : undefined;
       const appendContent = p.action === "update"
         ? (typeof p.appendContent === "boolean" ? p.appendContent : !selectedCard)
@@ -1081,6 +1032,7 @@ ${recentBlock}`;
         targetId,
         appendContent,
         memoryMode,
+        storyCardType,
         rationale: parsed.rationale,
       });
       const proposal: MemoryProposal = {
@@ -1097,7 +1049,7 @@ ${recentBlock}`;
         targetId: routed.targetId,
         appendContent: routed.appendContent,
         memoryMode: routed.memoryMode ?? memoryMode,
-        storyCardType,
+        storyCardType: routed.storyCardType,
         autoUpdate,
         autoUpdateCooldownTurns: autoUpdate ? Math.max(0, Math.round(p.autoUpdateCooldownTurns ?? request.autoUpdateCooldownTurns ?? 3)) : undefined,
         createdAt: now,
@@ -1673,7 +1625,8 @@ ${recent}`;
         targetId: target.id,
         appendContent: proposedType === "currentArcUpdate" ? true : false,
         memoryMode: validMemoryMode(update.memoryMode),
-        storyCardType: validStoryCardType(update.storyCardType),
+        storyCardType: adventure.storyCards.find(c => c.id === target.id)?.type ?? validStoryCardType(update.storyCardType),
+        brainUpdateMode: proposedType === "brainUpdate" ? "append" : undefined,
         storyCardPatch: storyCardPatch && Object.keys(storyCardPatch).length > 0 ? storyCardPatch : undefined,
         componentPatch: componentPatch && Object.keys(componentPatch).length > 0 ? componentPatch : undefined,
         createdAt: now,
@@ -1731,13 +1684,14 @@ Examine the description against existing reference cards and characters:
 Respond ONLY with valid JSON:
 {
   "proposals": [
-    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "memoryMode": "living", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1"] },
-    { "action": "create", "title": "New Card Title", "memoryMode": "historical", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1", "keyword2"] }
+    { "action": "update", "cardId": "existing-card-id", "title": "Card Title", "storyCardType": "character", "memoryMode": "living", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1"] },
+    { "action": "create", "title": "New Card Title", "storyCardType": "lore", "memoryMode": "historical", "content": "• Bullet fact one.\n• Bullet fact two.", "keys": ["keyword1", "keyword2"] }
   ],
   "rationale": "Brief explanation of choices"
 }
 
 The "content" field must use • bullet points, one per line. Each bullet should be a concise, self-contained fact, trait, or story rule about the subject.
+Each proposal must include storyCardType: "character", "location", "lore", "plot", or "custom". For updates preserve the stored type.
 Each proposal must include memoryMode: "static" for always-true facts, "living" for current evolving subjects/relationships/arrangements, or "historical" for completed past events. Use present tense for static/living content and past tense for historical content.
 For a CHARACTER card, after the bullets append a VOICE CONTRACT so the model can voice them consistently. Use exactly this shape:
 VOICE CONTRACT
@@ -1779,6 +1733,7 @@ Write the example lines in the character's actual voice. Omit the VOICE CONTRACT
         action: "update" | "create";
         cardId?: string;
         title: string;
+        storyCardType?: StoryCardType;
         memoryMode?: "static" | "living" | "historical";
         content: string;
         keys: string[];
@@ -1799,7 +1754,8 @@ Write the example lines in the character's actual voice. Omit the VOICE CONTRACT
         suggestedTriggers: Array.isArray(p.keys) ? p.keys : splitList(String(p.keys ?? "")),
         targetId: p.action === "update" ? p.cardId : undefined,
         appendContent: p.action === "update" ? true : undefined,
-        memoryMode: p.memoryMode,
+        memoryMode: validMemoryMode(p.memoryMode),
+        storyCardType: validStoryCardType(p.storyCardType),
         rationale: parsed.rationale,
       });
       const proposal: MemoryProposal = {
@@ -1816,6 +1772,7 @@ Write the example lines in the character's actual voice. Omit the VOICE CONTRACT
         targetId: routed.targetId,
         appendContent: routed.appendContent,
         memoryMode: routed.memoryMode,
+        storyCardType: routed.storyCardType,
         createdAt: now,
         updatedAt: now,
       };
@@ -1862,13 +1819,8 @@ export async function runManualPEComponentUpdate(
     ? { type: "updateComponentPressure" as const, componentId }
     : { type: "updateComponent" as const, componentId };
 
-  const forcePropose = {
-    ...adventure,
-    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
-  };
-
   const result = await generatedActionsFor(
-    forcePropose,
+    adventure,
     providerConfig,
     triggerAction,
     `manual${component.type === "activePressure" ? "Pressure" : "Arc"}:${componentId}`,
@@ -1901,11 +1853,6 @@ export async function runMemoryCycle(
     errors: [],
   };
 
-  const forcePropose = {
-    ...adventure,
-    semanticEvaluationSettings: { ...adventure.semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
-  };
-
   const plotConditions = buildPlotMemoryConditions(adventure);
   const storyCardConditions = buildStoryCardMemoryConditions(adventure);
   const characterConditions = buildCharacterMemoryConditions(adventure);
@@ -1914,9 +1861,9 @@ export async function runMemoryCycle(
     return { actions: [{ type: "LOG_EVALUATION_RESULT", entry: emptyLog }], logEntry: emptyLog };
   }
 
-  const plotEval = await evaluateConditionIds(forcePropose, providerConfig, plotConditions, accum, { singlePick: true });
-  const storyCardEval = await evaluateConditionIds(forcePropose, providerConfig, storyCardConditions, accum, { singlePick: true });
-  const characterEval = await evaluateConditionIds(forcePropose, providerConfig, characterConditions, accum, { singlePick: true });
+  const plotEval = await evaluateConditionIds(adventure, providerConfig, plotConditions, accum, { singlePick: true });
+  const storyCardEval = await evaluateConditionIds(adventure, providerConfig, storyCardConditions, accum, { singlePick: true });
+  const characterEval = await evaluateConditionIds(adventure, providerConfig, characterConditions, accum, { singlePick: true });
   const errors = [...plotEval.errors, ...storyCardEval.errors, ...characterEval.errors];
   const firedPlotCondition = plotConditions.find((condition) => condition.id === plotEval.firedIds[0]);
   const firedStoryCardCondition = storyCardConditions.find((condition) => condition.id === storyCardEval.firedIds[0]);
@@ -1939,7 +1886,7 @@ export async function runMemoryCycle(
 
   const generationTasks = firedConditions.flatMap((firedCondition) =>
     firedCondition.actionFactory(adventure).map((ta) => () =>
-      generatedActionsFor(forcePropose, providerConfig, ta, firedCondition.id, undefined, accum),
+      generatedActionsFor(adventure, providerConfig, ta, firedCondition.id, undefined, accum),
     ),
   );
   const results = await runLimited(Math.max(1, generationTasks.length), generationTasks);

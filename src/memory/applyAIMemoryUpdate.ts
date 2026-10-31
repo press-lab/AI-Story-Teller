@@ -1,9 +1,11 @@
+import { createId, nowIso } from "../utils/id";
 import type {
   Adventure,
   AdventureAction,
   BrainPatch,
   ComponentEntry,
   StoryCard,
+  MemoryProposal,
 } from "../types/adventure";
 
 export type AIMemoryUpdate =
@@ -72,6 +74,15 @@ function isProtectedComponent(component: ComponentEntry): boolean {
   return component.type === "aiInstructions" || component.type === "authorNote";
 }
 
+function proposalAction(adventure: Adventure, fields: Pick<MemoryProposal, "proposedType" | "title" | "content" | "targetId"> & Partial<MemoryProposal>): AdventureAction {
+  const now = nowIso();
+  return { type: "ADD_MEMORY_PROPOSAL", proposal: {
+    id: createId("proposal"), sourceTurnId: String(adventure.activeState.turn), sourceText: "",
+    suggestedTriggers: [], confidence: 0.8, rationale: "AI-generated memory update.", status: "pending",
+    createdAt: now, updatedAt: now, ...fields,
+  } };
+}
+
 export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdate[]): AIMemoryUpdateResult {
   const actions: AdventureAction[] = [];
   const appliedUpdates: AppliedAIMemoryUpdate[] = [];
@@ -89,14 +100,10 @@ export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdat
         rejectedUpdates.push(reject(update, "Brain patch had no allowed fields."));
         continue;
       }
-      const action: AdventureAction = {
-        type: "APPLY_BRAIN_UPDATE",
-        brainId: update.brainId,
-        patch: update.patch,
-        mode: update.mode,
-        turn: update.turn,
-        preview: update.preview,
-      };
+      const action = proposalAction(adventure, {
+        proposedType: "brainUpdate", title: brain.characterName, targetId: brain.id,
+        content: JSON.stringify(update.patch), brainUpdateMode: update.mode ?? "replace",
+      });
       actions.push(action);
       appliedUpdates.push({ targetType: "brain", targetId: update.brainId, actionTypes: [action.type] });
       changedItemIds.push(update.brainId);
@@ -114,13 +121,12 @@ export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdat
         rejectedUpdates.push(reject(update, "Story card update had no content, triggers, or state change."));
         continue;
       }
-      const metadataPatch = storyCardPatch({ ...update, content: undefined });
-      const storyActions: AdventureAction[] = [{
-        type: "APPLY_STORY_CARD_UPDATE",
-        storyCardId: update.storyCardId,
-        ...(update.content !== undefined ? { content: update.content } : {}),
-        ...(Object.keys(metadataPatch).length > 0 ? { patch: metadataPatch } : {}),
-      }];
+      const storyActions: AdventureAction[] = [proposalAction(adventure, {
+        proposedType: "storyCard", title: card.title, targetId: card.id, storyCardType: card.type,
+        memoryMode: card.memoryMode, content: update.content ?? card.content, appendContent: false,
+        suggestedTriggers: update.keys ?? card.keys,
+        storyCardPatch: update.state !== undefined ? { state: update.state } : undefined,
+      })];
       actions.push(...storyActions);
       appliedUpdates.push({ targetType: "storyCard", targetId: update.storyCardId, actionTypes: storyActions.map((action) => action.type) });
       changedItemIds.push(update.storyCardId);
@@ -141,7 +147,7 @@ export function applyAIMemoryUpdate(adventure: Adventure, updates: AIMemoryUpdat
         rejectedUpdates.push(reject(update, "AI may only update component content when component.type is plotEssentials."));
         continue;
       }
-      const action: AdventureAction = { type: "APPLY_COMPONENT_UPDATE", componentId: update.componentId, content: update.content };
+      const action = proposalAction(adventure, { proposedType: "plotEssentialsUpdate", title: component.title, targetId: component.id, content: update.content });
       actions.push(action);
       appliedUpdates.push({ targetType: "component", targetId: update.componentId, actionTypes: [action.type] });
       changedItemIds.push(update.componentId);

@@ -370,3 +370,13 @@ describe("SettingsPage API throttle controls", () => {
     expect(screen.queryByRole("button", { name: "Safety audit" })).not.toBeInTheDocument();
   });
 });
+
+
+it("keeps approval switches out of Settings while retaining memory detection controls", () => {
+  render(<SettingsPage adventure={createDefaultAdventure("Approval UI")} dispatch={vi.fn()} providerPresets={[makePreset()]} activePresetId="preset-test" onProviderPresetsChange={vi.fn()} onSelectPreset={vi.fn()} uiPreferences={{ ...defaultUiPreferences, showAdvancedSettings: true }} onUiPreferencesChange={vi.fn()} globalAdventureSettings={defaultGlobalAdventureSettings} onGlobalAdventureSettingsChange={vi.fn()} />);
+  expect(screen.queryByLabelText(/Route all auto-updates/i)).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Character Story Cards")).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Characters")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Enable AI memory detection")).toBeInTheDocument();
+  cleanup();
+});

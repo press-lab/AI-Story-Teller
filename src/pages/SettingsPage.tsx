@@ -3,7 +3,6 @@ import type {
   Adventure,
   AdventureAction,
   CloudSyncSettings,
-  MemoryAutoApproveSettings,
   MemoryDetectionSettings,
   OpenRouterDataCollection,
   MemoryPriorityMode,
@@ -377,11 +376,6 @@ export function SettingsPage({
       return;
     }
     onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryDetectionSettings: { ...globalAdventureSettings.memoryDetectionSettings, ...patch } });
-  }
-
-  function updateMemoryAutoApprove(patch: Partial<MemoryAutoApproveSettings>) {
-    if (adventure) { dispatch({ type: "SET_MEMORY_AUTO_APPROVE", settings: { ...adventure.memoryAutoApprove, ...patch } }); return; }
-    onGlobalAdventureSettingsChange({ ...globalAdventureSettings, memoryAutoApprove: { ...activeSettings.memoryAutoApprove, ...patch } });
   }
 
   const activeSettings: GlobalAdventureSettings = adventure ? {
@@ -1069,14 +1063,6 @@ export function SettingsPage({
                 onChange={(maxParallelUpdateCalls) => updateSemanticSettings({ maxParallelUpdateCalls })}
               />
             </Field>
-            <CheckboxField
-              label="Route all auto-updates to Memory Inbox (disable to auto-apply without review)"
-              checked={activeSettings.semanticEvaluationSettings.requireApprovalForAutoUpdates ?? true}
-              onChange={(requireApprovalForAutoUpdates) => updateSemanticSettings({ requireApprovalForAutoUpdates })}
-            />
-            <p className="muted">
-              When on, all LLM-generated updates go to Memory Suggestions for your review instead of applying directly.
-            </p>
             <h4>Background Provider</h4>
             <p className="muted">
               Route background tasks (evaluation, brain updates, reference card updates, and plot updates) through a
@@ -1163,20 +1149,7 @@ export function SettingsPage({
                   When on, the AI writes the proposal body in the same call — more useful but costs more tokens.
                   When off, proposals arrive with blank content for you to fill in.
                 </p>
-                <div className="auto-approve-toggles">
-                  <span className="auto-approve-label muted">Auto-approve:</span>
-                  <CheckboxField label="Legacy Summary" checked={activeSettings.memoryAutoApprove.summaryUpdate} onChange={(summaryUpdate) => updateMemoryAutoApprove({ summaryUpdate })} />
-                  <CheckboxField label="Plot Essentials" checked={activeSettings.memoryAutoApprove.plotEssentialsUpdate} onChange={(plotEssentialsUpdate) => updateMemoryAutoApprove({ plotEssentialsUpdate })} />
-                  <CheckboxField label="Active Pressure" checked={activeSettings.memoryAutoApprove.plotPressureUpdate} onChange={(plotPressureUpdate) => updateMemoryAutoApprove({ plotPressureUpdate })} />
-                  <CheckboxField label="Current Arc" checked={activeSettings.memoryAutoApprove.currentArcUpdate} onChange={(currentArcUpdate) => updateMemoryAutoApprove({ currentArcUpdate })} />
-                  <CheckboxField label="Arc Proposals" checked={activeSettings.memoryAutoApprove.arcProposal} onChange={(arcProposal) => updateMemoryAutoApprove({ arcProposal })} />
-                  <CheckboxField label="Reference Cards" checked={activeSettings.memoryAutoApprove.storyCard} onChange={(storyCard) => updateMemoryAutoApprove({ storyCard })} />
-                  <CheckboxField label="Characters" checked={activeSettings.memoryAutoApprove.brainUpdate} onChange={(brainUpdate) => updateMemoryAutoApprove({ brainUpdate })} />
-                </div>
-                <p className="muted">
-                  These toggles apply to Memory Suggestions created by automatic detection, manual builders,
-                  inline memory tags, and Plot Essentials history carry-forward.
-                </p>
+                <p className="muted">Approval preferences are in Memory Suggestions → Suggestion tools and settings.</p>
               </>
             )}
           </article>

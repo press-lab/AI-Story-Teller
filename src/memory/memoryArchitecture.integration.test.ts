@@ -49,6 +49,9 @@ describe("memory architecture smoke path", () => {
       },
     ]);
     adventure = reduceAll(adventure, brainUpdate.actions);
+    const brainProposal = adventure.activeState.memoryProposals.find(p => p.proposedType === "brainUpdate")!;
+    expect(brainProposal.status).toBe("pending");
+    adventure = adventureReducer(adventure, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: brainProposal.id });
     const brainSection = buildContext(adventure, { currentInput: "Margo watches Avery." }).sections.find((section) => section.id === "brains");
     expect(brainSection?.content).toContain("Margo feels jealous but hides it.");
 

@@ -20,7 +20,8 @@ export function makeMemoryProposal(overrides: Partial<MemoryProposal> = {}): Mem
     createdAt: overrides.createdAt ?? timestamp,
     updatedAt: overrides.updatedAt ?? timestamp,
     memoryMode: overrides.memoryMode,
-    storyCardType: overrides.storyCardType,
+    storyCardType: overrides.storyCardType ?? "custom",
+    brainUpdateMode: overrides.brainUpdateMode,
     autoUpdate: overrides.autoUpdate,
     autoUpdateCooldownTurns: overrides.autoUpdateCooldownTurns,
   };
