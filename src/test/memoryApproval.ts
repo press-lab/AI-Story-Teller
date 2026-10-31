@@ -2,11 +2,11 @@ import type { Adventure, MemoryProposal, StoryCardType } from "../types/adventur
 import type { ApprovalCategory } from "../memory/approvalPolicy";
 import { createDefaultAdventure, makeBrain, makeComponent, makeStoryCard } from "../state/defaults";
 
-export const approvalCategories: ApprovalCategory[] = ["summaryUpdate", "plotEssentialsUpdate", "plotPressureUpdate", "currentArcUpdate", "arcProposal", "characterStoryCard", "loreStoryCard", "otherStoryCard", "brainUpdate"];
+export const approvalCategories: ApprovalCategory[] = ["plotEssentialsUpdate", "plotPressureUpdate", "currentArcUpdate", "arcProposal", "loreStoryCard", "otherStoryCard", "brainUpdate"];
 export function approvalAdventure(): Adventure {
   const a = createDefaultAdventure("Approval contract");
   for (const category of approvalCategories) a.memoryAutoApprove[category] = false;
-  a.semanticEvaluationSettings = { ...a.semanticEvaluationSettings, requireApprovalForAutoUpdates: true }; // Old saves must not override toggles.
+  a.semanticEvaluationSettings = Object.assign({}, a.semanticEvaluationSettings, { requireApprovalForAutoUpdates: true }); // Input-only old-save fixture.
   a.memoryDetectionSettings = { ...a.memoryDetectionSettings, enabled: false };
   a.storyCards = [];
   a.brains = [makeBrain({ id: "brain", characterName: "Mira", currentState: "Old state", thoughts: { old: "Old thought" }, active: true, inclusionPolicy: "always" })];
@@ -18,7 +18,7 @@ export function approvalAdventure(): Adventure {
   return a;
 }
 export function approvalProposal(category: ApprovalCategory, patch: Partial<MemoryProposal> = {}): MemoryProposal {
-  const storyCardType: StoryCardType | undefined = category === "characterStoryCard" ? "character" : category === "loreStoryCard" ? "lore" : category === "otherStoryCard" ? "location" : undefined;
+  const storyCardType: StoryCardType | undefined = category === "loreStoryCard" ? "lore" : category === "otherStoryCard" ? "character" : undefined;
   return {
     id: `proposal-${category}`, proposedType: storyCardType ? "storyCard" : category as MemoryProposal["proposedType"],
     title: storyCardType ? "The Silver Observatory" : category === "brainUpdate" ? "Mira" : category,
@@ -29,7 +29,7 @@ export function approvalProposal(category: ApprovalCategory, patch: Partial<Memo
   };
 }
 export function memoryData(a: Adventure) {
-  return { summary: a.rollingSummary.content, cards: a.storyCards.map(c => ({ type: c.type, content: c.content })), brains: a.brains.map(b => ({ state: b.currentState, thoughts: b.thoughts })), components: a.components.map(c => ({ type: c.type, content: c.content, premise: c.arcPremise })) };
+  return { cards: a.storyCards.map(c => ({ type: c.type, content: c.content })), brains: a.brains.map(b => ({ state: b.currentState, thoughts: b.thoughts })), components: a.components.map(c => ({ type: c.type, content: c.content, premise: c.arcPremise })) };
 }
 export function existingApprovalCard(type: StoryCardType) {
   return makeStoryCard({ id: "card", title: "Mira", type, content: "An enduring original fact.", keys: ["Mira"], memoryMode: "static" });

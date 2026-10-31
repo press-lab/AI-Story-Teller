@@ -85,7 +85,7 @@ When total exceeds `maxContextTokens`, items are dropped in priority order:
 | `aiInstructions` | Yes | B | No | Optional separately inspectable scenario-specific contract. Not required when Narration Rules already contain the stable rules. Protected. One per adventure. |
 | `plotEssentials` | Yes | C | Yes (append) | Static world constants — setting, factions, arc beats. Human-edited. AI appends only via Memory Inbox. Auto-update toggle required. |
 | `currentArc` | Yes | C2 | Yes (append) | Running arc log. Requires `arcPremise` for auto-update. Graduate → Reference Card when done. |
-| `activePressure` | No* | C | Yes (replace) | One-sentence current external threat or obligation. Auto-updated, auto-approved by default. |
+| `activePressure` | No* | C | Yes (replace) | One-sentence current external threat or obligation. Auto-updated, pending by default. |
 | `immediateMomentum` | No | — | No | Disabled legacy type. Not generated, auto-updated, or assembled into context. |
 | `authorNote` | Yes | D (near-context) | No | Immediate narrative correction. One per adventure. Most powerful short-term tool. |
 | `memory` | No | — | No | **Legacy.** Migrate content to Reference Cards (type: Lore). |
@@ -199,10 +199,9 @@ All AI-generated persistent memory changes pass through Memory Proposals and the
 | `storyCard` | Memory detection, inline `<memory>` tags, reference card audit, "Remember This" | Off | Upsert reference card |
 | `brainUpdate` | Semantic engine, manual update tools, inline thoughts | Off | Apply BrainPatch with saved append/replace mode |
 | `plotEssentialsUpdate` | Semantic engine, "Suggest Updates" | Off | Replace PE, or append when requested |
-| `currentArcUpdate` | Semantic engine (updateComponentArc) | **On** | Append to arc component |
-| `plotPressureUpdate` | Semantic engine (updateComponentPressure) | **On** | Replace activePressure content |
+| `currentArcUpdate` | Semantic engine (updateComponentArc) | Off | Append to arc component |
+| `plotPressureUpdate` | Semantic engine (updateComponentPressure) | Off | Replace activePressure content |
 | `plotMomentumUpdate` | Legacy/disabled | Off | No-op |
-| `summaryUpdate` | Legacy suggestions | Off | Replace summary, or append when requested |
 | `arcProposal` | Arc proposal generator | Off | Seed Current Arc; previous arc becomes a separately approved historical card |
 | `ignore` | Classification fallback | — | No-op |
 
@@ -210,7 +209,7 @@ Auto-approve settings: `adventure.memoryAutoApprove` — all togglable per adven
 
 ### All AI-generated memory writes use one category policy
 
-`src/memory/approvalPolicy.ts` resolves the actual destination and its category toggle. Enabled categories automatically apply valid changes; disabled categories remain pending. There is no global review override. Story Card approval is split into Character Story Cards, Lore Cards, and Other Story Cards; Character Self stays separate. Existing cards use their stored type. Detection cadence and static/living/historical modes are independent. Approval controls live only in Memory Suggestions. Legacy Story Card preferences migrate to the three categories; existing pending proposals remain pending.
+`src/memory/approvalPolicy.ts` resolves the actual destination and its category toggle. Enabled categories automatically apply valid changes; disabled categories remain pending. There is no global review override. Story Card approval is split into Lore and Everything Else; Character Self stays separate. Existing cards use their stored type. Detection cadence and static/living/historical modes are independent. Approval controls live only in Memory Suggestions. Legacy Story Card preferences migrate conservatively to the two categories; existing pending proposals remain pending.
 
 ---
 
@@ -235,7 +234,6 @@ Runs in background after each turn (async, doesn't block story).
 ### Condition builders:
 - `plotEssentialsConditions()` — plotEssentials (auto-update=true), currentArc (has arcPremise), activePressure
 - `storyCardUpdateConditions()` — first eligible card with auto-update=true, not on cooldown
-- `summaryConditions()` — rolling summary (frequency-gated)
 
 ### Cooldown tracking:
 - Per-component: `lastAutoUpdateTurn` + `autoUpdateCooldownTurns`
@@ -262,7 +260,6 @@ Three evaluation modes on the same rule schema:
 - Update: component (patch), reference card (patch), brain (replace/append), brain state (field + text)
 - `updateComponentPressure`, `updateComponentArc` — generate new content via LLM
 - `updateComponentMomentum` — disabled legacy action; no runtime effect
-- `updateSummary` — generate rolling summary addition via LLM
 - `forceIncludeNextTurn` — force component/card/brain into next context regardless of triggers
 
 ### State flags:
@@ -362,13 +359,9 @@ LLM-based pass over all context items. Identifies overlapping content, proposes 
 
 ---
 
-## 18. Rolling Summary and Scene State (Deprecated as Context Sections)
+## 18. Older adventure import
 
-**File:** `state/rollingSummary.ts`
-
-Data fields (`rollingSummary`, `sceneState`) preserved on the Adventure object for backwards-compatible save loading. As of current version, **neither section is injected into context**. The Summary tab has been removed from the editor UI. The LLM calls that generated these (`buildRollingSummaryPayload`, `buildSceneStatePayload`) are no longer invoked.
-
-If you have legacy adventures with summary content, that content remains in the save file but is no longer sent to the model. The Current Story Arc component is the replacement for active narrative tracking.
+Older adventure JSON files containing Rolling Summary or Scene State are supported for import. These fields are ignored and are not saved in the current format.
 
 ---
 
@@ -379,9 +372,6 @@ If you have legacy adventures with summary content, that content remains in the 
 | Quest system | **Removed** | Types kept for save compat (`questDefinitionUpdate` stub in applyAIMemoryUpdate). `quests/questEngine.ts` is an empty stub. No UI. |
 | Auto-cards | **Removed** | `autoCards/autoCardEngine.ts` empty stub. Entity detection stub present but unused. |
 | `memory` component type | **Legacy** | Still creatable; labeled "Lore Block (legacy)". No special behavior. Content should be migrated to triggered Reference Cards. |
-| Rolling Summary context injection | **Removed** | Data preserved in saves. No longer in context. `summaryEnabled` setting has no effect. |
-| Scene State context injection | **Removed** | Data preserved in saves. No longer in context. `sceneStateEnabled` setting has no effect. |
-| Summary editor tab | **Removed** | Page file exists (`SummaryPage.tsx`) but is no longer imported or accessible. |
 
 ---
 
@@ -424,8 +414,6 @@ If you have legacy adventures with summary content, that content remains in the 
 | AID import | ✅ Complete |
 | Cloud Sync (GitHub blob) | ✅ Complete |
 | GitHub Save Slots | ✅ Complete |
-| Rolling Summary (data field) | ⚠️ Preserved for save compat — not in context |
-| Scene State (data field) | ⚠️ Preserved for save compat — not in context |
 | Quest engine | ❌ Removed (empty stub) |
 | Auto-cards | ❌ Removed (empty stub) |
 | `memory` component type | ⚠️ Legacy — still functional, no special behavior |
@@ -491,3 +479,11 @@ currentArc component (arcLog + arcPremise)
 ---
 
 *Last updated: 2026-06-04*
+
+## Adventure approval
+
+Auto-approval belongs to each adventure. New adventures start with all seven switches OFF: Plot Essentials, Active Pressure, Current Arc, Arc Proposals, Character Self, Story Cards — Lore, and Story Cards — Everything Else. The permanent panel appears at the top of Memory Suggestions, including when its queue is empty. Settings has no approval controls, and global localStorage approval properties are discarded.
+
+The shared policy reads only `adventure.memoryAutoApprove`. Existing cards use their stored type. Lore uses `loreStoryCard`; character, location, legacy plot, and custom use `otherStoryCard`. Unknown new card types wait for classification. Missing-Brain card fallbacks use the card category. Existing pending proposals are never replayed when a switch changes. Evidence, duplicate, destination, protection, chronology, and companion-proposal checks remain in the reducer pipeline.
+
+Migration preserves boolean active settings. Lore falls back to the old broad Story Card preference only when its own preference is absent. Both split Character and Other preferences must be true to enable the combined category; an isolated split preference is ambiguous and leaves it OFF. A saved broad Story Card preference covers all cards. Invalid and missing preferences are false.

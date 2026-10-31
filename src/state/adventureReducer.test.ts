@@ -60,8 +60,6 @@ const testedActionTypes = [
   "APPROVE_MEMORY_PROPOSAL",
   "REJECT_MEMORY_PROPOSAL",
   "IGNORE_MEMORY_PROPOSAL",
-  "UPDATE_ROLLING_SUMMARY",
-  "UPDATE_SCENE_STATE",
   "SET_TOKEN_BUDGET_SETTINGS",
   "SET_SYSTEM_TRIGGER_SETTINGS",
   "SET_MODEL_CONFIG",
@@ -78,7 +76,6 @@ const testedActionTypes = [
   "SET_CHALLENGE_MODE",
   "SET_LAST_MEMORY_CYCLE_TURN",
   "SET_LAST_SEMANTIC_EVAL_TURN",
-  "SET_LAST_SCENE_STATE_TURN",
   "RESET_RUNTIME_STATE",
   "ACCUMULATE_BACKGROUND_TOKENS",
   "SET_AUTO_SAVE_SETTINGS",
@@ -135,7 +132,6 @@ function baseAdventure(): Adventure {
       backgroundTokenUsage: { promptTokens: 0, completionTokens: 0 },
       challengeMode: false,
     },
-    rollingSummary: { content: "summary", updatedAt: "2026-01-01T00:00:00.000Z" },
   };
 }
 
@@ -150,7 +146,7 @@ describe("adventureReducer", () => {
     expect(new Set(testedActionTypes).size).toBe(testedActionTypes.length);
   });
 
-  it("handles title, metadata, messages, turn, settings, provider, flags, summary, and runtime reset actions", () => {
+  it("handles title, metadata, messages, turn, settings, provider, flags, and runtime reset actions", () => {
     let state = baseAdventure();
     state = reduce(state, { type: "SET_TITLE", title: "New Title" });
     expect(state.title).toBe("New Title");
@@ -188,8 +184,6 @@ describe("adventureReducer", () => {
     expect(state.activeState.forceIncludeNextTurn).toHaveLength(0);
     expect(state.activeState.challengeMode).toBe(false);
 
-    state = reduce(state, { type: "UPDATE_ROLLING_SUMMARY", content: "new summary" });
-    expect(state.rollingSummary.content).toBe("new summary");
 
     state = reduce(state, {
       type: "SET_TOKEN_BUDGET_SETTINGS",
@@ -220,7 +214,7 @@ describe("adventureReducer", () => {
 
     state = reduce(state, {
       type: "SET_SEMANTIC_EVALUATION_SETTINGS",
-      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2, requireApprovalForAutoUpdates: false, semanticEvalEveryNTurns: 1 },
+      settings: { evaluationModel: "eval-model", messagesIncluded: 6, enabled: false, showLog: false, maxParallelUpdateCalls: 2, semanticEvalEveryNTurns: 1 },
     });
     expect(state.semanticEvaluationSettings.evaluationModel).toBe("eval-model");
 
@@ -276,7 +270,6 @@ describe("adventureReducer", () => {
 
     state = reduce(state, { type: "RESET_RUNTIME_STATE" });
     expect(state.messages).toEqual([]);
-    expect(state.rollingSummary.content).toBe("");
     expect(state.activeState.turn).toBe(0);
     expect(state.activeState.nextTurnNote.content).toBe("");
     expect(state.triggerRules[0].lastFiredTurn).toBeUndefined();
@@ -460,7 +453,7 @@ describe("adventureReducer", () => {
     let state = {
       ...baseAdventure(),
       brains: [brain],
-      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, loreStoryCard: true, otherStoryCard: true },
     };
 
     state = reduce(state, {
@@ -634,15 +627,6 @@ describe("adventureReducer", () => {
       next: { content: "The Beast is actively hunting Avery tonight." },
     });
 
-    const summaryProposal = makeMemoryProposal({
-      id: "proposal-summary",
-      proposedType: "summaryUpdate",
-      title: "Summary",
-      content: "Avery and Margo reached the old city.",
-    });
-    state = reduce(state, { type: "ADD_MEMORY_PROPOSAL", proposal: summaryProposal });
-    state = reduce(state, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "proposal-summary" });
-    expect(state.rollingSummary.content).toBe("Avery and Margo reached the old city.");
 
     const momentum = makeComponent({ id: "component-momentum", title: "Immediate Momentum", type: "immediateMomentum", content: "Old next beat." });
     const momentumProposal = makeMemoryProposal({
@@ -963,7 +947,7 @@ describe("adventureReducer", () => {
       memoryAutoApprove: {
         ...baseAdventure().memoryAutoApprove,
         plotEssentialsUpdate: true,
-        characterStoryCard: true, loreStoryCard: true, otherStoryCard: true,
+        loreStoryCard: true, otherStoryCard: true,
       },
     };
 
@@ -1397,7 +1381,7 @@ describe("adventureReducer", () => {
     let state = {
       ...baseAdventure(),
       components: [plot],
-      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, loreStoryCard: true, otherStoryCard: true },
     };
 
     state = reduce(state, {
@@ -1561,24 +1545,6 @@ describe("adventureReducer", () => {
     expect(state.activeState.storyUndoStack.length).toBeGreaterThan(0);
   });
 
-  it("clamps rolling summary indexes when story sections are erased or reset", () => {
-    let state: Adventure = {
-      ...baseAdventure(),
-      rollingSummary: {
-        content: "The current transcript has already been summarized.",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-        lastSummarizedMessageIndex: 2,
-      },
-    };
-
-    state = reduce(state, { type: "DELETE_LAST_MESSAGE" });
-    expect(state.messages).toHaveLength(1);
-    expect(state.rollingSummary.lastSummarizedMessageIndex).toBe(1);
-
-    state = reduce(state, { type: "RESET_RUNTIME_STATE" });
-    expect(state.messages).toHaveLength(0);
-    expect(state.rollingSummary.lastSummarizedMessageIndex).toBeUndefined();
-  });
 
   it("advances arc pacing from engagement, auto-fires the break, then settles into aftermath", () => {
     let state = baseAdventure();

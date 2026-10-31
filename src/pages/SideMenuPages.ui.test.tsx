@@ -17,7 +17,6 @@ import { ContextPreviewPage } from "./ContextPreviewPage";
 import { ImportExportPage } from "./ImportExportPage";
 import { MemoryInboxPage } from "./MemoryInboxPage";
 import { StoryCardsPage } from "./StoryCardsPage";
-import { SummaryPage } from "./SummaryPage";
 import { TriggersPage } from "./TriggersPage";
 
 const timestamp = "2026-01-01T00:00:00.000Z";
@@ -658,7 +657,7 @@ describe("side menu page smoke coverage", () => {
     expect(await screen.findByText("Plot and card review auto-approved 2 suggestions. Check History.")).toBeInTheDocument();
   });
 
-  it("covers Inspector pages and Chronicle/Summary entry points", async () => {
+  it("covers Inspector pages and Chronicle entry points", async () => {
     const user = userEvent.setup();
     const onBuildContext = vi.fn();
     const onImportAdventure = vi.fn(async () => undefined);
@@ -693,16 +692,6 @@ describe("side menu page smoke coverage", () => {
     expect(screen.queryByRole("tab", { name: /Migrate/i })).not.toBeInTheDocument();
     await user.click(screen.getByRole("tab", { name: /Restore/i }));
     expect(screen.getByText("Open an adventure backup")).toBeInTheDocument();
-    cleanup();
-
-    const onGenerateDurableSummary = vi.fn(async () => "Generated durable summary.");
-    const onGenerateSceneState = vi.fn(async () => "Generated scene state.");
-    renderWithAdventure((adventure, dispatch) => (
-      <SummaryPage adventure={adventure} dispatch={dispatch} onGenerateDurableSummary={onGenerateDurableSummary} onGenerateSceneState={onGenerateSceneState} />
-    ));
-    const regenerateButtons = screen.getAllByRole("button", { name: "Regenerate" });
-    await user.click(regenerateButtons[0]);
-    expect(onGenerateDurableSummary).toHaveBeenCalledTimes(1);
     cleanup();
 
     renderWithAdventure((adventure, dispatch) => <ChroniclePage adventure={adventure} dispatch={dispatch} />);

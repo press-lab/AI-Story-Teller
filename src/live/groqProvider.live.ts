@@ -49,7 +49,6 @@ function baseAdventure(): Adventure {
       enabled: true,
       showLog: true,
       maxParallelUpdateCalls: 2,
-      requireApprovalForAutoUpdates: false,
       semanticEvalEveryNTurns: 1,
     },
     activeState: {
@@ -207,11 +206,10 @@ describe("live Groq provider integration", () => {
   it("plays the Fire Nation development scenario through live PE, card, and brain updates", async () => {
     let adventure: Adventure = {
       ...createDevelopmentAdventure(),
-      memoryAutoApprove: { ...createDevelopmentAdventure().memoryAutoApprove, brainUpdate: true, plotEssentialsUpdate: true, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
+      memoryAutoApprove: { ...createDevelopmentAdventure().memoryAutoApprove, brainUpdate: true, plotEssentialsUpdate: true, loreStoryCard: true, otherStoryCard: true },
       semanticEvaluationSettings: {
         ...createDevelopmentAdventure().semanticEvaluationSettings,
         maxParallelUpdateCalls: 1,
-        requireApprovalForAutoUpdates: false,
       },
     };
     const plotId = "dev-component-plot-essentials";

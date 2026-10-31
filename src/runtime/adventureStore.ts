@@ -1,3 +1,4 @@
+import { normalizeAdventure, sanitizeAdventureForPersistence } from "../state/defaults";
 import { deleteAdventure, getAdventure, listAdventures, saveAdventure, type AdventureSummary } from "../db/adventureDb";
 import {
   deleteAccountAdventureBackup,
@@ -282,7 +283,7 @@ export function createBackendAdventureStore(config: RuntimeConfig, authToken?: s
   function rememberRevision(adventure: Adventure | undefined): Adventure | undefined {
     const revision = adventure?.metadata?.serverRevision;
     if (adventure && typeof revision === "number") revisions.set(adventure.id, revision);
-    return adventure;
+    return adventure ? normalizeAdventure(adventure) : undefined;
   }
   return {
     async list() {
@@ -301,7 +302,7 @@ export function createBackendAdventureStore(config: RuntimeConfig, authToken?: s
         const saved = await apiJson<Adventure>(config, `/adventures/${encodeURIComponent(adventure.id)}`, {
           method: "PUT",
           headers: authHeaders,
-          body: JSON.stringify({ adventure: revisionScoped }),
+          body: JSON.stringify({ adventure: sanitizeAdventureForPersistence(revisionScoped) }),
         });
         rememberRevision(saved);
       });

@@ -1,4 +1,8 @@
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const { createDefaultAdventure } = require("../dist-api/src/state/defaults.js");
 
 const port = 18_000 + Math.floor(Math.random() * 1_000);
 const child = spawn(process.execPath, ["dist-api/apps/api/hostedServer.js"], {
@@ -96,6 +100,33 @@ try {
   });
   assertStatus(login, 200, "trusted-invite password login");
 
+  const sessionCookie = login.headers.get("set-cookie")?.split(";")[0];
+  if (!sessionCookie) throw new Error("Smoke login did not return a session cookie.");
+  const authHeaders = { Cookie: sessionCookie, "X-AIST-CSRF": "1" };
+  const legacy = createDefaultAdventure("Hosted legacy compatibility smoke");
+  legacy.rollingSummary = { content: "Retired compression", updatedAt: legacy.createdAt };
+  legacy.sceneState = { content: "Retired scene snapshot", updatedAt: legacy.createdAt };
+  legacy.messages = [{ id: "smoke-source", role: "assistant", content: "The observatory opened.", createdAt: legacy.createdAt }];
+  Object.assign(legacy.tokenBudgetSettings, { autoSummarize: true, summaryEnabled: true, sceneStateEnabled: true, autoSceneStateEveryNTurns: 1 });
+  Object.assign(legacy.tokenBudgetSettings.sectionBudgets, { rollingSummary: 900, sceneState: 90 });
+  legacy.activeState.pendingUpdates = [{ id: "legacy-update", source: "autoSummary", actions: [{ type: "UPDATE_ROLLING_SUMMARY", content: "Obsolete" }] }];
+  const imported = await jsonRequest("/adventures/import", { method: "POST", headers: authHeaders, body: JSON.stringify({ sourceType: "aist", json: legacy }) });
+  assertStatus(imported, 201, "legacy hosted import");
+  const importedId = imported.body.adventures[0].id;
+  const loaded = await jsonRequest(`/adventures/${encodeURIComponent(importedId)}`, { headers: authHeaders });
+  assertStatus(loaded, 200, "legacy hosted load");
+  assertCurrentAdventure(loaded.body);
+  const saved = await jsonRequest(`/adventures/${encodeURIComponent(importedId)}`, { method: "PUT", headers: authHeaders,
+    body: JSON.stringify({ adventure: { ...legacy, id: importedId, metadata: loaded.body.metadata } }) });
+  assertStatus(saved, 200, "direct legacy hosted save");
+  assertCurrentAdventure(saved.body);
+  const exported = await jsonRequest(`/adventures/${encodeURIComponent(importedId)}/export`, { headers: authHeaders });
+  assertStatus(exported, 200, "current hosted export");
+  assertCurrentAdventure(exported.body);
+  const accountExport = await jsonRequest("/account/export", { headers: authHeaders });
+  assertStatus(accountExport, 200, "account export");
+  accountExport.body.adventures.forEach(assertCurrentAdventure);
+
   const reset = await jsonRequest("/auth/password-reset/request", {
     method: "POST",
     headers: { "X-AIST-CSRF": "1" },
@@ -127,4 +158,12 @@ function assertStatus(result, expected, label) {
   if (result.status !== expected) {
     throw new Error(`${label} returned HTTP ${result.status}; expected ${expected}. Body: ${JSON.stringify(result.body)}`);
   }
+}
+
+function assertCurrentAdventure(adventure) {
+  if (/"(?:rollingSummary|sceneState|summaryUpdate|autoSummarize|summaryEnabled|sceneStateEnabled|autoSceneStateEveryNTurns|UPDATE_ROLLING_SUMMARY|autoSummary)"/.test(JSON.stringify(adventure))) {
+    throw new Error("Hosted output retained a retired feature.");
+  }
+  if (adventure.messages.length !== 1 || adventure.messages[0].content !== "The observatory opened.") throw new Error("Hosted legacy transcript changed.");
+  if (Object.keys(adventure.memoryAutoApprove).length !== 7) throw new Error("Hosted approval contract is not seven categories.");
 }

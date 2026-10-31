@@ -242,7 +242,6 @@ export type TriggerAction =
   | { type: "updateComponentPressure"; componentId: string }
   | { type: "updateComponentMomentum"; componentId: string }
   | { type: "updateComponentArc"; componentId: string }
-  | { type: "updateSummary" }
   | { type: "activateStoryCard"; storyCardId: string }
   | { type: "deactivateStoryCard"; storyCardId: string }
   | { type: "pinStoryCard"; storyCardId: string }
@@ -275,31 +274,14 @@ export interface TriggerRule {
   updatedAt: ISODateString;
 }
 
-export interface RollingSummary {
-  content: string;
-  updatedAt: ISODateString;
-  /** Index into adventure.messages — everything before this index is captured in the summary. */
-  lastSummarizedMessageIndex?: number;
-}
-
 export interface TokenBudgetSettings {
   maxContextTokens: number;
   maxRecentMessages: number;
   memoryPriorityMode: MemoryPriorityMode;
   allowSystemToPrioritizeMemory: boolean;
   allowSystemToDropUnpinnedTriggeredCards: boolean;
-  allowSystemToTruncateSummary: boolean;
   recentMessageWindow: number;
   sectionBudgets: Partial<Record<ContextSectionKind, number>>;
-  /** Automatically regenerate the rolling summary in the background every N turns. */
-  autoSummarize: boolean;
-  autoSummarizeEveryNTurns: number;
-  /** How often to regenerate scene state in the background. 0 = manual only, 1 = every turn. Default 1. */
-  autoSceneStateEveryNTurns: number;
-  /** When false, scene state is excluded from context and never auto-updated. Default true. */
-  sceneStateEnabled: boolean;
-  /** When false, the durable rolling summary is excluded from context and never auto-generated. Default true. */
-  summaryEnabled: boolean;
 }
 
 export interface ProviderConfig {
@@ -362,9 +344,7 @@ export interface SemanticEvaluationSettings {
   enabled: boolean;
   showLog: boolean;
   maxParallelUpdateCalls: number;
-  /** @deprecated Ignored legacy save field. Category toggles alone control approval. */
-  requireApprovalForAutoUpdates?: boolean;
-  /** When set, all background LLM calls (eval, brain updates, scene state) use this provider instead of the active preset. */
+  /** When set, background evaluation and memory calls use this provider instead of the active preset. */
   backgroundProviderConfig?: BackgroundProviderConfig;
   /** Global cooldown: skip story-card update conditions if any card was updated within this many turns. 0 or undefined = no global limit. */
   storyCardCooldownTurns?: number;
@@ -429,7 +409,6 @@ export type MemoryProposalType =
   | "arcProposal"
   | "plotPressureUpdate"
   | "plotMomentumUpdate"
-  | "summaryUpdate"
   | "ignore";
 
 export type MemoryProposalStatus = "pending" | "approved" | "rejected" | "ignored";
@@ -501,10 +480,10 @@ export interface PlotAIBuilderRequest {
 
 
 export interface EvaluatedCondition {
+  sourceType: "triggerRule" | "brain" | "component" | "storyCard";
   id: string;
   label: string;
   condition: string;
-  sourceType: "triggerRule" | "brain" | "component" | "storyCard" | "summary";
 }
 
 export interface GeneratedContentPreview {
@@ -528,7 +507,7 @@ export interface EvaluationLogEntry {
 export interface PendingAdventureUpdate {
   id: string;
   createdAt: ISODateString;
-  source: "semanticEvaluation" | "autoSummary" | "autoSceneState" | "memoryCycle" | "manual";
+  source: "semanticEvaluation" | "memoryCycle" | "manual";
   actions: AdventureAction[];
 }
 
@@ -571,7 +550,7 @@ export interface ActiveState {
   stateFlags: Record<string, string | number | boolean>;
   /** Per-adventure response length preference — injected as a length instruction into every turn. */
   responseLengthHint: ResponseLengthHint;
-  /** Cumulative token usage for background calls (brain updates, evaluation, summary, scene state). */
+  /** Cumulative token usage for background calls (brain updates and evaluation). */
   backgroundTokenUsage: { promptTokens: number; completionTokens: number };
   /** Set when the player's input matches a continuity challenge phrase. Consumed after one turn. */
   challengeMode: boolean;
@@ -579,8 +558,6 @@ export interface ActiveState {
   lastMemoryCycleTurn?: number;
   /** Turn number when semantic evaluation last ran. */
   lastSemanticEvalTurn?: number;
-  /** Turn number when scene state last ran. */
-  lastSceneStateTurn?: number;
 }
 
 export interface Adventure {
@@ -597,8 +574,6 @@ export interface Adventure {
   storyCards: StoryCard[];
   brains: BrainEntry[];
   triggerRules: TriggerRule[];
-  rollingSummary: RollingSummary;
-  sceneState?: RollingSummary;
   messages: Message[];
   activeState: ActiveState;
   tokenBudgetSettings: TokenBudgetSettings;
@@ -610,16 +585,13 @@ export interface Adventure {
 }
 
 export interface MemoryAutoApproveSettings {
-  summaryUpdate: boolean;
   plotEssentialsUpdate: boolean;
+  plotPressureUpdate: boolean;
   currentArcUpdate: boolean;
   arcProposal: boolean;
-  plotPressureUpdate: boolean;
-  plotMomentumUpdate: boolean;
-  characterStoryCard: boolean;
+  brainUpdate: boolean;
   loreStoryCard: boolean;
   otherStoryCard: boolean;
-  brainUpdate: boolean;
 }
 
 export interface AdventureThumbnailImage {
@@ -669,10 +641,8 @@ export type ContextSectionKind =
   | "components"      // E. General always-on / pinned components
   | "storyCards"      // F. Reference Cards + Auto-Cards (triggered / pinned)
   | "brains"          // G. Brain entries
-  | "rollingSummary"  // I. Rolling Summary — durable canon (deprecated, kept for saves compat)
   | "nextTurnNote"    // J. Next Output Bias
   | "recentMessages"  // K. Recent Messages
-  | "sceneState"      // L. Scene State — current location, characters, situation (deprecated)
   | "challengeMode";  // M. Continuity Challenge — one-turn verification instruction
 
 export type ExcludedReason = "budget_exceeded" | "inactive" | "cooldown" | "not_triggered";
@@ -684,8 +654,6 @@ export interface ContextItem {
     | "component"
     | "storyCard"
     | "brain"
-    | "summary"
-    | "sceneState"
     | "nextTurnNote"
     | "message";
   title: string;
@@ -822,8 +790,6 @@ export type AdventureAction =
   | { type: "APPROVE_MEMORY_PROPOSAL"; proposalId: string; editedProposal?: Partial<MemoryProposal> }
   | { type: "REJECT_MEMORY_PROPOSAL"; proposalId: string }
   | { type: "IGNORE_MEMORY_PROPOSAL"; proposalId: string }
-  | { type: "UPDATE_ROLLING_SUMMARY"; content: string; lastSummarizedMessageIndex?: number }
-  | { type: "UPDATE_SCENE_STATE"; content: string }
   | { type: "SET_TOKEN_BUDGET_SETTINGS"; settings: TokenBudgetSettings }
   | { type: "SET_SYSTEM_TRIGGER_SETTINGS"; settings: SystemTriggerSettings }
   | { type: "SET_MODEL_CONFIG"; config: ProviderConfig }
@@ -841,6 +807,5 @@ export type AdventureAction =
   | { type: "SET_CHALLENGE_MODE" }
   | { type: "SET_LAST_MEMORY_CYCLE_TURN"; turn: number }
   | { type: "SET_LAST_SEMANTIC_EVAL_TURN"; turn: number }
-  | { type: "SET_LAST_SCENE_STATE_TURN"; turn: number }
   | { type: "RESET_RUNTIME_STATE" }
   | { type: "SET_AUTO_SAVE_SETTINGS"; autoSaveEnabled: boolean; autoSaveEveryNTurns: number; autoSaveEveryNMinutes?: number };

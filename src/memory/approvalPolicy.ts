@@ -1,11 +1,11 @@
-import type { Adventure, MemoryAutoApproveSettings, MemoryProposal, StoryCardType } from "../types/adventure";
+import type { Adventure, MemoryAutoApproveSettings, MemoryProposal } from "../types/adventure";
 import { cardMatchesName } from "../state/defaults";
 
-export type ApprovalCategory = Exclude<keyof MemoryAutoApproveSettings, "plotMomentumUpdate">;
+export type ApprovalCategory = keyof MemoryAutoApproveSettings;
 
-export function storyCardApprovalCategory(type: StoryCardType | undefined): ApprovalCategory | undefined {
+export function storyCardApprovalCategory(type: string | undefined): ApprovalCategory | undefined {
   switch (type) {
-    case "character": return "characterStoryCard";
+    case "character": return "otherStoryCard";
     case "lore": return "loreStoryCard";
     case "location": case "plot": case "custom": return "otherStoryCard";
     default: return undefined;
@@ -27,7 +27,7 @@ export function getApprovalCategory(adventure: Adventure, proposal: MemoryPropos
     return storyCardApprovalCategory(card ? card.type : "character");
   }
   switch (proposal.proposedType) {
-    case "summaryUpdate": case "plotEssentialsUpdate": case "plotPressureUpdate":
+    case "plotEssentialsUpdate": case "plotPressureUpdate":
     case "currentArcUpdate": case "arcProposal": return proposal.proposedType;
     default: return undefined;
   }

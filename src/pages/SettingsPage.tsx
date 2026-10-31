@@ -382,7 +382,6 @@ export function SettingsPage({
     tokenBudgetSettings: adventure.tokenBudgetSettings,
     semanticEvaluationSettings: adventure.semanticEvaluationSettings,
     memoryDetectionSettings: adventure.memoryDetectionSettings,
-    memoryAutoApprove: adventure.memoryAutoApprove,
   } : globalAdventureSettings;
   const activeModelLabel = activePreset?.label || activePreset?.model || "No model";
   const backgroundStatus = activeSettings.semanticEvaluationSettings.enabled
@@ -857,43 +856,35 @@ export function SettingsPage({
         {/* ── Background Cost Mode ──────────────────── */}
         {showLocalDeveloperControls && (() => {
           const sem = activeSettings.semanticEvaluationSettings;
-          const bud = activeSettings.tokenBudgetSettings;
           const mem = activeSettings.memoryDetectionSettings;
-          const isOff = !sem.enabled;
-          const isLight = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) >= 5 && (bud.autoSceneStateEveryNTurns ?? 1) >= 5 && mem.enabled && mem.everyNTurns >= 5;
-          const isNormal = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 2 && (bud.autoSceneStateEveryNTurns ?? 1) === 2 && mem.enabled && mem.everyNTurns === 3;
-          const isHeavy = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 1 && (bud.autoSceneStateEveryNTurns ?? 1) === 1 && mem.enabled && mem.everyNTurns === 1;
+          const isOff = !sem.enabled && !mem.enabled;
+          const isLight = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) >= 5 && mem.enabled && mem.everyNTurns >= 5;
+          const isNormal = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 2 && mem.enabled && mem.everyNTurns === 3;
+          const isHeavy = sem.enabled && (sem.semanticEvalEveryNTurns ?? 1) === 1 && mem.enabled && mem.everyNTurns === 1;
           return (
             <article className="panel settings-card settings-section-full" style={{ gridColumn: "1 / -1" }}>
               <h3>Background Cost</h3>
               <div className="toolbar" style={{ marginBottom: "0.5rem" }}>
                 <button type="button" className={isOff ? "active" : ""} title="Disable all background AI calls. Play-only." onClick={() => {
                   updateSemanticSettings({ enabled: false, semanticEvalEveryNTurns: 1 });
-                  updateBudget({ autoSceneStateEveryNTurns: 0 });
                   updateMemoryDetection({ enabled: false });
                 }}>Off</button>
-                <button type="button" className={isLight ? "active" : ""} title="PE/Summary check every 5 turns. Character thoughts are free (inline)." onClick={() => {
+                <button type="button" className={isLight ? "active" : ""} title="Semantic evaluation and memory detection every 5 turns." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 5 });
-                  updateBudget({ autoSceneStateEveryNTurns: 5 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 5 });
                 }}>Light</button>
-                <button type="button" className={isNormal ? "active" : ""} title="PE/Summary check every 2–3 turns. Balanced." onClick={() => {
+                <button type="button" className={isNormal ? "active" : ""} title="Semantic evaluation every 2 turns; memory detection every 3 turns." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 2 });
-                  updateBudget({ autoSceneStateEveryNTurns: 2 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 3 });
                 }}>Normal</button>
-                <button type="button" className={isHeavy ? "active" : ""} title="PE/Summary check every turn. Maximum tracking." onClick={() => {
+                <button type="button" className={isHeavy ? "active" : ""} title="Semantic evaluation and memory detection every turn." onClick={() => {
                   updateSemanticSettings({ enabled: true, semanticEvalEveryNTurns: 1 });
-                  updateBudget({ autoSceneStateEveryNTurns: 1 });
                   updateMemoryDetection({ enabled: true, everyNTurns: 1 });
                 }}>Heavy</button>
               </div>
               <div className="grid three" style={{ marginTop: "0.5rem" }}>
                 <Field label="Memory every N turns">
                   <NumberInput min={1} value={mem.everyNTurns} onChange={(everyNTurns) => updateMemoryDetection({ everyNTurns: Math.max(1, everyNTurns) })} />
-                </Field>
-                <Field label="Scene state every N turns (0 = off)">
-                  <NumberInput min={0} value={bud.autoSceneStateEveryNTurns ?? 1} onChange={(autoSceneStateEveryNTurns) => updateBudget({ autoSceneStateEveryNTurns })} />
                 </Field>
                 <Field label="Semantic eval every N turns (0 = off)">
                   <NumberInput min={0} value={sem.semanticEvalEveryNTurns ?? 1} onChange={(semanticEvalEveryNTurns) => updateSemanticSettings({ semanticEvalEveryNTurns })} />
@@ -957,32 +948,8 @@ export function SettingsPage({
                   checked={activeSettings.tokenBudgetSettings.allowSystemToDropUnpinnedTriggeredCards}
                   onChange={(allowSystemToDropUnpinnedTriggeredCards) => updateBudget({ allowSystemToDropUnpinnedTriggeredCards })}
                 />
-                <CheckboxField
-                  label="Allow system to truncate rolling summary (legacy)"
-                  checked={activeSettings.tokenBudgetSettings.allowSystemToTruncateSummary}
-                  onChange={(allowSystemToTruncateSummary) => updateBudget({ allowSystemToTruncateSummary })}
-                />
               </div>
               <div>
-                <CheckboxField
-                  label="Auto-summarize in background (legacy)"
-                  checked={activeSettings.tokenBudgetSettings.autoSummarize ?? true}
-                  onChange={(autoSummarize) => updateBudget({ autoSummarize })}
-                />
-                <Field label="Auto-summarize every N turns (legacy)">
-                  <NumberInput
-                    min={5}
-                    value={activeSettings.tokenBudgetSettings.autoSummarizeEveryNTurns ?? 20}
-                    onChange={(autoSummarizeEveryNTurns) => updateBudget({ autoSummarizeEveryNTurns })}
-                  />
-                </Field>
-                <Field label="Scene state every N turns (0 = manual only)">
-                  <NumberInput
-                    min={0}
-                    value={activeSettings.tokenBudgetSettings.autoSceneStateEveryNTurns ?? 1}
-                    onChange={(autoSceneStateEveryNTurns) => updateBudget({ autoSceneStateEveryNTurns })}
-                  />
-                </Field>
                 <Field label="Section Budgets JSON">
                   <JsonTextarea
                     value={activeSettings.tokenBudgetSettings.sectionBudgets}
@@ -1210,7 +1177,7 @@ export function SettingsPage({
                 <h3>{developmentAdventureTitle}</h3>
                 <p className="muted">
                   Loads a complete adult Fire Nation AU scenario with World Blocks, Reference Cards, Characters,
-                  semantic triggers, a quest, legacy rolling summary data, and one opening message.
+                  semantic triggers, a quest, and one opening message.
                 </p>
               </div>
             </div>

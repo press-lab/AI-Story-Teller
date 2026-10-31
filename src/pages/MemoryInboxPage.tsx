@@ -17,10 +17,14 @@ const proposalTypes: MemoryProposalType[] = [
   "arcProposal",
   "plotPressureUpdate",
   "plotMomentumUpdate",
-  "summaryUpdate",
   "ignore",
 ];
 const storyCardTypes: StoryCardType[] = ["character", "location", "lore", "plot", "custom"];
+const proposalTypeLabels: Record<MemoryProposalType, string> = {
+  storyCard: "Story Card", brainUpdate: "Character Self", plotEssentialsUpdate: "Plot Essentials",
+  currentArcUpdate: "Current Arc", arcProposal: "Arc Proposal", plotPressureUpdate: "Active Pressure",
+  plotMomentumUpdate: "Retired momentum", ignore: "Ignore",
+};
 
 interface MemoryInboxPageProps extends AdventurePageProps {
   onRegenerateProposal?: (proposalId: string) => Promise<void>;
@@ -161,6 +165,20 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
 
   return (
     <section className="page editor-surface memory-inbox-page">
+      <section className="panel" aria-label="Auto-approval — This adventure">
+        <h3>Auto-approval — This adventure</h3>
+        <div className="auto-approve-toggles">
+          <CheckboxField label="Plot Essentials" checked={autoApprove.plotEssentialsUpdate} onChange={(v) => setAutoApprove({ plotEssentialsUpdate: v })} />
+          <CheckboxField label="Active Pressure" checked={autoApprove.plotPressureUpdate} onChange={(v) => setAutoApprove({ plotPressureUpdate: v })} />
+          <CheckboxField label="Current Arc" checked={autoApprove.currentArcUpdate} onChange={(v) => setAutoApprove({ currentArcUpdate: v })} />
+          <CheckboxField label="Arc Proposals" checked={autoApprove.arcProposal} onChange={(v) => setAutoApprove({ arcProposal: v })} />
+          <CheckboxField label="Character Self" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
+          <CheckboxField label="Story Cards — Lore" checked={autoApprove.loreStoryCard} onChange={(v) => setAutoApprove({ loreStoryCard: v })} />
+          <CheckboxField label="Story Cards — Everything Else" checked={autoApprove.otherStoryCard} onChange={(v) => setAutoApprove({ otherStoryCard: v })} />
+        </div>
+        <p className="muted">Enabled categories apply valid new suggestions automatically. Existing pending suggestions still need review.</p>
+      </section>
+
       <div className="editor-page-summary">
         <p className="muted">
           Review proposed memory writes before they become active story context.
@@ -197,7 +215,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         <summary>Suggestion tools and settings</summary>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Reference Cards, Character Self updates,
-          Plot Essentials rewrites, Active Pressure updates, and legacy Summary changes. The AI generates these automatically after turns or when
+          Plot Essentials rewrites, Active Pressure updates, and Current Arc changes. The AI generates these automatically after turns or when
           you use <strong>Remember This</strong>. Review each proposal and <strong>Approve</strong> to apply it,
           <strong> Reject</strong> to dismiss it cleanly, or <strong>Ignore</strong> to remove it from view without applying.
           You can edit the content before approving.
@@ -205,19 +223,6 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
           Be especially careful with Character Self and plot updates: approving emotional escalation or relationship milestones
           unchecked is how characters drift. Edit proposals before approving, or reject ones that pull the story somewhere you don't want.
         </p>
-        <div className="auto-approve-toggles">
-          <span className="auto-approve-label muted">Auto-approve:</span>
-          <CheckboxField label="Legacy Summary" checked={autoApprove.summaryUpdate} onChange={(v) => setAutoApprove({ summaryUpdate: v })} />
-          <CheckboxField label="Plot Essentials" checked={autoApprove.plotEssentialsUpdate} onChange={(v) => setAutoApprove({ plotEssentialsUpdate: v })} />
-          <CheckboxField label="Active Pressure" checked={autoApprove.plotPressureUpdate} onChange={(v) => setAutoApprove({ plotPressureUpdate: v })} />
-          <CheckboxField label="Current Arc" checked={autoApprove.currentArcUpdate} onChange={(v) => setAutoApprove({ currentArcUpdate: v })} />
-          <CheckboxField label="Arc Proposals" checked={autoApprove.arcProposal} onChange={(v) => setAutoApprove({ arcProposal: v })} />
-          <CheckboxField label="Character Story Cards" checked={autoApprove.characterStoryCard} onChange={(v) => setAutoApprove({ characterStoryCard: v })} />
-          <CheckboxField label="Lore Cards" checked={autoApprove.loreStoryCard} onChange={(v) => setAutoApprove({ loreStoryCard: v })} />
-          <CheckboxField label="Other Story Cards" checked={autoApprove.otherStoryCard} onChange={(v) => setAutoApprove({ otherStoryCard: v })} />
-          <CheckboxField label="Character Self" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
-        </div>
-        <p className="muted">Enabled categories apply valid AI suggestions automatically. Disabled categories require approval. Memory detection controls when suggestions are generated.</p>
       <details className="setup-panel">
         <summary>Check Recent Entries</summary>
         <div className="grid two">
@@ -268,12 +273,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         </button>
       </details>
 
-      <div className="list">
-        {pending.length === 0 && <p className="muted">No pending memory suggestions.</p>}
-        {pending.map((proposal) => (
-          <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
-        ))}
-      </div>
+      </details>
 
       {resolved.length > 0 && (
         <details className="panel memory-history-panel">

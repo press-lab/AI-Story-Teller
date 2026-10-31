@@ -4,6 +4,7 @@
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
+import { legacyAdventure, retiredKeys } from "../test/legacyAdventure";
 import {
   deleteAccountAdventureBackup,
   getAccountAdventureBackup,
@@ -72,5 +73,14 @@ describe("accountAdventureBackupDb", () => {
 
     await deleteAccountAdventureBackup("user-1", adventure.id);
     expect(await getAccountAdventureBackup("user-1", adventure.id)).toBeUndefined();
+  });
+
+  it("removes retired fields from account backups even without an import", async () => {
+    const old = legacyAdventure();
+    const saved = await saveAccountAdventureBackup({ ownerUserId: "owner", adventure: old, syncStatus: "pending" });
+    expect(JSON.stringify(saved.adventure)).not.toMatch(retiredKeys);
+    const loaded = await getAccountAdventureBackup("owner", old.id);
+    expect(loaded?.adventure.messages).toEqual(old.messages);
+    expect(JSON.stringify(loaded?.adventure)).not.toMatch(retiredKeys);
   });
 });

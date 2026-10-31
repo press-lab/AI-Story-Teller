@@ -15,6 +15,7 @@ import type {
   TriggerRule,
   ProviderRequestThrottle,
 } from "../types/adventure";
+import { stripRetiredAdventureFields, stripRetiredTokenSettings } from "./legacyAdventureInput";
 import { dedupeBrainThoughts } from "../memory/thoughtDedupe";
 import { applyGuardedStoryCardPolicy, restoreGuardedFactsToLiveContent } from "../memory/storyCardPolicy";
 import { createId, nowIso } from "../utils/id";
@@ -25,34 +26,22 @@ export const defaultTokenBudgetSettings: TokenBudgetSettings = {
   memoryPriorityMode: "userLocked",
   allowSystemToPrioritizeMemory: false,
   allowSystemToDropUnpinnedTriggeredCards: true,
-  allowSystemToTruncateSummary: true,
   recentMessageWindow: 12,
   sectionBudgets: {
-    rollingSummary: 1800,
-    sceneState: 400,
     recentMessages: 6000,
   },
-  autoSummarize: true,
-  autoSummarizeEveryNTurns: 20,
-  autoSceneStateEveryNTurns: 1,
-  sceneStateEnabled: true,
-  summaryEnabled: true,
 };
 
 export const lightTokenBudgetPreset: Partial<TokenBudgetSettings> = {
   maxContextTokens: 8000,
   maxRecentMessages: 15,
-  sectionBudgets: { rollingSummary: 800, recentMessages: 3000 },
-  autoSummarize: true,
-  autoSummarizeEveryNTurns: 10,
+  sectionBudgets: { recentMessages: 3000 },
 };
 
 export const heavyTokenBudgetPreset: Partial<TokenBudgetSettings> = {
   maxContextTokens: 32000,
   maxRecentMessages: 80,
-  sectionBudgets: { rollingSummary: 4000, recentMessages: 12000 },
-  autoSummarize: true,
-  autoSummarizeEveryNTurns: 30,
+  sectionBudgets: { recentMessages: 12000 },
 };
 
 export const defaultProviderRequestThrottle: ProviderRequestThrottle = {
@@ -92,33 +81,31 @@ export const defaultMemoryDetectionSettings: MemoryDetectionSettings = {
 };
 
 export const defaultMemoryAutoApproveSettings: MemoryAutoApproveSettings = {
-  summaryUpdate: false,
   plotEssentialsUpdate: false,
-  currentArcUpdate: true,
+  plotPressureUpdate: false,
+  currentArcUpdate: false,
   arcProposal: false,
-  plotPressureUpdate: true,
-  plotMomentumUpdate: false,
-  characterStoryCard: false,
+  brainUpdate: false,
   loreStoryCard: false,
   otherStoryCard: false,
-  brainUpdate: false,
 };
 
-/** Migrate only approval preferences; never borrow another adventure's defaults. */
-export function normalizeMemoryAutoApproveSettings(
-  old: Partial<MemoryAutoApproveSettings> & { storyCard?: boolean } = {},
-): MemoryAutoApproveSettings {
+/** Migrate approval preferences without widening the types the user authorized. */
+export function normalizeMemoryAutoApproveSettings(input: unknown = {}): MemoryAutoApproveSettings {
+  const old = input && typeof input === "object" ? input as Record<string, unknown> : {};
+  const current = Object.keys(defaultMemoryAutoApproveSettings).every(key => key in old)
+    && !["characterStoryCard", "storyCard", "summaryUpdate", "plotMomentumUpdate"].some(key => key in old);
+  const split = "characterStoryCard" in old || "otherStoryCard" in old;
   return {
-    summaryUpdate: old.summaryUpdate ?? defaultMemoryAutoApproveSettings.summaryUpdate,
-    plotEssentialsUpdate: old.plotEssentialsUpdate ?? defaultMemoryAutoApproveSettings.plotEssentialsUpdate,
-    plotPressureUpdate: old.plotPressureUpdate ?? defaultMemoryAutoApproveSettings.plotPressureUpdate,
-    currentArcUpdate: old.currentArcUpdate ?? defaultMemoryAutoApproveSettings.currentArcUpdate,
-    arcProposal: old.arcProposal ?? defaultMemoryAutoApproveSettings.arcProposal,
-    characterStoryCard: old.characterStoryCard ?? old.storyCard ?? false,
-    loreStoryCard: old.loreStoryCard ?? old.storyCard ?? false,
-    otherStoryCard: old.otherStoryCard ?? old.storyCard ?? false,
-    brainUpdate: old.brainUpdate ?? defaultMemoryAutoApproveSettings.brainUpdate,
-    plotMomentumUpdate: false,
+    plotEssentialsUpdate: old.plotEssentialsUpdate === true,
+    plotPressureUpdate: old.plotPressureUpdate === true,
+    currentArcUpdate: old.currentArcUpdate === true,
+    arcProposal: old.arcProposal === true,
+    brainUpdate: old.brainUpdate === true,
+    loreStoryCard: old.loreStoryCard !== undefined ? old.loreStoryCard === true : old.storyCard === true,
+    otherStoryCard: current ? old.otherStoryCard === true
+      : split ? old.characterStoryCard === true && old.otherStoryCard === true
+      : old.storyCard === true,
   };
 }
 
@@ -147,12 +134,7 @@ export function defaultNextTurnNote(): NextTurnNote {
   };
 }
 
-function clampSummaryIndex(index: number | undefined, messageCount: number): number | undefined {
-  if (index === undefined) return undefined;
-  if (!Number.isFinite(index)) return 0;
-  return Math.max(0, Math.min(Math.floor(index), messageCount));
-}
-
+// Historical default text used only for exact-match import migration.
 const legacyDefaultNarrationRulesContent = `You are the narrator of a collaborative interactive fiction adventure.
 Continue the story in response to the player, then leave the scene open for their next action.
 
@@ -191,7 +173,7 @@ PLAYER INPUT MODES:
 - Plain narrative messages are story direction from the author. Incorporate and continue.
 - [Out of Character: ...] messages are author notes. Step out of the story, respond briefly as a collaborator, then stop. Do not write story prose in this mode.
 
-CONTINUITY: All context sections (plot essentials, reference cards, character brains, rolling summary) are established canon. Never contradict them. When details are absent, invent consistently with what is established. Even if this adventure uses names, places, factions, or concepts from a published setting or fandom, the adventure context is the only canon. Do not import outside biography, relationships, motives, powers, locations, or events unless they are established in the active context.
+CONTINUITY: All context sections (plot essentials, reference cards, character brains, current arc) are established canon. Never contradict them. When details are absent, invent consistently with what is established. Even if this adventure uses names, places, factions, or concepts from a published setting or fandom, the adventure context is the only canon. Do not import outside biography, relationships, motives, powers, locations, or events unless they are established in the active context.
 
 TONE: Match the tone the adventure has established. Do not break the fourth wall, moralize, or editorialize unless in [Out of Character] mode.
 
@@ -230,8 +212,6 @@ export function createDefaultAdventure(title = "Untitled Adventure"): Adventure 
     storyCards: [],
     brains: [],
     triggerRules: [],
-    rollingSummary: { content: "", updatedAt: timestamp },
-    sceneState: { content: "", updatedAt: timestamp },
     messages: [],
     activeState: {
       turn: 0,
@@ -496,7 +476,7 @@ export function persistedBackgroundProviderConfig(
 export function persistedSemanticEvaluationSettings(
   settings: SemanticEvaluationSettings | undefined,
 ): SemanticEvaluationSettings {
-  const { requireApprovalForAutoUpdates: _retired, ...current } = settings ?? {};
+  const { requireApprovalForAutoUpdates: _retired, ...current } = (settings ?? {}) as Partial<SemanticEvaluationSettings> & { requireApprovalForAutoUpdates?: unknown };
   const merged = {
     ...defaultSemanticEvaluationSettings,
     ...current,
@@ -510,14 +490,17 @@ export function persistedSemanticEvaluationSettings(
 }
 
 export function sanitizeAdventureForPersistence(adventure: Adventure): Adventure {
+  const clean = stripRetiredAdventureFields(adventure, normalizeMemoryAutoApproveSettings);
   return {
-    ...adventure,
+    ...clean,
+    memoryAutoApprove: normalizeMemoryAutoApproveSettings(adventure.memoryAutoApprove),
     modelConfig: persistedProviderConfig(adventure.modelConfig) as ProviderConfig,
     semanticEvaluationSettings: persistedSemanticEvaluationSettings(adventure.semanticEvaluationSettings),
   };
 }
 
 export function normalizeAdventure(adventure: Adventure): Adventure {
+  adventure = stripRetiredAdventureFields(adventure, normalizeMemoryAutoApproveSettings);
   const baseline = createDefaultAdventure(adventure.title || "Untitled Adventure");
   const messages = removeMirroredOpeningMessage(adventure);
   const migrateGuardedStoryCards = !adventure.activeState?.stateFlags?.compactStoryCardsMigrated;
@@ -560,17 +543,7 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
       challengeMode: adventure.activeState?.challengeMode ?? false,
       lastMemoryCycleTurn: adventure.activeState?.lastMemoryCycleTurn,
       lastSemanticEvalTurn: adventure.activeState?.lastSemanticEvalTurn,
-      lastSceneStateTurn: adventure.activeState?.lastSceneStateTurn,
     },
-    rollingSummary: {
-      ...baseline.rollingSummary,
-      ...(adventure.rollingSummary ?? {}),
-      lastSummarizedMessageIndex: clampSummaryIndex(
-        adventure.rollingSummary?.lastSummarizedMessageIndex,
-        messages.length,
-      ),
-    },
-    sceneState: adventure.sceneState ?? { content: "", updatedAt: nowIso() },
     brains: (adventure.brains ?? []).map((brain) => ({
       ...brain,
       source: brain.source ?? "manual",
@@ -648,12 +621,8 @@ export function normalizeAdventure(adventure: Adventure): Adventure {
     },
     tokenBudgetSettings: {
       ...defaultTokenBudgetSettings,
-      ...(adventure.tokenBudgetSettings ?? {}),
+      ...stripRetiredTokenSettings(adventure.tokenBudgetSettings ?? {}),
       // Ensure new fields always present even on old saves
-      autoSummarize: adventure.tokenBudgetSettings?.autoSummarize ?? true,
-      autoSummarizeEveryNTurns: adventure.tokenBudgetSettings?.autoSummarizeEveryNTurns ?? 20,
-      autoSceneStateEveryNTurns: adventure.tokenBudgetSettings?.autoSceneStateEveryNTurns ?? 1,
-      sceneStateEnabled: adventure.tokenBudgetSettings?.sceneStateEnabled ?? true,
     },
     modelConfig: {
       ...defaultModelConfig,

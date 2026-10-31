@@ -140,18 +140,7 @@ function recordStoryCardMemoryUpdate(
 }
 
 function touchAdventure(state: Adventure, patch: Partial<Adventure>): Adventure {
-  const next = { ...state, ...patch, updatedAt: nowIso() };
-  const summarizedIndex = next.rollingSummary.lastSummarizedMessageIndex;
-  if (summarizedIndex !== undefined && summarizedIndex > next.messages.length) {
-    return {
-      ...next,
-      rollingSummary: {
-        ...next.rollingSummary,
-        lastSummarizedMessageIndex: next.messages.length,
-      },
-    };
-  }
-  return next;
+  return { ...state, ...patch, updatedAt: nowIso() };
 }
 
 function upsertById<T extends { id: string }>(items: T[], item: T): T[] {
@@ -711,6 +700,7 @@ function containsMemoryContent(existing: string, incoming: string): boolean {
 }
 
 function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
+  if (!["storyCard", "brainUpdate", "plotEssentialsUpdate", "plotPressureUpdate", "currentArcUpdate", "arcProposal", "plotMomentumUpdate", "ignore"].includes(proposal.proposedType)) return null;
   const rawContent = stripThink(proposal.content ?? "").trim();
   const title = stripThink(proposal.title ?? "").trim();
   const content = proposal.proposedType === "storyCard" ? stripLeadingCardTitle(title, rawContent) : rawContent;
@@ -718,8 +708,6 @@ function sanitizeProposal(proposal: MemoryProposal): MemoryProposal | null {
     ? Math.max(0, Math.round(proposal.autoUpdateCooldownTurns ?? 0))
     : undefined;
 
-  // summaryUpdate with blank content would immediately overwrite the real summary — hard drop
-  if (proposal.proposedType === "summaryUpdate" && !content) return null;
 
   // arcProposal: content must be JSON carrying a non-empty premise, or the seed is meaningless
   if (proposal.proposedType === "arcProposal") {
@@ -1230,12 +1218,6 @@ function applyApprovedMemoryProposal(state: Adventure, proposal: MemoryProposal)
     return { components: upsertById(state.components, seededArc) };
   }
 
-  if (proposal.proposedType === "summaryUpdate") {
-    if (!proposal.content.trim()) return {};
-    const existing = state.rollingSummary.content.trim();
-    const content = (proposal.appendContent && existing) ? containsMemoryContent(existing, proposal.content) ? existing : `${existing}\n\n${proposal.content}` : proposal.content;
-    return { rollingSummary: { content, updatedAt: nowIso() } };
-  }
 
   return {};
 }
@@ -1404,10 +1386,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "SET_LAST_SEMANTIC_EVAL_TURN":
       return touchAdventure(state, {
         activeState: { ...state.activeState, lastSemanticEvalTurn: action.turn },
-      });
-    case "SET_LAST_SCENE_STATE_TURN":
-      return touchAdventure(state, {
-        activeState: { ...state.activeState, lastSceneStateTurn: action.turn },
       });
     case "UPSERT_COMPONENT":
       return touchAdventure(state, { components: upsertById(state.components, touch(action.component)) });
@@ -1794,18 +1772,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
           ),
         },
       });
-    case "UPDATE_ROLLING_SUMMARY":
-      return touchAdventure(state, {
-        rollingSummary: {
-          content: action.content,
-          updatedAt: nowIso(),
-          lastSummarizedMessageIndex: action.lastSummarizedMessageIndex ?? state.rollingSummary.lastSummarizedMessageIndex,
-        },
-      });
-    case "UPDATE_SCENE_STATE":
-      return touchAdventure(state, {
-        sceneState: { content: action.content, updatedAt: nowIso() },
-      });
     case "SET_TOKEN_BUDGET_SETTINGS":
       return touchAdventure(state, { tokenBudgetSettings: action.settings });
     case "SET_SYSTEM_TRIGGER_SETTINGS":
@@ -1901,7 +1867,6 @@ export function adventureReducer(state: Adventure, action: AdventureAction): Adv
     case "RESET_RUNTIME_STATE":
       return touchAdventure(state, {
         messages: [],
-        rollingSummary: { content: "", updatedAt: nowIso() },
         activeState: {
           ...state.activeState,
           turn: 0,

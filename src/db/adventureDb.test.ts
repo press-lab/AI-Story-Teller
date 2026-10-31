@@ -68,14 +68,14 @@ describe("adventureDb IndexedDB persistence", () => {
 
   it("preserves category choices and pending proposals through an IndexedDB round trip", async () => {
     const a = approvalAdventure();
-    a.memoryAutoApprove.characterStoryCard = true;
+    a.memoryAutoApprove.otherStoryCard = true;
     a.memoryAutoApprove.otherStoryCard = true;
     a.activeState.memoryProposals = [approvalProposal("brainUpdate")];
     await saveAdventure(a);
     const loaded = await getAdventure(a.id);
     expect(loaded?.memoryAutoApprove).toEqual(a.memoryAutoApprove);
     expect(loaded?.activeState.memoryProposals[0].status).toBe("pending");
-    expect(loaded?.semanticEvaluationSettings.requireApprovalForAutoUpdates).toBeUndefined();
+    expect(loaded?.semanticEvaluationSettings).not.toHaveProperty("requireApprovalForAutoUpdates");
   });
 
   it("lists adventures newest-first and deletes by id", async () => {

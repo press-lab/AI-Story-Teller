@@ -408,7 +408,7 @@ async function handleRequest(
         exportedAt: new Date().toISOString(),
         user: publicUser(session.user, config),
         profile: session.profile,
-        adventures: data.adventures.filter((entry) => entry.ownerUserId === session.user.id).map((entry) => entry.adventure),
+        adventures: data.adventures.filter((entry) => entry.ownerUserId === session.user.id).map((entry) => sanitizeAdventureForPersistence(entry.adventure)),
         scenarios: data.scenarioDrafts.filter((entry) => entry.ownerUserId === session.user.id),
         scenarioRevisions: data.scenarioRevisions.filter((entry) => scenarioIds.has(entry.scenarioId)),
       }, corsHeaders);
@@ -921,7 +921,7 @@ async function handleAdventureRoute(
       ? await db.readAdventureRecord(userId, adventureId)
       : getOwnedAdventureRecord(await db.read(), userId, adventureId);
     if (!record) throw new ApiError(404, "adventure_not_found", "Adventure not found.");
-    const adventure = record.adventure;
+    const adventure = normalizeAdventure(record.adventure);
     await recordTrace(db, performanceTrace({
       traceId,
       source: "database",
@@ -988,7 +988,7 @@ async function handleAdventureRoute(
       ? await db.readAdventureRecord(userId, adventureId)
       : getOwnedAdventureRecord(await db.read(), userId, adventureId);
     if (!record) throw new ApiError(404, "adventure_not_found", "Adventure not found.");
-    sendJson(response, 200, record.adventure, corsHeaders);
+    sendJson(response, 200, sanitizeAdventureForPersistence(record.adventure), corsHeaders);
     return;
   }
   if (request.method === "GET" && segments[2] === "context-preview") {

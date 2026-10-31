@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getApprovalCategory, shouldAutoApprove } from "./approvalPolicy";
 import { adventureReducer as reduce } from "../state/adventureReducer";
-import { normalizeAdventure, normalizeMemoryAutoApproveSettings } from "../state/defaults";
-import { normalizeGlobalAdventureSettings, defaultGlobalAdventureSettings } from "../pages/pageTypes";
 import { approvalAdventure, approvalCategories, approvalProposal, existingApprovalCard, memoryData } from "../test/memoryApproval";
 import type { StoryCardType } from "../types/adventure";
 
@@ -29,7 +27,7 @@ describe("one approval category per write", () => {
 
   it.each(["character", "lore", "location", "plot", "custom"] as StoryCardType[])("uses the stored %s type even when the AI claims a different subtype", type => {
     const a = approvalAdventure(); a.storyCards = [existingApprovalCard(type)];
-    const category = type === "character" ? "characterStoryCard" : type === "lore" ? "loreStoryCard" : "otherStoryCard";
+    const category = type === "character" ? "otherStoryCard" : type === "lore" ? "loreStoryCard" : "otherStoryCard";
     a.memoryAutoApprove[category] = true;
     const p = approvalProposal("loreStoryCard", { title: "Mira", targetId: "card", storyCardType: type === "lore" ? "character" : "lore", appendContent: true });
     expect(getApprovalCategory(a, p)).toBe(category);
@@ -48,9 +46,9 @@ describe("one approval category per write", () => {
   });
 
   it.each([false, true])("missing-Brain fallback obeys Character Story Cards=%s, independently of Character Self", enabled => {
-    const a = approvalAdventure(); a.brains = []; a.memoryAutoApprove.brainUpdate = !enabled; a.memoryAutoApprove.characterStoryCard = enabled;
+    const a = approvalAdventure(); a.brains = []; a.memoryAutoApprove.brainUpdate = !enabled; a.memoryAutoApprove.otherStoryCard = enabled;
     const p = approvalProposal("brainUpdate", { content: "Mira swore an enduring oath to defend the observatory." });
-    expect(getApprovalCategory(a, p)).toBe("characterStoryCard");
+    expect(getApprovalCategory(a, p)).toBe("otherStoryCard");
     const next = reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: p });
     expect(next.storyCards.length).toBe(enabled ? 1 : 0);
     expect(next.brains).toEqual([]);
@@ -105,19 +103,17 @@ describe("one approval category per write", () => {
     expect(reduce(a, { type: "APPROVE_MEMORY_PROPOSAL", proposalId: "new" })).toBe(a);
   });
 
-  it("does not mark unchanged Story Cards or summaries approved", () => {
+  it("does not mark unchanged Story Cards approved", () => {
     const a = approvalAdventure(); a.storyCards = [existingApprovalCard("lore")];
-    a.memoryAutoApprove.loreStoryCard = true; a.memoryAutoApprove.summaryUpdate = true;
-    a.rollingSummary = { ...a.rollingSummary, content: "Unchanged summary" };
-    for (const p of [approvalProposal("loreStoryCard", { title: "Mira", targetId: "card", memoryMode: "static", content: a.storyCards[0].content, suggestedTriggers: [], appendContent: false }), approvalProposal("summaryUpdate", { content: "Unchanged summary" })]) {
-      const next = reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: p });
-      expect(next.activeState.memoryProposals.find(entry => entry.id === p.id)?.status).not.toBe("approved");
-      expect(memoryData(next)).toEqual(memoryData(a));
-    }
+    a.memoryAutoApprove.loreStoryCard = true;
+    const p = approvalProposal("loreStoryCard", { title: "Mira", targetId: "card", memoryMode: "static", content: a.storyCards[0].content, suggestedTriggers: [], appendContent: false });
+    const next = reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: p });
+    expect(next.activeState.memoryProposals.find(entry => entry.id === p.id)?.status).not.toBe("approved");
+    expect(memoryData(next)).toEqual(memoryData(a));
   });
 
   it("validates missing-Brain fallback content before routing it to a card", () => {
-    const a = approvalAdventure(); a.brains = []; a.memoryAutoApprove.characterStoryCard = true;
+    const a = approvalAdventure(); a.brains = []; a.memoryAutoApprove.otherStoryCard = true;
     const bad = approvalProposal("brainUpdate", { content: '{"thoughts":{"bad":123}}' });
     expect(reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: bad })).toBe(a);
   });
@@ -129,7 +125,7 @@ describe("one approval category per write", () => {
     expect(reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: p }).storyCards[0].type).toBe("lore");
   });
 
-  it.each(["summaryUpdate", "currentArcUpdate", "plotEssentialsUpdate"] as const)("does not reapply duplicate %s append content", category => {
+  it.each(["currentArcUpdate", "plotEssentialsUpdate"] as const)("does not reapply duplicate %s append content", category => {
     const a = approvalAdventure(); a.memoryAutoApprove[category] = true;
     const p = approvalProposal(category, { appendContent: true });
     const next = reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: p });
@@ -161,22 +157,5 @@ describe("one approval category per write", () => {
   it.each(["static", "living", "historical"] as const)("approval is independent of %s memory mode", mode => {
     const a = approvalAdventure(); a.memoryAutoApprove.loreStoryCard = true;
     expect(reduce(a, { type: "ADD_MEMORY_PROPOSAL", proposal: approvalProposal("loreStoryCard", { memoryMode: mode }) }).storyCards[0].memoryMode).toBe(mode);
-  });
-});
-
-describe("saved preference migration", () => {
-  it.each([false, true])("migrates legacy Story Card=%s without overwriting individual choices", storyCard => {
-    const old = { storyCard, summaryUpdate: true, brainUpdate: true, plotPressureUpdate: false, characterStoryCard: false };
-    const migrated = normalizeMemoryAutoApproveSettings(old);
-    expect(migrated).toMatchObject({ characterStoryCard: false, loreStoryCard: storyCard, otherStoryCard: storyCard, summaryUpdate: true, brainUpdate: true, plotPressureUpdate: false, plotMomentumUpdate: false });
-    const a = approvalAdventure(); a.memoryAutoApprove = migrated;
-    const p = approvalProposal("brainUpdate"); a.activeState.memoryProposals = [p];
-    const loaded = normalizeAdventure(JSON.parse(JSON.stringify(a)));
-    expect(loaded.memoryAutoApprove).toEqual(migrated);
-    expect(loaded.activeState.memoryProposals[0].status).toBe("pending");
-    expect(loaded.semanticEvaluationSettings.requireApprovalForAutoUpdates).toBeUndefined();
-    const global = normalizeGlobalAdventureSettings({ ...defaultGlobalAdventureSettings, memoryAutoApprove: old as unknown as typeof migrated });
-    expect(global.memoryAutoApprove).toEqual(migrated);
-    expect(a.memoryAutoApprove).toEqual(migrated);
   });
 });

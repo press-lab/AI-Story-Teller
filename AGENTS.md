@@ -78,10 +78,10 @@ If a direct Postgres repair is unavoidable, `aist_records` must use collection `
 - Context assembly order is fixed (see `ContextSectionKind` and the section-order table in `FEATURES.md`): system → aiInstructions → plotEssentials → currentArc → components → storyCards → brains → authorNote → nextTurnNote → challengeMode → recentMessages.
 - `aiInstructions`, `plotEssentials`, and `authorNote` components each occupy their own section (B, C, D). The active `currentArc` component occupies section C2, between Plot Essentials and World Blocks. General always-on or pinned custom components go to section E (`components`).
 - Reference Cards are section F (`storyCards`). Brains are section G. Author's Note (D) is placed near recent context for AID-style influence. Next Output Bias is section J. The Continuity Challenge instruction is section M (`challengeMode`), injected just before Recent Messages when active. Recent messages are section K.
-- Rolling Summary and Scene State are retained on the adventure object for save-compat but are no longer emitted as their own assembled sections (see `FEATURES.md` §18). Quest state is not part of the default section assembly.
+- Older adventure JSON files containing Rolling Summary or Scene State are supported for import. These fields are ignored and are not saved in the current format. Quest state is not part of the default section assembly.
 - Protected means non-droppable during token truncation. Pinned means prioritized, not automatically non-droppable.
 - Only the system shell and user-marked protected context are absolutely non-droppable.
-- Budget cuts are controlled by `memoryPriorityMode`, `allowSystemToPrioritizeMemory`, `allowSystemToDropUnpinnedTriggeredCards`, and `allowSystemToTruncateSummary`.
+- Budget cuts are controlled by `memoryPriorityMode`, `allowSystemToPrioritizeMemory`, `allowSystemToDropUnpinnedTriggeredCards`.
 - In `userLocked`, drop older recent messages before memory when possible. In `systemSuggested`, the lowest scored unprotected item may drop first. In `hybrid`, system-suggested memory can drop before user-locked context.
 - Log excluded context items with `budget_exceeded`, `inactive`, `cooldown`, or `not_triggered`.
 - Log context build decisions for inclusion, exclusion, truncation, and ordering. Include `generatedBy` in ordering decisions.
@@ -89,7 +89,7 @@ If a direct Postgres repair is unavoidable, `aist_records` must use collection `
 - Context Preview must match the provider payload returned by `buildContext`. Empty sections are excluded from the payload but always present in `result.sections`.
 - `ContextBuildResult.pendingProposals` exposes pending Memory Proposals for the UI. These are never included in the model payload.
 - AI-generated persistent memory changes must become `ADD_MEMORY_PROPOSAL` actions (directly or through `src/memory/applyAIMemoryUpdate.ts`). The shared reducer applies `src/memory/approvalPolicy.ts` before any automatic write.
-- AI memory proposals may update existing BrainEntry fields, Story Cards, Plot Essentials, one-sentence Active Pressure, Current Arc developments/arc drafts, and the legacy Summary. Keep the existing surface validators; authored AI Instructions and Author's Note remain forbidden.
+- AI memory proposals may update existing BrainEntry fields, Story Cards, Plot Essentials, one-sentence Active Pressure, Current Arc developments/arc drafts. Keep the existing surface validators; authored AI Instructions and Author's Note remain forbidden.
 - AI must not mutate AI Instructions, Author's Note, provider config, trigger definitions, quest definitions, raw imports, or the system shell.
 - Memory Inbox proposals live in `activeState.memoryProposals`; approving/rejecting/ignoring proposals must go through reducer actions.
 - Do not add silent stubs. If a feature is incomplete, label it clearly in both code and UI.
@@ -97,16 +97,15 @@ If a direct Postgres repair is unavoidable, `aist_records` must use collection `
 ## Memory Placement Policy
 
 - **Adventure Chronicle**: `adventure.messages`, the complete persisted transcript. Keep it uncompressed. Never automatically include the full Chronicle in model context. It is source material for summaries and memory proposals, not direct context.
-- **Rolling Summary**: `adventure.rollingSummary`, legacy compression of the Chronicle. It is retained on the adventure object for save compatibility but is not emitted as a model context section. Must not overwrite reference cards, brains, or components.
 - **Next Output Bias**: `activeState.nextTurnNote`, a user-written short-term steering note for the next generation. Appears in section J, is visible in Context Preview, token-counted, reducer-driven, and expires after one successful generation by default.
 - **Reference Cards**: durable recurring facts — private jokes, nicknames, secrets, promises, relationship facts, magical rules, recurring objects, locations, factions. Trigger-matched or pinned. Section F. Optional AI auto-updates use per-card cooldown fields (`autoUpdateCooldownTurns`, `lastAutoUpdateTurn`).
 - **Brains**: opt-in evolving character-internal state for major characters only. Do not create BrainEntries for random NPCs, locations, factions, objects, or one-scene characters. Brain updates only apply when a BrainEntry already exists. If no BrainEntry exists, route durable character memory to an existing Reference Card or a Reference Card proposal in Memory Inbox.
 - **Plot Essentials**: tiny always-on current-state constraints. Section C. AI may update these through the approved `plotEssentialsUpdate` proposal path only.
-- **Active Pressure**: one sentence naming the current external threat, obligation, or force pressing on the player character. Section C. Auto-generated through `plotPressureUpdate`, auto-approved by default, and replaced when stakes change.
+- **Active Pressure**: one sentence naming the current external threat, obligation, or force pressing on the player character. Section C. Auto-generated through `plotPressureUpdate`, pending by default, and replaced when stakes change.
 - **Immediate Momentum**: disabled legacy component type. Keep the type for old-save compatibility, but do not generate it, auto-update it, import it, or assemble it into context.
 - **AI Instructions**: persistent generation rules. Section B. AI must not modify.
 - **Author's Note**: tonal / mood layer. Section D. AI must not modify.
-- **Memory Inbox**: `activeState.memoryProposals` — AI/system-suggested memory updates before they become active context. Proposals have `status: "pending" | "approved" | "rejected" | "ignored"`. Pending proposals appear in Context Preview but are never model context. Approving a proposal converts it to a Reference Card, Brain update, Plot Essentials update, Active Pressure update, or legacy Summary update via reducer actions.
+- **Memory Inbox**: `activeState.memoryProposals` — AI/system-suggested memory updates before they become active context. Proposals have `status: "pending" | "approved" | "rejected" | "ignored"`. Pending proposals appear in Context Preview but are never model context. Approving a proposal converts it to a Reference Card, Brain update, Plot Essentials update, Active Pressure update, or Current Arc update via reducer actions.
 
 Use `classifyMemory` in `src/memory/classificationPolicy.ts` when creating deterministic proposals. If a character has no BrainEntry, route durable character facts to an existing Reference Card or a Reference Card proposal; do not create a brainUpdate proposal by default. Ephemeral scenery, one-off room layouts, generic movement, and throwaway details should be ignored unless marked important or recurring.
 
@@ -116,9 +115,9 @@ Do not add an opaque Memory Bank retrieval layer. A future Inspectable Memory Ba
 
 All AI-generated persistent memory changes must be classified into one approval category. Each category has one user-controlled auto-approval toggle. Enabled categories automatically apply valid changes; disabled categories create pending suggestions. No global approval override or direct AI-generated memory mutation may bypass this decision. Manual user edits remain independent.
 
-`src/memory/approvalPolicy.ts` is the sole automatic approval policy for semantic updates, inline thoughts/tags, builders, Remember This, reconciliation, and generated history companions. Existing Story Cards use their stored type; new cards require a validated type. Character Story Cards (`character`), Lore Cards (`lore`), and Other Story Cards (`location`, `plot`, `custom`) have separate toggles. Character Self (`brainUpdate`) is independent; missing-Brain fallbacks obey the actual card category. Memory modes (`static`, `living`, `historical`) and detection cadence remain independent.
+`src/memory/approvalPolicy.ts` is the sole automatic approval policy for semantic updates, inline thoughts/tags, builders, Remember This, reconciliation, and generated history companions. Existing Story Cards use their stored type; new cards require a validated type. Lore Cards use the Lore toggle; Character, Location, Plot and Custom cards share Everything Else. Character Self (`brainUpdate`) is independent; missing-Brain fallbacks obey the actual card category. Memory modes (`static`, `living`, `historical`) and detection cadence remain independent.
 
-Keep the single approval menu in Memory Suggestions. Legacy `storyCard` preferences migrate to all three card toggles unless individually set; `plotMomentumUpdate` stays disabled. Ignore the retired global review field. Never replay existing pending suggestions when preferences change. Automatic and manual approvals share validation and application, preserve Brain append/replace modes, and record success only after a real write. Companion history is separately classified.
+Keep the single approval menu in Memory Suggestions. Legacy `storyCard` preferences and the old Character/Other split migrate conservatively to Lore and Everything Else; `plotMomentumUpdate` stays disabled. Ignore the retired global review field. Never replay existing pending suggestions when preferences change. Automatic and manual approvals share validation and application, preserve Brain append/replace modes, and record success only after a real write. Companion history is separately classified.
 
 Auto-Cards are a removed legacy surface. Do not reintroduce an Auto-Card review queue without explicit UI, reducer actions, and context-builder tests.
 
@@ -179,3 +178,11 @@ npm.cmd run smoke:prod
 ```
 
 The build runs TypeScript first and then creates the GitHub Pages-compatible static bundle in `dist/`.
+
+## Adventure approval
+
+Auto-approval belongs to each adventure. New adventures start with all seven switches OFF: Plot Essentials, Active Pressure, Current Arc, Arc Proposals, Character Self, Story Cards — Lore, and Story Cards — Everything Else. The permanent panel appears at the top of Memory Suggestions, including when its queue is empty. Settings has no approval controls, and global localStorage approval properties are discarded.
+
+The shared policy reads only `adventure.memoryAutoApprove`. Existing cards use their stored type. Lore uses `loreStoryCard`; character, location, legacy plot, and custom use `otherStoryCard`. Unknown new card types wait for classification. Missing-Brain card fallbacks use the card category. Existing pending proposals are never replayed when a switch changes. Evidence, duplicate, destination, protection, chronology, and companion-proposal checks remain in the reducer pipeline.
+
+Migration preserves boolean active settings. Lore falls back to the old broad Story Card preference only when its own preference is absent. Both split Character and Other preferences must be true to enable the combined category; an isolated split preference is ambiguous and leaves it OFF. A saved broad Story Card preference covers all cards. Invalid and missing preferences are false.

@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, renderHook, act } from "@testing-library/react";
+import { cleanup, render, screen, renderHook } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useReducer } from "react";
 import { adventureReducer } from "../state/adventureReducer";
@@ -11,9 +11,9 @@ import { defaultGlobalAdventureSettings, normalizeGlobalAdventureSettings, type 
 import { MemoryInboxPage } from "./MemoryInboxPage";
 
 const controls = [
-  ["Legacy Summary", "summaryUpdate"], ["Plot Essentials", "plotEssentialsUpdate"], ["Active Pressure", "plotPressureUpdate"],
-  ["Current Arc", "currentArcUpdate"], ["Arc Proposals", "arcProposal"], ["Character Story Cards", "characterStoryCard"],
-  ["Lore Cards", "loreStoryCard"], ["Other Story Cards", "otherStoryCard"], ["Character Self", "brainUpdate"],
+  ["Plot Essentials", "plotEssentialsUpdate"], ["Active Pressure", "plotPressureUpdate"],
+  ["Current Arc", "currentArcUpdate"], ["Arc Proposals", "arcProposal"],
+  ["Story Cards — Lore", "loreStoryCard"], ["Story Cards — Everything Else", "otherStoryCard"], ["Character Self", "brainUpdate"],
 ] as const;
 beforeEach(() => {
   const data = new Map<string, string>();
@@ -41,21 +41,28 @@ it("offers exactly one independent approval toggle per category with detection d
 
 it("shows the stored card subtype and prevents the proposal from changing it", () => {
   const a = approvalAdventure(); a.storyCards = [existingApprovalCard("lore")];
-  a.activeState.memoryProposals = [approvalProposal("characterStoryCard", { title: "Mira", targetId: "card" })];
+  a.activeState.memoryProposals = [approvalProposal("otherStoryCard", { title: "Mira", targetId: "card" })];
   render(<MemoryInboxPage adventure={a} dispatch={() => undefined} />);
   expect(screen.getByLabelText("Reference Card Type")).toHaveValue("lore");
   expect(screen.getByLabelText("Reference Card Type")).toBeDisabled();
 });
 
-it("migrates global localStorage preferences once and preserves choices on reopening", () => {
+it("drops obsolete global approval preferences without changing the background provider", () => {
   const key = "approval-global-test";
-  localStorage.setItem(key, JSON.stringify({ ...defaultGlobalAdventureSettings, semanticEvaluationSettings: { ...defaultGlobalAdventureSettings.semanticEvaluationSettings, backgroundProviderConfig: { baseUrl: "https://example.test", model: "background", apiKey: "local-test-key" } }, memoryAutoApprove: { storyCard: true, characterStoryCard: false, brainUpdate: true, summaryUpdate: true } }));
+  localStorage.setItem(key, JSON.stringify({ ...defaultGlobalAdventureSettings, semanticEvaluationSettings: { ...defaultGlobalAdventureSettings.semanticEvaluationSettings, backgroundProviderConfig: { baseUrl: "https://example.test", model: "background", apiKey: "local-test-key" } }, memoryAutoApprove: { storyCard: true, brainUpdate: true } }));
   const hook = renderHook(() => useLocalStorage<GlobalAdventureSettings>(key, defaultGlobalAdventureSettings, normalizeGlobalAdventureSettings));
-  expect(hook.result.current[0].memoryAutoApprove).toMatchObject({ characterStoryCard: false, loreStoryCard: true, otherStoryCard: true, brainUpdate: true, summaryUpdate: true });
+  expect(hook.result.current[0]).not.toHaveProperty("memoryAutoApprove");
   expect(hook.result.current[0].semanticEvaluationSettings.backgroundProviderConfig?.apiKey).toBe("local-test-key");
-  const settings = hook.result.current[0];
-  act(() => hook.result.current[1]({ ...settings, memoryAutoApprove: { ...settings.memoryAutoApprove, loreStoryCard: false } }));
   hook.unmount();
   const reopened = renderHook(() => useLocalStorage<GlobalAdventureSettings>(key, defaultGlobalAdventureSettings, normalizeGlobalAdventureSettings));
-  expect(reopened.result.current[0].memoryAutoApprove).toEqual({ ...settings.memoryAutoApprove, loreStoryCard: false });
+  expect(reopened.result.current[0]).not.toHaveProperty("memoryAutoApprove");
+  expect(JSON.parse(localStorage.getItem(key)!)).not.toHaveProperty("memoryAutoApprove");
+});
+
+it("keeps seven controls visible outside collapsed details when there are no suggestions", () => {
+  render(<MemoryInboxPage adventure={approvalAdventure()} dispatch={() => undefined} />);
+  const panel = screen.getByRole("region", { name: "Auto-approval — This adventure" });
+  expect(panel.closest("details")).toBeNull();
+  expect(panel.querySelectorAll('input[type="checkbox"]')).toHaveLength(7);
+  for (const [label] of controls) expect(screen.getByLabelText(label)).toBeVisible();
 });

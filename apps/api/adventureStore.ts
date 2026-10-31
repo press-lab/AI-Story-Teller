@@ -912,7 +912,7 @@ export async function runBackendTurn(
 export function getOwnedAdventureRecord(data: LocalDbData, ownerUserId: string, adventureId: string): BackendAdventureRecord {
   const record = data.adventures.find((entry) => entry.id === adventureId && entry.ownerUserId === ownerUserId);
   if (!record) throw new Error("Adventure not found.");
-  return record;
+  return { ...record, adventure: normalizeAdventure(record.adventure) };
 }
 
 function recordTurnTrace(data: LocalDbData, input: Parameters<typeof performanceTrace>[0]): void {

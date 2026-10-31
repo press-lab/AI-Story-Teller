@@ -43,7 +43,6 @@ function baseAdventure(): Adventure {
       enabled: true,
       showLog: true,
       maxParallelUpdateCalls: 2,
-      requireApprovalForAutoUpdates: false,
       semanticEvalEveryNTurns: 1,
     },
     messages: [
@@ -168,7 +167,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
 
-      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings },
     };
 
     mockProvider
@@ -200,7 +199,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       components: baseAdventure().components.map((c) =>
         c.type === "activePressure" ? { ...c, active: false } : c
       ),
-      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings },
     };
 
     const result = await runMemoryCycle(adventure, providerConfig);
@@ -221,7 +220,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       ...baseAdventure(),
       components: [momentum],
       storyCards: [],
-      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings, autoSummarize: false },
+      tokenBudgetSettings: { ...baseAdventure().tokenBudgetSettings },
     };
 
     const result = await runMemoryCycle(adventure, providerConfig);
@@ -244,7 +243,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo repeats the hedge prince joke.", createdAt: "2026-01-01T00:02:00.000Z" }],
 
-      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings },
     };
 
     mockProvider
@@ -296,7 +295,7 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(mockProvider.mock.calls[1][0].messages[0].content).toContain("Write exactly one sentence");
     expect(result.actions.some((action) => action.type === "APPLY_COMPONENT_UPDATE")).toBe(false);
 
-    // pressure auto-approves by default, so content is applied immediately
+    adventure.memoryAutoApprove.plotPressureUpdate = true; // Explicit consent is required.
     const reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
     const pressureComp = reduced.components.find((c) => c.type === "activePressure");
     expect(pressureComp?.content).toContain("The Fire Nation court now expects a public duel.");
@@ -367,7 +366,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       components: [pressure],
       storyCards: [card],
       brains: [brain],
-      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, requireApprovalForAutoUpdates: true },
+      semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings },
       messages: [
         ...baseAdventure().messages,
         { id: "m3", role: "assistant" as const, content: "Margo seals the breach and realizes the gate is still failing.", createdAt: "2026-01-01T00:02:00.000Z" },
@@ -409,7 +408,8 @@ describe("runSemanticPostTurnEvaluation", () => {
     expect(result.actions).toContainEqual({ type: "MARK_STORY_CARD_UPDATED", storyCardId: "card-margo", turn: 5 });
 
     const reduced = result.actions.reduce((next, action) => adventureReducer(next, action), adventure);
-    expect(reduced.components.find((component) => component.id === "component-pressure")?.content).toBe("The breach is sealed, but the gate is still failing.");
+    expect(reduced.components.find((component) => component.id === "component-pressure")?.content).toBe("Old pressure.");
+    expect(reduced.activeState.memoryProposals.some(p => p.proposedType === "plotPressureUpdate" && p.status === "pending")).toBe(true);
     expect(reduced.activeState.memoryProposals.some((proposal) => proposal.proposedType === "storyCard" && proposal.targetId === "card-margo")).toBe(true);
     expect(reduced.activeState.memoryProposals.some((proposal) => proposal.proposedType === "brainUpdate" && proposal.targetId === "brain-margo")).toBe(true);
   });
@@ -540,7 +540,7 @@ describe("AI memory builders", () => {
         ...baseAdventure().memoryAutoApprove,
         plotEssentialsUpdate: true,
         plotPressureUpdate: true,
-        characterStoryCard: true, loreStoryCard: true, otherStoryCard: true,
+        loreStoryCard: true, otherStoryCard: true,
       },
       messages: [
         ...baseAdventure().messages,

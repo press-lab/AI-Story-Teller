@@ -13,7 +13,7 @@ const provider = vi.mocked(sendOpenAICompatibleChatCompletion);
 const config = approvalAdventure().modelConfig;
 beforeEach(() => provider.mockReset());
 const cardCases = (["character", "lore", "location", "plot", "custom"] as StoryCardType[]).flatMap(type => [false, true].map(enabled => ({ type, enabled })));
-function category(type: StoryCardType) { return type === "character" ? "characterStoryCard" : type === "lore" ? "loreStoryCard" : "otherStoryCard"; }
+function category(type: StoryCardType) { return type === "character" ? "otherStoryCard" : type === "lore" ? "loreStoryCard" : "otherStoryCard"; }
 function proposals(actions: AdventureAction[]) { return actions.filter(a => a.type === "ADD_MEMORY_PROPOSAL").map(a => a.proposal); }
 
 describe("AI write paths share category approval", () => {
@@ -88,7 +88,7 @@ describe("AI write paths share category approval", () => {
 
   it.each([{ brainEnabled: false, cardEnabled: true }, { brainEnabled: true, cardEnabled: false }])("generated companion notes follow cards=$cardEnabled independently of Brain=$brainEnabled", async ({ brainEnabled, cardEnabled }) => {
     const a = approvalAdventure(); a.brains[0].linkedStoryCardId = "card"; a.storyCards = [existingApprovalCard("character")];
-    a.memoryAutoApprove.brainUpdate = brainEnabled; a.memoryAutoApprove.characterStoryCard = cardEnabled;
+    a.memoryAutoApprove.brainUpdate = brainEnabled; a.memoryAutoApprove.otherStoryCard = cardEnabled;
     provider.mockResolvedValueOnce({ content: JSON.stringify({ currentState: "New state", storyCardNote: "Mira founded a permanent observatory guild." }), raw: {} });
     const result = await runManualBrainUpdate(a, config, "brain");
     const next = result.actions.reduce(reduce, a);
@@ -97,7 +97,7 @@ describe("AI write paths share category approval", () => {
   });
 
   it.each([false, true])("Brain notes and replacement history use their own Character Story Card toggle=%s", async cardEnabled => {
-    const a = approvalAdventure(); a.memoryAutoApprove.brainUpdate = true; a.memoryAutoApprove.characterStoryCard = cardEnabled;
+    const a = approvalAdventure(); a.memoryAutoApprove.brainUpdate = true; a.memoryAutoApprove.otherStoryCard = cardEnabled;
     a.storyCards = [existingApprovalCard("character")]; a.brains[0].linkedStoryCardId = "card"; a.brains[0].updateMode = "replace";
     a.brains[0].notes = "Mira once trusted the northern compass to lead her safely across the winter pass.";
     provider.mockResolvedValueOnce({ content: JSON.stringify({ notes: "Mira now doubts the compass.", storyCardNote: "Mira has a permanent fear of northern compasses." }), raw: {} });
