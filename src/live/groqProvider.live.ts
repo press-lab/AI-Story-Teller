@@ -42,6 +42,7 @@ function baseAdventure(): Adventure {
         active: false,
       }),
     ],
+    memoryAutoApprove: { ...createDefaultAdventure("Live Groq Test").memoryAutoApprove, brainUpdate: true },
     semanticEvaluationSettings: {
       evaluationModel: "",
       messagesIncluded: 8,
@@ -128,7 +129,7 @@ describe("live Groq provider integration", () => {
 
     const result = await runManualBrainUpdate(adventure, liveGroqConfig(), "brain-live-margo");
     expect(result.logEntry.errors).toEqual([]);
-    expect(result.actions.some((action) => action.type === "APPLY_BRAIN_UPDATE")).toBe(true);
+    expect(result.actions.some((action) => action.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
 
     adventure = reduceAll(adventure, result.actions);
     expect(adventure.brains.find((brain) => brain.id === "brain-live-margo")?.currentState).toContain(
@@ -204,8 +205,9 @@ describe("live Groq provider integration", () => {
   });
 
   it("plays the Fire Nation development scenario through live PE, card, and brain updates", async () => {
-    let adventure = {
+    let adventure: Adventure = {
       ...createDevelopmentAdventure(),
+      memoryAutoApprove: { ...createDevelopmentAdventure().memoryAutoApprove, brainUpdate: true, plotEssentialsUpdate: true, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
       semanticEvaluationSettings: {
         ...createDevelopmentAdventure().semanticEvaluationSettings,
         maxParallelUpdateCalls: 1,

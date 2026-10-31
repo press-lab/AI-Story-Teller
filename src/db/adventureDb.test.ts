@@ -1,6 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
+import { approvalAdventure, approvalProposal } from "../test/memoryApproval";
 import { IDBFactory, IDBKeyRange } from "fake-indexeddb";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDefaultAdventure } from "../state/defaults";
@@ -63,6 +64,18 @@ describe("adventureDb IndexedDB persistence", () => {
       },
     ]);
     expect(loaded?.activeState.storyRedoStack).toEqual([]);
+  });
+
+  it("preserves category choices and pending proposals through an IndexedDB round trip", async () => {
+    const a = approvalAdventure();
+    a.memoryAutoApprove.characterStoryCard = true;
+    a.memoryAutoApprove.otherStoryCard = true;
+    a.activeState.memoryProposals = [approvalProposal("brainUpdate")];
+    await saveAdventure(a);
+    const loaded = await getAdventure(a.id);
+    expect(loaded?.memoryAutoApprove).toEqual(a.memoryAutoApprove);
+    expect(loaded?.activeState.memoryProposals[0].status).toBe("pending");
+    expect(loaded?.semanticEvaluationSettings.requireApprovalForAutoUpdates).toBeUndefined();
   });
 
   it("lists adventures newest-first and deletes by id", async () => {

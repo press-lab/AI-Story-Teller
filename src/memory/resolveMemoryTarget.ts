@@ -1,4 +1,4 @@
-import type { Adventure, MemoryProposalType, StoryCard, StoryCardMemoryMode } from "../types/adventure";
+import type { Adventure, MemoryProposalType, StoryCard, StoryCardMemoryMode, StoryCardType } from "../types/adventure";
 import { isGuardedStoryCardMemory } from "./storyCardPolicy";
 
 export interface MemoryTargetDraft {
@@ -10,6 +10,7 @@ export interface MemoryTargetDraft {
   targetId?: string;
   appendContent?: boolean;
   memoryMode?: StoryCardMemoryMode;
+  storyCardType?: StoryCardType;
   category?: string;
   rationale?: string;
 }
@@ -22,6 +23,7 @@ export interface MemoryTargetResolution {
   targetId?: string;
   appendContent?: boolean;
   memoryMode?: StoryCardMemoryMode;
+  storyCardType?: StoryCardType;
   rationale?: string;
 }
 
@@ -218,6 +220,7 @@ export function resolveMemoryTarget(adventure: Adventure, draft: MemoryTargetDra
       targetId: draft.targetId,
       appendContent: draft.appendContent,
       memoryMode: draft.memoryMode,
+      storyCardType: draft.storyCardType,
       rationale: draft.rationale,
     };
   }
@@ -245,6 +248,7 @@ export function resolveMemoryTarget(adventure: Adventure, draft: MemoryTargetDra
     targetId: target?.id,
     appendContent,
     memoryMode,
+    storyCardType: target?.type ?? draft.storyCardType,
     rationale,
   };
 }

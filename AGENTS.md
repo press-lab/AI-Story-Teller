@@ -88,8 +88,8 @@ If a direct Postgres repair is unavoidable, `aist_records` must use collection `
 - `ContextItem.generatedBy` must be set: `"system"` for the system shell, `"ai"` for items derived from AI-generated source (`source === "generated"`), `"user"` otherwise. Message items: `"user"` for user role, `"ai"` for assistant role, `"system"` for system role.
 - Context Preview must match the provider payload returned by `buildContext`. Empty sections are excluded from the payload but always present in `result.sections`.
 - `ContextBuildResult.pendingProposals` exposes pending Memory Proposals for the UI. These are never included in the model payload.
-- AI-generated memory updates must go through `src/memory/applyAIMemoryUpdate.ts` and then through reducer actions.
-- AI may update BrainEntry fields only when the BrainEntry already exists, StoryCard content/triggers/state, Plot Essentials component content, and the one-sentence Active Pressure component through the `plotPressureUpdate` path only.
+- AI-generated persistent memory changes must become `ADD_MEMORY_PROPOSAL` actions (directly or through `src/memory/applyAIMemoryUpdate.ts`). The shared reducer applies `src/memory/approvalPolicy.ts` before any automatic write.
+- AI memory proposals may update existing BrainEntry fields, Story Cards, Plot Essentials, one-sentence Active Pressure, Current Arc developments/arc drafts, and the legacy Summary. Keep the existing surface validators; authored AI Instructions and Author's Note remain forbidden.
 - AI must not mutate AI Instructions, Author's Note, provider config, trigger definitions, quest definitions, raw imports, or the system shell.
 - Memory Inbox proposals live in `activeState.memoryProposals`; approving/rejecting/ignoring proposals must go through reducer actions.
 - Do not add silent stubs. If a feature is incomplete, label it clearly in both code and UI.
@@ -114,15 +114,13 @@ Do not add an opaque Memory Bank retrieval layer. A future Inspectable Memory Ba
 
 ## Known Architecture Decision: Semantic Engine vs Memory Proposals
 
-The semantic post-turn evaluator (`src/triggers/semanticEngine.ts`) can apply brain, reference card, and Plot Essentials updates **directly** — via `applyAIMemoryUpdate` → reducer actions — when `semanticEvaluationSettings.requireApprovalForAutoUpdates` is `false`. When that setting is `true`, generated updates become Memory Inbox proposals and do not mutate active memory until approved.
+All AI-generated persistent memory changes must be classified into one approval category. Each category has one user-controlled auto-approval toggle. Enabled categories automatically apply valid changes; disabled categories create pending suggestions. No global approval override or direct AI-generated memory mutation may bypass this decision. Manual user edits remain independent.
 
-Auto-Cards are a removed legacy surface. Do not reintroduce an Auto-Card review queue without adding explicit UI, reducer actions, and context-builder tests.
+`src/memory/approvalPolicy.ts` is the sole automatic approval policy for semantic updates, inline thoughts/tags, builders, Remember This, reconciliation, and generated history companions. Existing Story Cards use their stored type; new cards require a validated type. Character Story Cards (`character`), Lore Cards (`lore`), and Other Story Cards (`location`, `plot`, `custom`) have separate toggles. Character Self (`brainUpdate`) is independent; missing-Brain fallbacks obey the actual card category. Memory modes (`static`, `living`, `historical`) and detection cadence remain independent.
 
-The reason direct brain/story-card/plotEssentials updates are allowed as an option: every semantic trigger that fires a memory-update action was **explicitly configured by the user** (condition string + action type + target ID). The user opted into this behavior. These are not surprise AI suggestions — they are user-defined rules executing.
+Keep the single approval menu in Memory Suggestions. Legacy `storyCard` preferences migrate to all three card toggles unless individually set; `plotMomentumUpdate` stays disabled. Ignore the retired global review field. Never replay existing pending suggestions when preferences change. Automatic and manual approvals share validation and application, preserve Brain append/replace modes, and record success only after a real write. Companion history is separately classified.
 
-Memory Inbox / Memory Proposals is the path for **unstructured AI-suggested new memory** — the `classifyMemory` flow, or future summary-extraction passes — where the source text is arbitrary and the AI is making a freeform durable-memory suggestion that the user has not pre-authorized.
-
-If you want to require user review for all semantic memory writes, set `requireApprovalForAutoUpdates` to `true` in Settings. Keep tests for both modes.
+Auto-Cards are a removed legacy surface. Do not reintroduce an Auto-Card review queue without explicit UI, reducer actions, and context-builder tests.
 
 ## Arc Director (deterministic story pacing)
 

@@ -1,4 +1,4 @@
-import type { MemoryProposalType } from "../types/adventure";
+import type { MemoryProposalType, StoryCardType } from "../types/adventure";
 
 export interface MemoryClassificationOptions {
   important?: boolean;
@@ -6,7 +6,7 @@ export interface MemoryClassificationOptions {
   immediateAlwaysOn?: boolean;
   characterName?: string;
   existingBrainNames?: string[];
-  existingStoryCards?: Array<{ id: string; title: string; keys: string[] }>;
+  existingStoryCards?: Array<{ id: string; title: string; keys: string[]; type?: StoryCardType }>;
 }
 
 export interface MemoryClassification {
@@ -17,6 +17,7 @@ export interface MemoryClassification {
   confidence: number;
   rationale: string;
   targetId?: string;
+  storyCardType?: StoryCardType;
 }
 
 function titleFromText(text: string): string {
@@ -47,7 +48,7 @@ function hasExistingBrain(options: MemoryClassificationOptions, title: string): 
   return (options.existingBrainNames ?? []).some((name) => normalized(name) === expected);
 }
 
-function matchingStoryCard(options: MemoryClassificationOptions, text: string): { id: string; title: string; keys: string[] } | undefined {
+function matchingStoryCard(options: MemoryClassificationOptions, text: string): { id: string; title: string; keys: string[]; type?: StoryCardType } | undefined {
   const lower = text.toLocaleLowerCase();
   return (options.existingStoryCards ?? []).find((card) =>
     [card.title, ...card.keys].some((key) => key.trim() && lower.includes(key.toLocaleLowerCase())),
@@ -107,6 +108,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
           ? "No existing BrainEntry for this character; routed to Reference Card instead of Brain."
           : "No existing BrainEntry for this character, and the detail looks temporary rather than durable.",
         targetId: target?.id,
+        storyCardType: target?.type ?? "character",
       };
     }
     return {
@@ -161,6 +163,7 @@ export function classifyMemory(text: string, options: MemoryClassificationOption
         ? "Durable character fact routed to an existing Reference Card."
         : "Durable recurring facts, relationship facts, rules, promises, secrets, nicknames, and important named objects belong in Reference Cards.",
       targetId: target?.id,
+      storyCardType: target?.type ?? "lore",
     };
   }
 

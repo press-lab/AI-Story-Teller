@@ -191,23 +191,26 @@ Triggered by `characterName` or any string in `triggers`, matched against recent
 
 **Files:** `pages/MemoryInboxPage.tsx`, `memory/memoryDetection.ts`, `memory/applyAIMemoryUpdate.ts`, `state/adventureReducer.ts`
 
-All AI-generated content suggestions pass through Memory Proposals before becoming live canon (except auto-approved types).
+All AI-generated persistent memory changes pass through Memory Proposals and the shared approval policy before becoming live canon.
 
 ### Proposal types:
 | Type | Source | Auto-Approve Default | Apply Behavior |
 |---|---|---|---|
 | `storyCard` | Memory detection, inline `<memory>` tags, reference card audit, "Remember This" | Off | Upsert reference card |
-| `brainUpdate` | Semantic engine (updateBrain/appendBrain) | Off | Apply BrainPatch |
-| `plotEssentialsUpdate` | Semantic engine, "Suggest Updates" | Off | Append to PE component |
+| `brainUpdate` | Semantic engine, manual update tools, inline thoughts | Off | Apply BrainPatch with saved append/replace mode |
+| `plotEssentialsUpdate` | Semantic engine, "Suggest Updates" | Off | Replace PE, or append when requested |
 | `currentArcUpdate` | Semantic engine (updateComponentArc) | **On** | Append to arc component |
 | `plotPressureUpdate` | Semantic engine (updateComponentPressure) | **On** | Replace activePressure content |
 | `plotMomentumUpdate` | Legacy/disabled | Off | No-op |
-| `summaryUpdate` | Semantic engine (summaryConditions) — deprecated | Off | Append to rollingSummary |
+| `summaryUpdate` | Legacy suggestions | Off | Replace summary, or append when requested |
+| `arcProposal` | Arc proposal generator | Off | Seed Current Arc; previous arc becomes a separately approved historical card |
 | `ignore` | Classification fallback | — | No-op |
 
 Auto-approve settings: `adventure.memoryAutoApprove` — all togglable per adventure.
 
-### `ADD_MEMORY_PROPOSAL` auto-approves immediately if the matching `memoryAutoApprove` flag is true — the proposal never enters the inbox for those types.
+### All AI-generated memory writes use one category policy
+
+`src/memory/approvalPolicy.ts` resolves the actual destination and its category toggle. Enabled categories automatically apply valid changes; disabled categories remain pending. There is no global review override. Story Card approval is split into Character Story Cards, Lore Cards, and Other Story Cards; Character Self stays separate. Existing cards use their stored type. Detection cadence and static/living/historical modes are independent. Approval controls live only in Memory Suggestions. Legacy Story Card preferences migrate to the three categories; existing pending proposals remain pending.
 
 ---
 
@@ -448,7 +451,7 @@ Player input
         ← [MEMORY TAGGING] injection (if systemTriggers.enabled)
     → LLM call (story provider)
     → extractInlineThoughts
-        → <thought> tags → brain.thoughts updates
+        → <thought> tags → ADD_MEMORY_PROPOSAL (brainUpdate)
         → <memory> tags → MemoryProposal candidates (storyCard type)
     → continuityLint (scanForRiskyClaims → runContinuityCheck if matched)
     → ADD_MESSAGE (cleaned response)
@@ -461,17 +464,17 @@ Player input
                 → brain updates → ADD_MEMORY_PROPOSAL (brainUpdate)
                 → card updates → ADD_MEMORY_PROPOSAL (storyCard)
                 → PE updates → ADD_MEMORY_PROPOSAL (plotEssentialsUpdate)
-                → arc updates → ADD_MEMORY_PROPOSAL (currentArcUpdate) [auto-approved]
-                → pressure updates → ADD_MEMORY_PROPOSAL [auto-approved]
+                → arc updates → ADD_MEMORY_PROPOSAL (currentArcUpdate) [category toggle]
+                → pressure updates → ADD_MEMORY_PROPOSAL [category toggle]
         → detectMemoryFromTurn
             → ADD_MEMORY_PROPOSAL (storyCard or plotEssentialsUpdate)
         → runMemoryCycle (periodic)
             → storyCardUpdateConditions + plotEssentialsConditions
-            → ADD_MEMORY_PROPOSAL (always routed to inbox)
+            → ADD_MEMORY_PROPOSAL (shared category policy)
 
 ADD_MEMORY_PROPOSAL
-    → if memoryAutoApprove[proposedType] === true
-        → applyApprovedMemoryProposal immediately (never enters inbox)
+    → if shouldAutoApprove(adventure, proposal) === true
+        → applyApprovedMemoryProposal immediately; record approved after a successful write
     → else → enters memoryProposals[] as pending
         → user approves → applyApprovedMemoryProposal
 ```

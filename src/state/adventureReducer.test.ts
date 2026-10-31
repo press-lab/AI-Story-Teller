@@ -460,7 +460,7 @@ describe("adventureReducer", () => {
     let state = {
       ...baseAdventure(),
       brains: [brain],
-      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, storyCard: true },
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
     };
 
     state = reduce(state, {
@@ -764,7 +764,7 @@ describe("adventureReducer", () => {
     expect(child?.content).toContain("notification protocol");
   });
 
-  it("does not resurrect dismissed static reference card update proposals", () => {
+  it("keeps fresh static reference card updates after a prior dismissal", () => {
     let state = baseAdventure();
     state = reduce(state, {
       type: "UPSERT_STORY_CARD",
@@ -800,8 +800,8 @@ describe("adventureReducer", () => {
       },
     });
 
-    expect(state.activeState.memoryProposals.filter((entry) => entry.title === "Red Ring")).toHaveLength(1);
-    expect(state.activeState.memoryProposals.find((entry) => entry.id === "proposal-red-ring-2")).toBeUndefined();
+    expect(state.activeState.memoryProposals.filter((entry) => entry.title === "Red Ring")).toHaveLength(2);
+    expect(state.activeState.memoryProposals.find((entry) => entry.id === "proposal-red-ring-2")?.status).toBe("pending");
   });
 
   it("still allows new living-card updates after a different living update was dismissed", () => {
@@ -902,7 +902,7 @@ describe("adventureReducer", () => {
     expect(state.activeState.memoryProposals.some((p) => p.id === "already-carded")).toBe(false);
   });
 
-  it("quietly applies auto-approved Active Pressure without filling Memory Suggestions history", () => {
+  it("records successful auto-approved Active Pressure and suppresses duplicate writes", () => {
     const base = baseAdventure();
     const pressure = makeComponent({
       id: "comp-pressure",
@@ -932,7 +932,7 @@ describe("adventureReducer", () => {
     expect(state.components.find((component) => component.id === "comp-pressure")?.content).toBe(
       "Caitlyn's task force is sealing the Pumpworks around Avery and Jinx.",
     );
-    expect(state.activeState.memoryProposals.some((p) => p.id === "pressure-1")).toBe(false);
+    expect(state.activeState.memoryProposals.find((p) => p.id === "pressure-1")?.status).toBe("approved");
 
     state = reduce(state, {
       type: "ADD_MEMORY_PROPOSAL",
@@ -963,7 +963,7 @@ describe("adventureReducer", () => {
       memoryAutoApprove: {
         ...baseAdventure().memoryAutoApprove,
         plotEssentialsUpdate: true,
-        storyCard: true,
+        characterStoryCard: true, loreStoryCard: true, otherStoryCard: true,
       },
     };
 
@@ -1049,8 +1049,9 @@ describe("adventureReducer", () => {
     expect(seeded?.arcState?.phase).toBe("simmer");
     expect(seeded?.arcState?.tier).toBe(0);
     expect(seeded?.content).toBe("");
-    // Old arc banked as a Reference Card so prior arcs are preserved.
-    expect(state.storyCards.some((card) => card.content.includes("Renzan conspiracy was broken"))).toBe(true);
+    // Old arc history uses its own card toggle, so it remains pending here.
+    expect(state.storyCards.some((card) => card.content.includes("Renzan conspiracy was broken"))).toBe(false);
+    expect(state.activeState.memoryProposals.some(p => p.proposedType === "storyCard" && p.status === "pending" && p.content.includes("Renzan conspiracy was broken"))).toBe(true);
   });
 
   it("auto-approves arcProposal when enabled", () => {
@@ -1396,7 +1397,7 @@ describe("adventureReducer", () => {
     let state = {
       ...baseAdventure(),
       components: [plot],
-      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, storyCard: true },
+      memoryAutoApprove: { ...baseAdventure().memoryAutoApprove, characterStoryCard: true, loreStoryCard: true, otherStoryCard: true },
     };
 
     state = reduce(state, {

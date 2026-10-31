@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Adventure, AdventureAction, ContextBuildResult, InputMode, MemoryAutoApproveSettings, MemoryDetectionSettings, ProviderConfig, SemanticEvaluationSettings, TokenBudgetSettings } from "../types/adventure";
-import { defaultMemoryAutoApproveSettings, defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
+import { normalizeMemoryAutoApproveSettings, defaultMemoryAutoApproveSettings, defaultMemoryDetectionSettings, defaultSemanticEvaluationSettings, defaultTokenBudgetSettings } from "../state/defaults";
 
 export interface UiPreferences {
   darkMode: boolean;
@@ -27,6 +27,17 @@ export const defaultGlobalAdventureSettings: GlobalAdventureSettings = {
   memoryDetectionSettings: defaultMemoryDetectionSettings,
   memoryAutoApprove: { ...defaultMemoryAutoApproveSettings },
 };
+
+export function normalizeGlobalAdventureSettings(settings: GlobalAdventureSettings): GlobalAdventureSettings {
+  const { requireApprovalForAutoUpdates: _retired, ...semanticSettings } = settings.semanticEvaluationSettings ?? {};
+  return {
+    ...settings,
+    tokenBudgetSettings: { ...defaultTokenBudgetSettings, ...settings.tokenBudgetSettings },
+    semanticEvaluationSettings: { ...defaultSemanticEvaluationSettings, ...semanticSettings },
+    memoryDetectionSettings: { ...defaultMemoryDetectionSettings, ...settings.memoryDetectionSettings },
+    memoryAutoApprove: normalizeMemoryAutoApproveSettings(settings.memoryAutoApprove),
+  };
+}
 
 export const defaultUiPreferences: UiPreferences = {
   darkMode: false,

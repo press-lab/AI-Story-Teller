@@ -123,15 +123,16 @@ export async function applyProviderResponse({
         (b) => b.characterName.toLowerCase() === thought.name.toLowerCase(),
       );
       if (brain && thought.key && thought.value) {
+        const now = nowIso();
         next = adventureReducer(next, {
-          type: "APPLY_BRAIN_UPDATE",
-          brainId: brain.id,
-          patch: {
-            thoughts: { [`${turn}_${thought.key}`]: `${turn} → ${thought.value}` },
+          type: "ADD_MEMORY_PROPOSAL",
+          proposal: {
+            id: createId("proposal"), sourceTurnId: assistantMessageId ?? String(turn), sourceText: thought.value,
+            proposedType: "brainUpdate", title: brain.characterName, targetId: brain.id,
+            content: JSON.stringify({ thoughts: { [`${turn}_${thought.key}`]: `${turn} → ${thought.value}` } }),
+            brainUpdateMode: "append", suggestedTriggers: [], confidence: 0.8,
+            rationale: "Inline character thought.", status: "pending", createdAt: now, updatedAt: now,
           },
-          mode: "append",
-          turn,
-          preview: thought.value,
         });
         if (brain.printThoughts) {
           visibleThoughtLines.push(`*[${brain.characterName}]: ${thought.value}*`);
@@ -157,6 +158,7 @@ export async function applyProviderResponse({
         suggestedTriggers: tag.triggers,
         memoryMode: tag.memoryMode,
         category: tag.category,
+        storyCardType: tag.category === "character_reveal" ? "character" : "lore",
         sourceText: "",
         rationale: `Inline memory tag: ${tag.category}`,
       });
@@ -176,6 +178,7 @@ export async function applyProviderResponse({
         targetId: routed.targetId ?? existing?.id,
         appendContent: routed.appendContent ?? Boolean(existing),
         memoryMode: routed.memoryMode,
+        storyCardType: existing?.type ?? routed.storyCardType,
         createdAt: now,
         updatedAt: now,
       };

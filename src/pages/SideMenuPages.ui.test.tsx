@@ -617,6 +617,7 @@ describe("side menu page smoke coverage", () => {
 
     expect(screen.getAllByDisplayValue("Margo calls Avery hedge prince as a private joke.")[0]).toBeInTheDocument();
 
+    await user.type(document.querySelector(".proposal-card textarea") as HTMLTextAreaElement, "Margo uses hedge prince as a private nickname for Seth.");
     await user.click(screen.getByRole("button", { name: "Approve" }));
     expect(screen.getByText(/· approved/i)).toBeInTheDocument();
   });

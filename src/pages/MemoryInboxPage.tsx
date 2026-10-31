@@ -1,3 +1,4 @@
+import { cardMatchesName } from "../state/defaults";
 import { useState } from "react";
 import { classifyMemory } from "../memory/classificationPolicy";
 import { resolveMemoryTarget } from "../memory/resolveMemoryTarget";
@@ -54,7 +55,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
   function createProposal() {
     const classified = classifyMemory(sourceText, {
       existingBrainNames: adventure.brains.map((brain) => brain.characterName),
-      existingStoryCards: adventure.storyCards.map((card) => ({ id: card.id, title: card.title, keys: card.keys })),
+      existingStoryCards: adventure.storyCards.map((card) => ({ id: card.id, title: card.title, keys: card.keys, type: card.type })),
     });
     const routed = resolveMemoryTarget(adventure, {
       proposedType: classified.proposedType,
@@ -63,6 +64,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
       sourceText,
       suggestedTriggers: classified.suggestedTriggers,
       targetId: classified.targetId,
+      storyCardType: classified.storyCardType,
       rationale: classified.rationale,
     });
     const timestamp = nowIso();
@@ -82,6 +84,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         targetId: routed.targetId,
         appendContent: routed.appendContent,
         memoryMode: routed.memoryMode,
+        storyCardType: routed.storyCardType,
         createdAt: timestamp,
         updatedAt: timestamp,
       },
@@ -178,9 +181,20 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
         />
       </div>
 
-      <details className="panel editor-tools-panel">
-        <summary>Rules &amp; auto-approve</summary>
-        <h3>Memory Suggestions</h3>
+      <div className="list memory-suggestion-list">
+        {pending.length === 0 && (
+          <div className="profile-scenarios-empty explore-empty-state" role="status">
+            <strong>You are caught up</strong>
+            <p className="muted">New memory suggestions will appear here after relevant story turns.</p>
+          </div>
+        )}
+        {pending.map((proposal) => (
+          <ProposalCard key={proposal.id} proposal={proposal} adventure={adventure} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
+        ))}
+      </div>
+
+      <details className="panel editor-tools-panel memory-suggestion-tools">
+        <summary>Suggestion tools and settings</summary>
         <p className="muted">
           Memory Suggestions holds AI-proposed changes to your story data — new Reference Cards, Character Self updates,
           Plot Essentials rewrites, Active Pressure updates, and legacy Summary changes. The AI generates these automatically after turns or when
@@ -198,12 +212,13 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
           <CheckboxField label="Active Pressure" checked={autoApprove.plotPressureUpdate} onChange={(v) => setAutoApprove({ plotPressureUpdate: v })} />
           <CheckboxField label="Current Arc" checked={autoApprove.currentArcUpdate} onChange={(v) => setAutoApprove({ currentArcUpdate: v })} />
           <CheckboxField label="Arc Proposals" checked={autoApprove.arcProposal} onChange={(v) => setAutoApprove({ arcProposal: v })} />
-          <CheckboxField label="Reference Cards" checked={autoApprove.storyCard} onChange={(v) => setAutoApprove({ storyCard: v })} />
-          <CheckboxField label="Characters" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
+          <CheckboxField label="Character Story Cards" checked={autoApprove.characterStoryCard} onChange={(v) => setAutoApprove({ characterStoryCard: v })} />
+          <CheckboxField label="Lore Cards" checked={autoApprove.loreStoryCard} onChange={(v) => setAutoApprove({ loreStoryCard: v })} />
+          <CheckboxField label="Other Story Cards" checked={autoApprove.otherStoryCard} onChange={(v) => setAutoApprove({ otherStoryCard: v })} />
+          <CheckboxField label="Character Self" checked={autoApprove.brainUpdate} onChange={(v) => setAutoApprove({ brainUpdate: v })} />
         </div>
-      </details>
-
-      <details className="panel">
+        <p className="muted">Enabled categories apply valid AI suggestions automatically. Disabled categories require approval. Memory detection controls when suggestions are generated.</p>
+      <details className="setup-panel">
         <summary>Check Recent Entries</summary>
         <div className="grid two">
           <Field label="Entries to check">
@@ -265,7 +280,7 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
           <summary>History ({resolved.length})</summary>
           <div className="list" style={{ marginTop: "0.75rem" }}>
             {resolved.map((proposal) => (
-              <ProposalCard key={proposal.id} proposal={proposal} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
+              <ProposalCard key={proposal.id} proposal={proposal} adventure={adventure} dispatch={dispatch} onUpdate={updateProposal} onRegenerate={onRegenerateProposal} />
             ))}
           </div>
         </details>
@@ -275,14 +290,20 @@ export function MemoryInboxPage({ adventure, dispatch, onRegenerateProposal, onR
 }
 
 interface ProposalCardProps {
+  adventure: AdventurePageProps["adventure"];
   proposal: MemoryProposal;
   dispatch: AdventurePageProps["dispatch"];
   onUpdate: (proposal: MemoryProposal, patch: Partial<MemoryProposal>) => void;
   onRegenerate?: (proposalId: string) => Promise<void>;
 }
 
-function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCardProps) {
+function ProposalCard({ proposal, adventure, dispatch, onUpdate, onRegenerate }: ProposalCardProps) {
   const isPending = proposal.status === "pending";
+  const targetCard = proposal.proposedType === "storyCard"
+    ? adventure.storyCards.find(c => c.id === proposal.targetId) ?? adventure.storyCards.find(c => cardMatchesName(c, proposal.title))
+    : undefined;
+  const cardType = targetCard?.type ?? proposal.storyCardType;
+
   const [regenerating, setRegenerating] = useState(false);
 
   async function handleRegenerate() {
@@ -297,7 +318,7 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
         <span className="proposal-card-title">
           <strong>{proposal.title || "Untitled suggestion"}</strong>
           <span className="muted">
-            {proposal.proposedType}
+            {proposalTypeLabels[proposal.proposedType]}{proposal.proposedType === "storyCard" ? ` · ${cardType ?? "type required"}` : ""}
           </span>
         </span>
         <span className="story-card-badges">
@@ -312,7 +333,7 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
         <div className="panel-heading">
         <div className="suggestion-meta">
           <p className="eyebrow">
-            {proposal.proposedType}
+            {proposalTypeLabels[proposal.proposedType]}{proposal.proposedType === "storyCard" ? ` · ${cardType ?? "type required"}` : ""}
             {proposal.status !== "pending" ? ` · ${proposal.status}` : ""}
           </p>
           <input
@@ -397,10 +418,11 @@ function ProposalCard({ proposal, dispatch, onUpdate, onRegenerate }: ProposalCa
             <>
               <Field label="Reference Card Type">
                 <select
-                  value={proposal.storyCardType ?? "custom"}
+                  value={cardType ?? ""}
                   onChange={(event) => onUpdate(proposal, { storyCardType: event.target.value as StoryCardType })}
-                  disabled={!isPending}
+                  disabled={!isPending || Boolean(targetCard)}
                 >
+                  <option value="" disabled>Select a type</option>
                   {storyCardTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                 </select>
               </Field>

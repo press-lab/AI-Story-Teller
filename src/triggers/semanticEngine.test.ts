@@ -59,7 +59,7 @@ beforeEach(() => {
 
 describe("runSemanticPostTurnEvaluation", () => {
   it("returns empty actions and a log entry when semantic evaluation is disabled", async () => {
-    const adventure = { ...baseAdventure(), semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, enabled: false } };
+    const adventure: Adventure = { ...baseAdventure(), semanticEvaluationSettings: { ...baseAdventure().semanticEvaluationSettings, enabled: false } };
     const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
     expect(mockProvider).not.toHaveBeenCalled();
     expect(result.actions.some((a) => a.type === "LOG_EVALUATION_RESULT")).toBe(true);
@@ -67,7 +67,7 @@ describe("runSemanticPostTurnEvaluation", () => {
   });
 
   it("sends one condition-evaluation call and returns a log entry when no conditions fire", async () => {
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       triggerRules: [
         makeTriggerRule({
@@ -90,7 +90,7 @@ describe("runSemanticPostTurnEvaluation", () => {
   });
 
   it("fires a matching semantic trigger rule and maps it to a reducer action", async () => {
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       triggerRules: [
         makeTriggerRule({
@@ -115,7 +115,7 @@ describe("runSemanticPostTurnEvaluation", () => {
   // See contextBuilder.ts: eligibleBrainsForCapture + buildThoughtCaptureInstruction.
 
   it("records a parse error in the log when the LLM returns invalid JSON for conditions", async () => {
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       triggerRules: [makeTriggerRule({ name: "Rule", enabled: true, evaluationMode: "semantic", condition: "test" })],
     };
@@ -130,7 +130,7 @@ describe("runSemanticPostTurnEvaluation", () => {
   it("skips disabled and cooling-down semantic trigger rules", async () => {
     const disabledRule = makeTriggerRule({ id: "rule-disabled", name: "Disabled", enabled: false, evaluationMode: "semantic", condition: "test" });
     const coolingRule = makeTriggerRule({ id: "rule-cooling", name: "Cooling", enabled: true, evaluationMode: "semantic", condition: "test", cooldownTurns: 5, lastFiredTurn: 3 });
-    const adventure = { ...baseAdventure(), triggerRules: [disabledRule, coolingRule] };
+    const adventure: Adventure = { ...baseAdventure(), triggerRules: [disabledRule, coolingRule] };
 
     mockProvider.mockResolvedValueOnce({ content: "[]", raw: {} });
     const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
@@ -143,7 +143,7 @@ describe("runSemanticPostTurnEvaluation", () => {
   it("skips keyword and regex mode trigger rules — only semantic mode rules go to the LLM", async () => {
     const keywordRule = makeTriggerRule({ id: "rule-kw", name: "Keyword", enabled: true, evaluationMode: "keyword", condition: "door" });
     const regexRule = makeTriggerRule({ id: "rule-rx", name: "Regex", enabled: true, evaluationMode: "regex", condition: "door.*open" });
-    const adventure = { ...baseAdventure(), triggerRules: [keywordRule, regexRule] };
+    const adventure: Adventure = { ...baseAdventure(), triggerRules: [keywordRule, regexRule] };
 
     mockProvider.mockResolvedValueOnce({ content: "[]", raw: {} });
     const result = await runSemanticPostTurnEvaluation(adventure, providerConfig);
@@ -163,7 +163,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       autoUpdate: true,
       autoUpdateCooldownTurns: 0,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo steps forward.", createdAt: "2026-01-01T00:02:00.000Z" }],
@@ -192,7 +192,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       autoUpdateCooldownTurns: 5,
       lastAutoUpdateTurn: 3,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       storyCards: [card],
 
@@ -217,7 +217,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       content: "The old next beat should not update.",
       active: true,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [momentum],
       storyCards: [],
@@ -239,7 +239,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       autoUpdate: true,
       autoUpdateCooldownTurns: 0,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       storyCards: [card],
       messages: [...baseAdventure().messages, { id: "m3", role: "user" as const, content: "Margo repeats the hedge prince joke.", createdAt: "2026-01-01T00:02:00.000Z" }],
@@ -280,7 +280,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       content: "Old premise.",
       active: true,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [component],
 
@@ -313,7 +313,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       autoUpdateCooldownTurns: 60,
       lastAutoUpdateTurn: 4,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [component],
       storyCards: [],
@@ -362,7 +362,7 @@ describe("runSemanticPostTurnEvaluation", () => {
       active: true,
       updateMode: "append",
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [pressure],
       storyCards: [card],
@@ -416,15 +416,15 @@ describe("runSemanticPostTurnEvaluation", () => {
 });
 
 describe("runManualBrainUpdate", () => {
-  it("calls the brain update prompt and applies the patch", async () => {
+  it("calls the brain update prompt and proposes the patch", async () => {
     const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
-    const adventure = { ...baseAdventure(), brains: [brain] };
+    const adventure: Adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({ content: '{"currentState": "Avery is on edge."}', raw: {} });
 
     const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
 
     expect(mockProvider).toHaveBeenCalledOnce();
-    expect(result.actions.some((a) => a.type === "APPLY_BRAIN_UPDATE")).toBe(true);
+    expect(result.actions.some((a) => a.type === "ADD_MEMORY_PROPOSAL")).toBe(true);
     expect(result.logEntry.conditionsFired).toContain("manualBrain:brain-Avery");
   });
 
@@ -436,7 +436,7 @@ describe("runManualBrainUpdate", () => {
 
   it("logs an error when the LLM returns no recognized brain fields", async () => {
     const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
-    const adventure = { ...baseAdventure(), brains: [brain] };
+    const adventure: Adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({ content: '{"unknownField": "something"}', raw: {} });
 
     const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
@@ -446,7 +446,7 @@ describe("runManualBrainUpdate", () => {
 
   it("accepts thoughts as a Record and ignores non-string values for other fields", async () => {
     const brain = makeBrain({ id: "brain-Avery", characterName: "Avery", active: true });
-    const adventure = { ...baseAdventure(), brains: [brain] };
+    const adventure: Adventure = { ...baseAdventure(), brains: [brain] };
     mockProvider.mockResolvedValueOnce({
       content:
         '{"relationshipPressure":"bound by command","thoughts":{"avery_watches_court":"5 → Watch the court. Do not flinch."}}',
@@ -454,13 +454,13 @@ describe("runManualBrainUpdate", () => {
     });
 
     const result = await runManualBrainUpdate(adventure, providerConfig, "brain-Avery");
-    const action = result.actions.find((entry) => entry.type === "APPLY_BRAIN_UPDATE") as Extract<
+    const action = result.actions.find((entry) => entry.type === "ADD_MEMORY_PROPOSAL") as Extract<
       typeof result.actions[number],
-      { type: "APPLY_BRAIN_UPDATE" }
+      { type: "ADD_MEMORY_PROPOSAL" }
     >;
-
-    expect(action.patch.relationshipPressure).toBe("bound by command");
-    expect(action.patch.thoughts).toEqual({ avery_watches_court: "5 → Watch the court. Do not flinch." });
+    const patch = JSON.parse(action.proposal.content);
+    expect(patch.relationshipPressure).toBe("bound by command");
+    expect(patch.thoughts).toEqual({ avery_watches_court: "5 → Watch the court. Do not flinch." });
     expect(result.logEntry.errors).toEqual([]);
   });
 });
@@ -532,7 +532,7 @@ describe("AI memory builders", () => {
       compactKind: "coverStory",
       compactStatus: "active",
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [plot, pressure],
       storyCards: [ambessa],
@@ -540,7 +540,7 @@ describe("AI memory builders", () => {
         ...baseAdventure().memoryAutoApprove,
         plotEssentialsUpdate: true,
         plotPressureUpdate: true,
-        storyCard: true,
+        characterStoryCard: true, loreStoryCard: true, otherStoryCard: true,
       },
       messages: [
         ...baseAdventure().messages,
@@ -637,7 +637,7 @@ describe("AI memory builders", () => {
       keys: ["Ambessa"],
       active: true,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [plot],
       storyCards: [ambessa],
@@ -708,7 +708,7 @@ describe("AI memory builders", () => {
       keys: ["workshop cover"],
       active: true,
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       components: [plot, pressure],
       storyCards: [cover],
@@ -839,7 +839,7 @@ describe("AI memory builders", () => {
       }),
       raw: {},
     });
-    const adventure = {
+    const adventure: Adventure = {
       ...baseAdventure(),
       messages: [
         { id: "m1", role: "user" as const, content: "I enter the old market.", createdAt: "2026-01-01T00:00:00.000Z" },
@@ -936,7 +936,7 @@ describe("AI memory builders", () => {
       content: "• The gala is social cover.",
       active: true,
     });
-    const adventure = { ...baseAdventure(), components: [plot] };
+    const adventure: Adventure = { ...baseAdventure(), components: [plot] };
 
     const result = await runPlotAIBuilder(
       adventure,
